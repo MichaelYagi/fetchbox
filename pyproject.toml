@@ -39,6 +39,8 @@ dev = [
     "import-linter>=2.1",
     "pip-licenses>=5",
     "asgi-lifespan>=2.1.0",
+    "pytest-timeout>=2.3",
+    "websockets>=13",
 ]
 
 [build-system]
@@ -52,6 +54,10 @@ packages = ["src/fetchbox"]
 testpaths = ["tests"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
+filterwarnings = [
+    # Starlette nudges toward httpx2; harmless until we choose to migrate.
+    "ignore:Using `httpx` with `starlette.testclient` is deprecated",
+]
 
 [tool.ruff]
 line-length = 100

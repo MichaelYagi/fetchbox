@@ -9,6 +9,7 @@ for a short TTL; any key mutation clears the cache.
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import hashlib
 import hmac
 import secrets
@@ -45,6 +46,8 @@ SESSION_TOUCH_EVERY = timedelta(minutes=5)
 KEY_TOUCH_EVERY = timedelta(seconds=60)
 KEY_CACHE_TTL_S = 300.0
 
+STREAM_TOKEN_TTL_S = 60.0
+
 LOGIN_MAX_FAILURES = 10
 LOGIN_WINDOW_S = 15 * 60
 
@@ -57,11 +60,12 @@ class Principal:
     id: str
     name: str
     scopes: frozenset[str]
-    via: Literal["session", "api_key"]
+    via: Literal["session", "api_key", "stream_token"]
     csrf_token: str | None = None
+    ip: str | None = None
 
     def actor(self) -> Actor:
-        return Actor(type=self.type, id=self.id, name=self.name)
+        return Actor(type=self.type, id=self.id, name=self.name, ip=self.ip)
 
     def has(self, scope: str) -> bool:
         return sc.has_scope(self.scopes, scope)
@@ -154,6 +158,7 @@ class AuthService:
         self.bus = bus
         self.limiter = LoginLimiter()
         self._key_cache: dict[str, _CachedKey] = {}
+        self._stream_tokens: dict[str, tuple[Principal, float]] = {}
         # Long-lived refs so `last_used_at` background writes aren't garbage-collected.
         self._bg: set[asyncio.Task[None]] = set()
 
@@ -199,6 +204,12 @@ class AuthService:
             # Changing the password signs out every existing session.
             await s.execute(delete(AuthSession).where(AuthSession.user_id == user.id))
             await s.commit()
+        # Open event streams of this user listen for this and disconnect.
+        await self.bus.emit(
+            "auth.password_changed",
+            subject=Subject(type="user", id=user.id),
+            username=user.username,
+        )
         return user
 
     # ---- sessions ------------------------------------------------------------------
@@ -283,6 +294,28 @@ class AuthService:
             via="session",
             csrf_token=sess.csrf_token,
         )
+
+    # ---- event-stream tokens ----------------------------------------------------------
+
+    def issue_stream_token(self, principal: Principal) -> tuple[str, int]:
+        """Short-lived, single-use token for `?token=` on the event stream.
+
+        Browsers can't set headers on WebSocket/EventSource, and API keys must never go in
+        URLs, so the client trades its real credential for one of these first.
+        """
+        now = time.monotonic()
+        for t, (_, exp) in list(self._stream_tokens.items()):
+            if exp <= now:
+                del self._stream_tokens[t]
+        token = secrets.token_urlsafe(32)
+        self._stream_tokens[_sha256(token)] = (principal, now + STREAM_TOKEN_TTL_S)
+        return token, int(STREAM_TOKEN_TTL_S)
+
+    def redeem_stream_token(self, token: str) -> Principal | None:
+        entry = self._stream_tokens.pop(_sha256(token), None)
+        if entry is None or entry[1] <= time.monotonic():
+            return None
+        return dataclasses.replace(entry[0], via="stream_token", csrf_token=None)
 
     # ---- API keys: authentication -----------------------------------------------------
 

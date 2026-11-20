@@ -21,8 +21,11 @@ from fetchbox.core.providers import registry as provider_registry
 from fetchbox.core.state import AppState
 from fetchbox.modules.auth import router as auth_router
 from fetchbox.modules.auth.service import AuthService
-from fetchbox.modules.system import jobs_router
+from fetchbox.modules.events import router as events_router
+from fetchbox.modules.system import activity_router, jobs_router
+from fetchbox.modules.system import jobs as system_jobs
 from fetchbox.modules.system import router as system_router
+from fetchbox.modules.system.activity import ActivityWriter
 from fetchbox.modules.system.service import register_core_checks
 
 API_PREFIX = "/api/v1"
@@ -35,6 +38,8 @@ API_ROUTERS: tuple[APIRouter, ...] = (
     auth_router.router,
     system_router.router,
     jobs_router.router,
+    events_router.router,
+    activity_router.router,
 )
 
 
@@ -96,9 +101,14 @@ def create_app(
                 "(fetchbox reset-password), or bind to 127.0.0.1"
             )
 
+        activity_writer = ActivityWriter(db, bus)
+        activity_writer.start()  # before anything else emits, so startup is logged
+        app.state.activity = activity_writer
+
         plugins = state.providers.load_entry_points()
         register_core_checks(state)
         app.state.fb = state
+        system_jobs.register(state)
         for hook in job_handler_hooks:
             hook(state.jobs)
         await state.jobs.start()
@@ -116,6 +126,7 @@ def create_app(
         finally:
             await state.bus.emit("system.stopping")
             await state.jobs.stop(timeout=30)
+            await activity_writer.stop()
             await auth.drain()
             await state.db.dispose()
             log.info("stopped")

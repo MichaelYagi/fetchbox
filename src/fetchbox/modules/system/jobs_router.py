@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 
@@ -37,6 +38,15 @@ class JobOut(BaseModel):
     created_at: datetime
     started_at: datetime | None
     finished_at: datetime | None
+
+
+def accepted(job: Job) -> JSONResponse:
+    """Spec convention for long operations: 202 + Job body + Location of the job."""
+    return JSONResponse(
+        JobOut.model_validate(job).model_dump(mode="json"),
+        status_code=202,
+        headers={"Location": f"/api/v1/jobs/{job.id}"},
+    )
 
 
 class JobPage(BaseModel):

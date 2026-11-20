@@ -43,12 +43,18 @@ A phase starts only when the previous gate passes.
 - [x] Route-scope coverage test (enumerates OpenAPI operations; public routes allowlisted)
 - [ ] Trusted proxies (`X-Forwarded-For`) and forward-auth header (Authelia/Authentik)
 - [ ] API conventions: cursor pagination, filter/sort, ETag/If-Match, idempotency store
-- [ ] Events over WebSocket + SSE (`/events/ws`, `/events/stream`), activity log writer
+- [x] Events over WebSocket + SSE (`/events/ws`, `/events/stream`): topic filters,
+      Last-Event-ID replay with gap signal, `auth.*` admin-only, stream closes when its
+      credential is revoked, single-use stream tokens, same-origin check for cookie WS
+- [x] Activity log: batched writer (lossless shutdown), `/activity`, prune job
+- [ ] Activity entries for request IPs behind proxies (needs trusted_proxies)
 - [ ] AES-GCM secrets with `secrets.key`; LAN bind refused until a password exists
 - [ ] PostgreSQL CI job (asyncpg)
 
 **Gate:** fresh start creates admin + `default` key; a test job survives `kill -9` and
 resumes on restart; its events arrive over WebSocket.
+**Status:** covered end to end by `tests/test_phase0_gate.py` (real server processes).
+Remaining unchecked items above are Phase 0 hardening, not gate blockers.
 
 ### Phase 1 — Movie pipeline, zero-config
 TMDB provider + discovery; movie titles + wanted items; quality profiles (Standard HD, 4K),
@@ -112,6 +118,10 @@ three OSes; a backup restores on a fresh machine.
 
 - `POST /auth/setup` — first-run admin password, localhost-only, until a password exists.
 - `GET /system/ping` — unauthenticated liveness probe for Docker healthchecks.
+- `POST /events/token` — single-use 60 s token for `?token=` (the spec's "event stream
+  token"); browsers can't set headers on WebSocket/EventSource.
+- `POST /system/selftest` — diagnostic job with progress; proves runner + stream on a
+  live install and drives the gate test.
 - `auth_session` table (UI sessions; only a SHA-256 of the cookie token is stored).
 - `integrations:read`, `notifications:read` scopes (spec fix 4).
 - First-run `default` key is printed once to stdout, never to the (redacted) logs.

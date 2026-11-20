@@ -11,8 +11,10 @@ def load_all_models() -> None:
     import fetchbox.modules as modules
 
     for info in pkgutil.iter_modules(modules.__path__):
-        try:
-            importlib.import_module(f"fetchbox.modules.{info.name}.models")
-        except ModuleNotFoundError as exc:
-            if exc.name != f"fetchbox.modules.{info.name}.models":
-                raise
+        for mod in ("models", "activity"):
+            name = f"fetchbox.modules.{info.name}.{mod}"
+            try:
+                importlib.import_module(name)
+            except ModuleNotFoundError as exc:
+                if exc.name != name:
+                    raise

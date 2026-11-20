@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
 
 from fetchbox.core.health import HealthReport
 from fetchbox.core.state import State
 from fetchbox.modules.auth.deps import public, require
+from fetchbox.modules.system import jobs as system_jobs
 from fetchbox.modules.system import service
+from fetchbox.modules.system.jobs_router import JobOut, accepted
 from fetchbox.modules.system.schemas import StatusInfo, VersionInfo
 
 router = APIRouter(prefix="/system", tags=["system"])
@@ -38,3 +41,20 @@ async def get_status(state: State) -> StatusInfo:
 @router.get("/version", response_model=VersionInfo, dependencies=_read)
 async def get_version() -> VersionInfo:
     return service.version_info()
+
+
+class SelftestIn(BaseModel):
+    seconds: float = Field(default=5, ge=0, le=300)
+
+
+@router.post(
+    "/selftest",
+    status_code=202,
+    response_model=JobOut,
+    dependencies=[Depends(require("system:write"))],
+)
+async def selftest(body: SelftestIn, state: State) -> JSONResponse:
+    """Queue a diagnostic job that reports progress; watch it on the event stream."""
+    job = await state.jobs.enqueue(system_jobs.SELFTEST, {"seconds": body.seconds})
+    assert job is not None  # no dedupe key
+    return accepted(job)

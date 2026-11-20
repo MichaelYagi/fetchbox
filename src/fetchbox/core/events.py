@@ -29,6 +29,7 @@ class Actor(BaseModel):
     type: Literal["user", "api_key", "system", "job"] = "system"
     id: str | None = None
     name: str | None = None
+    ip: str | None = None
 
 
 class Subject(BaseModel):
@@ -131,6 +132,14 @@ class EventBus:
     def replay_after(self, last_event_id: str) -> list[Event]:
         """Events after `last_event_id`. ULIDs sort by time, so compare lexically."""
         return [e for e in self._buffer if e.id > last_event_id]
+
+    def may_have_gap(self, last_event_id: str) -> bool:
+        """True if events after `last_event_id` may have fallen out of the replay buffer.
+
+        Clients should then refetch state instead of trusting the replay.
+        """
+        buf = self._buffer
+        return len(buf) == buf.maxlen and bool(buf) and last_event_id < buf[0].id
 
     @property
     def subscriber_count(self) -> int:
