@@ -126,13 +126,21 @@ class ParsedRelease(BaseModel):
 
 
 def quality_name(source: str | None, resolution: int | None, modifier: str | None) -> str:
-    """Ladder name, e.g. ``WEBDL-1080p``, ``Remux-2160p``, ``BR-DISK``, ``DVD``."""
+    """Ladder name, e.g. ``WEBDL-1080p``, ``Remux-2160p``, ``BR-DISK``, ``DVD``.
+
+    Resolutions are bucketed to the catalog's steps (480/576/720/1080/2160); 576p exists
+    only for Bluray, as in Radarr."""
+    if resolution is not None:
+        steps = (480, 576, 720, 1080, 2160) if source == "bluray" else (480, 720, 1080, 2160)
+        resolution = max((r for r in steps if r <= resolution), default=480)
     if modifier == "brdisk":
         return "BR-DISK"
     if modifier == "rawhd":
         return "Raw-HD"
     if modifier == "remux":
-        return f"Remux-{resolution or 1080}p" if source != "dvd" else "DVD-Remux"
+        if source == "dvd" or (resolution is not None and resolution < 720):
+            return "DVD-Remux"
+        return "Remux-2160p" if resolution == 2160 else "Remux-1080p"  # no 720p remuxes
     match source:
         case "cam":
             return "CAM"

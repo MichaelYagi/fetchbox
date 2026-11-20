@@ -72,7 +72,10 @@ Remaining unchecked items above are Phase 0 hardening, not gate blockers.
       `fetchbox parse NAME` prints the parse for turning bad cases into fixtures.
 - [ ] Grow the corpus from real indexer results once Torznab lands (corpus is hand-written)
 - [ ] TMDB provider + discovery; movie titles + wanted items
-- [ ] Quality profiles (Standard HD, 4K), custom formats, scoring
+- [x] Quality profiles (Standard HD, 4K), custom formats, scoring: quality catalog with
+      default size bounds; ladder of equal-rank tiers + cutoff; Radarr-compatible format
+      matching (required / negate / OR within a type, AND across types); language rule;
+      defaults seeded while tables are empty; `POST /quality-profiles/{id}/evaluate`
 - [ ] Decision engine + interactive search
 - [ ] Torznab indexer, then YAML definition engine + first built-in definitions
 - [ ] Built-in libtorrent client, queue manager, limits, stall detection
@@ -143,6 +146,17 @@ three OSes; a backup restores on a fresh machine.
 - `integrations:read`, `notifications:read` scopes (spec fix 4).
 - First-run `default` key is printed once to stdout, never to the (redacted) logs.
 
+## Additions beyond the spec (Phase 1)
+
+- `GET /qualities` — the quality catalog with default size bounds (MB/min).
+- `POST /quality-profiles/{id}/evaluate` — preview tier, formats, score, language and
+  size verdicts for release names; backs the profile editor.
+- `GET/PATCH/DELETE /custom-formats/{id}` (spec lists only GET/POST). Deleting a format
+  removes its score from every profile in the same transaction.
+- `quality_profile.sizes` (per-quality size overrides) and `custom_format.default_score`
+  columns; the spec's schema lacks them but its entities and Sonarr import need them.
+- Remux below 720p is `DVD-Remux`, 720p remux is `Remux-1080p` (no Remux-720p exists).
+
 ## Decisions taken here
 
 - Frontend: SvelteKit (static adapter) + TypeScript client generated from OpenAPI.
@@ -160,3 +174,6 @@ three OSes; a backup restores on a fresh machine.
    400 jobs, 8 workers, ~2,000 progress writes, 8.9 s, zero lock errors. Re-test with
    Phase 1's real polling load.
 5. Windows/NTFS: hardlinks, UNC paths, illegal characters, WSL path mappings.
+6. Custom-format regexes are user-supplied (`profiles:write` only) and run on every
+   search result; Python `re` has no timeout, so a pathological pattern can stall a
+   search. Length is capped at 500; consider the `regex` module's timeout if needed.

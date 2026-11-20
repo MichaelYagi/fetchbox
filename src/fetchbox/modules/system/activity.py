@@ -40,6 +40,12 @@ MESSAGES: dict[str, str] = {
     "auth.password_changed": "Admin password changed for '{username}'",
     "job.failed": "Job {job_type} failed: {error}",
     "job.cancelled": "Job {job_type} cancelled",
+    "profiles.profile_created": "Quality profile '{name}' created",
+    "profiles.profile_updated": "Quality profile '{name}' updated",
+    "profiles.profile_deleted": "Quality profile '{name}' deleted",
+    "profiles.format_created": "Custom format '{name}' created",
+    "profiles.format_updated": "Custom format '{name}' updated",
+    "profiles.format_deleted": "Custom format '{name}' deleted",
 }
 
 

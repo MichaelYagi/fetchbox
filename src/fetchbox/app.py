@@ -25,6 +25,8 @@ from fetchbox.modules.auth import router as auth_router
 from fetchbox.modules.auth.service import AuthService
 from fetchbox.modules.automation import router as automation_router
 from fetchbox.modules.events import router as events_router
+from fetchbox.modules.profiles import router as profiles_router
+from fetchbox.modules.profiles.service import ProfilesService
 from fetchbox.modules.system import activity_router, jobs_router
 from fetchbox.modules.system import jobs as system_jobs
 from fetchbox.modules.system import router as system_router
@@ -44,6 +46,7 @@ API_ROUTERS: tuple[APIRouter, ...] = (
     events_router.router,
     activity_router.router,
     automation_router.router,
+    profiles_router.router,
 )
 
 
@@ -108,6 +111,10 @@ def create_app(
                 f"refusing to bind {settings.host}: set an admin password first "
                 "(fetchbox reset-password), or bind to 127.0.0.1"
             )
+
+        profiles = ProfilesService(db, bus)
+        await profiles.seed_defaults()
+        app.state.profiles = profiles
 
         activity_writer = ActivityWriter(db, bus)
         activity_writer.start()  # before anything else emits, so startup is logged
