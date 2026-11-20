@@ -3,15 +3,18 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 
 from fetchbox.core.errors import ConflictError, NotFoundError, problem_responses
 from fetchbox.core.jobs import Job
 from fetchbox.core.state import State
+from fetchbox.modules.auth.deps import require
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
+_read = [Depends(require("system:read"))]
+_write = [Depends(require("system:write"))]
 
 
 class JobOut(BaseModel):
@@ -41,7 +44,7 @@ class JobPage(BaseModel):
     next_cursor: str | None
 
 
-@router.get("", response_model=JobPage)
+@router.get("", response_model=JobPage, dependencies=_read)
 async def list_jobs(
     state: State,
     status: str | None = Query(None, alias="filter[status]"),
@@ -70,7 +73,9 @@ async def list_jobs(
     )
 
 
-@router.get("/{job_id}", response_model=JobOut, responses=problem_responses(404))
+@router.get(
+    "/{job_id}", response_model=JobOut, dependencies=_read, responses=problem_responses(404)
+)
 async def get_job(job_id: str, state: State) -> JobOut:
     job = await state.jobs.get(job_id)
     if job is None:
@@ -78,7 +83,12 @@ async def get_job(job_id: str, state: State) -> JobOut:
     return JobOut.model_validate(job)
 
 
-@router.post("/{job_id}/cancel", response_model=JobOut, responses=problem_responses(404))
+@router.post(
+    "/{job_id}/cancel",
+    response_model=JobOut,
+    dependencies=_write,
+    responses=problem_responses(404),
+)
 async def cancel_job(job_id: str, state: State) -> JobOut:
     job = await state.jobs.cancel(job_id)
     if job is None:
@@ -86,7 +96,12 @@ async def cancel_job(job_id: str, state: State) -> JobOut:
     return JobOut.model_validate(job)
 
 
-@router.post("/{job_id}/retry", response_model=JobOut, responses=problem_responses(404, 409))
+@router.post(
+    "/{job_id}/retry",
+    response_model=JobOut,
+    dependencies=_write,
+    responses=problem_responses(404, 409),
+)
 async def retry_job(job_id: str, state: State) -> JobOut:
     existing = await state.jobs.get(job_id)
     if existing is None:

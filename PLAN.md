@@ -37,8 +37,11 @@ A phase starts only when the previous gate passes.
 - [x] Job runner: `job` table, leases, per-queue worker pools, dedupe, backoff, cancel,
       graceful checkpoint, crash recovery (real `kill -9` test), `/jobs` API
 - [ ] Schedules (editable rows: RSS 15 min, metadata 12 h, upgrades daily, ...)
-- [ ] Auth: admin user, API keys (argon2id, prefix lookup), scopes, sessions + CSRF, first-run bootstrap
-- [ ] Route-scope coverage test (every OpenAPI route declares a scope)
+- [x] Auth: admin user, API keys (argon2id, prefix lookup, verify cache), scopes with
+      escalation guard, rotate/revoke/expiry, sessions + CSRF, login rate limit,
+      first-run bootstrap, `fetchbox reset-password`, LAN bind refused without password
+- [x] Route-scope coverage test (enumerates OpenAPI operations; public routes allowlisted)
+- [ ] Trusted proxies (`X-Forwarded-For`) and forward-auth header (Authelia/Authentik)
 - [ ] API conventions: cursor pagination, filter/sort, ETag/If-Match, idempotency store
 - [ ] Events over WebSocket + SSE (`/events/ws`, `/events/stream`), activity log writer
 - [ ] AES-GCM secrets with `secrets.key`; LAN bind refused until a password exists
@@ -104,6 +107,14 @@ three OSes; a backup restores on a fresh machine.
 4. `integrations` / `notifications` lack `:read` scopes.
 5. Lock vs upgrade: define one rule. Proposed: `lock='acquired'` blocks re-grab of a
    *missing* file but not profile-allowed upgrades; `lock='manual'` blocks everything.
+
+## Additions beyond the spec (Phase 0)
+
+- `POST /auth/setup` — first-run admin password, localhost-only, until a password exists.
+- `GET /system/ping` — unauthenticated liveness probe for Docker healthchecks.
+- `auth_session` table (UI sessions; only a SHA-256 of the cookie token is stored).
+- `integrations:read`, `notifications:read` scopes (spec fix 4).
+- First-run `default` key is printed once to stdout, never to the (redacted) logs.
 
 ## Decisions taken here
 

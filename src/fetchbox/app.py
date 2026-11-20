@@ -19,6 +19,8 @@ from fetchbox.core.health import HealthRegistry
 from fetchbox.core.jobs import JobRunner
 from fetchbox.core.providers import registry as provider_registry
 from fetchbox.core.state import AppState
+from fetchbox.modules.auth import router as auth_router
+from fetchbox.modules.auth.service import AuthService
 from fetchbox.modules.system import jobs_router
 from fetchbox.modules.system import router as system_router
 from fetchbox.modules.system.service import register_core_checks
@@ -27,15 +29,42 @@ API_PREFIX = "/api/v1"
 log = structlog.get_logger("fetchbox.app")
 
 
+# Every module router mounted under /api/v1. tests/test_route_scopes.py checks that this
+# list accounts for every operation in the OpenAPI document.
+API_ROUTERS: tuple[APIRouter, ...] = (
+    auth_router.router,
+    system_router.router,
+    jobs_router.router,
+)
+
+
 def build_api_router() -> APIRouter:
     api = APIRouter(prefix=API_PREFIX)
-    api.include_router(system_router.router)
-    api.include_router(jobs_router.router)
+    for r in API_ROUTERS:
+        api.include_router(r)
     return api
 
 
+def print_bootstrap_key(key: str) -> None:
+    """Show the first-run key once, on stdout, bypassing logging (which redacts keys)."""
+    bar = "=" * 72
+    print(
+        f"\n{bar}\n Fetchbox first run\n\n"
+        f" API key 'default' (scope *), shown only once:\n\n   {key}\n\n"
+        f" Set the admin password in the web UI, or: fetchbox reset-password\n{bar}\n",
+        flush=True,
+    )
+
+
+class StartupRefused(RuntimeError):
+    pass
+
+
 def create_app(
-    settings: Settings, *, job_handler_hooks: Sequence[Callable[[JobRunner], None]] = ()
+    settings: Settings,
+    *,
+    job_handler_hooks: Sequence[Callable[[JobRunner], None]] = (),
+    on_bootstrap_key: Callable[[str], None] = print_bootstrap_key,
 ) -> FastAPI:
     """`job_handler_hooks` let modules (and tests) register job handlers before start."""
 
@@ -56,6 +85,17 @@ def create_app(
             providers=provider_registry,
             jobs=JobRunner(db, bus),
         )
+        auth = AuthService(db, bus)
+        app.state.auth = auth
+        if (first_key := await auth.bootstrap()) is not None:
+            on_bootstrap_key(first_key)
+        if not settings.is_loopback and not await auth.has_password():
+            await db.dispose()
+            raise StartupRefused(
+                f"refusing to bind {settings.host}: set an admin password first "
+                "(fetchbox reset-password), or bind to 127.0.0.1"
+            )
+
         plugins = state.providers.load_entry_points()
         register_core_checks(state)
         app.state.fb = state
@@ -76,6 +116,7 @@ def create_app(
         finally:
             await state.bus.emit("system.stopping")
             await state.jobs.stop(timeout=30)
+            await auth.drain()
             await state.db.dispose()
             log.info("stopped")
 

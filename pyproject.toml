@@ -16,6 +16,7 @@ dependencies = [
     "structlog>=24.1",
     "python-ulid>=2.7",
     "libtorrent>=2.0.10,<2.2",
+    "argon2-cffi>=23.1",
 ]
 
 [project.optional-dependencies]

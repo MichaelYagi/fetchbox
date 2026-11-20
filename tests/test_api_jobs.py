@@ -6,11 +6,10 @@ from typing import Any
 
 import httpx
 import pytest
-from asgi_lifespan import LifespanManager
 
-from fetchbox.app import create_app
 from fetchbox.config import Settings
 from fetchbox.core.jobs import JobContext, JobRunner
+from tests.conftest import running
 
 
 def _handlers(r: JobRunner) -> None:
@@ -25,11 +24,8 @@ def _handlers(r: JobRunner) -> None:
 
 @pytest.fixture
 async def api(settings: Settings) -> AsyncIterator[tuple[httpx.AsyncClient, JobRunner]]:
-    app = create_app(settings, job_handler_hooks=[_handlers])
-    async with LifespanManager(app) as mgr:
-        transport = httpx.ASGITransport(app=mgr.app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://t/api/v1") as c:
-            yield c, app.state.fb.jobs
+    async with running(settings, [_handlers]) as srv, srv.client() as c:
+        yield c, srv.app.state.fb.jobs
 
 
 async def _until(c: httpx.AsyncClient, job_id: str, status: str) -> dict[str, Any]:
