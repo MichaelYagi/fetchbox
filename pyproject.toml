@@ -1,0 +1,91 @@
+[project]
+name = "fetchbox"
+version = "0.1.0.dev0"
+description = "Self-hosted media manager for movies and TV with a built-in torrent engine"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.12,<3.14"  # libtorrent has no cp314 wheels yet
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "pydantic>=2.8",
+    "pydantic-settings>=2.4",
+    "sqlalchemy[asyncio]>=2.0.30",
+    "aiosqlite>=0.20",
+    "alembic>=1.13",
+    "structlog>=24.1",
+    "python-ulid>=2.7",
+    "libtorrent>=2.0.10,<2.2",
+]
+
+[project.optional-dependencies]
+postgres = ["asyncpg>=0.29"]
+
+[project.scripts]
+fetchbox = "fetchbox.cli:main"
+
+[project.entry-points."fetchbox.providers"]
+# Third-party packages register providers here, e.g.
+# myplugin = "myplugin.providers:MyIndexer"
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "pytest-asyncio>=0.24",
+    "httpx>=0.27",
+    "ruff>=0.6",
+    "mypy>=1.11",
+    "import-linter>=2.1",
+    "pip-licenses>=5",
+    "asgi-lifespan>=2.1.0",
+]
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/fetchbox"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+extend-exclude = ["*.md"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "ASYNC", "RUF"]
+
+[tool.mypy]
+python_version = "3.12"
+packages = ["fetchbox"]
+mypy_path = "src"
+warn_unused_ignores = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = "fetchbox.core.*"
+strict = true
+
+[[tool.mypy.overrides]]
+module = ["libtorrent"]
+ignore_missing_imports = true
+
+[tool.importlinter]
+root_package = "fetchbox"
+
+[[tool.importlinter.contracts]]
+name = "Layers: entry points > modules > providers > core"
+type = "layers"
+layers = [
+    "fetchbox.cli",
+    "fetchbox.app",
+    "fetchbox.modules",
+    "fetchbox.providers",
+    "fetchbox.core",
+]

@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --python 3.12
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy
+      - run: uv run lint-imports
+      - name: License check (fail on GPL/AGPL)
+        run: >
+          uv run pip-licenses --partial-match
+          --fail-on="GNU General Public License;GNU Affero General Public License;GPL-2.0;GPL-3.0;AGPL"
+
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ["3.12", "3.13"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --python ${{ matrix.python }}
+      - run: uv run pytest -q
+
+  freeze-smoke:
+    # Proves libtorrent survives PyInstaller on every desktop target.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm, windows-latest, macos-latest, macos-13]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv venv --python 3.12 .smoke
+      - run: uv pip install --python .smoke libtorrent pyinstaller
+      - name: Freeze
+        shell: bash
+        run: |
+          PY=.smoke/bin/python; [ -f .smoke/Scripts/python.exe ] && PY=.smoke/Scripts/python.exe
+          "$PY" -m PyInstaller --log-level WARN --onefile packaging/smoke/lt_smoke.py --distpath dist
+      - name: Run frozen binary
+        shell: bash
+        run: ./dist/lt_smoke* 
