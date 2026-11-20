@@ -36,19 +36,26 @@ A phase starts only when the previous gate passes.
 - [x] CI: ruff, mypy, pytest (3 OSes), import-linter, license check, libtorrent freeze smoke
 - [x] Job runner: `job` table, leases, per-queue worker pools, dedupe, backoff, cancel,
       graceful checkpoint, crash recovery (real `kill -9` test), `/jobs` API
-- [ ] Schedules (editable rows: RSS 15 min, metadata 12 h, upgrades daily, ...)
+- [x] Schedules: rows defined in code, user edits persist, deduped runs, ETag'd PATCH,
+      run-now; built-ins `health_check` (1 min) and `housekeeping` (daily). Module
+      schedules (RSS, metadata, upgrades, backups) arrive with their modules.
+- [ ] Time-of-day schedules (e.g. housekeeping at 03:00); interval-only for now
 - [x] Auth: admin user, API keys (argon2id, prefix lookup, verify cache), scopes with
       escalation guard, rotate/revoke/expiry, sessions + CSRF, login rate limit,
       first-run bootstrap, `fetchbox reset-password`, LAN bind refused without password
 - [x] Route-scope coverage test (enumerates OpenAPI operations; public routes allowlisted)
 - [ ] Trusted proxies (`X-Forwarded-For`) and forward-auth header (Authelia/Authentik)
-- [ ] API conventions: cursor pagination, filter/sort, ETag/If-Match, idempotency store
+- [x] API conventions: keyset cursor pagination + `sort`, ETag/If-Match on versioned rows
+      (concurrent writes -> 412, never a lost update), Idempotency-Key store (per actor,
+      24 h, replay / 422 mismatch / 409 in progress, errors not stored)
 - [x] Events over WebSocket + SSE (`/events/ws`, `/events/stream`): topic filters,
       Last-Event-ID replay with gap signal, `auth.*` admin-only, stream closes when its
       credential is revoked, single-use stream tokens, same-origin check for cookie WS
 - [x] Activity log: batched writer (lossless shutdown), `/activity`, prune job
 - [ ] Activity entries for request IPs behind proxies (needs trusted_proxies)
-- [ ] AES-GCM secrets with `secrets.key`; LAN bind refused until a password exists
+- [x] AES-GCM secrets with `secrets.key` (0600, AAD-bound per field), SecretStr
+      seal/open/mask/merge helpers for provider settings; LAN bind refused without password
+- [ ] Optional OS-keychain storage of `secrets.key` on desktop; key rotation
 - [ ] PostgreSQL CI job (asyncpg)
 
 **Gate:** fresh start creates admin + `default` key; a test job survives `kill -9` and
@@ -137,5 +144,7 @@ three OSes; a backup restores on a fresh machine.
 1. libtorrent freezing on Windows/macOS (CI smoke job watches this).
 2. Release-parser accuracy — track corpus pass rate.
 3. Built-in indexer definitions: maintenance burden, Cloudflare; Torznab ships first.
-4. SQLite write contention between job workers and client polling — load test in Phase 0.
+4. SQLite write contention between job workers and client polling. Phase 0 stress run:
+   400 jobs, 8 workers, ~2,000 progress writes, 8.9 s, zero lock errors. Re-test with
+   Phase 1's real polling load.
 5. Windows/NTFS: hardlinks, UNC paths, illegal characters, WSL path mappings.

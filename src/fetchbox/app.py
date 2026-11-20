@@ -18,9 +18,12 @@ from fetchbox.core.events import EventBus
 from fetchbox.core.health import HealthRegistry
 from fetchbox.core.jobs import JobRunner
 from fetchbox.core.providers import registry as provider_registry
+from fetchbox.core.schedules import Scheduler
+from fetchbox.core.secrets import load_or_create as load_secrets
 from fetchbox.core.state import AppState
 from fetchbox.modules.auth import router as auth_router
 from fetchbox.modules.auth.service import AuthService
+from fetchbox.modules.automation import router as automation_router
 from fetchbox.modules.events import router as events_router
 from fetchbox.modules.system import activity_router, jobs_router
 from fetchbox.modules.system import jobs as system_jobs
@@ -40,6 +43,7 @@ API_ROUTERS: tuple[APIRouter, ...] = (
     jobs_router.router,
     events_router.router,
     activity_router.router,
+    automation_router.router,
 )
 
 
@@ -82,13 +86,17 @@ def create_app(
 
         db = Database(settings.database_url)
         bus = EventBus()
+        jobs = JobRunner(db, bus)
+        box, _created = load_secrets(settings.data_dir)
         state = AppState(
             data_dir=settings.data_dir,
             db=db,
             bus=bus,
             health=HealthRegistry(),
             providers=provider_registry,
-            jobs=JobRunner(db, bus),
+            jobs=jobs,
+            scheduler=Scheduler(db, jobs),
+            secrets=box,
         )
         auth = AuthService(db, bus)
         app.state.auth = auth
@@ -112,6 +120,7 @@ def create_app(
         for hook in job_handler_hooks:
             hook(state.jobs)
         await state.jobs.start()
+        await state.scheduler.start()
 
         log.info(
             "started",
@@ -125,6 +134,7 @@ def create_app(
             yield
         finally:
             await state.bus.emit("system.stopping")
+            await state.scheduler.stop()
             await state.jobs.stop(timeout=30)
             await activity_writer.stop()
             await auth.drain()

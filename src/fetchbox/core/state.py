@@ -14,6 +14,8 @@ from fetchbox.core.events import EventBus
 from fetchbox.core.health import HealthRegistry
 from fetchbox.core.jobs import JobRunner
 from fetchbox.core.providers import ProviderRegistry
+from fetchbox.core.schedules import Scheduler
+from fetchbox.core.secrets import SecretBox
 
 
 @dataclass
@@ -24,6 +26,8 @@ class AppState:
     health: HealthRegistry
     providers: ProviderRegistry
     jobs: JobRunner
+    scheduler: Scheduler
+    secrets: SecretBox
     started_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 

@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 
+from fetchbox.core.pagination import Page, Sort, paginate
 from fetchbox.core.state import State
 from fetchbox.modules.auth.deps import require
 from fetchbox.modules.system.activity import ActivityEntry
@@ -29,9 +30,11 @@ class ActivityOut(BaseModel):
     created_at: datetime
 
 
-class ActivityPage(BaseModel):
-    items: list[ActivityOut]
-    next_cursor: str | None
+class ActivityPage(Page[ActivityOut]):
+    pass
+
+
+ACTIVITY_SORT = Sort({"id": ActivityEntry.id}, id_col=ActivityEntry.id, default="-id")
 
 
 @router.get(
@@ -47,7 +50,7 @@ async def list_activity(
     cursor: str | None = None,
 ) -> ActivityPage:
     """Newest first."""
-    q = select(ActivityEntry).order_by(ActivityEntry.id.desc()).limit(limit + 1)
+    q = select(ActivityEntry)
     for col, val in (
         (ActivityEntry.category, category),
         (ActivityEntry.outcome, outcome),
@@ -56,13 +59,6 @@ async def list_activity(
     ):
         if val:
             q = q.where(col == val)
-    if cursor:
-        q = q.where(ActivityEntry.id < cursor)
     async with state.db.sessionmaker() as s:
-        rows = list((await s.execute(q)).scalars())
-    more = len(rows) > limit
-    rows = rows[:limit]
-    return ActivityPage(
-        items=[ActivityOut.model_validate(r) for r in rows],
-        next_cursor=rows[-1].id if more else None,
-    )
+        rows, nxt = await paginate(s, q, ACTIVITY_SORT, sort_param=None, limit=limit, cursor=cursor)
+    return ActivityPage(items=[ActivityOut.model_validate(r) for r in rows], next_cursor=nxt)

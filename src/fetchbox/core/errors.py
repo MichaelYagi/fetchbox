@@ -8,6 +8,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
+from sqlalchemy.orm.exc import StaleDataError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 PROBLEM_JSON = "application/problem+json"
@@ -109,6 +110,19 @@ def install_error_handlers(app: FastAPI) -> None:
             errors=errors,
         )
         return _render(problem, request)
+
+    @app.exception_handler(StaleDataError)
+    async def _stale(request: Request, exc: StaleDataError) -> JSONResponse:
+        # A versioned row changed between our read and our write (see core.concurrency).
+        return _render(
+            Problem(
+                type=f"{TYPE_BASE}precondition-failed",
+                title="Precondition Failed",
+                status=412,
+                detail="The resource changed while this request was being applied",
+            ),
+            request,
+        )
 
     @app.exception_handler(Exception)
     async def _unhandled(request: Request, exc: Exception) -> JSONResponse:

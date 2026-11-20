@@ -1,7 +1,10 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Request, Response, status
+from typing import Annotated
 
+from fastapi import APIRouter, Depends, Header, Request, Response, status
+
+from fetchbox.core.concurrency import etag_of
 from fetchbox.core.errors import ProblemError, problem_responses
 from fetchbox.modules.auth import scopes as sc
 from fetchbox.modules.auth.deps import (
@@ -28,6 +31,7 @@ from fetchbox.modules.auth.schemas import (
 from fetchbox.modules.auth.service import SESSION_TTL, AuthService
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+IfMatch = Annotated[str | None, Header(description="ETag from a previous read; 412 if stale")]
 LOOPBACK = {"127.0.0.1", "::1", "localhost"}
 
 
@@ -148,14 +152,31 @@ async def create_key(body: ApiKeyCreate, request: Request, p: CurrentPrincipal) 
     return ApiKeyCreated(**ApiKeyOut.model_validate(key).model_dump(), key=full)
 
 
+@router.get(
+    "/keys/{key_id}",
+    response_model=ApiKeyOut,
+    dependencies=_admin,
+    responses=problem_responses(404),
+)
+async def get_key(key_id: str, request: Request, response: Response) -> ApiKeyOut:
+    key = await _auth(request).get_key(key_id)
+    response.headers["ETag"] = etag_of(key)
+    return ApiKeyOut.model_validate(key)
+
+
 @router.patch(
     "/keys/{key_id}",
     response_model=ApiKeyOut,
     dependencies=_admin,
-    responses=problem_responses(403, 404, 422),
+    responses=problem_responses(403, 404, 412, 422),
 )
 async def update_key(
-    key_id: str, body: ApiKeyPatch, request: Request, p: CurrentPrincipal
+    key_id: str,
+    body: ApiKeyPatch,
+    request: Request,
+    response: Response,
+    p: CurrentPrincipal,
+    if_match: IfMatch = None,
 ) -> ApiKeyOut:
     key = await _auth(request).update_key(
         p,
@@ -164,15 +185,19 @@ async def update_key(
         scopes=body.scopes,
         expires_at=body.expires_at,
         clear_expiry=body.clear_expiry,
+        if_match=if_match,
     )
+    response.headers["ETag"] = etag_of(key)
     return ApiKeyOut.model_validate(key)
 
 
 @router.delete(
-    "/keys/{key_id}", status_code=204, dependencies=_admin, responses=problem_responses(404)
+    "/keys/{key_id}", status_code=204, dependencies=_admin, responses=problem_responses(404, 412)
 )
-async def delete_key(key_id: str, request: Request, p: CurrentPrincipal) -> Response:
-    await _auth(request).delete_key(p, key_id)
+async def delete_key(
+    key_id: str, request: Request, p: CurrentPrincipal, if_match: IfMatch = None
+) -> Response:
+    await _auth(request).delete_key(p, key_id, if_match=if_match)
     return Response(status_code=204)
 
 
@@ -180,10 +205,13 @@ async def delete_key(key_id: str, request: Request, p: CurrentPrincipal) -> Resp
     "/keys/{key_id}/rotate",
     response_model=ApiKeyCreated,
     dependencies=_admin,
-    responses=problem_responses(404, 409),
+    responses=problem_responses(404, 409, 412),
 )
-async def rotate_key(key_id: str, request: Request, p: CurrentPrincipal) -> ApiKeyCreated:
-    key, full = await _auth(request).rotate_key(p, key_id)
+async def rotate_key(
+    key_id: str, request: Request, response: Response, p: CurrentPrincipal, if_match: IfMatch = None
+) -> ApiKeyCreated:
+    key, full = await _auth(request).rotate_key(p, key_id, if_match=if_match)
+    response.headers["ETag"] = etag_of(key)
     return ApiKeyCreated(**ApiKeyOut.model_validate(key).model_dump(), key=full)
 
 
@@ -191,7 +219,11 @@ async def rotate_key(key_id: str, request: Request, p: CurrentPrincipal) -> ApiK
     "/keys/{key_id}/revoke",
     response_model=ApiKeyOut,
     dependencies=_admin,
-    responses=problem_responses(404),
+    responses=problem_responses(404, 412),
 )
-async def revoke_key(key_id: str, request: Request, p: CurrentPrincipal) -> ApiKeyOut:
-    return ApiKeyOut.model_validate(await _auth(request).revoke_key(p, key_id))
+async def revoke_key(
+    key_id: str, request: Request, response: Response, p: CurrentPrincipal, if_match: IfMatch = None
+) -> ApiKeyOut:
+    key = await _auth(request).revoke_key(p, key_id, if_match=if_match)
+    response.headers["ETag"] = etag_of(key)
+    return ApiKeyOut.model_validate(key)

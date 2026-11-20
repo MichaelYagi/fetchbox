@@ -54,3 +54,4 @@ async def test_sqlite_wal_enabled(server: Running) -> None:
     async with db.engine.connect() as conn:
         assert (await conn.execute(text("PRAGMA journal_mode"))).scalar() == "wal"
         assert (await conn.execute(text("PRAGMA foreign_keys"))).scalar() == 1
+        assert (await conn.execute(text("PRAGMA busy_timeout"))).scalar() == 5000

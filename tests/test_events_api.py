@@ -36,10 +36,16 @@ def _key(tc: TestClient, root: str, scopes: list[str]) -> dict[str, Any]:
     return body
 
 
-def _until_event(ws: Any, type_: str, limit: int = 200) -> dict[str, Any]:
+def _until_event(
+    ws: Any, type_: str, subject_id: str | None = None, limit: int = 200
+) -> dict[str, Any]:
+    """Next message of `type_` (for `subject_id`, if given). Scheduled jobs such as the
+    startup health check emit job events too, so tests match on their own job's id."""
     for _ in range(limit):
         msg: dict[str, Any] = ws.receive_json()
-        if msg.get("type") == type_:
+        if msg.get("type") == type_ and (
+            subject_id is None or (msg.get("subject") or {}).get("id") == subject_id
+        ):
             return msg
     raise AssertionError(f"no {type_} event")
 
@@ -50,7 +56,7 @@ def test_ws_streams_job_events(tc: tuple[TestClient, str]) -> None:
         r = client.post("/system/selftest", json={"seconds": 0.2}, headers=_h(root))
         assert r.status_code == 202
         assert r.headers["location"] == f"/api/v1/jobs/{r.json()['id']}"
-        done = _until_event(ws, "job.succeeded")
+        done = _until_event(ws, "job.succeeded", r.json()["id"])
         assert done["subject"] == {"type": "job", "id": r.json()["id"]}
         ws.send_json({"op": "ping"})
         assert _until_event(ws, "pong")
@@ -75,8 +81,8 @@ def test_stream_token_single_use(tc: tuple[TestClient, str]) -> None:
     tok = client.post("/events/token", headers=_h(root)).json()
     assert tok["expires_in"] == 60
     with client.websocket_connect(WS + f"?token={tok['token']}") as ws:
-        client.post("/system/selftest", json={"seconds": 0}, headers=_h(root))
-        _until_event(ws, "job.succeeded")
+        r = client.post("/system/selftest", json={"seconds": 0}, headers=_h(root))
+        _until_event(ws, "job.succeeded", r.json()["id"])
     with (
         pytest.raises(WebSocketDisconnect) as exc,
         client.websocket_connect(WS + f"?token={tok['token']}"),
@@ -96,12 +102,12 @@ def test_auth_events_hidden_without_admin(tc: tuple[TestClient, str]) -> None:
     reader = _key(client, root, ["events:read"])
     with client.websocket_connect(WS, headers=_h(reader["key"])) as ws:
         _key(client, root, ["media:read"])  # emits auth.key_created
-        client.post("/system/selftest", json={"seconds": 0}, headers=_h(root))
+        job_id = client.post("/system/selftest", json={"seconds": 0}, headers=_h(root)).json()["id"]
         seen = []
         while True:
             msg = ws.receive_json()
             seen.append(msg["type"])
-            if msg["type"] == "job.succeeded":
+            if msg["type"] == "job.succeeded" and msg["subject"]["id"] == job_id:
                 break
         assert not any(t.startswith("auth.") for t in seen)
 
@@ -170,6 +176,6 @@ def test_activity_skips_noise_and_keeps_failures(tc: tuple[TestClient, str]) -> 
         time.sleep(0.02)
     time.sleep(0.1)
     items = client.get("/activity?filter[category]=job", headers=_h(root)).json()["items"]
-    assert items == []  # queued/started/progress/succeeded are routine
+    assert items == []  # queued/started/progress/succeeded are routine (incl. health_check)
     started = client.get("/activity?filter[category]=system", headers=_h(root)).json()["items"]
     assert any(i["action"] == "started" for i in started)

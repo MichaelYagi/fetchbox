@@ -25,6 +25,7 @@ from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerificationError
 from sqlalchemy import delete, func, select, update
 
+from fetchbox.core.concurrency import check_if_match
 from fetchbox.core.db import Database, utcnow
 from fetchbox.core.errors import FieldError, NotFoundError, ProblemError
 from fetchbox.core.events import Actor, EventBus, Subject
@@ -463,6 +464,7 @@ class AuthService:
         scopes: list[str] | None = None,
         expires_at: datetime | None = None,
         clear_expiry: bool = False,
+        if_match: str | None = None,
     ) -> ApiKey:
         if scopes is not None:
             self._check_grant(actor, scopes)
@@ -470,6 +472,7 @@ class AuthService:
             key = await s.get(ApiKey, key_id)
             if key is None:
                 raise NotFoundError("api key", key_id)
+            check_if_match(key, if_match)
             before = list(key.scopes)
             if name is not None:
                 key.name = name
@@ -487,12 +490,15 @@ class AuthService:
             )
         return key
 
-    async def rotate_key(self, actor: Principal, key_id: str) -> tuple[ApiKey, str]:
+    async def rotate_key(
+        self, actor: Principal, key_id: str, *, if_match: str | None = None
+    ) -> tuple[ApiKey, str]:
         """New secret and prefix; same id, name and scopes."""
         async with self.db.sessionmaker() as s:
             key = await s.get(ApiKey, key_id)
             if key is None:
                 raise NotFoundError("api key", key_id)
+            check_if_match(key, if_match)
             if key.revoked_at is not None:
                 raise ProblemError(
                     409, "Conflict", "revoked keys cannot be rotated", slug="conflict"
@@ -505,11 +511,14 @@ class AuthService:
         await self._audit("auth.key_rotated", actor, key)
         return key, format_key(key.prefix, secret)
 
-    async def revoke_key(self, actor: Principal, key_id: str) -> ApiKey:
+    async def revoke_key(
+        self, actor: Principal, key_id: str, *, if_match: str | None = None
+    ) -> ApiKey:
         async with self.db.sessionmaker() as s:
             key = await s.get(ApiKey, key_id)
             if key is None:
                 raise NotFoundError("api key", key_id)
+            check_if_match(key, if_match)
             if key.revoked_at is None:
                 key.revoked_at = utcnow()
                 await s.commit()
@@ -517,10 +526,15 @@ class AuthService:
         await self._audit("auth.key_revoked", actor, key)
         return key
 
-    async def delete_key(self, actor: Principal, key_id: str) -> None:
-        key = await self.get_key(key_id)
+    async def delete_key(
+        self, actor: Principal, key_id: str, *, if_match: str | None = None
+    ) -> None:
         async with self.db.sessionmaker() as s:
-            await s.execute(delete(ApiKey).where(ApiKey.id == key_id))
+            key = await s.get(ApiKey, key_id)
+            if key is None:
+                raise NotFoundError("api key", key_id)
+            check_if_match(key, if_match)
+            await s.delete(key)  # versioned DELETE: concurrent edit -> 412
             await s.commit()
         self._key_cache.clear()
         await self._audit("auth.key_deleted", actor, key)

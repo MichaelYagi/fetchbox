@@ -7,7 +7,9 @@ import pkgutil
 
 
 def load_all_models() -> None:
-    import fetchbox.core.jobs  # noqa: F401  (core-owned tables)
+    import fetchbox.core.idempotency
+    import fetchbox.core.jobs
+    import fetchbox.core.schedules  # noqa: F401
     import fetchbox.modules as modules
 
     for info in pkgutil.iter_modules(modules.__path__):

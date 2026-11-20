@@ -43,9 +43,12 @@ async def test_get_list_and_paginate(api: tuple[httpx.AsyncClient, JobRunner]) -
     done = await _until(c, ids[0], "succeeded")
     assert done["result"] == {"n": 0}
 
-    page1 = (await c.get("/jobs", params={"limit": 3})).json()
+    only = {"filter[type]": "t.ok"}  # the startup health_check job is also listed
+    page1 = (await c.get("/jobs", params={**only, "limit": 3})).json()
     assert [j["id"] for j in page1["items"]] == ids[::-1][:3]
-    page2 = (await c.get("/jobs", params={"limit": 3, "cursor": page1["next_cursor"]})).json()
+    page2 = (
+        await c.get("/jobs", params={**only, "limit": 3, "cursor": page1["next_cursor"]})
+    ).json()
     assert [j["id"] for j in page2["items"]] == ids[::-1][3:]
     assert page2["next_cursor"] is None
 

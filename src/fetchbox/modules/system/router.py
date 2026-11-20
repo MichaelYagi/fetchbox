@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Depends, Request, Response
 from pydantic import BaseModel, Field
 
 from fetchbox.core.health import HealthReport
+from fetchbox.core.idempotency import IdempotencyKey, idempotent
 from fetchbox.core.state import State
-from fetchbox.modules.auth.deps import public, require
+from fetchbox.modules.auth.deps import CurrentPrincipal, public, require
 from fetchbox.modules.system import jobs as system_jobs
 from fetchbox.modules.system import service
 from fetchbox.modules.system.jobs_router import JobOut, accepted
@@ -53,8 +53,18 @@ class SelftestIn(BaseModel):
     response_model=JobOut,
     dependencies=[Depends(require("system:write"))],
 )
-async def selftest(body: SelftestIn, state: State) -> JSONResponse:
+async def selftest(
+    body: SelftestIn,
+    request: Request,
+    state: State,
+    p: CurrentPrincipal,
+    idempotency_key: IdempotencyKey = None,
+) -> Response:
     """Queue a diagnostic job that reports progress; watch it on the event stream."""
-    job = await state.jobs.enqueue(system_jobs.SELFTEST, {"seconds": body.seconds})
-    assert job is not None  # no dedupe key
-    return accepted(job)
+
+    async def run() -> Response:
+        job = await state.jobs.enqueue(system_jobs.SELFTEST, {"seconds": body.seconds})
+        assert job is not None  # no dedupe key
+        return accepted(job)
+
+    return await idempotent(state.db, request, actor_id=p.id, key=idempotency_key, run=run)

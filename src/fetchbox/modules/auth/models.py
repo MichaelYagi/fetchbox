@@ -5,6 +5,7 @@ from datetime import datetime
 from sqlalchemy import JSON, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
+from fetchbox.core.concurrency import VersionMixin
 from fetchbox.core.db import Base, IdMixin, UTCDateTime, utcnow
 
 
@@ -16,7 +17,7 @@ class AppUser(IdMixin, Base):
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
 
 
-class ApiKey(IdMixin, Base):
+class ApiKey(IdMixin, VersionMixin, Base):
     __tablename__ = "api_key"
 
     name: Mapped[str] = mapped_column(String(100))

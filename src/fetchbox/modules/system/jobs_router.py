@@ -10,6 +10,7 @@ from sqlalchemy import select
 
 from fetchbox.core.errors import ConflictError, NotFoundError, problem_responses
 from fetchbox.core.jobs import Job
+from fetchbox.core.pagination import Page, Sort, paginate
 from fetchbox.core.state import State
 from fetchbox.modules.auth.deps import require
 
@@ -49,38 +50,43 @@ def accepted(job: Job) -> JSONResponse:
     )
 
 
-class JobPage(BaseModel):
-    items: list[JobOut]
-    next_cursor: str | None
+class JobPage(Page[JobOut]):
+    pass
 
 
-@router.get("", response_model=JobPage, dependencies=_read)
+JOB_SORT = Sort(
+    {
+        "id": Job.id,
+        "created_at": Job.created_at,
+        "run_after": Job.run_after,
+        "finished_at": Job.finished_at,
+    },
+    id_col=Job.id,
+    default="-id",
+)
+
+
+@router.get("", response_model=JobPage, dependencies=_read, responses=problem_responses(422))
 async def list_jobs(
     state: State,
     status: str | None = Query(None, alias="filter[status]"),
     type: str | None = Query(None, alias="filter[type]"),
     parent_id: str | None = Query(None, alias="filter[parent_id]"),
+    sort: str | None = Query(None, description=f"One of {', '.join(JOB_SORT.options)}"),
     limit: int = Query(50, ge=1, le=500),
     cursor: str | None = None,
 ) -> JobPage:
-    """Newest first. `cursor` is the `next_cursor` of the previous page."""
-    q = select(Job).order_by(Job.id.desc()).limit(limit + 1)
+    """Newest first by default. `cursor` is the `next_cursor` of the previous page."""
+    q = select(Job)
     if status:
         q = q.where(Job.status == status)
     if type:
         q = q.where(Job.type == type)
     if parent_id:
         q = q.where(Job.parent_id == parent_id)
-    if cursor:
-        q = q.where(Job.id < cursor)
     async with state.db.sessionmaker() as s:
-        rows = list((await s.execute(q)).scalars())
-    more = len(rows) > limit
-    rows = rows[:limit]
-    return JobPage(
-        items=[JobOut.model_validate(r) for r in rows],
-        next_cursor=rows[-1].id if more else None,
-    )
+        rows, nxt = await paginate(s, q, JOB_SORT, sort_param=sort, limit=limit, cursor=cursor)
+    return JobPage(items=[JobOut.model_validate(r) for r in rows], next_cursor=nxt)
 
 
 @router.get(

@@ -67,5 +67,12 @@ def register_core_checks(state: AppState) -> None:
             return HealthStatus(status="error", message="libtorrent bindings not importable")
         return HealthStatus(status="ok", message=f"libtorrent {v}")
 
+    async def secrets_key() -> HealthStatus:
+        path = state.data_dir / "secrets.key"
+        if not path.exists():
+            return HealthStatus(status="error", message="secrets.key missing; secrets unreadable")
+        return HealthStatus(status="ok", message="present (keep it in your backups)")
+
     state.health.register("database", database, fix_url="/settings/system")
+    state.health.register("secrets_key", secrets_key, fix_url="/settings/backups")
     state.health.register("torrent_engine", torrent_engine, fix_url="/settings/download-clients")
