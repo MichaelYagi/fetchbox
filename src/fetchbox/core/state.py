@@ -12,6 +12,7 @@ from fastapi import Depends, Request
 from fetchbox.core.db import Database
 from fetchbox.core.events import EventBus
 from fetchbox.core.health import HealthRegistry
+from fetchbox.core.jobs import JobRunner
 from fetchbox.core.providers import ProviderRegistry
 
 
@@ -22,6 +23,7 @@ class AppState:
     bus: EventBus
     health: HealthRegistry
     providers: ProviderRegistry
+    jobs: JobRunner
     started_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 

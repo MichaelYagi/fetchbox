@@ -34,7 +34,9 @@ A phase starts only when the previous gate passes.
 - [x] Provider protocol + registry (built-ins + `fetchbox.providers` entry points)
 - [x] Health registry, `/system/health|status|version`
 - [x] CI: ruff, mypy, pytest (3 OSes), import-linter, license check, libtorrent freeze smoke
-- [ ] Job runner: `job` table, leases, per-queue worker pools, dedupe, backoff, cancel
+- [x] Job runner: `job` table, leases, per-queue worker pools, dedupe, backoff, cancel,
+      graceful checkpoint, crash recovery (real `kill -9` test), `/jobs` API
+- [ ] Schedules (editable rows: RSS 15 min, metadata 12 h, upgrades daily, ...)
 - [ ] Auth: admin user, API keys (argon2id, prefix lookup), scopes, sessions + CSRF, first-run bootstrap
 - [ ] Route-scope coverage test (every OpenAPI route declares a scope)
 - [ ] API conventions: cursor pagination, filter/sort, ETag/If-Match, idempotency store

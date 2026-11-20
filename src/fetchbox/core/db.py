@@ -10,8 +10,8 @@ from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import MetaData, String, event
-from sqlalchemy.engine import Engine
+from sqlalchemy import DateTime, MetaData, String, event
+from sqlalchemy.engine import Dialect, Engine
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.types import TypeDecorator
 
 from fetchbox.core.ids import new_id
 
@@ -41,6 +42,30 @@ class IdMixin:
 
 def utcnow() -> datetime:
     return datetime.now(UTC)
+
+
+class UTCDateTime(TypeDecorator[datetime]):
+    """Always-aware UTC datetimes.
+
+    PostgreSQL stores ``timestamptz``. SQLite has no tz support, so values are stored as
+    naive UTC ISO text, which also keeps lexical comparison in SQL correct.
+    """
+
+    impl = DateTime(timezone=True)
+    cache_ok = True
+
+    def process_bind_param(self, value: datetime | None, dialect: Dialect) -> datetime | None:
+        if value is None:
+            return None
+        if value.tzinfo is None:
+            raise ValueError("naive datetime; use fetchbox.core.db.utcnow()")
+        value = value.astimezone(UTC)
+        return value.replace(tzinfo=None) if dialect.name == "sqlite" else value
+
+    def process_result_value(self, value: datetime | None, dialect: Dialect) -> datetime | None:
+        if value is None:
+            return None
+        return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
 
 
 def is_sqlite(url: str) -> bool:
