@@ -62,9 +62,10 @@ async def test_job_survives_sigkill(tmp_path: Path) -> None:
         attempts.append(ctx.attempt)
         return {"file": ctx.payload["file"]}
 
-    before = await r.get(job_id)
-    assert before is not None and before.status == "running"
     job: Job | None = None
+    # start() -> recover() tolerates the brief post-kill "disk I/O error" on Windows,
+    # so recover first and only then inspect the row.
+    assert await r.recover() == 1
     await r.start()
     try:
         for _ in range(200):

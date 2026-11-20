@@ -27,7 +27,7 @@ from typing import Any, Literal
 
 import structlog
 from sqlalchemy import JSON, Float, ForeignKey, Index, Integer, String, Text, select, text, update
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import Mapped, mapped_column
 
 from fetchbox.core.db import Base, Database, IdMixin, UTCDateTime, utcnow
@@ -255,8 +255,24 @@ class JobRunner:
 
     # ---- lifecycle ---------------------------------------------------------------
 
-    async def recover(self) -> int:
-        """Return orphaned running jobs to pending. Call once at startup."""
+    async def recover(self, *, retries: int = 10, delay: float = 0.5) -> int:
+        """Return orphaned running jobs to pending. Call once at startup.
+
+        Retries transient OperationalErrors: on Windows a just-killed process's handles on
+        the SQLite WAL files are released asynchronously, so the first write can fail with
+        "disk I/O error" for a moment after a crash.
+        """
+        for attempt in range(retries + 1):
+            try:
+                return await self._recover_once()
+            except OperationalError:
+                if attempt == retries:
+                    raise
+                log.warning("job_recovery_retry", attempt=attempt + 1)
+                await asyncio.sleep(delay)
+        raise AssertionError("unreachable")
+
+    async def _recover_once(self) -> int:
         async with self.db.sessionmaker() as s:
             res = await s.execute(
                 update(Job)
