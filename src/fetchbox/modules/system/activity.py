@@ -21,7 +21,7 @@ from fetchbox.core.events import Event, EventBus, Subscription, matches
 
 log = structlog.get_logger(__name__)
 
-SKIP = ("*.progress", "job.queued", "job.started", "job.succeeded")
+SKIP = ("*.progress", "job.queued", "job.started", "job.succeeded", "search.started")
 BATCH = 200
 DEFAULT_RETENTION = timedelta(days=90)
 
@@ -52,6 +52,13 @@ MESSAGES: dict[str, str] = {
     "title.refreshed": "Refreshed metadata for {name} ({year})",
     "title.removed": "Removed {name} ({year})",
     "wanted.updated": "Monitoring for {name} set to {monitored}",
+    "source.added": "Indexer '{name}' added",
+    "source.updated": "Indexer '{name}' updated",
+    "source.removed": "Indexer '{name}' removed",
+    "source.reordered": "Indexer priorities changed",
+    "source.failed": "Indexer '{name}' failed: {error} (retrying after {disabled_until})",
+    "source.recovered": "Indexer '{name}' is working again",
+    "search.completed": "Searched for {name}: {results} results, {accepted} acceptable",
 }
 
 

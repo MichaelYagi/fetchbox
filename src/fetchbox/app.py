@@ -31,12 +31,17 @@ from fetchbox.modules.media import router as media_router
 from fetchbox.modules.media.service import MediaService
 from fetchbox.modules.profiles import router as profiles_router
 from fetchbox.modules.profiles.service import ProfilesService
+from fetchbox.modules.releases import router as releases_router
+from fetchbox.modules.releases.service import ReleasesService
+from fetchbox.modules.sources import router as sources_router
+from fetchbox.modules.sources.service import SourcesService
 from fetchbox.modules.system import activity_router, jobs_router
 from fetchbox.modules.system import jobs as system_jobs
 from fetchbox.modules.system import router as system_router
 from fetchbox.modules.system.activity import ActivityWriter
 from fetchbox.modules.system.config import ConfigService
 from fetchbox.modules.system.service import register_core_checks
+from fetchbox.providers import builtin as _builtin_providers  # noqa: F401 (registers them)
 
 API_PREFIX = "/api/v1"
 log = structlog.get_logger("fetchbox.app")
@@ -54,6 +59,8 @@ API_ROUTERS: tuple[APIRouter, ...] = (
     profiles_router.router,
     discovery_router.router,
     media_router.router,
+    sources_router.router,
+    releases_router.router,
 )
 
 
@@ -132,7 +139,12 @@ def create_app(
         discovery = DiscoveryService(config)
         app.state.discovery = discovery
         state.health.register("metadata", discovery.health, fix_url="/settings/general#tmdb")
-        app.state.media = MediaService(db, bus, discovery, profiles)
+        media = MediaService(db, bus, discovery, profiles)
+        app.state.media = media
+        sources = SourcesService(db, bus, box, provider_registry)
+        app.state.sources = sources
+        state.health.register("indexers", sources.health, fix_url="/settings/indexers")
+        app.state.releases = ReleasesService(bus, media, profiles, config, sources)
 
         activity_writer = ActivityWriter(db, bus)
         activity_writer.start()  # before anything else emits, so startup is logged
@@ -164,6 +176,7 @@ def create_app(
             await activity_writer.stop()
             await auth.drain()
             await discovery.aclose()
+            await sources.aclose()
             await state.db.dispose()
             log.info("stopped")
 

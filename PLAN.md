@@ -85,9 +85,16 @@ Remaining unchecked items above are Phase 0 hardening, not gate blockers.
       reason recorded in spec order; ranking; season-pack-wins selection with gap filling;
       upgrade rule; fan-out over release sources with per-source timeout and failures
       reported, not raised. Pure: blocklist, grab history and rules are passed in.
-- [ ] Interactive search endpoint `GET /releases?wanted_item_id=` (needs wanted items;
-      lands with TMDB/titles) + `POST /grabs`, blocklist table
-- [ ] Torznab indexer, then YAML definition engine + first built-in definitions
+- [ ] `POST /grabs` (idempotent, from a `release_id`), blocklist table; feed blocklist and
+      grab history into decisions
+- [x] Torznab indexer (`providers/indexers/torznab.py`): caps, id-first movie/TV search
+      with text fallback, extended attrs (seeders, hash, freeleech...), resolve to magnet
+      or .torrent; `/indexers` CRUD + kinds + test + reorder; failure backoff (5 min
+      doubling to 24 h, Retry-After honoured); `indexers` health check
+- [x] Interactive search `GET /releases?wanted_item_id=` (movies): all enabled indexers,
+      ranked decisions with reasons, `picks`, per-indexer failures, `release_id`s cached
+      in memory for 1 h
+- [ ] YAML definition engine + first built-in definitions
 - [ ] Built-in libtorrent client, queue manager, limits, stall detection
 - [ ] Local node + default `~/Downloads/Fetchbox/Movies`; two-phase file ops;
       `hardlink_or_copy`; naming templates
@@ -178,6 +185,10 @@ three OSes; a backup restores on a fresh machine.
   `air_date_utc TEXT`.
 - Movie monitor modes are `all` / `none`; `PATCH /wanted/{id}` keeps a movie's mode in
   step with its one wanted item.
+- `GET /indexers/kinds` (provider kinds + settings JSON Schema for the UI form).
+  Indexer runtime state (failures, backoff) is written without bumping the ETag.
+- Interactive search returns `picks` (what automatic search would grab) and keeps
+  results in memory for an hour so a grab can name a `release_id`.
 - Titles compare without spaces after normalising (`d'Amélie` = `d.Amelie`).
 - Decision engine details the spec leaves open: a PROPER/REPACK of the same tier ranks
   above format score (and counts as an upgrade); seeders rank by order of magnitude so
@@ -199,7 +210,10 @@ three OSes; a backup restores on a fresh machine.
    scene/P2P conventions, so 100% on it is not accuracy on real feeds; measure against
    captured indexer results when Torznab lands. Known gaps are strict xfails.
 3. Built-in indexer definitions: maintenance burden, Cloudflare; Torznab ships first.
-4. SQLite write contention between job workers and client polling. Phase 0 stress run:
+4. CI: on two runs, `test (windows-latest, 3.12)` crawled (48 tests in 74 min) while the
+   same commit passed elsewhere. Tests now time out at 120 s and jobs at 30 min, so the
+   next occurrence names the test.
+4b. SQLite write contention between job workers and client polling. Phase 0 stress run:
    400 jobs, 8 workers, ~2,000 progress writes, 8.9 s, zero lock errors. Re-test with
    Phase 1's real polling load.
 5. Windows/NTFS: hardlinks, UNC paths, illegal characters, WSL path mappings.

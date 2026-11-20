@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import re
+from datetime import datetime
 from typing import Any, Literal
 
-from sqlalchemy import Select, select
+from sqlalchemy import Select, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -247,3 +248,14 @@ class MediaService:
             monitored=monitored,
         )
         return row
+
+    async def mark_searched(self, wanted_id: str, when: datetime) -> None:
+        """Runtime state: a raw UPDATE so the item's version (ETag) doesn't change."""
+        async with self.db.sessionmaker() as s:
+            await s.execute(
+                update(WantedItem)
+                .where(WantedItem.id == wanted_id)
+                .values(last_search_at=when)
+                .execution_options(synchronize_session=False)
+            )
+            await s.commit()

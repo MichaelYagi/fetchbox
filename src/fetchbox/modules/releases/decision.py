@@ -23,14 +23,15 @@ import math
 import re
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, PrivateAttr, computed_field
+from pydantic import BaseModel, PrivateAttr, computed_field
 
 from fetchbox.modules.profiles.formats import FormatSpec, ReleaseInfo
 from fetchbox.modules.profiles.profile import ProfileSpec, evaluate, language_ok
 from fetchbox.modules.releases.parser import ParsedRelease, normalize_title, parse_release
+from fetchbox.providers.indexers import ReleaseCandidate
 
 EpisodeKey = tuple[int, int]  # (season, episode)
 
@@ -59,24 +60,7 @@ RejectionCode = Literal[
 
 # ---- inputs ---------------------------------------------------------------------------------
 
-
-class Candidate(BaseModel):
-    """One search result as an indexer reported it."""
-
-    model_config = ConfigDict(frozen=True)
-
-    title: str
-    source_id: str = ""
-    source_name: str = ""
-    priority: int = 25  # indexer priority; lower wins
-    guid: str | None = None
-    info_hash: str | None = None
-    download_url: str | None = None
-    size: int | None = None  # bytes
-    seeders: int | None = None
-    leechers: int | None = None
-    published_at: datetime | None = None
-    indexer_flags: frozenset[str] = frozenset()
+Candidate = ReleaseCandidate  # the indexer result type; decisions take it as-is
 
 
 @dataclass(frozen=True)

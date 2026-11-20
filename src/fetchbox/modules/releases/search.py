@@ -9,9 +9,8 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Sequence
-from dataclasses import dataclass, field
-from datetime import date
-from typing import Literal, Protocol
+from dataclasses import dataclass
+from typing import Protocol
 
 import structlog
 
@@ -23,22 +22,9 @@ from fetchbox.modules.releases.decision import (
     decide_all,
     select,
 )
+from fetchbox.providers.indexers import SearchQuery
 
 log = structlog.get_logger(__name__)
-
-
-@dataclass(frozen=True)
-class SearchQuery:
-    """What a source is asked for; sources ignore the fields they can't use."""
-
-    kind: Literal["movie", "series"]
-    terms: tuple[str, ...]
-    year: int | None = None
-    season: int | None = None
-    episode: int | None = None
-    absolute: int | None = None
-    air_date: date | None = None
-    ids: dict[str, str] = field(default_factory=dict)  # tmdb / imdb / tvdb
 
 
 class ReleaseSource(Protocol):

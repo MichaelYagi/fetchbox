@@ -22,10 +22,11 @@ async def test_health_ok_and_emits_change(client: httpx.AsyncClient, server: Run
     bus = server.app.state.fb.bus
     sub = bus.subscribe("system.health_changed")
     body = (await client.get("/system/health")).json()
-    # A fresh install has no TMDB key: that check warns (with a fix link), the rest pass.
+    # A fresh install has no TMDB key and no indexer: those warn (with fix links).
     checks = {c["name"]: c for c in body["checks"]}
-    assert checks["metadata"]["status"] == "warning" and checks["metadata"]["fix_url"]
-    assert {n for n, c in checks.items() if c["status"] != "ok"} == {"metadata"}, body
+    for name in ("metadata", "indexers"):
+        assert checks[name]["status"] == "warning" and checks[name]["fix_url"]
+    assert {n for n, c in checks.items() if c["status"] != "ok"} == {"metadata", "indexers"}
     assert {"database", "torrent_engine"} <= set(checks)
     assert body["status"] == "warning"
     assert sub.queue.get_nowait().data["status"] == "warning"
