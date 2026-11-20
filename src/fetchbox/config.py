@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import Field
+from pydantic import Field, SecretStr
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -52,6 +52,9 @@ class Settings(BaseSettings):
     log_level: Literal["debug", "info", "warning", "error"] = "info"
     log_format: Literal["auto", "json", "console"] = "auto"
     run_migrations: bool = True
+    tmdb_api_key: SecretStr | None = Field(
+        default=None, description="Overrides the TMDB key stored in /system/config"
+    )
 
     @classmethod
     def settings_customise_sources(

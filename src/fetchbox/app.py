@@ -24,13 +24,18 @@ from fetchbox.core.state import AppState
 from fetchbox.modules.auth import router as auth_router
 from fetchbox.modules.auth.service import AuthService
 from fetchbox.modules.automation import router as automation_router
+from fetchbox.modules.discovery import router as discovery_router
+from fetchbox.modules.discovery.service import DiscoveryService
 from fetchbox.modules.events import router as events_router
+from fetchbox.modules.media import router as media_router
+from fetchbox.modules.media.service import MediaService
 from fetchbox.modules.profiles import router as profiles_router
 from fetchbox.modules.profiles.service import ProfilesService
 from fetchbox.modules.system import activity_router, jobs_router
 from fetchbox.modules.system import jobs as system_jobs
 from fetchbox.modules.system import router as system_router
 from fetchbox.modules.system.activity import ActivityWriter
+from fetchbox.modules.system.config import ConfigService
 from fetchbox.modules.system.service import register_core_checks
 
 API_PREFIX = "/api/v1"
@@ -47,6 +52,8 @@ API_ROUTERS: tuple[APIRouter, ...] = (
     activity_router.router,
     automation_router.router,
     profiles_router.router,
+    discovery_router.router,
+    media_router.router,
 )
 
 
@@ -116,6 +123,17 @@ def create_app(
         await profiles.seed_defaults()
         app.state.profiles = profiles
 
+        env = {}
+        if settings.tmdb_api_key is not None:
+            env["tmdb.api_key"] = settings.tmdb_api_key.get_secret_value()
+        config = ConfigService(db, bus, box, env=env)
+        await config.load()
+        app.state.config = config
+        discovery = DiscoveryService(config)
+        app.state.discovery = discovery
+        state.health.register("metadata", discovery.health, fix_url="/settings/general#tmdb")
+        app.state.media = MediaService(db, bus, discovery, profiles)
+
         activity_writer = ActivityWriter(db, bus)
         activity_writer.start()  # before anything else emits, so startup is logged
         app.state.activity = activity_writer
@@ -145,6 +163,7 @@ def create_app(
             await state.jobs.stop(timeout=30)
             await activity_writer.stop()
             await auth.drain()
+            await discovery.aclose()
             await state.db.dispose()
             log.info("stopped")
 

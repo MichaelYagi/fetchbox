@@ -121,7 +121,7 @@ def configure_logging(
         fh.setFormatter(formatter(structlog.processors.JSONRenderer()))
         root.addHandler(fh)
 
-    for noisy in ("uvicorn.access", "alembic"):
+    for noisy in ("uvicorn.access", "alembic", "httpx", "httpcore"):
         logging.getLogger(noisy).setLevel(max(lvl, logging.WARNING))
 
 

@@ -97,6 +97,8 @@ def test_title_key() -> None:
     assert title_key("The Office (US)") == title_key("Office US")
     assert title_key("Doctor Who (2005)") == title_key("Doctor.Who")
     assert title_key("Marvel's Agents of S.H.I.E.L.D.") == title_key("Marvels Agents of SHIELD")
+    assert title_key("Le Fabuleux Destin d'Amélie") == title_key("Le.Fabuleux.Destin.d.Amelie")
+    assert title_key("Dune") != title_key("Dunes")
 
 
 def test_size_bounds_use_runtime_and_profile_overrides() -> None:
@@ -366,3 +368,19 @@ def test_decision_serializes() -> None:
     data = d.model_dump(mode="json")
     assert data["accepted"] is True and data["candidate"]["info_hash"] == "aa"
     assert data["parsed"]["group"] == "FLUX"
+
+
+def test_movie_target_from_title() -> None:
+    from fetchbox.modules.media.models import Title
+    from fetchbox.modules.releases.targets import movie_target
+
+    t = Title(id="t1", kind="movie", name="Amélie", year=2001, meta={
+        "original_name": "Le Fabuleux Destin d'Amélie Poulain", "original_language": "fr",
+        "runtime": 122, "alt_titles": ["Amelie", "Amélie"]})  # fmt: skip
+    target = movie_target(t)
+    assert target.names == ("Amélie", "Le Fabuleux Destin d'Amélie Poulain", "Amelie")
+    assert target.original_language == "fr" and target.runtime_minutes == 122
+    french = c("Le.Fabuleux.Destin.d.Amelie.Poulain.2001.FRENCH.1080p.BluRay.x264-GRP", size=None)
+    assert decide(french, target, ctx()).accepted  # original title, original language
+    with pytest.raises(ValueError, match="not a movie"):
+        movie_target(Title(id="t2", kind="series", name="X"))

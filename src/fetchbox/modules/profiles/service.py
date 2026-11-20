@@ -145,12 +145,19 @@ class ProfilesService:
         return row
 
     async def delete_profile(self, profile_id: str, *, if_match: str | None, actor: Actor) -> None:
-        # TODO(phase 1, titles): refuse (409) while titles use the profile.
         async with self.db.sessionmaker() as s:
             row = await self._profile(s, profile_id)
             check_if_match(row, if_match)
+            name = row.name  # attributes expire on rollback
             await s.delete(row)
-            await s.commit()
+            try:
+                await s.commit()
+            except IntegrityError:  # title.profile_id references it
+                await s.rollback()
+                raise ConflictError(
+                    f"quality profile {name!r} is used by one or more titles; "
+                    "move them to another profile first"
+                ) from None
         await self._emit("profiles.profile_deleted", row, actor)
 
     # ---- custom formats ----------------------------------------------------------------

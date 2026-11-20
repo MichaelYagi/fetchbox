@@ -324,6 +324,7 @@ dependencies = [
     { name = "argon2-cffi" },
     { name = "cryptography" },
     { name = "fastapi" },
+    { name = "httpx" },
     { name = "libtorrent" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
@@ -341,7 +342,6 @@ postgres = [
 [package.dev-dependencies]
 dev = [
     { name = "asgi-lifespan" },
-    { name = "httpx" },
     { name = "import-linter" },
     { name = "mypy" },
     { name = "pip-licenses" },
@@ -360,6 +360,7 @@ requires-dist = [
     { name = "asyncpg", marker = "extra == 'postgres'", specifier = ">=0.29" },
     { name = "cryptography", specifier = ">=43" },
     { name = "fastapi", specifier = ">=0.115" },
+    { name = "httpx", specifier = ">=0.27" },
     { name = "libtorrent", specifier = ">=2.0.10,<2.2" },
     { name = "pydantic", specifier = ">=2.8" },
     { name = "pydantic-settings", specifier = ">=2.4" },
@@ -373,7 +374,6 @@ provides-extras = ["postgres"]
 [package.metadata.requires-dev]
 dev = [
     { name = "asgi-lifespan", specifier = ">=2.1.0" },
-    { name = "httpx", specifier = ">=0.27" },
     { name = "import-linter", specifier = ">=2.1" },
     { name = "mypy", specifier = ">=1.11" },
     { name = "pip-licenses", specifier = ">=5" },

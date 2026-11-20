@@ -198,8 +198,9 @@ _YEAR_SUFFIX = re.compile(r"\s*\((?:19|20)\d\d\)\s*$")
 
 
 def title_key(name: str) -> str:
-    """Comparison key for titles: normalized, year suffix and leading article dropped."""
-    return _ARTICLE.sub("", normalize_title(_YEAR_SUFFIX.sub("", name)))
+    """Comparison key for titles: normalized, year suffix and leading article dropped,
+    spaces removed (so "d'Amélie" and "d.Amelie" agree, like Sonarr's clean titles)."""
+    return _ARTICLE.sub("", normalize_title(_YEAR_SUFFIX.sub("", name))).replace(" ", "")
 
 
 def _fmt_ep(keys: Iterable[EpisodeKey]) -> str:

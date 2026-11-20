@@ -46,6 +46,12 @@ MESSAGES: dict[str, str] = {
     "profiles.format_created": "Custom format '{name}' created",
     "profiles.format_updated": "Custom format '{name}' updated",
     "profiles.format_deleted": "Custom format '{name}' deleted",
+    "system.config_changed": "Settings changed: {fields}",
+    "title.added": "Added {name} ({year})",
+    "title.updated": "Updated {name} ({year})",
+    "title.refreshed": "Refreshed metadata for {name} ({year})",
+    "title.removed": "Removed {name} ({year})",
+    "wanted.updated": "Monitoring for {name} set to {monitored}",
 }
 
 

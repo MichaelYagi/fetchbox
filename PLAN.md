@@ -71,7 +71,12 @@ Remaining unchecked items above are Phase 0 hardening, not gate blockers.
       Corpus: 677 names in `tests/fixtures/releases/*.jsonl`, 8 strict-xfail known gaps;
       `fetchbox parse NAME` prints the parse for turning bad cases into fixtures.
 - [ ] Grow the corpus from real indexer results once Torznab lands (corpus is hand-written)
-- [ ] TMDB provider + discovery; movie titles + wanted items
+- [x] TMDB provider (`providers/metadata/tmdb.py`; v3 key or v4 token) + discovery
+      (`/discovery/search|movies|series`, TTL cache); runtime config `GET/PATCH
+      /system/config` (TMDB key encrypted, `FETCHBOX_TMDB_API_KEY` overrides); movie
+      titles + wanted items (`/titles`, `/wanted`); `metadata` health check; profile
+      delete returns 409 while titles use it
+- [ ] Scheduled metadata refresh (daily, titles not refreshed in 7 days)
 - [x] Quality profiles (Standard HD, 4K), custom formats, scoring: quality catalog with
       default size bounds; ladder of equal-rank tiers + cutoff; Radarr-compatible format
       matching (required / negate / OR within a type, AND across types); language rule;
@@ -163,6 +168,17 @@ three OSes; a backup restores on a fresh machine.
 - Remux below 720p is `DVD-Remux`, 720p remux is `Remux-1080p` (no Remux-720p exists).
 - `quality_profile.upgrade_min_score_increment` (default 1): the spec's "minimum
   format-score improvement" for same-tier upgrades had no column.
+- `GET/PATCH /system/config` sections: `tmdb` (api_key, language, include_adult) and
+  `search` (min_seeders, season_pack_share). Unknown sections/settings are 422; a field
+  set by environment variable is 409. Events carry changed field names, never values.
+- `title.updated` and `wanted.updated` events (spec lists only added/removed/refreshed).
+- `POST /titles/{id}/refresh` is synchronous for movies (one TMDB call); series refresh
+  will be a job.
+- `episode.air_date` is a DATE (TMDB gives dates, not UTC times); spec says
+  `air_date_utc TEXT`.
+- Movie monitor modes are `all` / `none`; `PATCH /wanted/{id}` keeps a movie's mode in
+  step with its one wanted item.
+- Titles compare without spaces after normalising (`d'Amélie` = `d.Amelie`).
 - Decision engine details the spec leaves open: a PROPER/REPACK of the same tier ranks
   above format score (and counts as an upgrade); seeders rank by order of magnitude so
   60 vs 40 doesn't override indexer priority; release year may differ by 1; samples are
@@ -190,6 +206,10 @@ three OSes; a backup restores on a fresh machine.
 6. Custom-format regexes are user-supplied (`profiles:write` only) and run on every
    search result; Python `re` has no timeout, so a pathological pattern can stall a
    search. Length is capped at 500; consider the `regex` module's timeout if needed.
-7. Anime fansub names often state only a resolution (`[SubsPlease] ... (1080p)`), which
+7. `httpx` (runtime since TMDB) pulls in `certifi`, which is MPL-2.0 — not in the spec's
+   MIT/BSD/Apache/ISC/PSF list. Used unmodified, MPL's file-level copyleft imposes nothing
+   on Fetchbox; CI's GPL/AGPL check passes. Confirm, or swap to the OS trust store
+   (`truststore`, MIT).
+8. Anime fansub names often state only a resolution (`[SubsPlease] ... (1080p)`), which
    parses to `Unknown-1080p` and no default profile allows it. Decide in Phase 2 whether
    to treat it as WEB-DL (Sonarr's choice) or ship an anime profile.
