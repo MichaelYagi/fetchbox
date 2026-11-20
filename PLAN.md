@@ -76,7 +76,12 @@ Remaining unchecked items above are Phase 0 hardening, not gate blockers.
       default size bounds; ladder of equal-rank tiers + cutoff; Radarr-compatible format
       matching (required / negate / OR within a type, AND across types); language rule;
       defaults seeded while tables are empty; `POST /quality-profiles/{id}/evaluate`
-- [ ] Decision engine + interactive search
+- [x] Decision engine (`modules/releases/decision.py`, `search.py`): every rejection
+      reason recorded in spec order; ranking; season-pack-wins selection with gap filling;
+      upgrade rule; fan-out over release sources with per-source timeout and failures
+      reported, not raised. Pure: blocklist, grab history and rules are passed in.
+- [ ] Interactive search endpoint `GET /releases?wanted_item_id=` (needs wanted items;
+      lands with TMDB/titles) + `POST /grabs`, blocklist table
 - [ ] Torznab indexer, then YAML definition engine + first built-in definitions
 - [ ] Built-in libtorrent client, queue manager, limits, stall detection
 - [ ] Local node + default `~/Downloads/Fetchbox/Movies`; two-phase file ops;
@@ -156,6 +161,14 @@ three OSes; a backup restores on a fresh machine.
 - `quality_profile.sizes` (per-quality size overrides) and `custom_format.default_score`
   columns; the spec's schema lacks them but its entities and Sonarr import need them.
 - Remux below 720p is `DVD-Remux`, 720p remux is `Remux-1080p` (no Remux-720p exists).
+- `quality_profile.upgrade_min_score_increment` (default 1): the spec's "minimum
+  format-score improvement" for same-tier upgrades had no column.
+- Decision engine details the spec leaves open: a PROPER/REPACK of the same tier ranks
+  above format score (and counts as an upgrade); seeders rank by order of magnitude so
+  60 vs 40 doesn't override indexer priority; release year may differ by 1; samples are
+  rejected; the same info hash from several indexers is listed once (best priority).
+  Extra reasons: `wrong_media_type`, `season_not_finished`, `season_pack_not_wanted`,
+  `upgrades_disabled`, `cutoff_met`, `not_an_upgrade`.
 
 ## Decisions taken here
 
@@ -177,3 +190,6 @@ three OSes; a backup restores on a fresh machine.
 6. Custom-format regexes are user-supplied (`profiles:write` only) and run on every
    search result; Python `re` has no timeout, so a pathological pattern can stall a
    search. Length is capped at 500; consider the `regex` module's timeout if needed.
+7. Anime fansub names often state only a resolution (`[SubsPlease] ... (1080p)`), which
+   parses to `Unknown-1080p` and no default profile allows it. Decide in Phase 2 whether
+   to treat it as WEB-DL (Sonarr's choice) or ship an anime profile.

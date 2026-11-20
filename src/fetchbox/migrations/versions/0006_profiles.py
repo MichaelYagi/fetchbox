@@ -28,6 +28,7 @@ def upgrade() -> None:
         sa.Column("upgrade_allowed", sa.Boolean(), nullable=False),
         sa.Column("min_format_score", sa.Integer(), nullable=False),
         sa.Column("cutoff_format_score", sa.Integer(), nullable=True),
+        sa.Column("upgrade_min_score_increment", sa.Integer(), nullable=False),
         sa.Column("format_scores", sa.JSON(), nullable=False),
         sa.Column("languages", sa.JSON(), nullable=False),
         sa.Column("sizes", sa.JSON(), nullable=False),

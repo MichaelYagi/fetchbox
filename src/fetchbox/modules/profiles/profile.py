@@ -37,6 +37,11 @@ class ProfileSpec(BaseModel):
     cutoff_format_score: int | None = Field(
         default=None, description="Upgrades also continue until this score is reached"
     )
+    upgrade_min_score_increment: int = Field(
+        default=1,
+        ge=1,
+        description="Within the same tier, an upgrade must raise the format score this much",
+    )
     format_scores: dict[str, int] = Field(
         default_factory=dict, description="custom_format_id -> score (overrides default_score)"
     )

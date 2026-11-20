@@ -74,6 +74,7 @@ class ProfilePatch(BaseModel):
     upgrade_allowed: bool | None = None
     min_format_score: int | None = None
     cutoff_format_score: int | None = None
+    upgrade_min_score_increment: int | None = Field(default=None, ge=1)
     format_scores: dict[str, int] | None = None
     languages: list[str] | None = None
     sizes: dict[str, SizeLimit] | None = None

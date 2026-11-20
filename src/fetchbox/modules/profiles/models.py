@@ -19,6 +19,7 @@ class QualityProfile(IdMixin, VersionMixin, Base):
     upgrade_allowed: Mapped[bool] = mapped_column(Boolean, default=True)
     min_format_score: Mapped[int] = mapped_column(Integer, default=0)
     cutoff_format_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    upgrade_min_score_increment: Mapped[int] = mapped_column(Integer, default=1)
     format_scores: Mapped[dict[str, int]] = mapped_column(JSON, default=dict)
     languages: Mapped[list[str]] = mapped_column(JSON, default=list)
     sizes: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
