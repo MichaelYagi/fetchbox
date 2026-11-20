@@ -1,0 +1,69 @@
+// Languages: audio languages, multi/dual audio, subtitles, hardcoded subs.
+// An empty languages list means "not stated" (usually the original language).
+
+{"name": "Movie.2020.720p.BluRay.x264-GRP", "title": "Movie", "type": "movie", "languages": [], "multi": false}
+{"name": "Movie.2020.FRENCH.1080p.BluRay.x264-GRP", "title": "Movie", "type": "movie", "languages": ["fr"]}
+{"name": "Movie.2020.TRUEFRENCH.1080p.BluRay.x264-GRP", "title": "Movie", "type": "movie", "languages": ["fr"]}
+{"name": "Movie.2020.MULTi.1080p.BluRay.x264-GRP", "title": "Movie", "type": "movie", "languages": [], "multi": true}
+{"name": "Movie.2020.MULTi.VFF.1080p.BluRay.x264-GRP", "title": "Movie", "type": "movie", "languages": ["fr"], "multi": true}
+{"name": "Movie.2020.MULTi.VFQ.2160p.WEB-DL.x265-GRP", "title": "Movie", "type": "movie", "languages": ["fr"], "multi": true}
+{"name": "Movie.2020.VOSTFR.1080p.WEB-DL.x264-GRP", "title": "Movie", "type": "movie", "languages": [], "subs": ["fr"]}
+{"name": "Movie.2020.SUBFRENCH.1080p.WEB-DL.x264-GRP", "title": "Movie", "type": "movie", "subs": ["fr"]}
+{"name": "Movie.2020.GERMAN.1080p.BluRay.x264-GRP", "title": "Movie", "type": "movie", "languages": ["de"], "multi": false}
+{"name": "Movie.2020.German.DL.1080p.BluRay.x264-GRP", "title": "Movie", "type": "movie", "languages": ["de"], "multi": true}
+{"name": "Movie.2020.GERMAN.DL.1080p.WEB.h264-GRP", "title": "Movie", "type": "movie", "languages": ["de"], "multi": true, "quality": "WEBDL-1080p"}
+{"name": "Movie.2020.German.DTS.DL.1080p.BluRay.x264-GRP", "title": "Movie", "type": "movie", "languages": ["de"], "multi": true, "audio": ["dts"]}
+{"name": "Show.S01E01.GERMAN.DL.720p.WEB.h264-GRP", "title": "Show", "type": "series", "languages": ["de"], "multi": true}
+{"name": "Movie.2020.ITALIAN.1080p.WEB-DL.x264-GRP", "title": "Movie", "type": "movie", "languages": ["it"]}
+{"name": "Movie.2020.iTALiAN.1080p.WEB-DL.x264-GRP", "title": "Movie", "type": "movie", "languages": ["it"]}
+{"name": "Movie.2020.iTA-ENG.1080p.BluRay.x264-GRP", "title": "Movie", "type": "movie", "languages": ["it", "en"], "multi": true}
+{"name": "Movie.2020.SPANISH.1080p.WEB-DL.x264-GRP", "title": "Movie", "type": "movie", "languages": ["es"]}
+{"name": "Movie.2020.Castellano.1080p.WEB-DL.x264-GRP", "title": "Movie", "type": "movie", "languages": ["es"]}
+{"name": "Movie.2020.LATINO.1080p.WEB-DL.x264-GRP", "title": "Movie", "type": "movie", "languages": ["es"]}
+{"name": "Movie.2020.DUAL.LATINO.1080p.WEB-DL.x264-GRP", "title": "Movie", "type": "movie", "languages": ["es"], "multi": true}
+{"name": "Movie.2020.PORTUGUESE.1080p.WEB-DL.x264-GRP", "title": "Movie", "type": "movie", "languages": ["pt"]}
+{"name": "Movie.2020.1080p.WEB-DL.DUBLADO.x264-GRP", "title": "Movie", "type": "movie", "languages": ["pt"]}
+{"name": "Movie.2020.PT-BR.1080p.WEB-DL.x264-GRP", "title": "Movie", "type": "movie", "languages": ["pt"]}
+{"name": "Movie.2020.RUSSIAN.1080p.WEB-DL.x264-GRP", "title": "Movie", "type": "movie", "languages": ["ru"]}
+{"name": "Movie.2020.1080p.WEB-DL.RUS.ENG.x264-GRP", "title": "Movie", "type": "movie", "languages": ["ru", "en"], "multi": true}
+{"name": "Movie.2020.UKRAINIAN.1080p.WEB-DL.x264-GRP", "title": "Movie", "type": "movie", "languages": ["uk"]}
+{"name": "Movie.2020.JAPANESE.1080p.BluRay.x264-GRP", "title": "Movie", "type": "movie", "languages": ["ja"]}
+{"name": "Movie.2020.KOREAN.1080p.WEB-DL.x264-GRP", "title": "Movie", "type": "movie", "languages": ["ko"]}
+{"name": "Movie.2020.CHINESE.1080p.WEB-DL.x264-GRP", "title": "Movie", "type": "movie", "languages": ["zh"]}
+{"name": "Movie.2020.Mandarin.1080p.WEB-DL.x264-GRP", "title": "Movie", "type": "movie", "languages": ["zh"]}
+{"name": "Movie.2020.HINDI.1080p.WEB-DL.x264-GRP", "title": "Movie", "type": "movie", "languages": ["hi"]}
+{"name": "Movie (2020) Hindi 1080p WEB-DL x264 AAC", "title": "Movie", "type": "movie", "languages": ["hi"]}
+{"name": "Movie (2020) [Hindi + Tamil + Telugu] 1080p WEB-DL", "title": "Movie", "type": "movie", "languages": ["hi", "ta", "te"], "multi": true}
+{"name": "Movie (2020) Malayalam 1080p WEB-DL", "title": "Movie", "type": "movie", "languages": ["ml"]}
+{"name": "Movie.2020.POLISH.1080p.WEB-DL.x264-GRP", "title": "Movie", "type": "movie", "languages": ["pl"]}
+{"name": "Movie.2020.PLDUB.1080p.WEB-DL.x264-GRP", "title": "Movie", "type": "movie", "languages": ["pl"]}
+{"name": "Movie.2020.DUTCH.1080p.WEB-DL.x264-GRP", "title": "Movie", "type": "movie", "languages": ["nl"]}
+{"name": "Movie.2020.SWEDISH.1080p.WEB-DL.x264-GRP", "title": "Movie", "type": "movie", "languages": ["sv"]}
+{"name": "Movie.2020.NORWEGIAN.1080p.WEB-DL.x264-GRP", "title": "Movie", "type": "movie", "languages": ["no"]}
+{"name": "Movie.2020.DANISH.1080p.WEB-DL.x264-GRP", "title": "Movie", "type": "movie", "languages": ["da"]}
+{"name": "Movie.2020.FINNISH.1080p.WEB-DL.x264-GRP", "title": "Movie", "type": "movie", "languages": ["fi"]}
+{"name": "Movie.2020.NORDiC.1080p.WEB-DL.x264-GRP", "title": "Movie", "type": "movie", "multi": true}
+{"name": "Movie.2020.1080p.BluRay.x264.NORDiC.SUBS-GRP", "title": "Movie", "type": "movie", "subs": ["da", "fi", "no", "sv"]}
+{"name": "Movie.2020.TURKISH.1080p.WEB-DL.x264-GRP", "title": "Movie", "type": "movie", "languages": ["tr"]}
+{"name": "Movie.2020.ARABIC.1080p.WEB-DL.x264-GRP", "title": "Movie", "type": "movie", "languages": ["ar"]}
+{"name": "Movie.2020.HEBREW.1080p.WEB-DL.x264-GRP", "title": "Movie", "type": "movie", "languages": ["he"]}
+{"name": "Movie.2020.THAI.1080p.WEB-DL.x264-GRP", "title": "Movie", "type": "movie", "languages": ["th"]}
+{"name": "Movie.2020.CZECH.1080p.WEB-DL.x264-GRP", "title": "Movie", "type": "movie", "languages": ["cs"]}
+{"name": "Movie.2020.HUNGARIAN.1080p.WEB-DL.x264-GRP", "title": "Movie", "type": "movie", "languages": ["hu"]}
+{"name": "Movie.2020.GREEK.1080p.WEB-DL.x264-GRP", "title": "Movie", "type": "movie", "languages": ["el"]}
+{"name": "Movie.2020.ROMANIAN.1080p.WEB-DL.x264-GRP", "title": "Movie", "type": "movie", "languages": ["ro"]}
+{"name": "Movie.2020.VIETNAMESE.1080p.WEB-DL.x264-GRP", "title": "Movie", "type": "movie", "languages": ["vi"]}
+{"name": "Movie.2020.ENGLISH.1080p.WEB-DL.x264-GRP", "title": "Movie", "type": "movie", "languages": ["en"]}
+{"name": "Movie.2020.1080p.WEB-DL.x264.ENG.SUBS-GRP", "title": "Movie", "type": "movie", "languages": [], "subs": ["en"]}
+{"name": "Movie.2020.1080p.WEB-DL.x264.Eng-Subs-GRP", "title": "Movie", "type": "movie", "subs": ["en"]}
+{"name": "Movie.2020.1080p.WEB-DL.x264.SUB.ITA-GRP", "title": "Movie", "type": "movie", "subs": ["it"], "languages": []}
+{"name": "Movie.2020.1080p.WEB-DL.x264.MULTi.SUBS-GRP", "title": "Movie", "type": "movie", "multi": false}
+{"name": "Movie.2020.DUAL.AUDIO.1080p.BluRay.x264-GRP", "title": "Movie", "type": "movie", "multi": true}
+{"name": "Movie.2020.1080p.BluRay.Dual-Audio.x264-GRP", "title": "Movie", "type": "movie", "multi": true}
+{"name": "Movie.2020.HINDI.DUBBED.1080p.WEB-DL.x264-GRP", "title": "Movie", "type": "movie", "languages": ["hi"], "dubbed": true}
+{"name": "Movie.2020.1080p.WEB-DL.x264.HC-GRP", "title": "Movie", "type": "movie", "hardsub": true}
+{"name": "Movie.2020.1080p.WEB-DL.HCSUBS.x264-GRP", "title": "Movie", "type": "movie", "hardsub": true}
+{"name": "Movie.2020.1080p.WEB-DL.HC.SUBS.x264-GRP", "title": "Movie", "type": "movie", "hardsub": true}
+{"name": "Movie.2020.KORSUB.720p.HDRip.x264-GRP", "title": "Movie", "type": "movie", "hardsub": true, "subs": ["ko"]}
+{"name": "Movie.2020.1080p.WEB-DL.Hardsub.x264-GRP", "title": "Movie", "type": "movie", "hardsub": true}
+{"name": "Movie.2020.SUBBED.1080p.WEB-DL.x264-GRP", "title": "Movie", "type": "movie", "hardsub": false, "languages": []}

@@ -64,12 +64,22 @@ resumes on restart; its events arrive over WebSocket.
 Remaining unchecked items above are Phase 0 hardening, not gate blockers.
 
 ### Phase 1 — Movie pipeline, zero-config
-TMDB provider + discovery; movie titles + wanted items; quality profiles (Standard HD, 4K),
-custom formats, scoring; release parser with a 500+ name fixture corpus; decision engine +
-interactive search; Torznab indexer, then YAML definition engine + first built-in definitions;
-built-in libtorrent client, queue manager, limits, stall detection; local node + default
-`~/Downloads/Fetchbox/Movies`; two-phase file ops; `hardlink_or_copy`; naming templates;
-import, lock, blocklist, failure retry, redownload; minimal UI (search, add, queue, library).
+- [x] Release parser (`modules/releases/parser.py`): title/alt titles, year, S/E, multi-ep,
+      season packs and ranges, daily, anime absolute + versions, quality (source,
+      resolution, remux/BR-DISK), codec, bit depth, HDR, audio + channels + Atmos,
+      streaming service, edition, languages/multi/subs/hardsubs, group, revision, flags.
+      Corpus: 677 names in `tests/fixtures/releases/*.jsonl`, 8 strict-xfail known gaps;
+      `fetchbox parse NAME` prints the parse for turning bad cases into fixtures.
+- [ ] Grow the corpus from real indexer results once Torznab lands (corpus is hand-written)
+- [ ] TMDB provider + discovery; movie titles + wanted items
+- [ ] Quality profiles (Standard HD, 4K), custom formats, scoring
+- [ ] Decision engine + interactive search
+- [ ] Torznab indexer, then YAML definition engine + first built-in definitions
+- [ ] Built-in libtorrent client, queue manager, limits, stall detection
+- [ ] Local node + default `~/Downloads/Fetchbox/Movies`; two-phase file ops;
+      `hardlink_or_copy`; naming templates
+- [ ] Import, lock, blocklist, failure retry, redownload
+- [ ] Minimal UI (search, add, queue, library)
 
 **Gate:** on a clean machine with no external tools, adding a movie results in a correctly
 named file in Downloads.
@@ -142,7 +152,9 @@ three OSes; a backup restores on a fresh machine.
 ## Risks
 
 1. libtorrent freezing on Windows/macOS (CI smoke job watches this).
-2. Release-parser accuracy — track corpus pass rate.
+2. Release-parser accuracy — track corpus pass rate. The corpus is hand-written from
+   scene/P2P conventions, so 100% on it is not accuracy on real feeds; measure against
+   captured indexer results when Torznab lands. Known gaps are strict xfails.
 3. Built-in indexer definitions: maintenance burden, Cloudflare; Torznab ships first.
 4. SQLite write contention between job workers and client polling. Phase 0 stress run:
    400 jobs, 8 workers, ~2,000 progress writes, 8.9 s, zero lock errors. Re-test with
