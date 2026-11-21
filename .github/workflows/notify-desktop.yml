@@ -1,0 +1,35 @@
+name: Notify desktop build
+
+# When a version tag is pushed here, asks the private MichaelYagi/fetchbox-artifacts
+# repo to build the desktop apps (Windows, macOS Silicon and Intel, Linux) for it.
+# They're built and released there, in a private repo, because workflow artifacts and
+# releases of a public repo can be downloaded by any signed-in GitHub user.
+#
+# Needs a repo secret DESKTOP_DISPATCH_TOKEN: a fine-grained personal access token
+# scoped to only fetchbox-artifacts with "Contents: Read and write" (the
+# repository_dispatch API requires it). Until the secret exists this skips itself
+# with a warning instead of failing on every tag.
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger the private desktop build
+        env:
+          DISPATCH_TOKEN: ${{ secrets.DESKTOP_DISPATCH_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          if [[ -z "$DISPATCH_TOKEN" ]]; then
+            echo "::warning::DESKTOP_DISPATCH_TOKEN isn't set: not triggering a desktop build for $TAG"
+            exit 0
+          fi
+          curl -sS -f -X POST \
+            -H "Authorization: Bearer $DISPATCH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/MichaelYagi/fetchbox-artifacts/dispatches \
+            -d "{\"event_type\":\"public-tag\",\"client_payload\":{\"tag\":\"$TAG\"}}"
+          echo "Triggered the desktop build for $TAG"

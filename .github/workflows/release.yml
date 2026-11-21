@@ -1,0 +1,70 @@
+name: Release
+
+# Pushing a vX.Y.Z tag is the whole release trigger. This workflow is also the gate:
+# the tests, the web build and a version check must all pass before anything is
+# published, so a tag on a broken commit never becomes a release. The version lives in
+# pyproject.toml (and web/package.json); the tag must match it.
+#
+# Published here (public): the wheel and sdist (pip install, then `fetchbox serve`)
+# and a source zip, all with the web interface already built. The desktop apps are
+# built and released in the private fetchbox-artifacts repo (see notify-desktop.yml).
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: The tag matches pyproject.toml and web/package.json
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          PY=$(python3 -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          WEB=$(python3 -c "import json; print(json.load(open('web/package.json'))['version'])")
+          echo "tag $TAG, pyproject $PY, web $WEB"
+          if [[ "$TAG" != "$PY" || "$TAG" != "$WEB" ]]; then
+            echo "::error::tag v$TAG doesn't match pyproject.toml ($PY) and web/package.json ($WEB): bump both, commit, tag again"
+            exit 1
+          fi
+
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --python 3.12
+      - run: uv run ruff check . && uv run mypy && uv run lint-imports
+      - run: uv run pytest -q
+
+  release:
+    needs: [version, tests]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Build the web interface (bundled into the package)
+        working-directory: web
+        run: npm ci && npm run build
+      - name: Wheel and sdist
+        run: uv build --python 3.12 --out-dir release
+      - name: Source zip (with the built web interface)
+        run: |
+          STAGE="fetchbox-${GITHUB_REF_NAME}"
+          git archive --format=tar --prefix="$STAGE/" HEAD | tar -x
+          cp -r src/fetchbox/static "$STAGE/src/fetchbox/static"
+          zip -qr "release/${STAGE}-source.zip" "$STAGE"
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: release/*
+          generate_release_notes: true

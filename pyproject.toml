@@ -25,6 +25,8 @@ dependencies = [
 
 [project.optional-dependencies]
 postgres = ["asyncpg>=0.29"]
+# Desktop tray (fetchbox tray). pystray is LGPL-3.0, used unmodified (see fetchbox/tray.py).
+desktop = ["pystray>=0.19.5", "Pillow>=10.4"]
 
 [project.scripts]
 fetchbox = "fetchbox.cli:main"
@@ -91,6 +93,11 @@ plugins = ["pydantic.mypy"]
 [[tool.mypy.overrides]]
 module = "fetchbox.core.*"
 strict = true
+
+[[tool.mypy.overrides]]
+# Desktop extra only (not installed in CI's type check), untyped either way.
+module = ["pystray", "PIL", "PIL.*"]
+ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = ["libtorrent"]

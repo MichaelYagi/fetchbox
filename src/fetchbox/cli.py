@@ -23,6 +23,10 @@ def _parser() -> argparse.ArgumentParser:
     serve.add_argument("--log-level", choices=["debug", "info", "warning", "error"])
     serve.add_argument("--log-format", choices=["auto", "json", "console"])
 
+    tray = sub.add_parser("tray", help="desktop tray: start the server and open the UI")
+    tray.add_argument("--host", help="bind address (default 127.0.0.1)")
+    tray.add_argument("--port", type=int, help="port (default 8787)")
+
     mig = sub.add_parser("migrate", help="apply database migrations and exit")
     mig.add_argument("--db-url")
     mig.add_argument("--revision", default="head")
@@ -147,6 +151,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     settings = load_settings(args.data_dir, **cli)
     configure_logging(settings.log_level, settings.log_format, settings.logs_dir)
 
+    if args.command == "tray":
+        from fetchbox import tray
+
+        return tray.run(settings)
+
     if args.command == "serve":
         import uvicorn
 
@@ -160,8 +169,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
             return 2
 
+        fastapi_app = create_app(settings)
         config = uvicorn.Config(
-            create_app(settings),
+            fastapi_app,
             host=settings.host,
             port=settings.port,
             log_config=None,
@@ -169,6 +179,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             lifespan="on",
         )
         server = uvicorn.Server(config)
+
+        def request_shutdown() -> None:
+            server.should_exit = True
+
+        fastapi_app.state.request_shutdown = request_shutdown
         try:
             server.run()
         except SystemExit as exc:  # uvicorn exits(3) when lifespan startup fails

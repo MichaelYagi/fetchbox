@@ -165,6 +165,7 @@ async def test_imports_and_renames_trigger_one_refresh_each(
         ("1", "/data/movies/Amélie (2001)"),
         ("1", "/data/movies/Dune (2021) {tmdb-438631}"),
     ]
+
     async def recorded() -> bool:  # written just after the calls: wait for it
         rows = (await c.get("/media-servers")).json()
         return all(x["last_refresh_at"] for x in rows)

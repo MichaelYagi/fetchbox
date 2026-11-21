@@ -282,6 +282,20 @@ Progress:
 - [x] Rename preview (Phase 2, library settings)
 - [x] qBittorrent / Transmission / Deluge, path mappings (Phase 1-2 feedback)
 
+Release pipeline (pulled forward from Phase 4, same flow as roast-telemetry):
+- [x] `vX.Y.Z` tag -> `release.yml` (version check against pyproject.toml / web/package.json,
+      lint, tests) publishes the wheel, sdist and a source zip with the built web UI;
+      `notify-desktop.yml` dispatches to the private `MichaelYagi/fetchbox-artifacts`
+      (secret `DESKTOP_DISPATCH_TOKEN`), whose `desktop-build.yml` builds Windows .exe,
+      macOS Silicon + Intel .app and Linux binary (PyInstaller onefile, `packaging/`),
+      smoke-tests each (scratch data dir: answers, right version, serves the UI), adds
+      README / LICENSE / generated THIRD-PARTY-NOTICES, and releases them privately
+- [x] Tray launcher (`fetchbox tray`, default when the desktop build is double-clicked):
+      supervises the server process, status line, open UI, start/stop/restart, data and
+      logs folders, quit; graceful stop via `POST /system/shutdown` (system:write, or the
+      token the tray gives the server it starts). Remaining Phase 4 tray items: one-time
+      login link, pause all, start at login, updates, keyring-stored key
+
 ### Phase 4 — Operability + release (v1.0)
 Backups/restore, config export/import, pre-migration backups, diagnostics zip, updates;
 Sonarr/Radarr migration wizard; tray (keyring-stored key); packaging (multi-arch Docker,
