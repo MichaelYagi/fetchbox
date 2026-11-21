@@ -110,9 +110,20 @@ Remaining unchecked items above are Phase 0 hardening, not gate blockers.
 - [ ] Failure retry: search for an alternative release (up to 3)
 - [ ] External clients (qBittorrent, Transmission, Deluge) + `POST/DELETE /download-clients`
 - [ ] Seeding goals (ratio / time) once import exists
-- [ ] Local node + default `~/Downloads/Fetchbox/Movies`; two-phase file ops;
-      `hardlink_or_copy`; naming templates
-- [ ] Import, lock, blocklist, failure retry, redownload
+- [x] Local node + default `~/Downloads/Fetchbox/Movies` and `TV` destinations; two-phase
+      file ops (`*.fetchbox-partial`, verify size / quick hash, atomic rename; partials
+      rolled back at startup); link modes; recycle folder; destination checks (exists,
+      write/delete probe, hardlink from the torrent folder, free-space floor) with
+      online/offline/low_space events; `/storage/nodes`, `/destinations` (+ check)
+- [x] Naming templates (`{Token}`, `{N:00}`, `[optional]`, `{{ }}`), Windows-safe
+      components, `/naming-templates` + preview; default Plex/Jellyfin template seeded
+- [x] Import (`library.import`, swept on `download.completed`): video pick (no samples),
+      on-disk size check, destination check, placement, `media_file`, items `acquired` +
+      locked + `cutoff_met`, upgrade replaces into recycle, history; `needs_attention`
+      with backoff retry; `/imports` (+ retry), `/files`, `/titles/{id}/files`
+- [ ] Automatic search (search on add; scheduled search for missing / cutoff unmet)
+- [ ] Redownload / unlock (`POST /wanted/{id}/unlock|redownload`)
+- [ ] mediainfo (real resolution/codec/HDR from the file)
 - [ ] Minimal UI (search, add, queue, library)
 
 **Gate:** on a clean machine with no external tools, adding a movie results in a correctly
@@ -214,6 +225,13 @@ three OSes; a backup restores on a fresh machine.
   `live` in the API is the client's last poll (rates, peers, ETA).
 - A torrent that can't be added for a permanent reason (bad .torrent, key refused)
   fails at once; transient errors retry 3 times.
+- Naming: `[ ]` marks an optional segment and is not printed (per the spec's episode
+  example), so the default movie file is `Title (Year) - Quality HDR Codec-Group`;
+  `[[ ]]` gives literal brackets. Names are made Windows-safe on every OS.
+- Link mode `move` behaves like `hardlink_or_copy` until seeding goals exist (moving a
+  seeding torrent's file would break seeding).
+- Deleting a file (`DELETE /files/{id}`) keeps the item locked; getting it again is an
+  explicit redownload.
 - Titles compare without spaces after normalising (`d'Amélie` = `d.Amelie`).
 - Decision engine details the spec leaves open: a PROPER/REPACK of the same tier ranks
   above format score (and counts as an upgrade); seeders rank by order of magnitude so

@@ -71,6 +71,10 @@ extend-exclude = ["*.md"]
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B", "SIM", "ASYNC", "RUF"]
 
+[tool.ruff.lint.per-file-ignores]
+# Tests check files on disk directly; blocking the event loop briefly there is fine.
+"tests/**" = ["ASYNC240"]
+
 [tool.mypy]
 python_version = "3.12"
 packages = ["fetchbox"]

@@ -420,7 +420,9 @@ class DownloadsService:
             return
         event: str | None = None
         if d.status == "downloading" and t.state == "seeding":
-            changes.update(status="completed", completed_at=now, progress=1.0)
+            changes.update(
+                status="completed", completed_at=now, progress=1.0, import_status="pending"
+            )
             event = "download.completed"
         elif d.status == "downloading" and t.state in ("downloading", "metadata"):
             policy = self.policy(row)

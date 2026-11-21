@@ -66,6 +66,13 @@ class Download(IdMixin, VersionMixin, Base):
     started_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
     removed_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
+    # Import of a completed download: pending -> importing -> imported | needs_attention
+    # (retried at import_retry_at) | skipped.
+    import_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    import_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    import_attempts: Mapped[int] = mapped_column(Integer, default=0)
+    import_retry_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
+    imported_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
 
     __table_args__ = (
         CheckConstraint(

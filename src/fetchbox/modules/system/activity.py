@@ -28,6 +28,7 @@ SKIP = (
     "job.succeeded",
     "search.started",
     "download.started",
+    "import.started",
 )
 BATCH = 200
 DEFAULT_RETENTION = timedelta(days=90)
@@ -76,6 +77,18 @@ MESSAGES: dict[str, str] = {
     "download.paused": "Paused download {name}",
     "download.resumed": "Resumed download {name}",
     "download_client.updated": "Download client '{name}' updated",
+    "import.completed": "Imported {name} ({year}) to {destination}: {path}",
+    "import.failed": "Import of {name} needs attention: {error}",
+    "file.upgraded": "Upgraded {name}: {path}",
+    "file.deleted": "Deleted file {path}",
+    "storage.offline": "Destination {name} is offline: {message}",
+    "storage.online": "Destination {name} is online",
+    "storage.low_space": "Destination {name} is low on space: {message}",
+    "storage.destination_added": "Destination {name} added ({path})",
+    "storage.destination_updated": "Destination {name} updated",
+    "storage.destination_removed": "Destination {name} removed",
+    "library.template_created": "Naming template '{name}' created",
+    "library.template_updated": "Naming template '{name}' updated",
     "search.completed": "Searched for {name}: {results} results, {accepted} acceptable",
 }
 

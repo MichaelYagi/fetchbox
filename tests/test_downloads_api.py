@@ -95,8 +95,8 @@ async def test_grab_downloads_to_completion(
     while not sub.queue.empty():
         types.append(sub.queue.get_nowait().type)
     assert {"download.queued", "download.started", "download.completed"} <= set(types)
-    # import isn't built yet: the item waits in "downloading" for it
-    assert await _wanted_state(c, g["movie"]["id"]) == "downloading"
+    # the library imports it (tests/test_library_api.py covers the details)
+    await until(lambda: _state_is(c, g["movie"]["id"], "acquired"), within=20)
 
 
 async def _has(c: httpx.AsyncClient, status: str) -> bool:

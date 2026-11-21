@@ -29,6 +29,8 @@ from fetchbox.modules.discovery.service import DiscoveryService
 from fetchbox.modules.downloads import router as downloads_router
 from fetchbox.modules.downloads.service import DownloadsService
 from fetchbox.modules.events import router as events_router
+from fetchbox.modules.library import router as library_router
+from fetchbox.modules.library.service import LibraryService
 from fetchbox.modules.media import router as media_router
 from fetchbox.modules.media.service import MediaService
 from fetchbox.modules.profiles import router as profiles_router
@@ -38,6 +40,8 @@ from fetchbox.modules.releases.grabs import GrabsService
 from fetchbox.modules.releases.service import ReleasesService
 from fetchbox.modules.sources import router as sources_router
 from fetchbox.modules.sources.service import SourcesService
+from fetchbox.modules.storage import router as storage_router
+from fetchbox.modules.storage.service import StorageService
 from fetchbox.modules.system import activity_router, jobs_router
 from fetchbox.modules.system import jobs as system_jobs
 from fetchbox.modules.system import router as system_router
@@ -66,6 +70,8 @@ API_ROUTERS: tuple[APIRouter, ...] = (
     releases_router.router,
     releases_router.grabs_router,
     downloads_router.router,
+    storage_router.router,
+    library_router.router,
 )
 
 
@@ -165,6 +171,18 @@ def create_app(
         )
         downloads.register_jobs()
         app.state.downloads = downloads
+        storage = StorageService(
+            db,
+            bus,
+            downloads_root=settings.downloads_dir,
+            torrents_dir=settings.downloads_dir / "Torrents",
+        )
+        app.state.storage = storage
+        library = LibraryService(db, bus, jobs, storage, downloads, profiles)
+        library.register_jobs()
+        app.state.library = library
+        await storage.seed(await library.seed())
+        await storage.recover()
 
         activity_writer = ActivityWriter(db, bus)
         activity_writer.start()  # before anything else emits, so startup is logged
@@ -176,6 +194,7 @@ def create_app(
         state.health.register(
             "torrent_engine", downloads.health, fix_url="/settings/download-clients"
         )
+        state.health.register("storage", storage.health, fix_url="/settings/storage")
         app.state.fb = state
         system_jobs.register(state)
         for hook in job_handler_hooks:
@@ -183,6 +202,7 @@ def create_app(
         await state.jobs.start()
         await state.scheduler.start()
         await downloads.start()
+        await library.start()
 
         log.info(
             "started",
@@ -198,6 +218,7 @@ def create_app(
             await state.bus.emit("system.stopping")
             await state.scheduler.stop()
             await state.jobs.stop(timeout=30)
+            await library.stop()
             await downloads.stop()  # saves the engine's resume data
             await activity_writer.stop()
             await auth.drain()
