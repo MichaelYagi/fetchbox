@@ -187,7 +187,11 @@ async def test_add_client_and_download_through_it(
     async def in_client() -> bool:
         return made.info_hash in store.torrents
 
+    async def recorded() -> bool:  # the client has it before Fetchbox's row is committed
+        return bool((await c.get("/downloads")).json())
+
     await until(in_client, within=20)
+    await until(recorded, within=10)
     t = store.torrents[made.info_hash]
     assert t.save_path == "/data/torrents/fetchbox-movies" and t.category == "fetchbox-movies"
     [d] = (await c.get("/downloads")).json()

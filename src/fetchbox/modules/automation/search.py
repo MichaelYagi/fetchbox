@@ -266,8 +266,13 @@ class AutoSearch:
                 return {"skipped": "no longer missing"}
         mode = "upgrade" if upgrade else "missing"
         result: dict[str, Any] = {"wanted_item_id": w.id, "mode": mode}
+        scheduled = False
         try:
             _, outcome = await self.releases.run(w, mode="automatic", actor=SYSTEM)
+            # Before grabbing: a download that fails right away sets next_search_at back
+            # to "now" (search for an alternative), which must not be overwritten here.
+            await self._set(w.id, next_search_at=later)
+            scheduled = True
             result |= {
                 "results": len(outcome.decisions),
                 "accepted": sum(d.accepted for d in outcome.decisions),
@@ -292,6 +297,7 @@ class AutoSearch:
                     .execution_options(synchronize_session=False)
                 )
                 await s.commit()
-            await self._set(w.id, next_search_at=later)
+            if not scheduled:  # the search itself failed
+                await self._set(w.id, next_search_at=later)
         log.info("search.automatic", **result)
         return result
