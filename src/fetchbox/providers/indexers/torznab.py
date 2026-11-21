@@ -59,7 +59,8 @@ class TorznabSettings(BaseModel):
         parts = urlsplit(v)
         if parts.scheme not in ("http", "https") or not parts.netloc:
             raise ValueError("must be an http(s) URL")
-        return v
+        # Prowlarr's "Copy Torznab URL" ends in /api, which api_path adds again.
+        return v.removesuffix("/api") if parts.path.endswith("/api") else v
 
 
 @dataclass
@@ -271,7 +272,14 @@ class TorznabProvider(IndexerProvider):
             query["apikey"] = self.cfg.api_key.get_secret_value()
         r = await self._fetch(self._endpoint, query, MAX_BODY, follow=True)
         if r.status in (401, 403):
-            raise IndexerError("auth", f"indexer refused the request (HTTP {r.status})")
+            hint = (
+                "check the API key (Prowlarr: Settings > General; Jackett: top of its page) "
+                "and that the URL is one indexer's Torznab feed without /api, e.g. "
+                "http://localhost:9696/3 for Prowlarr"
+            )
+            if self.cfg.api_key is None:
+                hint = "no API key is set; " + hint
+            raise IndexerError("auth", f"indexer refused the request (HTTP {r.status}): {hint}")
         if r.status == 429:
             retry = _float(r.headers.get("Retry-After"))
             raise IndexerError("rate_limited", "indexer rate limit hit", retry_after=retry)

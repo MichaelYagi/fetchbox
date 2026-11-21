@@ -128,4 +128,14 @@ def test_magnet_hash_forms() -> None:
 def test_settings_validation() -> None:
     with pytest.raises(ValidationError):
         TorznabSettings(url="ftp://x")
-    assert TorznabSettings(url="http://x/api/").url == "http://x/api"
+    assert TorznabSettings(url="http://x/api/").url == "http://x"  # api_path adds /api
+
+
+def test_pasted_api_suffix_is_dropped() -> None:
+    from fetchbox.providers.indexers.torznab import TorznabSettings
+
+    s = TorznabSettings(url="http://localhost:9696/3/api/")
+    assert s.url == "http://localhost:9696/3" and s.api_path == "/api"
+    assert TorznabSettings(
+        url="http://localhost:9117/api/v2.0/indexers/all/results/torznab"
+    ).url.endswith("/torznab")

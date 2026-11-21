@@ -8,3 +8,9 @@
 {"event": "Uvicorn running on http://127.0.0.1:8787 (Press CTRL+C to quit)", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T14:08:13.297663Z"}
 {"wanted_item_id": "01M7Z78YNJXK0WZ30NHAQ4BQC3", "mode": "missing", "results": 6, "accepted": 0, "failed_indexers": [], "event": "search.automatic", "level": "info", "logger": "fetchbox.modules.automation.search", "timestamp": "2026-11-21T14:13:30.624659Z"}
 {"wanted_item_id": "01M7Z78YNJXK0WZ30NHAQ4BQC3", "mode": "missing", "results": 6, "accepted": 0, "failed_indexers": [], "event": "search.automatic", "level": "info", "logger": "fetchbox.modules.automation.search", "timestamp": "2026-11-21T14:13:40.690289Z"}
+{"event": "Shutting down", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T15:43:41.163776Z"}
+{"event": "Waiting for application shutdown.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T15:43:41.264419Z"}
+{"event": "builtin.stopped", "level": "info", "logger": "fetchbox.providers.download_clients.builtin", "timestamp": "2026-11-21T15:43:41.283064Z"}
+{"event": "stopped", "level": "info", "logger": "fetchbox.app", "timestamp": "2026-11-21T15:43:41.337713Z"}
+{"event": "Application shutdown complete.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T15:43:41.339019Z"}
+{"event": "Finished server process [1556535]", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T15:43:41.339791Z"}
