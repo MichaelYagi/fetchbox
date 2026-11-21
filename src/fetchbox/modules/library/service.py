@@ -22,12 +22,12 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import re
-from datetime import timedelta
+from datetime import date, timedelta
 from pathlib import Path, PurePosixPath
 from typing import Any
 
 import structlog
-from sqlalchemy import or_, select, update
+from sqlalchemy import delete, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -41,12 +41,15 @@ from fetchbox.modules.downloads.service import DownloadsService
 from fetchbox.modules.library.models import MediaFile, MediaFileItem, NamingTemplate
 from fetchbox.modules.library.naming import (
     DEFAULT_PATTERNS,
+    OLD_EPISODE_FILE,
     TemplateError,
+    episode_path,
     movie_path,
     validate_patterns,
 )
 from fetchbox.modules.library.probe import MediaInfo, probe
-from fetchbox.modules.media.models import HistoryEvent, Title, WantedItem
+from fetchbox.modules.media.models import Episode, HistoryEvent, Title, WantedItem
+from fetchbox.modules.media.service import MediaService
 from fetchbox.modules.profiles.service import ProfilesService, to_spec
 from fetchbox.modules.releases.models import Grab, GrabItem
 from fetchbox.modules.releases.parser import ParsedRelease, parse_release
@@ -141,6 +144,76 @@ def pick_video(files: list[ClientFile], *, kind: str = "movie") -> ClientFile | 
     return max(videos, key=lambda f: f.size)
 
 
+def videos_in(files: list[ClientFile]) -> list[ClientFile]:
+    """Video files, samples left out, in path order."""
+    out = [
+        f
+        for f in files
+        if PurePosixPath(f.path.replace("\\", "/")).suffix.lower().lstrip(".") in VIDEO_EXTS
+        and not any(_SAMPLE.search(part) for part in PurePosixPath(f.path.replace("\\", "/")).parts)
+    ]
+    return sorted(out, key=lambda f: f.path)
+
+
+_SXXEYY = re.compile(r"\b[Ss](\d{1,2})[ ._-]?[Ee](\d{1,3})((?:[ ._-]?-?[Ee]\d{1,3})*)")
+
+
+def release_episodes(
+    p: ParsedRelease,
+    by_air: dict[date, tuple[int, int]],
+    by_abs: dict[int, tuple[int, int]],
+) -> list[tuple[int, int]]:
+    """(season, episode) pairs a parsed name points at: S/E numbers, an air date (daily
+    shows) or absolute numbers (anime)."""
+    if p.seasons and p.episodes:
+        return [(p.seasons[0], e) for e in p.episodes]
+    if p.air_date and p.air_date in by_air:
+        return [by_air[p.air_date]]
+    return [by_abs[a] for a in p.absolute_episodes if a in by_abs]
+
+
+def file_episodes(
+    path: str,
+    by_air: dict[date, tuple[int, int]],
+    by_abs: dict[int, tuple[int, int]],
+) -> list[tuple[int, int]]:
+    """Episodes one file holds, from its own name (then its folder's name)."""
+    pure = PurePosixPath(path.replace("\\", "/"))
+    found = release_episodes(parse_release(pure.name), by_air, by_abs)
+    if found:
+        return found
+    m = _SXXEYY.search(pure.name)  # a bare "S01E05.mkv"
+    if m:
+        season, first = int(m.group(1)), int(m.group(2))
+        more = [int(x) for x in re.findall(r"\d{1,3}", m.group(3) or "")]
+        return [(season, e) for e in [first, *more]]
+    return []
+
+
+def episode_context(
+    title: Title,
+    parsed: ParsedRelease,
+    quality: str,
+    info: MediaInfo | None,
+    season: int,
+    eps: list[Episode],
+) -> dict[str, Any]:
+    """Naming tokens for an episode file (several episodes: a multi-episode file)."""
+    ctx = movie_context(title, parsed, quality, info)
+    numbers = sorted(e.number for e in eps)
+    first = min(eps, key=lambda e: e.number)
+    names = [e.name for e in sorted(eps, key=lambda e: e.number) if e.name]
+    ctx.update(
+        TvdbId=title.tvdb_id,
+        Season=season,
+        Episode=numbers[0],
+        EpisodeEnd=numbers[-1] if len(numbers) > 1 else None,
+        EpisodeTitle=" + ".join(dict.fromkeys(names)) or None,
+        AirDate=first.air_date.isoformat() if first.air_date else None,
+    )
+    return ctx
+
+
 def movie_context(
     title: Title, parsed: ParsedRelease, quality: str, info: MediaInfo | None = None
 ) -> dict[str, Any]:
@@ -207,6 +280,7 @@ class LibraryService:
         storage: StorageService,
         downloads: DownloadsService,
         profiles: ProfilesService,
+        media: MediaService,
     ) -> None:
         self.db = db
         self.bus = bus
@@ -214,6 +288,7 @@ class LibraryService:
         self.storage = storage
         self.downloads = downloads
         self.profiles = profiles
+        self.media = media
         self._wake = asyncio.Event()
         self._tasks: list[asyncio.Task[None]] = []
         self.sweep_interval = SWEEP_INTERVAL
@@ -232,6 +307,11 @@ class LibraryService:
             if row is None:
                 row = NamingTemplate(name=DEFAULT_TEMPLATE, patterns=dict(DEFAULT_PATTERNS))
                 s.add(row)
+                await s.commit()
+            elif (row.patterns or {}).get("episode_file") == OLD_EPISODE_FILE:
+                # The old default printed no brackets around the quality: update it, unless
+                # the user changed it.
+                row.patterns = {**row.patterns, "episode_file": DEFAULT_PATTERNS["episode_file"]}
                 await s.commit()
             return row.id
 
@@ -362,13 +442,54 @@ class LibraryService:
                 f"the wanted item no longer waits for this download (it is {items[0].state})",
                 retry=False,
             )
-        if title.kind != "movie":
-            raise ImportProblem("importing episodes arrives with the TV pipeline", retry=False)
+        dest = await self._destination(title)
+        release = grab.release
+        parsed = (
+            ParsedRelease.model_validate(release["parsed"])
+            if release.get("parsed")
+            else parse_release(grab.release_title)
+        )
+        quality = release.get("quality") or parsed.quality
+        score = int(release.get("format_score") or 0)
+        if title.kind == "series":
+            return await self._import_episodes(
+                d, grab, title, waiting, dest, parsed, quality, score
+            )
 
-        # 2. the video file
+        # movie: the biggest video file (samples ignored)
         video = pick_video(await self._files(d))
         if video is None:
             raise ImportProblem("no video file in the download (samples are ignored)", retry=False)
+        src = await self._on_disk(d, video)
+        patterns = await self._patterns(dest)
+        info = await asyncio.to_thread(probe, src)
+        rel = movie_path(patterns, movie_context(title, parsed, quality, info), src.suffix)
+        dst = Path(dest.path) / rel
+        mode = await self._place(src, dst, dest)
+        mf, replaced, cutoff_met = await self._record(
+            d, grab, title, dest, waiting, rel, dst, mode, parsed, quality, score, info, video.path
+        )
+        await self._announce(title, dest, mf, rel, quality, mode, replaced)
+        return {
+            "media_file_id": mf.id,
+            "path": str(dst),
+            "link_mode": mode,
+            "cutoff_met": cutoff_met,
+        }
+
+    async def _destination(self, title: Title) -> Destination:
+        dest = await (
+            self.storage.destination(title.destination_id)
+            if title.destination_id
+            else self.storage.default_destination(title.kind)
+        )
+        dest = await self.storage.check(dest.id)
+        if dest.status not in ("online", "degraded"):
+            raise ImportProblem(f"destination {dest.name} is {dest.status}: {dest.status_message}")
+        return dest
+
+    async def _on_disk(self, d: Download, video: ClientFile) -> Path:
+        """The file's path, after checking it is there and complete."""
         if not d.save_path:
             raise ImportProblem("the download client hasn't said where it saved the files yet")
         src = Path(d.save_path) / video.path
@@ -386,36 +507,30 @@ class LibraryService:
             raise ImportProblem(
                 f"{video.path} is incomplete on disk ({on_disk} of {video.size} bytes)"
             )
+        return src
 
-        # 3. destination
-        dest = await (
-            self.storage.destination(title.destination_id)
-            if title.destination_id
-            else self.storage.default_destination(title.kind)
-        )
-        dest = await self.storage.check(dest.id)
-        if dest.status not in ("online", "degraded"):
-            raise ImportProblem(f"destination {dest.name} is {dest.status}: {dest.status_message}")
-
-        # 4. path and placement
-        release = grab.release
-        parsed = (
-            ParsedRelease.model_validate(release["parsed"])
-            if release.get("parsed")
-            else parse_release(grab.release_title)
-        )
-        quality = release.get("quality") or parsed.quality
-        patterns = await self._patterns(dest)
-        info = await asyncio.to_thread(probe, src)
-        rel = movie_path(patterns, movie_context(title, parsed, quality, info), src.suffix)
-        dst = Path(dest.path) / rel
-        mode = await self._place(src, dst, dest)
-
-        # 5. records
+    async def _record(
+        self,
+        d: Download,
+        grab: Grab,
+        title: Title,
+        dest: Destination,
+        items: list[WantedItem],
+        rel: str,
+        dst: Path,
+        mode: str,
+        parsed: ParsedRelease,
+        quality: str,
+        score: int,
+        info: MediaInfo | None,
+        original: str,
+    ) -> tuple[MediaFile, list[str], bool]:
+        """The media_file for ``dst`` and its items: acquired, locked, cutoff computed; a
+        previous file of these items is replaced (to the recycle folder). Returns (file,
+        replaced paths, cutoff met)."""
         qh = await asyncio.to_thread(quick_hash, dst)
         st = await asyncio.to_thread(dst.stat)
         profile = to_spec(await self.profiles.get_profile(title.profile_id))
-        score = int(release.get("format_score") or 0)
         tier = profile.tier_index(quality)
         cutoff_met = (
             tier is not None
@@ -424,13 +539,13 @@ class LibraryService:
         )
         replaced: list[str] = []
         async with self.db.sessionmaker() as s:
-            ids = [w.id for w in waiting]
+            ids = [w.id for w in items]
             old_q = (
                 select(MediaFile)
                 .join(MediaFileItem, MediaFileItem.media_file_id == MediaFile.id)
                 .where(MediaFileItem.wanted_item_id.in_(ids))
             )
-            old_files = list((await s.execute(old_q)).scalars())
+            old_files = list((await s.execute(old_q)).scalars().unique())
             same = next(
                 (f for f in old_files if f.relative_path == rel and f.destination_id == dest.id),
                 None,
@@ -441,7 +556,7 @@ class LibraryService:
             mf.size, mf.mtime, mf.quick_hash = st.st_size, utcnow(), qh
             mf.quality, mf.custom_format_score = _quality_json(parsed, quality, info), score
             mf.mediainfo = info.to_json() if info else None
-            mf.release_group, mf.original_name, mf.link_mode = parsed.group, video.path, mode
+            mf.release_group, mf.original_name, mf.link_mode = parsed.group, original, mode
             mf.imported_at = utcnow()
             if same is None:
                 s.add(mf)
@@ -450,6 +565,25 @@ class LibraryService:
                     s.add(MediaFileItem(media_file_id=mf.id, wanted_item_id=wid))
             for old in old_files:
                 if old is same:
+                    continue
+                serves = set(
+                    (
+                        await s.execute(
+                            select(MediaFileItem.wanted_item_id).where(
+                                MediaFileItem.media_file_id == old.id
+                            )
+                        )
+                    ).scalars()
+                )
+                if not serves <= set(ids):
+                    # A multi-episode file also serving other episodes stays for them; only
+                    # the episodes the new file covers move over.
+                    await s.execute(
+                        delete(MediaFileItem).where(
+                            MediaFileItem.media_file_id == old.id,
+                            MediaFileItem.wanted_item_id.in_(ids),
+                        )
+                    )
                     continue
                 old_dest = (
                     await s.get(Destination, old.destination_id) if old.destination_id else None
@@ -472,7 +606,7 @@ class LibraryService:
                 )
                 .execution_options(synchronize_session=False)
             )
-            for w in waiting:
+            for w in items:
                 s.add(
                     HistoryEvent(
                         wanted_item_id=w.id,
@@ -490,6 +624,18 @@ class LibraryService:
                     )
                 )
             await s.commit()
+        return mf, replaced, cutoff_met
+
+    async def _announce(
+        self,
+        title: Title,
+        dest: Destination,
+        mf: MediaFile,
+        rel: str,
+        quality: str,
+        mode: str,
+        replaced: list[str],
+    ) -> None:
         subject = Subject(type="media_file", id=mf.id)
         await self.bus.emit(
             "import.completed",
@@ -505,12 +651,90 @@ class LibraryService:
             await self.bus.emit(
                 "file.upgraded", subject=subject, name=title.name, path=rel, replaced=replaced
             )
-        return {
-            "media_file_id": mf.id,
-            "path": str(dst),
-            "link_mode": mode,
-            "cutoff_met": cutoff_met,
-        }
+
+    async def _import_episodes(
+        self,
+        d: Download,
+        grab: Grab,
+        title: Title,
+        waiting: list[WantedItem],
+        dest: Destination,
+        parsed: ParsedRelease,
+        quality: str,
+        score: int,
+    ) -> dict[str, Any]:
+        """Every video file is matched to the episodes it holds (by its own name, or the
+        release's for a single-episode download); a file holding several episodes (multi-
+        episode) serves them all. Wanted episodes the download doesn't have go back to
+        missing, to be searched again."""
+        rows = await self.media.episode_items(title.id, item_ids=[w.id for w in waiting])
+        by_key = {(n, ep.number): (ep, w) for n, ep, w in rows}
+        by_air = {ep.air_date: (n, ep.number) for n, ep, _ in rows if ep.air_date}
+        by_abs = {ep.absolute_number: (n, ep.number) for n, ep, _ in rows if ep.absolute_number}
+        videos = videos_in(await self._files(d))
+        if not videos:
+            raise ImportProblem("no video file in the download (samples are ignored)", retry=False)
+        single = len(videos) == 1
+        patterns = await self._patterns(dest)
+        imported: list[dict[str, Any]] = []
+        done: set[str] = set()
+        for video in videos:
+            keys = file_episodes(video.path, by_air, by_abs)
+            if not keys and single:
+                keys = release_episodes(parsed, by_air, by_abs)
+            matched = [k for k in keys if k in by_key and by_key[k][1].id not in done]
+            if not matched:
+                continue  # an episode nobody asked for, or extras
+            src = await self._on_disk(d, video)
+            file_parsed = parse_release(PurePosixPath(video.path.replace("\\", "/")).name)
+            file_quality = file_parsed.quality if file_parsed.resolution else quality
+            info = await asyncio.to_thread(probe, src)
+            eps = [by_key[k][0] for k in matched]
+            ctx = episode_context(title, file_parsed if file_parsed.resolution else parsed,
+                                  file_quality, info, matched[0][0], eps)  # fmt: skip
+            rel = episode_path(patterns, ctx, src.suffix)
+            dst = Path(dest.path) / rel
+            mode = await self._place(src, dst, dest)
+            items = [by_key[k][1] for k in matched]
+            mf, replaced, _ = await self._record(
+                d, grab, title, dest, items, rel, dst, mode,
+                file_parsed if file_parsed.resolution else parsed, file_quality, score, info,
+                video.path,
+            )  # fmt: skip
+            await self._announce(title, dest, mf, rel, file_quality, mode, replaced)
+            done.update(w.id for w in items)
+            imported.append({"media_file_id": mf.id, "path": str(dst), "episodes": matched})
+        if not imported:
+            raise ImportProblem(
+                "no file in the download is one of the wanted episodes", retry=False
+            )
+        missing = [w for w in waiting if w.id not in done]
+        if missing:  # not in this download after all: search for them again
+            await self._not_in_download(d, grab, missing)
+        return {"files": imported, "not_in_download": [w.id for w in missing]}
+
+    async def _not_in_download(self, d: Download, grab: Grab, items: list[WantedItem]) -> None:
+        async with self.db.sessionmaker() as s:
+            await s.execute(
+                update(WantedItem)
+                .where(WantedItem.id.in_([w.id for w in items]))
+                .values(state="missing", next_search_at=None, version=WantedItem.version + 1)
+                .execution_options(synchronize_session=False)
+            )
+            for w in items:
+                s.add(
+                    HistoryEvent(
+                        wanted_item_id=w.id,
+                        title_id=w.title_id,
+                        type="failed",
+                        data={
+                            "download_id": d.id,
+                            "release_title": grab.release_title,
+                            "reason": "not in the download",
+                        },
+                    )
+                )
+            await s.commit()
 
     async def _patterns(self, dest: Destination) -> dict[str, str]:
         async with self.db.sessionmaker() as s:

@@ -243,7 +243,8 @@ async def test_naming_templates_api(c: httpx.AsyncClient) -> None:
         "Dune - Part Two (2024) - WEBDL-2160p DV HDR10 x265-FLUX.mkv"
     )
     assert r.json()["episode"] == (
-        "Severance (2022) {tvdb-371980}/Season 01/Severance - S01E07 - Defiant Jazz WEBDL-1080p.mkv"
+        "Severance (2022) {tvdb-371980}/Season 01/"
+        "Severance - S01E07 - Defiant Jazz [WEBDL-1080p].mkv"
     )
     r = await c.post(
         "/naming-templates/preview", json={"patterns": {"movie_file": "{Title}.{Year}.{Quality}"}}

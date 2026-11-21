@@ -21,13 +21,17 @@ from typing import Any
 
 PATTERN_KEYS = ("movie_folder", "movie_file", "series_folder", "season_folder", "episode_file")
 
+# Earlier default episode pattern: installs still using it unchanged get the new one.
+OLD_EPISODE_FILE = (
+    "{Title} - S{Season:00}E{Episode:00}[-E{EpisodeEnd:00}] - {EpisodeTitle} [{Quality}]"
+)
 DEFAULT_PATTERNS: dict[str, str] = {
     "movie_folder": "{Title} ({Year}) {{tmdb-{TmdbId}}}",
     "movie_file": "{Title} ({Year}) [{Edition}] - {Quality} [{HDR}] [{Codec}]-{Group}",
     "series_folder": "{Title} ({Year}) {{tvdb-{TvdbId}}}",
     "season_folder": "Season {Season:00}",
     "episode_file": (
-        "{Title} - S{Season:00}E{Episode:00}[-E{EpisodeEnd:00}] - {EpisodeTitle} [{Quality}]"
+        "{Title} - S{Season:00}E{Episode:00}[-E{EpisodeEnd:00}][ - {EpisodeTitle}][ [[{Quality}]]]"
     ),
 }
 
@@ -198,3 +202,14 @@ def movie_path(patterns: Mapping[str, str], ctx: Mapping[str, Any], extension: s
     stem = safe_component(render(patterns["movie_file"], ctx))
     ext = extension.lower().lstrip(".")
     return f"{folder}/{stem}.{ext}" if ext else f"{folder}/{stem}"
+
+
+def episode_path(patterns: Mapping[str, str], ctx: Mapping[str, Any], extension: str) -> str:
+    """Relative path ``<series>/<season>/<file>.<ext>`` for an episode file. An empty
+    season folder pattern puts episodes straight into the series folder."""
+    series = safe_component(render(patterns["series_folder"], ctx))
+    season = render(patterns["season_folder"], ctx).strip() if patterns.get("season_folder") else ""
+    stem = safe_component(render(patterns["episode_file"], ctx))
+    ext = extension.lower().lstrip(".")
+    name = f"{stem}.{ext}" if ext else stem
+    return f"{series}/{safe_component(season)}/{name}" if season else f"{series}/{name}"

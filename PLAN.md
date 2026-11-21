@@ -199,8 +199,14 @@ season-pack rule; RSS sync, missing search, upgrades
       (season search, packs first then gap filling, then up to 5 episode searches for
       what's left); `POST /titles/{id}/search` queues every season with aired episodes to
       get; unaired episodes are never searched
-- [ ] TV import: map each file to its episodes (multi-episode files, season packs);
-      episode naming; upgrades replace only after the new import succeeds
+- [x] TV import: every video file (no samples) matched to its episodes by its own name
+      (S/E, 1x04, bare S01E05, daily air dates, anime absolute numbers), or the release's
+      for a one-file download; multi-episode files serve every episode they hold
+      (EpisodeEnd); wanted episodes a pack lacks go back to missing and are searched
+      again; series / season / episode naming. Upgrades replace after the new file is in
+      place; a multi-episode file still serving other episodes is kept for them. Default
+      episode pattern brackets the quality (`[WEBDL-1080p]`); installs on the old default
+      are updated
 - [x] Prowlarr indexer kind (`providers/indexers/prowlarr.py`): Prowlarr's address + API
       key; its enabled torrent indexers (listed from `/api/v1/indexer`, every 10 min) are
       searched together through their Torznab feeds; one failing doesn't fail the search.
