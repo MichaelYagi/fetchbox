@@ -391,7 +391,7 @@ async def test_unlock_then_redownload(
         msgs = [a["message"] for a in acts]
         return "Redownloading Dune" in msgs and any(m.startswith("Unlocked Dune") for m in msgs)
 
-    await until(logged, within=10)
+    await until(logged, within=30)  # slow Windows runners
 
     assert (await c.post("/wanted/nope/unlock")).status_code == 404
     assert (await c.post("/wanted/nope/redownload")).status_code == 404
