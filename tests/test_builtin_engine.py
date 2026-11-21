@@ -113,3 +113,77 @@ async def _paused(c: BuiltinClient, ref: str) -> bool:
 
 def test_registered() -> None:
     assert registry.get("download_client", "builtin") is BuiltinClient
+
+
+def _loopback() -> str:
+    import psutil
+
+    for name, addrs in psutil.net_if_addrs().items():
+        stats = psutil.net_if_stats().get(name)
+        if stats and stats.isup and any(a.address == "127.0.0.1" for a in addrs):
+            return name
+    pytest.skip("no loopback interface with 127.0.0.1")
+
+
+async def test_bound_to_an_interface_with_kill_switch(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Bound to an interface (here loopback, standing in for a VPN's), torrents only use
+    it; when it goes down every torrent pauses, and resumes when it's back."""
+    from fetchbox.providers.download_clients import builtin
+    from fetchbox.providers.download_clients.builtin import BuiltinSettings
+    from tests.torrents import LOOPBACK
+
+    iface = _loopback()
+    made = make_torrent(tmp_path / "seed", "Bound.2021.1080p", {"movie.mkv": MB})
+    seed = await seeder(made)
+    leech = BuiltinClient(
+        BuiltinSettings.model_validate({**LOOPBACK, "interface": iface, "lsd": True,
+                                        "upnp": True}),
+    )  # fmt: skip
+    await leech.start()
+    try:
+        s = leech._s()
+        pack = s.get_settings()
+        assert pack["outgoing_interfaces"] == "127.0.0.1"
+        assert pack["listen_interfaces"].startswith("127.0.0.1:")
+        assert not pack["enable_lsd"] and not pack["enable_upnp"]  # nothing announced locally
+        assert (await leech.test()).ok
+        ref = await leech.add(made.source(), AddOptions(save_path=str(tmp_path / "dl"),
+                                                        paused=False))  # fmt: skip
+        leech.connect_peer(ref, "127.0.0.1", seed.listen_port or 0)
+        await until(lambda: _done(leech, ref))
+
+        monkeypatch.setattr(builtin, "interface_address", lambda name: None)  # VPN drops
+        leech.check_interface()
+        assert s.is_paused() and leech.blocked and iface in leech.blocked
+        res = await leech.test()
+        assert not res.ok and "kill switch" in res.message
+
+        monkeypatch.setattr(builtin, "interface_address", lambda name: "127.0.0.1")  # back
+        leech.check_interface()
+        assert not s.is_paused() and leech.blocked is None and (await leech.test()).ok
+    finally:
+        await leech.stop()
+        await seed.stop()
+
+
+async def test_missing_interface_starts_paused() -> None:
+    from fetchbox.providers.download_clients.builtin import BuiltinSettings
+    from tests.torrents import LOOPBACK
+
+    c = BuiltinClient(BuiltinSettings.model_validate({**LOOPBACK, "interface": "no-such-vpn0"}))
+    await c.start()
+    try:
+        assert c._s().is_paused()
+        res = await c.test()
+        assert not res.ok and "no-such-vpn0" in res.message
+    finally:
+        await c.stop()
+    off = BuiltinClient(BuiltinSettings.model_validate(
+        {**LOOPBACK, "interface": "no-such-vpn0", "kill_switch": False}))  # fmt: skip
+    await off.start()
+    try:
+        assert not off._s().is_paused() and (await off.test()).ok
+    finally:
+        await off.stop()

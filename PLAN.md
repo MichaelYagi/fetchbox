@@ -285,6 +285,13 @@ Progress:
       low space by default; grabbed, indexer failing, media server rescan failed, health
       changed on request); sent in the background, last error shown; "Send a test".
       Webhook checked against a real local HTTP receiver; Discord payload per its docs
+- [x] Interface bind + kill switch: the built-in engine can be bound to one network
+      interface (a VPN's); bound by its current address (works on every OS, follows a
+      reconnect's new address), no LSD / UPnP announcing on the LAN; with the kill switch
+      the whole session pauses while the interface is down or has no address (client
+      health error) and resumes when it's back. `GET /system/network-interfaces`; set
+      in Settings > Download clients > Built-in > Edit. Tested with a real download
+      bound to loopback
 - [x] Rename preview (Phase 2, library settings)
 - [x] qBittorrent / Transmission / Deluge, path mappings (Phase 1-2 feedback)
 

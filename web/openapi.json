@@ -4057,6 +4057,43 @@
     "title": "NamingOut",
     "type": "object"
    },
+   "NetworkInterface": {
+    "properties": {
+     "address": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Its current address; null: down or none",
+      "title": "Address"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "up": {
+      "title": "Up",
+      "type": "boolean"
+     },
+     "vpn": {
+      "description": "Looks like a VPN (tun, wg, utun, ProtonVPN, \u2026)",
+      "title": "Vpn",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "name",
+     "address",
+     "up",
+     "vpn"
+    ],
+    "title": "NetworkInterface",
+    "type": "object"
+   },
    "NodeOut": {
     "properties": {
      "created_at": {
@@ -15939,6 +15976,43 @@
      }
     ],
     "summary": "Get Health",
+    "tags": [
+     "system"
+    ]
+   }
+  },
+  "/api/v1/system/network-interfaces": {
+   "get": {
+    "description": "This computer's network interfaces, to bind the torrent engine to one (a VPN).",
+    "operationId": "network_interfaces_api_v1_system_network_interfaces_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/NetworkInterface"
+         },
+         "title": "Response Network Interfaces Api V1 System Network Interfaces Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Network Interfaces",
     "tags": [
      "system"
     ]

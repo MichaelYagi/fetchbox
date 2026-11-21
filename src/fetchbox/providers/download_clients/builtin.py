@@ -19,13 +19,14 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import re
 import time
 from pathlib import Path
 from typing import Any, ClassVar, Literal
 
 import libtorrent as lt
 import structlog
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from fetchbox.core.providers import HealthStatus, TestResult, registry
 from fetchbox.providers.download_clients import (
@@ -54,6 +55,9 @@ _CHECKING = {
 _DONE = {lt.torrent_status.states.finished, lt.torrent_status.states.seeding}
 
 
+INTERFACE_CHECK_SECONDS = 2.0
+
+
 class BuiltinSettings(BaseModel):
     listen_interfaces: str = Field(
         default="0.0.0.0:6881,[::]:6881", description="Where to accept peer connections"
@@ -65,6 +69,44 @@ class BuiltinSettings(BaseModel):
     download_limit: int | None = Field(default=None, ge=0, description="Bytes/s; empty = none")
     upload_limit: int | None = Field(default=None, ge=0)
     connections_limit: int = Field(default=200, ge=10, le=5000)
+    interface: str | None = Field(
+        default=None,
+        description="Only use this network interface (e.g. your VPN's: wg0, tun0, ProtonVPN); "
+        "empty: any",
+    )
+    kill_switch: bool = Field(
+        default=True,
+        description="With an interface set: pause every torrent while it is down or has no "
+        "address, and resume when it's back",
+    )
+
+    @field_validator("interface", mode="before")
+    @classmethod
+    def _iface(cls, v: object) -> object:
+        return (v.strip() or None) if isinstance(v, str) else v
+
+
+def interface_address(name: str) -> str | None:
+    """The interface's current address (IPv4 preferred), or None when it is missing,
+    down or has none. By address, so the binding works the same on every OS."""
+    import socket
+
+    import psutil
+
+    stats = psutil.net_if_stats().get(name)
+    if stats is None or not stats.isup:
+        return None
+    addrs = psutil.net_if_addrs().get(name, [])
+    v4 = [a.address for a in addrs if a.family == socket.AF_INET]
+    v6 = [a.address.split("%")[0] for a in addrs
+          if a.family == socket.AF_INET6 and not a.address.startswith("fe80")]  # fmt: skip
+    found = v4 or v6
+    return found[0] if found else None
+
+
+def _listen_port(listen: str) -> int:
+    m = re.search(r":(\d+)(?:,|$)", listen)
+    return int(m.group(1)) if m else 6881
 
 
 def ref_of(hashes: Any) -> ClientRef:
@@ -74,14 +116,25 @@ def ref_of(hashes: Any) -> ClientRef:
     return str(hashes.v2)[:40]
 
 
-def _pack(cfg: BuiltinSettings) -> dict[str, Any]:
+def _bound(address: str | None, port: int) -> dict[str, Any]:
+    """Listen and connect only through ``address`` (the chosen interface's)."""
+    if address is None:  # interface down: nothing to bind to; the session is paused
+        address = "127.0.0.1"
+    host = f"[{address}]" if ":" in address else address
+    return {"listen_interfaces": f"{host}:{port}", "outgoing_interfaces": address}
+
+
+def _pack(cfg: BuiltinSettings, address: str | None = None) -> dict[str, Any]:
     enc = {"enabled": 1, "forced": 0, "disabled": 2}[cfg.encryption]  # lt enc_policy
+    bound = cfg.interface is not None
     return {
         "listen_interfaces": cfg.listen_interfaces,
+        **(_bound(address, _listen_port(cfg.listen_interfaces)) if bound else {}),
         "enable_dht": cfg.dht,
-        "enable_lsd": cfg.lsd,
-        "enable_upnp": cfg.upnp,
-        "enable_natpmp": cfg.upnp,
+        # Bound to a VPN: don't announce or map ports on the local network.
+        "enable_lsd": cfg.lsd and not bound,
+        "enable_upnp": cfg.upnp and not bound,
+        "enable_natpmp": cfg.upnp and not bound,
         "out_enc_policy": enc,
         "in_enc_policy": enc,
         "download_rate_limit": cfg.download_limit or 0,
@@ -113,6 +166,8 @@ class BuiltinClient(DownloadClientProvider):
         self._counters: dict[tuple[ClientRef, str], tuple[int, int]] = {}
         self._pending_saves = 0
         self._tasks: list[asyncio.Task[None]] = []
+        self.blocked: str | None = None  # why the kill switch has paused everything
+        self._address: str | None = None
 
     # ---- lifecycle ----------------------------------------------------------------------------
 
@@ -127,7 +182,11 @@ class BuiltinClient(DownloadClientProvider):
     async def start(self) -> None:
         if self._session is not None:
             return
-        self._session = lt.session(_pack(self.cfg))  # type: ignore[call-overload]
+        if self.cfg.interface:
+            self._address = interface_address(self.cfg.interface)
+        self._session = lt.session(_pack(self.cfg, self._address))  # type: ignore[call-overload]
+        if self.cfg.interface and self._address is None and self.cfg.kill_switch:
+            self._block()
         if self.state_dir is not None:
             self.state_dir.mkdir(parents=True, exist_ok=True)
             for f in sorted(self.state_dir.glob("*.fastresume")):
@@ -144,6 +203,8 @@ class BuiltinClient(DownloadClientProvider):
             asyncio.create_task(self._alert_loop(), name="builtin-alerts"),
             asyncio.create_task(self._resume_loop(), name="builtin-resume"),
         ]
+        if self.cfg.interface:
+            self._tasks.append(asyncio.create_task(self._watch_interface(), name="builtin-vpn"))
         log.info("builtin.started", port=self.listen_port, torrents=len(self._handles))
 
     async def stop(self) -> None:
@@ -169,6 +230,40 @@ class BuiltinClient(DownloadClientProvider):
 
     async def aclose(self) -> None:
         await self.stop()
+
+    # ---- interface binding and kill switch ----------------------------------------------------
+
+    def _block(self) -> None:
+        self.blocked = (
+            f"network interface {self.cfg.interface} is down or has no address: "
+            "all torrents paused (kill switch)"
+        )
+        self._session.pause()
+        log.warning("builtin.kill_switch", interface=self.cfg.interface)
+
+    def check_interface(self) -> None:
+        """Pause or resume for the interface's state; follow its address if it changed."""
+        if self._session is None or not self.cfg.interface:
+            return
+        addr = interface_address(self.cfg.interface)
+        if addr is not None and addr != self._address:
+            self._session.apply_settings(_bound(addr, _listen_port(self.cfg.listen_interfaces)))
+            log.info("builtin.interface_address", interface=self.cfg.interface, address=addr)
+        self._address = addr
+        if addr is None and self.cfg.kill_switch and self.blocked is None:
+            self._block()
+        elif addr is not None and self.blocked is not None:
+            self.blocked = None
+            self._session.resume()
+            log.info("builtin.kill_switch_released", interface=self.cfg.interface)
+
+    async def _watch_interface(self) -> None:
+        while True:
+            await asyncio.sleep(INTERFACE_CHECK_SECONDS)
+            try:
+                self.check_interface()
+            except Exception:  # never let the watcher die
+                log.exception("builtin.interface_check_failed")
 
     def _s(self) -> Any:
         if self._session is None:
@@ -245,6 +340,8 @@ class BuiltinClient(DownloadClientProvider):
     async def test(self) -> TestResult:
         if self._session is None:
             return TestResult(ok=False, message="the built-in engine is not running")
+        if self.blocked:
+            return TestResult(ok=False, message=self.blocked)
         return TestResult(
             ok=True,
             message=f"libtorrent {lt.__version__} listening on port {self.listen_port}",

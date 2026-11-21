@@ -1677,6 +1677,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system/network-interfaces": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Network Interfaces
+         * @description This computer's network interfaces, to bind the torrent engine to one (a VPN).
+         */
+        get: operations["network_interfaces_api_v1_system_network_interfaces_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/system/ping": {
         parameters: {
             query?: never;
@@ -3471,6 +3491,23 @@ export interface components {
             preset: string;
             /** Samples */
             samples: components["schemas"]["SampleOut"][];
+        };
+        /** NetworkInterface */
+        NetworkInterface: {
+            /**
+             * Address
+             * @description Its current address; null: down or none
+             */
+            address: string | null;
+            /** Name */
+            name: string;
+            /** Up */
+            up: boolean;
+            /**
+             * Vpn
+             * @description Looks like a VPN (tun, wg, utun, ProtonVPN, …)
+             */
+            vpn: boolean;
         };
         /** NodeOut */
         NodeOut: {
@@ -9844,6 +9881,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HealthReport"];
+                };
+            };
+        };
+    };
+    network_interfaces_api_v1_system_network_interfaces_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NetworkInterface"][];
                 };
             };
         };

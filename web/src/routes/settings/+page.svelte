@@ -33,8 +33,11 @@
 		priority: 25,
 		local: '',
 		remote: '',
-		folder: ''
+		folder: '',
+		iface: '',
+		kill: true
 	});
+	let interfaces = $state<S['NetworkInterface'][]>([]);
 
 	function editIndexer(i: S['IndexerOut']) {
 		const st = i.settings as Record<string, unknown>;
@@ -47,7 +50,9 @@
 			priority: i.priority,
 			local: '',
 			remote: '',
-			folder: ''
+			folder: '',
+			iface: '',
+			kill: true
 		};
 		editing = i.id;
 	}
@@ -64,9 +69,12 @@
 			priority: c.priority,
 			local: map?.local ?? '',
 			remote: map?.client ?? '',
-			folder: c.policy.save_path ?? ''
+			folder: c.policy.save_path ?? '',
+			iface: (st.interface as string) ?? '',
+			kill: (st.kill_switch as boolean) ?? true
 		};
 		editing = c.id;
+		if (c.kind === 'builtin') get<S['NetworkInterface'][]>('/system/network-interfaces').then((x) => (interfaces = x));
 	}
 
 	// Torrent clients in the order they're tried; the first enabled, running one is used.
@@ -117,8 +125,15 @@
 				? [{ local: draft.local.trim(), client: draft.remote.trim() }]
 				: [];
 		const folder = draft.folder.trim() || null; // empty: back to the default
+		const st = c.settings as Record<string, unknown>;
+		// Only touch the engine's settings when they change: that restarts it.
+		const bindChanged =
+			c.kind === 'builtin' && ((st.interface ?? '') !== draft.iface || (st.kill_switch ?? true) !== draft.kill);
 		const body = builtIn
-			? { policy: { save_path: folder } }
+			? {
+					policy: { save_path: folder },
+					...(bindChanged ? { settings: { interface: draft.iface || null, kill_switch: draft.kill } } : {})
+				}
 			: { settings, policy: { path_mappings: mappings, save_path: folder } };
 		act(`save-${c.id}`, () => patch(`/download-clients/${c.id}`, body, c.etag), `${c.name} saved.`).then(
 			() => {
@@ -431,6 +446,36 @@
 										</label>
 										<button class="primary" disabled={!!busy}>Save</button>
 									</form>
+									{#if c.kind === 'builtin'}
+										<div class="mapping">
+											<div class="row">
+												<label class="grow">
+													Only download through
+													<select bind:value={draft.iface}>
+														<option value="">Any network connection</option>
+														{#each interfaces as n (n.name)}
+															<option value={n.name}>
+																{n.name}{n.vpn ? ' (VPN)' : ''} — {n.address ?? 'down'}
+															</option>
+														{/each}
+														{#if draft.iface && !interfaces.some((n) => n.name === draft.iface)}
+															<option value={draft.iface}>{draft.iface} (not found now)</option>
+														{/if}
+													</select>
+												</label>
+												{#if draft.iface}
+													<label class="inline-check"
+														><input type="checkbox" bind:checked={draft.kill} /> Pause all torrents if it disconnects
+														(kill switch)</label
+													>
+												{/if}
+											</div>
+											<p class="muted small hint">
+												Pick your VPN's connection to keep torrent traffic on it. With the kill switch, every torrent pauses
+												while the VPN is down and resumes when it's back. Saving this restarts the engine briefly.
+											</p>
+										</div>
+									{/if}
 									{#if c.kind !== 'builtin' && c.kind !== 'direct'}
 									<div class="mapping">
 										<p class="muted small hint">
@@ -533,6 +578,12 @@
 </main>
 
 <style>
+	.inline-check {
+		display: flex;
+		gap: 0.4rem;
+		align-items: center;
+		align-self: flex-end;
+	}
 	section {
 		margin-bottom: 1.5rem;
 	}
