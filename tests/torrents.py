@@ -22,9 +22,7 @@ class Made:
     info_hash: str
     root: Path  # the directory holding the torrent's top folder
     name: str
-    # Original bytes by relative path. Compare against these: on Windows CI, reading the
-    # seeder's file while libtorrent seeds it has hung (antivirus + memory-mapped I/O).
-    payload: dict[str, bytes]
+    payload: dict[str, bytes]  # original bytes by relative path
 
     @property
     def magnet(self) -> str:
@@ -79,3 +77,11 @@ async def until(cond: Callable[[], Awaitable[bool]], *, within: float = 30.0) ->
         if loop.time() > deadline:
             raise TimeoutError("condition not met in time")
         await asyncio.sleep(0.1)
+
+
+def digest(data: bytes) -> tuple[int, str]:
+    """Compare files by (length, sha256): a failing ``assert a == b`` on megabytes of
+    bytes makes pytest build a diff that takes minutes (it looked like a hang on CI)."""
+    import hashlib
+
+    return len(data), hashlib.sha256(data).hexdigest()

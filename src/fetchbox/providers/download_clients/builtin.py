@@ -4,6 +4,12 @@ Torrents survive restarts through resume data in ``<state_dir>/<info hash>.fastr
 written when metadata arrives, when a torrent finishes, every few minutes for torrents
 that changed, and on shutdown. libtorrent's own queueing is turned off (torrents are
 added without ``auto_managed``): Fetchbox's queue manager decides what runs.
+
+A torrent is reported ``seeding`` only after its data is flushed to disk. libtorrent
+says "finished" when the last piece is verified, but on Windows its memory-mapped
+writes can still be in flight: reading the file at that moment gave short or wrong
+bytes. On finish the engine saves resume data with ``flush_disk_cache`` and keeps
+reporting ``downloading`` until that save completes, so import never sees a partial file.
 """
 
 from __future__ import annotations
@@ -98,6 +104,8 @@ class BuiltinClient(DownloadClientProvider):
         self._session: Any = None
         self._handles: dict[ClientRef, Any] = {}
         self._errors: dict[ClientRef, str] = {}
+        self._flushing: set[ClientRef] = set()  # finished, flush to disk in flight
+        self._flushed: set[ClientRef] = set()  # finished and on disk
         self._pending_saves = 0
         self._tasks: list[asyncio.Task[None]] = []
 
@@ -122,7 +130,9 @@ class BuiltinClient(DownloadClientProvider):
                     params = lt.read_resume_data(f.read_bytes())
                     params.flags &= ~lt.torrent_flags.auto_managed
                     h = self._session.add_torrent(params)
-                    self._handles[ref_of(h.info_hashes())] = h
+                    ref = ref_of(h.info_hashes())
+                    self._handles[ref] = h
+                    self._flushed.add(ref)  # whatever finished before a restart is on disk
                 except Exception as exc:  # a corrupt file must not stop the engine
                     log.warning("builtin.resume_failed", file=f.name, error=str(exc))
         self._tasks = [
@@ -177,9 +187,21 @@ class BuiltinClient(DownloadClientProvider):
             if isinstance(a, lt.save_resume_data_alert):
                 self._pending_saves = max(self._pending_saves - 1, 0)
                 self._write_resume(a)
+                self._mark_flushed(a.handle)
             elif isinstance(a, lt.save_resume_data_failed_alert):
                 self._pending_saves = max(self._pending_saves - 1, 0)
-            elif isinstance(a, lt.metadata_received_alert | lt.torrent_finished_alert):
+                if a.handle.is_valid() and ref_of(a.handle.info_hashes()) in self._flushing:
+                    log.warning("builtin.flush_failed", error=a.message())
+                self._mark_flushed(a.handle)  # don't hold the torrent back forever
+            elif isinstance(a, lt.torrent_finished_alert):
+                if a.handle.is_valid():
+                    self._flushing.add(ref_of(a.handle.info_hashes()))
+                    a.handle.save_resume_data(
+                        lt.save_resume_flags_t.save_info_dict
+                        | lt.save_resume_flags_t.flush_disk_cache
+                    )
+                    self._pending_saves += 1
+            elif isinstance(a, lt.metadata_received_alert):
                 if a.handle.is_valid():
                     a.handle.save_resume_data(lt.save_resume_flags_t.save_info_dict)
                     self._pending_saves += 1
@@ -187,6 +209,14 @@ class BuiltinClient(DownloadClientProvider):
                 isinstance(a, lt.torrent_error_alert | lt.file_error_alert) and a.handle.is_valid()
             ):
                 self._errors[ref_of(a.handle.info_hashes())] = a.message()
+
+    def _mark_flushed(self, handle: Any) -> None:
+        if not handle.is_valid():
+            return
+        ref = ref_of(handle.info_hashes())
+        if ref in self._flushing:
+            self._flushing.discard(ref)
+            self._flushed.add(ref)
 
     def _write_resume(self, a: Any) -> None:
         if self.state_dir is None:
@@ -270,6 +300,11 @@ class BuiltinClient(DownloadClientProvider):
 
     def _status(self, ref: ClientRef, st: Any) -> ClientTorrent:
         paused = bool(st.flags & lt.torrent_flags.paused)
+        # Finished but not yet flushed to disk (see module docstring). Files that were
+        # already complete when added (nothing downloaded this session) need no flush.
+        flushing = (
+            st.state in _DONE and ref not in self._flushed and int(st.total_payload_download) > 0
+        )
         error = self._errors.get(ref) or (st.errc.message() if st.errc.value() else None)
         state: TorrentState
         if error:
@@ -280,7 +315,7 @@ class BuiltinClient(DownloadClientProvider):
             state = "metadata"
         elif st.state in _CHECKING:
             state = "checking"
-        elif st.state in _DONE:
+        elif st.state in _DONE and not flushing:
             state = "seeding"
         else:
             state = "downloading"
@@ -294,7 +329,7 @@ class BuiltinClient(DownloadClientProvider):
             ref=ref,
             name=st.name or ref,
             state=state,
-            progress=1.0 if state == "seeding" else float(st.progress),
+            progress=1.0 if state == "seeding" else 0.999 if flushing else float(st.progress),
             size=wanted,
             downloaded=downloaded,
             uploaded=uploaded,
@@ -365,6 +400,8 @@ class BuiltinClient(DownloadClientProvider):
     async def remove(self, ref: ClientRef, delete_data: bool) -> None:
         h = self._handles.pop(ref, None)
         self._errors.pop(ref, None)
+        self._flushing.discard(ref)
+        self._flushed.discard(ref)
         if h is not None and h.is_valid():
             self._s().remove_torrent(h, lt.options_t.delete_files if delete_data else 0)
         if self.state_dir is not None:

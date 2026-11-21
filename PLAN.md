@@ -242,11 +242,12 @@ three OSes; a backup restores on a fresh machine.
 4b. SQLite write contention between job workers and client polling. Phase 0 stress run:
    400 jobs, 8 workers, ~2,000 progress writes, 8.9 s, zero lock errors. Re-test with
    Phase 1's real polling load.
-5. Windows/NTFS: hardlinks, UNC paths, illegal characters, WSL path mappings. On
-   Windows CI, reading a file libtorrent was *seeding from a pre-existing copy* hung
-   (twice, same line; not reproducible on a desktop). Downloaded files read fine.
-   The bindings ignore `disk_io_constructor`, so the POSIX backend can't be chosen
-   from Python. Watch this when import reads files that are still seeding.
+5. Windows/NTFS: hardlinks, UNC paths, illegal characters, WSL path mappings. (Resolved)
+   On Windows, libtorrent reports a torrent finished before its memory-mapped writes
+   reach the file: reading it then gave short/wrong bytes (and pytest's diff of the
+   failed 2 MB assert looked like a hang). The engine now reports `seeding` only after
+   a `flush_disk_cache` resume save completes. Reproduced and verified on native
+   Windows. Import should still verify size before linking.
 6. Custom-format regexes are user-supplied (`profiles:write` only) and run on every
    search result; Python `re` has no timeout, so a pathological pattern can stall a
    search. Length is capped at 500; consider the `regex` module's timeout if needed.

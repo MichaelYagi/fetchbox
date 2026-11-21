@@ -17,7 +17,7 @@ from fetchbox.providers.download_clients.builtin import BuiltinClient
 from tests.conftest import Running
 from tests.fake_torznab import Item
 from tests.pipeline import Fakes, _indexer, _movie
-from tests.torrents import Made, make_torrent, seeder, until
+from tests.torrents import Made, digest, make_torrent, seeder, until
 
 NAME = "Dune.2021.1080p.WEB-DL.DDP5.1.Atmos.H.264-FLUX"
 MB = 1024 * 1024
@@ -89,7 +89,7 @@ async def test_grab_downloads_to_completion(
     root = settings.downloads_dir / "Torrents" / "fetchbox-movies"
     assert d["save_path"] == str(root)
     got = (root / NAME / f"{NAME}.mkv").read_bytes()
-    assert got == made.payload[f"{NAME}.mkv"]
+    assert digest(got) == digest(made.payload[f"{NAME}.mkv"])
 
     types = []
     while not sub.queue.empty():
