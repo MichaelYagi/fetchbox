@@ -89,6 +89,8 @@ MESSAGES: dict[str, str] = {
     "storage.destination_removed": "Destination {name} removed",
     "library.template_created": "Naming template '{name}' created",
     "library.template_updated": "Naming template '{name}' updated",
+    "wanted.unlocked": "Unlocked {name}: automatic search may grab it again",
+    "wanted.redownload": "Redownloading {name}",
     "search.completed": "Searched for {name}: {results} results, {accepted} acceptable",
 }
 

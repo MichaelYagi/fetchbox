@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from fastapi import APIRouter, Depends, Header, Request, Response
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 from sqlalchemy import select
 
@@ -16,6 +17,8 @@ from fetchbox.core.schedules import Schedule, validate_interval
 from fetchbox.core.state import State
 from fetchbox.modules.auth.deps import CurrentPrincipal, require
 from fetchbox.modules.automation.search import AutoSearch
+from fetchbox.modules.automation.unlock import UnlockService
+from fetchbox.modules.media.router import WantedOut
 from fetchbox.modules.system.jobs_router import JobOut, accepted
 
 router = APIRouter(prefix="/automation", tags=["automation"])
@@ -203,3 +206,98 @@ async def search_title(
         return accepted(await svc.request(items[0].id))
 
     return await idempotent(state.db, request, actor_id=p.id, key=idempotency_key, run=run)
+
+
+# ---- unlock / redownload ------------------------------------------------------------------
+
+
+class UnlockIn(BaseModel):
+    delete_file: bool = Field(
+        default=False, description="Delete the current file (to the recycle folder) first"
+    )
+
+
+class RedownloadIn(BaseModel):
+    blocklist: bool = Field(
+        default=True, description="Blocklist the release the current file came from"
+    )
+    delete_file: bool = Field(
+        default=True,
+        description="Delete the current file now (to the recycle folder); kept, it is "
+        "replaced when the new download is imported",
+    )
+
+
+class UnlockOut(BaseModel):
+    wanted: WantedOut
+    search_job_id: str | None = Field(
+        description="The search queued for the item; null if one was already queued"
+    )
+
+
+def _unlocker(request: Request) -> UnlockService:
+    svc: UnlockService = request.app.state.unlock
+    return svc
+
+
+@search_router.post(
+    "/wanted/{wanted_id}/unlock",
+    response_model=UnlockOut,
+    dependencies=_search,
+    responses=pr(404, 409),
+)
+async def unlock_wanted(
+    wanted_id: str,
+    request: Request,
+    state: State,
+    p: CurrentPrincipal,
+    body: UnlockIn | None = None,
+    idempotency_key: IdempotencyKey = None,
+) -> Response:
+    """Let automation act on an acquired item again, and search for it. With the file
+    kept, only a real upgrade of it is grabbed. 409 while the item is downloading."""
+    b = body or UnlockIn()
+
+    async def run() -> Response:
+        w, job = await _unlocker(request).unlock(
+            wanted_id, delete_file=b.delete_file, actor=p.actor()
+        )
+        return _unlock_response(w, job)
+
+    return await idempotent(state.db, request, actor_id=p.id, key=idempotency_key, run=run)
+
+
+@search_router.post(
+    "/wanted/{wanted_id}/redownload",
+    response_model=UnlockOut,
+    dependencies=_search,
+    responses=pr(404, 409),
+)
+async def redownload_wanted(
+    wanted_id: str,
+    request: Request,
+    state: State,
+    p: CurrentPrincipal,
+    body: RedownloadIn | None = None,
+    idempotency_key: IdempotencyKey = None,
+) -> Response:
+    """Unlock, blocklist the current release, delete the current file (both optional),
+    and search: the item is missing again, so any acceptable release is grabbed."""
+    b = body or RedownloadIn()
+
+    async def run() -> Response:
+        w, job = await _unlocker(request).unlock(
+            wanted_id,
+            delete_file=b.delete_file,
+            blocklist=b.blocklist,
+            redownload=True,
+            actor=p.actor(),
+        )
+        return _unlock_response(w, job)
+
+    return await idempotent(state.db, request, actor_id=p.id, key=idempotency_key, run=run)
+
+
+def _unlock_response(w: Any, job: str | None) -> Response:
+    out = UnlockOut(wanted=WantedOut.model_validate(w), search_job_id=job)
+    return JSONResponse(out.model_dump(mode="json"), headers={"ETag": out.wanted.etag})

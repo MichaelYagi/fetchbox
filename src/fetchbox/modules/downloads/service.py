@@ -278,13 +278,18 @@ class DownloadsService:
             existing = await s.scalar(
                 select(Download).where(Download.client_id == row.id, Download.client_ref == ref)
             )
-            if existing is not None and existing.status in (*ACTIVE, "completed"):
+            if existing is not None and existing.status in ACTIVE:
                 return {"skipped": f"torrent already in the client as download {existing.id}"}
+            # A completed download of the same torrent (still seeding; say a redownload
+            # without blocklisting) is reused: verified again, then imported again.
+            reused = existing is not None and existing.status == "completed"
             d = existing or Download(client_id=row.id, client_ref=ref)
             d.grab_id, d.name, d.media_kind = grab.id, grab.release_title, media_kind
             d.status, d.progress, d.error, d.attempts = "queued", 0.0, None, 0
             d.save_path, d.last_progress_at, d.created_at = str(save), now, now
             d.started_at = d.completed_at = d.removed_at = None
+            d.import_status = d.import_error = d.import_retry_at = d.imported_at = None
+            d.import_attempts = 0
             if existing is None:
                 s.add(d)
             await s.execute(
@@ -294,6 +299,9 @@ class DownloadsService:
                 .execution_options(synchronize_session=False)
             )
             await s.commit()
+        if reused:
+            with contextlib.suppress(DownloadClientError):
+                await client.recheck(ref)
         await self._emit("download.queued", d, name=d.name)
         self._wake.set()
         return {"download_id": d.id, "client": row.name, "ref": ref}

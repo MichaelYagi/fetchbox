@@ -333,3 +333,104 @@ async def test_local_storage_two_phase_ops(tmp_path: Path) -> None:
     report = await s.check_access(str(tmp_path / "b"), link_source=str(tmp_path))
     assert report.writable and report.deletable and report.hardlink_with and report.same_fs_as
     assert not (await s.check_access(str(tmp_path / "nope"))).exists
+
+
+async def _job_done(c: httpx.AsyncClient, job_id: str) -> dict[str, Any]:
+    async def done() -> bool:
+        return (await c.get(f"/jobs/{job_id}")).json()["status"] in ("succeeded", "failed")
+
+    await until(done, within=20)
+    out: dict[str, Any] = (await c.get(f"/jobs/{job_id}")).json()
+    return out
+
+
+async def test_unlock_then_redownload(
+    c: httpx.AsyncClient,
+    fakes: Fakes,
+    server: Running,
+    made: Made,
+    seed: BuiltinClient,
+    settings: Any,
+) -> None:
+    movie = await _acquire(c, fakes, server, made, seed)
+    wid = movie["wanted"][0]["id"]
+    library = settings.downloads_dir / "Movies"
+
+    # unlock, file kept: the search only takes a real upgrade, and the one release isn't
+    r = await c.post(f"/wanted/{wid}/unlock")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["wanted"]["lock"] is None and body["wanted"]["state"] == "acquired"
+    assert r.headers["ETag"] == body["wanted"]["etag"]
+    job = await _job_done(c, body["search_job_id"])
+    assert job["status"] == "succeeded" and job["result"]["mode"] == "upgrade"
+    assert job["result"]["accepted"] == 0 and "grabbed" not in job["result"]
+    assert (library / EXPECTED).is_file()
+
+    # redownload: blocklist the release, recycle the file, missing again
+    r = await c.post(f"/wanted/{wid}/redownload")
+    assert r.status_code == 200, r.text
+    w = r.json()["wanted"]
+    assert w["state"] == "missing" and w["lock"] is None and w["cutoff_met"] is False
+    assert not (library / EXPECTED).exists()
+    assert list((library / ".fetchbox-recycle").rglob("*.mkv"))
+    assert (await c.get(f"/titles/{movie['id']}/files")).json() == []
+    [b] = (await c.get("/blocklist")).json()
+    assert b["release_title"] == NAME and b["reason"] == "redownload"
+    job = await _job_done(c, r.json()["search_job_id"])
+    assert job["result"]["accepted"] == 0  # the only release is blocklisted now
+    assert len((await c.get("/grabs", params={"wanted_item_id": wid})).json()) == 1
+
+    hist = [h["type"] for h in (await c.get(f"/titles/{movie['id']}/history")).json()["items"]]
+    assert hist == ["unlocked", "deleted", "unlocked", "imported", "grabbed"]
+    acts = [a["message"] for a in (await c.get("/activity", params={"limit": 50})).json()["items"]]
+    assert "Redownloading Dune" in acts and any(m.startswith("Unlocked Dune") for m in acts)
+
+    assert (await c.post("/wanted/nope/unlock")).status_code == 404
+    assert (await c.post("/wanted/nope/redownload")).status_code == 404
+
+
+async def test_redownload_keeps_the_file_until_the_new_import(
+    c: httpx.AsyncClient,
+    fakes: Fakes,
+    server: Running,
+    made: Made,
+    seed: BuiltinClient,
+    settings: Any,
+) -> None:
+    movie = await _acquire(c, fakes, server, made, seed)
+    wid = movie["wanted"][0]["id"]
+    r = await c.post(f"/wanted/{wid}/redownload", json={"blocklist": False, "delete_file": False})
+    assert r.status_code == 200, r.text
+    assert r.json()["wanted"]["state"] == "missing"
+    assert (settings.downloads_dir / "Movies" / EXPECTED).is_file()
+    assert len((await c.get(f"/titles/{movie['id']}/files")).json()) == 1
+    assert (await c.get("/blocklist")).json() == []
+    # not blocklisted: the same release may be grabbed again (say the file was corrupt)
+    job = await _job_done(c, r.json()["search_job_id"])
+    assert job["result"]["mode"] == "missing" and job["result"]["grabbed"], job
+    # The torrent is still seeding from the first download: that download is reused,
+    # verified again and imported again (the file is already in place).
+
+    async def reimported() -> bool:
+        hist = (await c.get(f"/titles/{movie['id']}/history")).json()["items"]
+        return [h["type"] for h in hist][:3] == ["imported", "grabbed", "unlocked"]
+
+    await until(reimported, within=40)
+    [f] = (await c.get(f"/titles/{movie['id']}/files")).json()
+    assert f["relative_path"] == EXPECTED
+    w = (await c.get(f"/titles/{movie['id']}")).json()["wanted"][0]
+    assert w["state"] == "acquired" and w["lock"] == "acquired"
+
+
+async def test_unlock_a_busy_or_fileless_item(
+    c: httpx.AsyncClient, fakes: Fakes, server: Running
+) -> None:
+    movie = await _movie(c)
+    wid = movie["wanted"][0]["id"]
+    await _indexer(c, fakes, "one", [Item(NAME, infohash="f" * 40, link="http://one/dl/0")])
+    rel = (await c.get("/releases", params={"wanted_item_id": wid})).json()["releases"][0]
+    assert (await c.post("/grabs", json={"release_id": rel["release_id"]})).status_code == 201
+    r = await c.post(f"/wanted/{wid}/unlock")
+    assert r.status_code == 409, r.text
+    assert (await c.post(f"/wanted/{wid}/redownload")).status_code == 409

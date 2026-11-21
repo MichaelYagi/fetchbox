@@ -130,7 +130,11 @@ Remaining unchecked items above are Phase 0 hardening, not gate blockers.
       missing every 6 h, upgrades (acquired, below cutoff, upgrades allowed, file present)
       every 24 h; `POST /wanted/{id}/search`, `POST /titles/{id}/search` (202 + job).
       Upgrade search judges results against the current file (interactive too)
-- [ ] Redownload / unlock (`POST /wanted/{id}/unlock|redownload`)
+- [x] Redownload / unlock (`modules/automation/unlock.py`): `POST /wanted/{id}/unlock`
+      (clear the lock, optional delete to recycle, `unlocked` history, search: with the
+      file kept only a real upgrade is grabbed) and `POST /wanted/{id}/redownload`
+      (blocklist the file's release and recycle the file, both default on; the item is
+      `missing`, so any acceptable release is grabbed and replaces a kept file)
 - [ ] mediainfo (real resolution/codec/HDR from the file)
 - [ ] Minimal UI (search, add, queue, library)
 
@@ -254,6 +258,11 @@ three OSes; a backup restores on a fresh machine.
   `/automation/schedules`. No search runs while no indexer is enabled; items stay due.
 - The `searching` state is held only during an automatic search of a missing item;
   a crash leaves it to startup recovery (back to `missing`, due).
+- Unlock / redownload respond 200 with the item and `search_job_id` (spec leaves the
+  response open); events `wanted.unlocked` / `wanted.redownload`. "Already grabbed" and
+  grab de-duplication only count grabs since the item's last unlock, so a redownload
+  without blocklisting can take the same release again; if that torrent is still
+  seeding, its completed download is reused (rechecked, imported again).
 - A failed upgrade download returns its item to `acquired` (it still has its file),
   not `missing`. Removing a download by hand doesn't trigger a new search.
 

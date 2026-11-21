@@ -11,8 +11,8 @@ nothing depends on an event arriving: a dropped event only delays the search to 
 sweep. With ``search.automatic`` off, only NULL items (explicit requests) are searched.
 
 Eligible: monitored, not busy (grabbed / downloading / importing), and either not yet
-acquired and unlocked, or acquired below the cutoff with upgrades allowed and the file
-still there. A locked item whose file is gone is never re-grabbed here (that's
+acquired and unlocked, or acquired below the cutoff with upgrades allowed, the file
+still there and no manual lock. A locked item whose file is gone is never re-grabbed here (that's
 redownload). Manual searches (``POST /wanted/{id}/search``) skip the monitored and lock
 checks; the decision engine still only accepts real upgrades for acquired items.
 
@@ -142,7 +142,7 @@ class AutoSearch:
         missing = (WantedItem.state == "missing") & WantedItem.lock.is_(None)
         upgrade = (
             (WantedItem.state == "acquired")
-            & (WantedItem.lock == "acquired")
+            & or_(WantedItem.lock.is_(None), WantedItem.lock == "acquired")
             & WantedItem.cutoff_met.is_(False)
             & QualityProfile.upgrade_allowed.is_(True)
         )

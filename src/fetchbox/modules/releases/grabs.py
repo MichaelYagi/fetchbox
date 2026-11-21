@@ -12,9 +12,10 @@ Downloading starts when the downloads module lands; it will pick grabs up from t
 from __future__ import annotations
 
 from collections.abc import Sequence
+from datetime import datetime
 from typing import Any, Literal
 
-from sqlalchemy import or_, select, update
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from fetchbox.core.db import Database
@@ -39,12 +40,27 @@ async def blocklist_keys(s: AsyncSession, title_id: str) -> list[ReleaseKey]:
     return [ReleaseKey(r.info_hash, r.guid, r.release_title) for r in rows]
 
 
+async def last_unlock(s: AsyncSession, wanted_item_ids: Sequence[str]) -> datetime | None:
+    """When any of the items was last unlocked: grabs before that don't count as
+    "already grabbed" any more."""
+    out: datetime | None = await s.scalar(
+        select(func.max(HistoryEvent.created_at)).where(
+            HistoryEvent.wanted_item_id.in_(wanted_item_ids), HistoryEvent.type == "unlocked"
+        )
+    )
+    return out
+
+
 async def grabbed_keys(s: AsyncSession, wanted_item_id: str) -> list[ReleaseKey]:
+    """Releases already grabbed for the item, since it was last unlocked: a redownload
+    without blocklisting may take the same release again."""
     q = (
         select(Grab)
         .join(GrabItem, GrabItem.grab_id == Grab.id)
         .where(GrabItem.wanted_item_id == wanted_item_id)
     )
+    if (since := await last_unlock(s, [wanted_item_id])) is not None:
+        q = q.where(Grab.created_at > since)
     rows = (await s.execute(q)).scalars()
     return [
         ReleaseKey(r.info_hash, r.release.get("candidate", {}).get("guid"), r.release_title)
@@ -84,6 +100,8 @@ class GrabsService:
                 .join(GrabItem, GrabItem.grab_id == Grab.id)
                 .where(same, GrabItem.wanted_item_id.in_(ids))
             )
+            if (since := await last_unlock(s, ids)) is not None:
+                dup_q = dup_q.where(Grab.created_at > since)
             if (dup := (await s.execute(dup_q)).scalars().first()) is not None:
                 return dup, False
 

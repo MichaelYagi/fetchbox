@@ -104,7 +104,10 @@ class ReleasesService:
                 slug="validation",
                 errors=[FieldError(field="wanted_item_id", message="series are not supported yet")],
             )
-        target = movie_target(title, await self.existing(wanted.id))
+        # Only an acquired item is compared with its file: after a redownload the item is
+        # missing and the kept file is just replaced.
+        existing = await self.existing(wanted.id) if wanted.state == "acquired" else None
+        target = movie_target(title, existing)
         ids = {"tmdb": str(title.tmdb_id)} if title.tmdb_id else {}
         if title.imdb_id:
             ids["imdb"] = title.imdb_id

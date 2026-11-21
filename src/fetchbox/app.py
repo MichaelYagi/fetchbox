@@ -25,6 +25,7 @@ from fetchbox.modules.auth import router as auth_router
 from fetchbox.modules.auth.service import AuthService
 from fetchbox.modules.automation import router as automation_router
 from fetchbox.modules.automation.search import AutoSearch
+from fetchbox.modules.automation.unlock import UnlockService
 from fetchbox.modules.discovery import router as discovery_router
 from fetchbox.modules.discovery.service import DiscoveryService
 from fetchbox.modules.downloads import router as downloads_router
@@ -196,6 +197,9 @@ def create_app(
         library = LibraryService(db, bus, jobs, storage, downloads, profiles)
         library.register_jobs()
         app.state.library = library
+        app.state.unlock = UnlockService(
+            db, bus, library=library, grabs=grabs, autosearch=autosearch
+        )
         await storage.seed(await library.seed())
         await storage.recover()
 
