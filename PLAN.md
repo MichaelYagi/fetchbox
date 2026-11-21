@@ -196,6 +196,11 @@ season-pack rule; RSS sync, missing search, upgrades
       first, then gap filling); automatic search per season, interactive per episode/season
 - [ ] TV import: map each file to its episodes (multi-episode files, season packs);
       episode naming; upgrades replace only after the new import succeeds
+- [x] Prowlarr indexer kind (`providers/indexers/prowlarr.py`): Prowlarr's address + API
+      key; its enabled torrent indexers (listed from `/api/v1/indexer`, every 10 min) are
+      searched together through their Torznab feeds; one failing doesn't fail the search.
+      Checked against a real Prowlarr 3.0.2. Pasted API keys are trimmed; a Torznab URL that
+      is an app's own API (Prowlarr's main address) gets an error saying so
 - [ ] RSS sync (every 15 min): each indexer's feed, matched against all wanted items
 - [ ] Calendar (`GET /calendar?start=&end=`) + UI: series add, series page, calendar
 - [ ] Optional TVDB (scene / absolute numbering)

@@ -21,6 +21,7 @@ import httpx
 from pydantic import BaseModel, Field, SecretStr, field_validator
 
 from fetchbox.core.providers import TestResult, registry
+from fetchbox.core.secrets import strip_key
 from fetchbox.providers.indexers import (
     IndexerError,
     IndexerProvider,
@@ -30,7 +31,7 @@ from fetchbox.providers.indexers import (
 )
 
 TORZNAB_NS = "{http://torznab.com/schemas/2015/feed}"
-# No wildcard: some servers ignore q-values and answer */* with JSON.
+# No wildcard, so an app's own JSON API isn't mistaken for a feed.
 ACCEPT = "application/rss+xml, application/xml, text/xml"
 TIMEOUT = httpx.Timeout(30.0, connect=10.0)
 MAX_BODY = 20 * 1024 * 1024
@@ -39,11 +40,21 @@ CAPS_TTL = 3600.0
 _HASH = re.compile(r"^[0-9a-fA-F]{40}$")
 _BTIH = re.compile(r"urn:btih:([0-9a-zA-Z]{32,40})", re.I)
 # Newznab error codes: 100-103 account problems, 500/501 limits.
+NOT_A_FEED = (
+    "this address is an app's own API, not a Torznab feed. For Prowlarr, use one "
+    "indexer's Torznab URL, e.g. http://localhost:9696/3 (Indexers > the indexer > Copy "
+    "Torznab URL); Prowlarr has no feed for all indexers at once"
+)
 _AUTH_CODES = {"100", "101", "102", "103"}
 _LIMIT_CODES = {"500", "501"}
 
 
 class TorznabSettings(BaseModel):
+    @field_validator("api_key", mode="before")
+    @classmethod
+    def _strip_key(cls, v: object) -> object:
+        return strip_key(v)  # a pasted key often carries a trailing space or newline
+
     url: str = Field(
         description="Base URL, e.g. http://localhost:9696/1 (Prowlarr) or "
         "http://localhost:9117/api/v2.0/indexers/all/results/torznab (Jackett)"
@@ -306,6 +317,17 @@ class TorznabProvider(IndexerProvider):
         if r.status == 429:
             retry = _float(r.headers.get("Retry-After"))
             raise IndexerError("rate_limited", "indexer rate limit hit", retry_after=retry)
+        ctype = (r.headers.get("content-type") or "").lower()
+        if r.status == 406 or (r.status < 400 and "json" in ctype):
+            # Seen with Prowlarr's main address: its /api is Prowlarr's own JSON API (406
+            # to an XML Accept header), not a feed. Every indexer has its own.
+            raise IndexerError("config", NOT_A_FEED)
+        if r.status == 404:
+            raise IndexerError(
+                "config",
+                "nothing at this URL (HTTP 404): for Prowlarr, check the indexer number in "
+                "http://host:9696/<number> (Indexers > the indexer > Copy Torznab URL)",
+            )
         if r.status >= 400:
             # Torznab servers often put an <error> document in a 4xx/5xx body.
             if r.body.lstrip().startswith(b"<"):

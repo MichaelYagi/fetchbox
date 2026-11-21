@@ -154,3 +154,57 @@ def test_non_xml_replies_say_what_came_back() -> None:
     with pytest.raises(IndexerError, match="an empty body"):
         _parse_xml(b"", None)
     assert _parse_xml(b"\xef\xbb\xbf<rss/>").tag == "rss"  # a UTF-8 BOM is fine
+
+
+async def test_prowlarr_main_address_and_unknown_indexer() -> None:
+    """Responses as a real Prowlarr 3.0 gives them (checked against one): its main
+    address's /api is Prowlarr's own JSON API (406 to an XML Accept header), an unknown
+    indexer number is a 404, and http://host:9696/<n> is the indexer's feed."""
+    from typing import Any
+
+    import httpx
+
+    from fetchbox.providers.indexers import IndexerError
+    from fetchbox.providers.indexers.torznab import TorznabProvider, TorznabSettings
+    from tests.fake_torznab import CAPS
+
+    def prowlarr(req: httpx.Request) -> httpx.Response:
+        if req.url.path == "/api":
+            if "json" in req.headers.get("accept", "") or "*/*" in req.headers.get("accept", ""):
+                return httpx.Response(200, json={"current": "v1", "deprecated": []})
+            return httpx.Response(406)
+        if req.url.path == "/1/api":
+            return httpx.Response(200, text=CAPS, headers={"content-type": "application/rss+xml"})
+        return httpx.Response(404)
+
+    async def check(url: str) -> Any:
+        p = TorznabProvider(
+            TorznabSettings(url=url, api_key="k"), transport=httpx.MockTransport(prowlarr)
+        )
+        try:
+            return await p.test()
+        finally:
+            await p.aclose()
+
+    assert (await check("http://prowlarr:9696/1")).ok
+    bare = await check("http://prowlarr:9696")
+    assert not bare.ok and "Copy Torznab URL" in bare.message and bare.details["kind"] == "config"
+    missing = await check("http://prowlarr:9696/9")
+    assert not missing.ok and "indexer number" in missing.message
+    with pytest.raises(IndexerError, match="own API"):
+        p = TorznabProvider(
+            TorznabSettings(url="http://prowlarr:9696", api_key="k"),
+            transport=httpx.MockTransport(lambda r: httpx.Response(200, json={"current": "v1"})),
+        )
+        try:
+            await p.caps(fresh=True)
+        finally:
+            await p.aclose()
+
+
+def test_pasted_key_whitespace_is_dropped() -> None:
+    """A key copied from a web page often brings a space or newline along: Prowlarr
+    then answers 401 (seen by a user). Keys never contain whitespace."""
+    s = TorznabSettings(url="http://x/1", api_key="  abc123\n")
+    assert s.api_key is not None and s.api_key.get_secret_value() == "abc123"
+    assert TorznabSettings(url="http://x/1", api_key="   ").api_key is None

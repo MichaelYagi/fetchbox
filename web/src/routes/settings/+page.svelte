@@ -15,7 +15,7 @@
 	let busy = $state('');
 
 	let tmdbKey = $state('');
-	let newIndexer = $state({ kind: 'torznab', name: '', url: '', api_key: '', definition: '' });
+	let newIndexer = $state({ kind: 'prowlarr', name: '', url: '', api_key: '', definition: '' });
 	let newClient = $state({ kind: 'qbittorrent', name: '', url: '', username: '', password: '' });
 	// Inline editing: one row at a time. Secrets left blank keep what is stored.
 	let editing = $state<string | null>(null);
@@ -50,7 +50,7 @@
 	function saveIndexer(e: SubmitEvent, i: S['IndexerOut']) {
 		e.preventDefault();
 		const settings: Record<string, unknown> = {};
-		if (i.kind === 'torznab') settings.url = draft.url;
+		if (i.kind === 'torznab' || i.kind === 'prowlarr') settings.url = draft.url;
 		if (draft.api_key.trim()) settings.api_key = draft.api_key.trim();
 		const body: Record<string, unknown> = { name: draft.name, priority: draft.priority };
 		if (Object.keys(settings).length) body.settings = settings;
@@ -124,15 +124,19 @@
 		e.preventDefault();
 		const n = newIndexer;
 		const body =
-			n.kind === 'torznab'
-				? { kind: 'torznab', name: n.name, settings: { url: n.url, api_key: n.api_key || null } }
+			n.kind === 'torznab' || n.kind === 'prowlarr'
+				? {
+						kind: n.kind,
+						name: n.name || (n.kind === 'prowlarr' ? 'Prowlarr' : 'Torznab'),
+						settings: { url: n.url, api_key: n.api_key || null }
+					}
 				: {
 						kind: 'definition',
 						name: n.name || definitions.find((d) => d.slug === n.definition)?.name,
 						settings: { definition: n.definition, ...(n.api_key ? { api_key: n.api_key } : {}) }
 					};
 		act('add-indexer', () => post('/indexers', body), 'Indexer added.').then(() => {
-			if (!error) newIndexer = { kind: 'torznab', name: '', url: '', api_key: '', definition: '' };
+			if (!error) newIndexer = { kind: 'prowlarr', name: '', url: '', api_key: '', definition: '' };
 		});
 	}
 
@@ -233,7 +237,7 @@
 									<td colspan="4">
 										<form class="row" onsubmit={(e) => saveIndexer(e, i)}>
 											<label>Name <input bind:value={draft.name} required /></label>
-											{#if i.kind === 'torznab'}
+											{#if i.kind === 'torznab' || i.kind === 'prowlarr'}
 												<label class="grow">URL <input bind:value={draft.url} required placeholder="http://localhost:9696/3" /></label>
 											{/if}
 											<label>API key <input type="password" bind:value={draft.api_key} placeholder="unchanged" autocomplete="off" /></label>
@@ -253,7 +257,8 @@
 			<strong>Add an indexer</strong>
 			<div class="row">
 				<select bind:value={newIndexer.kind} aria-label="Kind">
-					<option value="torznab">Torznab (Prowlarr, Jackett…)</option>
+					<option value="prowlarr">Prowlarr (all its indexers)</option>
+					<option value="torznab">Torznab feed (Jackett, one Prowlarr indexer…)</option>
 					<option value="definition">Built-in definition</option>
 				</select>
 				{#if newIndexer.kind === 'definition'}
@@ -262,15 +267,24 @@
 						{#each definitions as d (d.slug)}<option value={d.slug}>{d.name}</option>{/each}
 					</select>
 				{/if}
-				<input placeholder="Name" bind:value={newIndexer.name} required={newIndexer.kind === 'torznab'} />
-				{#if newIndexer.kind === 'torznab'}
-					<input class="grow" placeholder="URL, e.g. http://localhost:9696/1" bind:value={newIndexer.url} required />
+				<input placeholder="Name" bind:value={newIndexer.name} />
+				{#if newIndexer.kind === 'prowlarr'}
+					<input class="grow" placeholder="Prowlarr address, e.g. http://192.168.1.10:9696" bind:value={newIndexer.url} required />
+				{:else if newIndexer.kind === 'torznab'}
+					<input class="grow" placeholder="Torznab URL" bind:value={newIndexer.url} required />
 				{/if}
-				{#if newIndexer.kind === 'torznab' || needsKey}
+				{#if newIndexer.kind === 'torznab' || newIndexer.kind === 'prowlarr' || needsKey}
 					<input type="password" placeholder="API key" bind:value={newIndexer.api_key} autocomplete="off" />
 				{/if}
 				<button class="primary" disabled={busy === 'add-indexer'}>Add</button>
 			</div>
+			{#if newIndexer.kind === 'prowlarr'}
+				<p class="muted small">
+					The address you open Prowlarr at, and its API key from Prowlarr's Settings → General →
+					Security. Every enabled indexer in Prowlarr is searched; ones you add there later are
+					picked up automatically.
+				</p>
+			{/if}
 			{#if defn}<p class="muted small">{defn.description}</p>{/if}
 		</form>
 	</section>

@@ -22,10 +22,10 @@ keys.
 | | Needed for | Where to get it |
 | --- | --- | --- |
 | **TMDB API key** (free) | Always: finding titles, years and episode lists | [themoviedb.org/settings/api](https://www.themoviedb.org/settings/api); paste it in Settings → Movie information |
-| **A Torznab indexer** | Mainstream movies and shows | [Prowlarr](https://prowlarr.com) or [Jackett](https://github.com/Jackett/Jackett), set up with the sites you use; add it in Settings → Indexers (URL + API key) |
+| **Prowlarr** (or Jackett) | Mainstream movies and shows | [Prowlarr](https://prowlarr.com), set up with the sites you use. In Settings → Indexers, add **Prowlarr** with the address you open it at (e.g. `http://192.168.1.10:9696`) and its API key (Prowlarr: Settings → General → Security). Every enabled Prowlarr indexer is searched, including ones added later. For Jackett or a single feed, use **Torznab feed** with that feed's URL |
 | Download client | Nothing: the built-in engine works on its own | Optional: qBittorrent, Transmission or Deluge in Settings → Download clients |
 
-Without a Torznab indexer, Fetchbox searches only:
+Without Prowlarr or Jackett, Fetchbox searches only:
 
 - **Internet Archive** (built in): films whose uploader marked them public domain or
   Creative Commons. Their releases don't state a quality, so add them with the **Any**
