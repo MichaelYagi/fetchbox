@@ -313,7 +313,7 @@
 								<button class="small" onclick={() => act(c.id, () => patch(`/download-clients/${c.id}`, { enabled: !c.enabled }, c.etag))} disabled={!!busy}>
 									{c.enabled ? 'Disable' : 'Enable'}
 								</button>
-								{#if c.kind !== 'builtin'}
+								{#if c.kind !== 'builtin' && c.kind !== 'direct'}
 									<button class="small danger" onclick={() => confirm(`Remove ${c.name}?`) && act(c.id, () => del(`/download-clients/${c.id}`, undefined, c.etag))} disabled={!!busy}>Remove</button>
 								{/if}
 							</div></td>
