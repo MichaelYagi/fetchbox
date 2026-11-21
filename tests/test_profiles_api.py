@@ -28,11 +28,11 @@ async def test_defaults_are_seeded_once(server: Running, settings: Any) -> None:
     async with server.client() as c:
         profiles = (await c.get("/quality-profiles")).json()
         formats = (await c.get("/custom-formats")).json()
-    assert [p["name"] for p in profiles] == ["4K", "Any", "Standard HD"]
-    hd = next(p for p in profiles if p["name"] == "Standard HD")
+    assert [p["name"] for p in profiles] == ["1080p", "2160p", "480p", "720p", "Any"]
+    hd = next(p for p in profiles if p["name"] == "1080p")
     assert hd["cutoff"] == "WEB 1080p" and hd["languages"] == ["original"]
     assert {f["name"] for f in formats} >= {"Hardcoded subtitles", "3D", "Dolby Vision"}
-    four_k = next(p for p in profiles if p["name"] == "4K")
+    four_k = next(p for p in profiles if p["name"] == "2160p")
     dv = next(f for f in formats if f["name"] == "Dolby Vision")
     assert four_k["format_scores"][dv["id"]] == 20
 
@@ -45,12 +45,10 @@ async def test_seed_does_not_overwrite_edits(settings: Any) -> None:
 
     async with running(settings) as srv, srv.client() as c:
         key = (await c.post("/auth/keys", json={"name": "t", "scopes": ["*"]})).json()["key"]
-        hd = next(
-            p for p in (await c.get("/quality-profiles")).json() if p["name"] == "Standard HD"
-        )
+        hd = next(p for p in (await c.get("/quality-profiles")).json() if p["name"] == "1080p")
         r = await c.patch(f"/quality-profiles/{hd['id']}", json={"cutoff": "Bluray-1080p"})
         assert r.status_code == 200
-        four_k = next(p for p in (await c.get("/quality-profiles")).json() if p["name"] == "4K")
+        four_k = next(p for p in (await c.get("/quality-profiles")).json() if p["name"] == "2160p")
         assert (await c.delete(f"/quality-profiles/{four_k['id']}")).status_code == 204
 
     app = create_app(settings, on_bootstrap_key=lambda _k: None)  # restart: no new key
@@ -59,8 +57,8 @@ async def test_seed_does_not_overwrite_edits(settings: Any) -> None:
         Running(app, key).client() as c,
     ):
         names = {p["name"]: p for p in (await c.get("/quality-profiles")).json()}
-    assert set(names) == {"Any", "Standard HD"}  # a deleted default stays deleted
-    assert names["Standard HD"]["cutoff"] == "Bluray-1080p"
+    assert set(names) == {"1080p", "480p", "720p", "Any"}  # a deleted default stays deleted
+    assert names["1080p"]["cutoff"] == "Bluray-1080p"
 
 
 async def test_qualities_catalog(client: httpx.AsyncClient) -> None:
@@ -157,7 +155,7 @@ async def test_custom_format_crud_and_delete_cleans_profiles(client: httpx.Async
 async def test_evaluate(client: httpx.AsyncClient) -> None:
     profiles = {p["name"]: p for p in (await client.get("/quality-profiles")).json()}
     r = await client.post(
-        f"/quality-profiles/{profiles['4K']['id']}/evaluate",
+        f"/quality-profiles/{profiles['2160p']['id']}/evaluate",
         json={
             "original_language": "en",
             "runtime_minutes": 120,
@@ -174,7 +172,7 @@ async def test_evaluate(client: httpx.AsyncClient) -> None:
     assert dv["allowed"] and dv["tier"] == "WEB 2160p" and dv["cutoff_met"]
     assert {m["name"] for m in dv["matched_formats"]} == {"Dolby Vision", "Atmos"}
     assert dv["format_score"] == 25 and dv["size_ok"] is True and dv["language_ok"]
-    assert bluray["allowed"] and not bluray["cutoff_met"] and bluray["size_ok"] is False
+    assert not bluray["allowed"] and bluray["tier"] is None  # 2160p takes 2160p only
     assert not cam["allowed"] and cam["tier"] is None and cam["size_ok"] is None
     assert not french["language_ok"] and not french["meets_min_score"]
     assert dv["parsed"]["group"] == "FLUX"
@@ -194,3 +192,30 @@ async def test_scopes(server: Running) -> None:
         )
         assert r.status_code == 403
         assert (await c.delete(f"/quality-profiles/{pid}")).status_code == 403
+
+
+async def test_old_defaults_get_the_new_ones_once(server: Running) -> None:
+    """A database from before the resolution-named defaults (Standard HD, 4K, Any) gets
+    1080p / 2160p / 720p / 480p added next to its own, once."""
+    from sqlalchemy import delete, update
+
+    from fetchbox.modules.profiles.models import QualityProfile
+
+    db = server.app.state.fb.db
+    async with db.sessionmaker() as s:
+        await s.execute(update(QualityProfile).where(QualityProfile.name == "1080p")
+                        .values(name="Standard HD"))  # fmt: skip
+        await s.execute(update(QualityProfile).where(QualityProfile.name == "2160p")
+                        .values(name="4K"))  # fmt: skip
+        await s.execute(delete(QualityProfile).where(QualityProfile.name.in_(["720p", "480p"])))
+        await s.commit()
+    svc = server.app.state.profiles
+    await svc.seed_defaults()
+    names = sorted(p.name for p in await svc.list_profiles())
+    assert names == ["1080p", "2160p", "480p", "4K", "720p", "Any", "Standard HD"]
+    # once: deleting a new one afterwards sticks
+    async with db.sessionmaker() as s:
+        await s.execute(delete(QualityProfile).where(QualityProfile.name == "480p"))
+        await s.commit()
+    await svc.seed_defaults()
+    assert "480p" not in {p.name for p in await svc.list_profiles()}

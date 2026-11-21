@@ -8,6 +8,7 @@ its login / session rules. ``finish(ref)`` completes a torrent, writing its file
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -41,6 +42,7 @@ class Store:
     limits: dict[str, Any] = field(default_factory=dict)
     local_root: Path | None = None  # client path prefix -> this local folder
     client_root: str = ""
+    default_dir: str = "/downloads"  # where the client saves when not told
 
     def add(self, src: TorrentSource, save_path: str, paused: bool, category: str | None) -> str:
         ref = torrent_ref(src)
@@ -87,10 +89,16 @@ class FakeQbit:
         self.s.calls.append(path)
         if path == "auth/login":
             f = _form(req)
+            # As the real ones answer: 4.x 200 "Ok."/"Fails.", 5.x 204 (empty)/401.
             if (f.get("username"), f.get("password")) != ("admin", "pw"):
-                return httpx.Response(200, text="Fails.")
+                return httpx.Response(401) if self.v5 else httpx.Response(200, text="Fails.")
             self.sid = "s1"
-            return httpx.Response(200, text="Ok.", headers={"set-cookie": "SID=s1; path=/"})
+            cookie = {"set-cookie": "SID=s1; path=/"}
+            return (
+                httpx.Response(204, headers=cookie)
+                if self.v5
+                else httpx.Response(200, text="Ok.", headers=cookie)
+            )
         if req.headers.get("cookie") != f"SID={self.sid}" or self.sid is None:
             return httpx.Response(403, text="Forbidden")
         q = {k: v[0] for k, v in parse_qs(req.url.query.decode()).items()}
@@ -110,18 +118,23 @@ class FakeQbit:
                 if "torrents" in f
                 else TorrentSource(magnet=f["urls"])
             )
-            self.s.add(src, f["savepath"], f.get("paused") == "true", f.get("category"))
+            self.s.add(
+                src,
+                f.get("savepath", self.s.default_dir),
+                f.get("paused") == "true",
+                f.get("category"),
+            )
             return httpx.Response(200, text="Ok.")
         if path == "torrents/info":
             hashes = q.get("hashes", "").split("|") if q.get("hashes") else None
-            ts = [t for t in self.s.torrents.values() if not hashes or t.ref in hashes]
+            ts = [t for t in self.s.torrents.values() if not hashes or self._qid(t.ref) in hashes]
             rows = [self._info(t) for t in ts]
             return httpx.Response(200, json=rows)
         if path == "torrents/files":
-            t = self.s.torrents[q["hash"]]
+            t = self.s.torrents[self._ref(q["hash"])]
             files = [{"name": f"{t.name}/{t.name}.mkv", "size": t.size, "progress": t.progress}]
             return httpx.Response(200, json=files)
-        ref = f.get("hashes", "")
+        ref = self._ref(f.get("hashes", ""))
         if path in ("torrents/pause", "torrents/stop"):
             if (path == "torrents/stop") != (self.v5):
                 return httpx.Response(404)
@@ -141,6 +154,14 @@ class FakeQbit:
             return httpx.Response(404)
         return httpx.Response(200, text="")
 
+    def _qid(self, ref: str) -> str:
+        """qBittorrent 5 names hybrid torrents by their (truncated) v2 hash."""
+        return hashlib.sha256(ref.encode()).hexdigest()[:40] if self.v5 else ref
+
+    def _ref(self, qid: str) -> str:
+        """Like the real one, only qBittorrent's own id is accepted."""
+        return next((r for r in self.s.torrents if self._qid(r) == qid), "unknown:" + qid)
+
     def _info(self, t: T) -> dict[str, Any]:
         done = t.progress >= 1
         state = (
@@ -151,7 +172,8 @@ class FakeQbit:
         if t.error:
             state = "error"
         return {
-            "hash": t.ref, "name": t.name, "state": state, "progress": t.progress,
+            "hash": self._qid(t.ref), "infohash_v1": t.ref,
+            "name": t.name, "state": state, "progress": t.progress,
             "size": t.size, "downloaded": int(t.size * t.progress), "uploaded": t.uploaded,
             "dlspeed": 0, "upspeed": 0, "num_seeds": 0, "num_leechs": 0,
             "ratio": t.uploaded / t.size, "seeding_time": t.seed_seconds,
@@ -182,7 +204,12 @@ class FakeTransmission:
                 else TorrentSource(magnet=a["filename"])
             )
             dup = torrent_ref(src) in self.s.torrents
-            ref = self.s.add(src, a["download-dir"], a["paused"], (a.get("labels") or [None])[0])
+            ref = self.s.add(
+                src,
+                a.get("download-dir", self.s.default_dir),
+                a["paused"],
+                (a.get("labels") or [None])[0],
+            )
             out = {"torrent-duplicate" if dup else "torrent-added": {"hashString": ref}}
         elif m == "torrent-get":
             ids = a.get("ids")
@@ -260,7 +287,11 @@ class FakeDeluge:
                 else TorrentSource(torrent=base64.b64decode(p[1]))
             )
             opts = p[-1]
-            return ok(self.s.add(src, opts["download_location"], opts["add_paused"], None))
+            return ok(
+                self.s.add(
+                    src, opts.get("download_location", self.s.default_dir), opts["add_paused"], None
+                )
+            )
         if m == "core.get_torrents_status":
             ids = p[0].get("id")
             return ok({t.ref: self._t(t) for t in self.s.torrents.values()

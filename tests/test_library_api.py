@@ -243,7 +243,8 @@ async def test_naming_templates_api(c: httpx.AsyncClient) -> None:
         "Dune - Part Two (2024) - WEBDL-2160p DV HDR10 x265-FLUX.mkv"
     )
     assert r.json()["episode"] == (
-        "Severance (2022) {tvdb-371980}/Season 01/Severance - S01E07 - Defiant Jazz WEBDL-1080p.mkv"
+        "Severance (2022) {tvdb-371980}/Season 01/"
+        "Severance - S01E07 - Defiant Jazz [WEBDL-1080p].mkv"
     )
     r = await c.post(
         "/naming-templates/preview", json={"patterns": {"movie_file": "{Title}.{Year}.{Quality}"}}
@@ -481,3 +482,54 @@ async def test_seeding_goal_stops_the_torrent_after_import(
         return any(a["message"].startswith(f"Finished seeding {NAME}") for a in acts)
 
     await until(logged, within=10)
+
+
+async def test_stop_seeding_keeps_files_that_were_not_imported(
+    c: httpx.AsyncClient, server: Running, settings: Any
+) -> None:
+    """Removing a finished download with delete_data only deletes once it was imported;
+    before that its data is the only copy."""
+    from sqlalchemy import update
+
+    from fetchbox.core.events import Actor
+    from fetchbox.modules.downloads.models import Download
+    from fetchbox.modules.releases.models import Grab, GrabItem
+
+    svc = server.app.state.downloads
+    builtin = next(x for x in (await c.get("/download-clients")).json() if x["kind"] == "builtin")
+    calls: list[bool] = []
+
+    class Spy:
+        async def remove(self, ref: str, delete_data: bool) -> None:
+            calls.append(delete_data)
+
+    movie = await _movie(c)
+    async with server.app.state.fb.db.sessionmaker() as s:
+        g = Grab(release={}, release_title="X", reason="manual", actor="t")
+        s.add(g)
+        await s.flush()
+        s.add(GrabItem(grab_id=g.id, wanted_item_id=movie["wanted"][0]["id"]))
+        d = Download(
+            grab_id=g.id,
+            client_id=builtin["id"],
+            client_ref="a" * 40,
+            name="X",
+            media_kind="movie",
+            status="completed",
+            import_status="needs_attention",
+        )
+        s.add(d)
+        await s.commit()
+        did = d.id
+    real = svc.clients[builtin["id"]]
+    svc.clients[builtin["id"]] = Spy()
+    try:
+        await svc.remove(did, delete_data=True, blocklist=False, actor=Actor())
+        assert calls == [False]  # not imported: data kept
+        async with server.app.state.fb.db.sessionmaker() as s:
+            await s.execute(update(Download).values(status="completed", import_status="imported"))
+            await s.commit()
+        await svc.remove(did, delete_data=True, blocklist=False, actor=Actor())
+        assert calls == [False, True]  # imported (hardlink/copy): the torrent's copy may go
+    finally:
+        svc.clients[builtin["id"]] = real

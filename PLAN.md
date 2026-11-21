@@ -177,13 +177,67 @@ built-in Internet Archive definition against a fake archive.org: add a movie (pr
 Dead (1968) {tmdb-10331}/Night of the Living Dead (1968).mp4`. Live, against the real
 archive.org, a licensed 34 MB film downloaded in 4 s and was read by the probe. With a
 Torznab indexer the same flow is `test_library_api.py::test_gate_add_movie_get_named_file`
-(real torrent, real engine). The only setup is a TMDB key.
+(real torrent, real engine). The only setup is a TMDB key; that covers Internet Archive
+films. Mainstream releases also need a Torznab indexer (Prowlarr / Jackett): see README.
 
 ### Phase 2 — TV + automation
 Series/seasons/episodes, six monitor modes; parser TV cases (packs, multi-ep, daily, anime
 absolute, specials; grow the parser corpus from real indexer results); optional TVDB;
 season-pack rule; RSS sync, missing search, upgrades
 (replace only after new import succeeds); calendar.
+
+- [x] Series: add from TMDB with seasons + episodes, one wanted item per episode; six
+      monitor modes (`modules/media/series.py`: all, future, missing, first_season,
+      latest_season, none; specials never by mode); changing the mode re-applies it;
+      refresh (manual and the 12 h schedule) adds new episodes per the mode, and a new
+      season takes over under latest_season; `GET /titles/{id}/episodes`,
+      `PATCH /titles/{id}/seasons/{n}`; series counts on titles; episode fields on /wanted
+- [x] TV search: episode and season queries (tvsearch season/ep, TVDB/IMDb ids, daily shows
+      by air date); interactive `GET /releases?wanted_item_id=` (episode) and
+      `?title_id=&season=` (season: packs and singles; a grabbed pack claims every episode
+      it covers); automatic search sweeps due aired episodes into one job per season
+      (season search, packs first then gap filling, then up to 5 episode searches for
+      what's left); `POST /titles/{id}/search` queues every season with aired episodes to
+      get; unaired episodes are never searched
+- [x] TV import: every video file (no samples) matched to its episodes by its own name
+      (S/E, 1x04, bare S01E05, daily air dates, anime absolute numbers), or the release's
+      for a one-file download; multi-episode files serve every episode they hold
+      (EpisodeEnd); wanted episodes a pack lacks go back to missing and are searched
+      again; series / season / episode naming. Upgrades replace after the new file is in
+      place; a multi-episode file still serving other episodes is kept for them. Default
+      episode pattern brackets the quality (`[WEBDL-1080p]`); installs on the old default
+      are updated
+- [x] Prowlarr indexer kind (`providers/indexers/prowlarr.py`): Prowlarr's address + API
+      key; its enabled torrent indexers (listed from `/api/v1/indexer`, every 10 min) are
+      searched together through their Torznab feeds; one failing doesn't fail the search.
+      Checked against a real Prowlarr 3.0.2. Pasted API keys are trimmed; a Torznab URL that
+      is an app's own API (Prowlarr's main address) gets an error saying so
+- [x] RSS sync (every 15 min, schedule `rss_sync`): every indexer's feed (Prowlarr: each
+      of its indexers; checked against real Prowlarr 3.0.2), releases matched to library
+      titles by name (year for movies), the wanted items they'd cover (monitored, aired /
+      available, not busy) decided and grabbed exactly as a search would (grab reason
+      `rss`); an item's next search is left alone; one broken feed doesn't stop the rest
+- [x] **Library settings UI:** Settings > Library has a Movies card and a TV card: the
+      folder (status, free space, change), naming style presets (Plex / Jellyfin / Emby,
+      Kodi, Simple, Custom), TV season folders (Season 01 / Season 1 / S01 / none), custom
+      patterns with click-to-insert tokens, a live preview tree with edge cases (multi-
+      episode, specials, no year, characters Windows forbids), and "rename existing
+      files" with a review list first (same-disk rename, emptied folders removed, an
+      existing target is never overwritten). Movie and TV naming are stored separately.
+      API: `/library/naming-options`, `/library/naming/{kind}` (+ `/preview`),
+      `/library/rename/{kind}`
+- [x] UI: add page with Movies / TV shows (monitor mode for shows, "start searching" for
+      movies); series page with seasons (monitor, search, choose a release incl. packs) and
+      episodes (monitor, choose a release); library tiles show episodes downloaded
+- [x] Movies: minimum availability (announced / in cinemas / released) from TMDB release
+      dates; automatic search waits until then
+- [x] Calendar (`GET /calendar?start=&end=`, at most 100 days) + Calendar page: month
+      grid (Monday first) of episodes airing and movie cinema / digital / disc dates,
+      coloured by state (downloaded, downloading, out but missing, coming up, not
+      monitored), `?month=YYYY-MM` links; on phones a list of the days with something
+- [ ] ~~Optional TVDB (scene / absolute numbering)~~ moved to Phase 3: needs a paid TVDB key
+- [ ] ~~Grow the parser corpus from real indexer results~~ moved to Phase 3: ongoing, from
+      real Prowlarr results
 
 **Gate:** a "future only" series grabs a new episode via RSS; season-pack selection correct;
 an upgrade replaces the file safely.
@@ -193,7 +247,8 @@ qBittorrent/Transmission/Deluge; path mappings + client path probe; mount nodes,
 checks, all link modes, recycle folder, duplicate detection; existing-library import
 (read-only until apply), match correction, rename preview, maintenance; Plex/Jellyfin/Emby;
 webhook + Discord; interface bind + kill switch; HTML (CSS selector) responses for
-indexer definitions.
+indexer definitions. From Phase 2: optional TVDB (scene / absolute numbering); grow the
+parser corpus from real indexer results.
 
 **Gate:** Docker + remote qBittorrent + NAS mount + Plex: import an existing library, apply,
 Plex refreshes.
@@ -309,8 +364,12 @@ three OSes; a backup restores on a fresh machine.
 - Definitions use fixed setting slots (`base_url`, `api_key`, `username`, `password`,
   `cookie`) plus declared non-secret `options`, so secrets are always encrypted at rest.
   `DELETE /indexer-definitions/{slug}` (user definitions not in use) is an addition.
-- A third default profile, "Any" (Unknown, SD, 720p, 1080p; cutoff 1080p), for releases
-  that don't state a quality; "Unknown" is left out of file names (the file's
+- `GET /titles/{id}/episodes` and `PATCH /titles/{id}/seasons/{n}` (the spec lists no
+  episode endpoints). A series' `TitleOut.wanted` is empty; `episodes` carries counts.
+  An episode with no air date counts as not aired.
+- Default profiles are named by resolution and take only that resolution: 1080p (the UI's
+  default), 2160p, 720p, 480p; plus "Any" (Unknown, SD, 720p, 1080p; cutoff 1080p) for
+  releases that don't state a quality; "Unknown" is left out of file names (the file's
   resolution is used when it can be read).
 - `GET /auth/status` (public): whether first-run setup is pending, for the UI's first
   screen. `fetchbox openapi` prints the API document for client generation.
@@ -362,3 +421,10 @@ three OSes; a backup restores on a fresh machine.
 8. Anime fansub names often state only a resolution (`[SubsPlease] ... (1080p)`), which
    parses to `Unknown-1080p` and no default profile allows it. Decide in Phase 2 whether
    to treat it as WEB-DL (Sonarr's choice) or ship an anime profile.
+9. SQLite "database is locked" under load (writers waiting > busy_timeout 5 s): seen in
+   Phase 1 and reproducible in `tests/test_tv_search.py::test_automatic_search_packs_first_then_episodes`
+   (job claims, poll updates, API-key touches, activity inserts time out). Instrumenting
+   showed no SQLAlchemy connection inside a transaction at the moment of the error, so
+   it is not a transaction left open. Effects are retried or best-effort (claims, polls,
+   key touches), but up to 5 s stalls are possible. Next: try `BEGIN IMMEDIATE` for
+   writing sessions / a dedicated writer connection, and check WAL checkpointing.

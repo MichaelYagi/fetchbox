@@ -36,7 +36,7 @@ async def c(server: Running, tmdb: FakeTmdb) -> AsyncIterator[httpx.AsyncClient]
 
 async def _hd(c: httpx.AsyncClient) -> str:
     profiles = (await c.get("/quality-profiles")).json()
-    return str(next(p["id"] for p in profiles if p["name"] == "Standard HD"))
+    return str(next(p["id"] for p in profiles if p["name"] == "1080p"))
 
 
 async def _add(c: httpx.AsyncClient, tmdb_id: int = 438631, **kw: Any) -> dict[str, Any]:
@@ -185,9 +185,9 @@ async def test_add_validation(c: httpx.AsyncClient) -> None:
     assert r.status_code == 422 and r.json()["errors"][0]["field"] == "body.profile_id"
     r = await c.post("/titles", json={"tmdb_id": 1, "profile_id": await _hd(c)})
     assert r.status_code == 404
-    r = await c.post("/titles", json={"kind": "series", "tmdb_id": 95396,
-                                      "profile_id": await _hd(c)})  # fmt: skip
-    assert r.status_code == 422 and r.json()["errors"][0]["field"] == "body.kind"
+    bad = {"kind": "series", "tmdb_id": 95396, "profile_id": await _hd(c), "monitor_mode": "x"}
+    r = await c.post("/titles", json=bad)
+    assert r.status_code == 422 and r.json()["errors"][0]["field"].endswith("monitor_mode")
     assert (await c.get("/titles")).json()["items"] == []
 
 
@@ -206,7 +206,9 @@ async def test_list_sort_and_page(c: httpx.AsyncClient) -> None:
 
 async def test_update_monitor_and_profile(c: httpx.AsyncClient) -> None:
     t = await _add(c)
-    four_k = next(p["id"] for p in (await c.get("/quality-profiles")).json() if p["name"] == "4K")
+    four_k = next(
+        p["id"] for p in (await c.get("/quality-profiles")).json() if p["name"] == "2160p"
+    )
     r = await c.patch(f"/titles/{t['id']}", json={"monitor_mode": "none", "profile_id": four_k},
                       headers={"If-Match": t["etag"]})  # fmt: skip
     assert r.status_code == 200, r.text

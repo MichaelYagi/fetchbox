@@ -296,6 +296,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/calendar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Calendar
+         * @description Episodes airing and movie release dates between two days (at most 100 days).
+         */
+        get: operations["get_calendar_api_v1_calendar_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/custom-formats": {
         parameters: {
             query?: never;
@@ -1108,6 +1128,95 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/library/naming-options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Naming Options
+         * @description Naming presets, season folder choices and the tokens patterns can use.
+         */
+        get: operations["naming_options_api_v1_library_naming_options_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/library/naming/{kind}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Naming
+         * @description How new movies or episodes are named and where they go, with example names.
+         */
+        get: operations["get_naming_api_v1_library_naming__kind__get"];
+        /**
+         * Put Naming
+         * @description Save the naming for movies or series. Patterns of the other kind are ignored.
+         *     Files already in the library keep their names until renamed.
+         */
+        put: operations["put_naming_api_v1_library_naming__kind__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/library/naming/{kind}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Preview Naming
+         * @description Example names for patterns, before saving them.
+         */
+        post: operations["preview_naming_api_v1_library_naming__kind__preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/library/rename/{kind}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Rename Preview
+         * @description Files whose name differs from what the current naming gives, old and new.
+         */
+        get: operations["rename_preview_api_v1_library_rename__kind__get"];
+        put?: never;
+        /**
+         * Rename Files
+         * @description Rename files to the current naming (on the same disk: nothing is copied).
+         */
+        post: operations["rename_files_api_v1_library_rename__kind__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/naming-templates": {
         parameters: {
             query?: never;
@@ -1249,7 +1358,9 @@ export interface paths {
         };
         /**
          * Interactive Search
-         * @description Search every enabled indexer now and return every result, scored and ranked.
+         * @description Search every enabled indexer now and return every result, scored and ranked: for
+         *     one movie or episode (`wanted_item_id`), or a whole season (`title_id` + `season`,
+         *     which also finds season packs; grabbing one covers every episode it contains).
          */
         get: operations["interactive_search_api_v1_releases_get"];
         put?: never;
@@ -1382,7 +1493,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get Status */
+        /**
+         * Get Status
+         * @description Includes `host`: the machine Fetchbox runs on; every path it shows is there.
+         */
         get: operations["get_status_api_v1_system_status_get"];
         put?: never;
         post?: never;
@@ -1421,7 +1535,8 @@ export interface paths {
         put?: never;
         /**
          * Add Title
-         * @description Add a movie by TMDB id with a quality profile; creates its wanted item.
+         * @description Add a movie or series by TMDB id with a quality profile. A movie gets one wanted
+         *     item; a series one per episode, monitored per `monitor_mode` (specials never).
          */
         post: operations["add_title_api_v1_titles_post"];
         delete?: never;
@@ -1453,6 +1568,26 @@ export interface paths {
          * @description Change the quality profile or monitor mode (movies: `all` or `none`).
          */
         patch: operations["update_title_api_v1_titles__title_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/titles/{title_id}/episodes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Episodes
+         * @description A series' seasons and episodes, each with its wanted item (state, monitored...).
+         */
+        get: operations["list_episodes_api_v1_titles__title_id__episodes_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/titles/{title_id}/files": {
@@ -1520,9 +1655,51 @@ export interface paths {
         put?: never;
         /**
          * Search Title
-         * @description Movies: the same as searching the title's wanted item.
+         * @description A movie: its wanted item. A series: every season with aired episodes still to
+         *     get, one search per season (season packs first). Returns the first season's job.
          */
         post: operations["search_title_api_v1_titles__title_id__search_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/titles/{title_id}/seasons/{number}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update Season
+         * @description Monitor or unmonitor a whole season (specials included: season 0).
+         */
+        patch: operations["update_season_api_v1_titles__title_id__seasons__number__patch"];
+        trace?: never;
+    };
+    "/api/v1/titles/{title_id}/seasons/{number}/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Search Season
+         * @description Search a season now: season packs first, then single episodes for the gaps.
+         *     Covers its aired episodes that aren't downloaded yet (or upgradable).
+         */
+        post: operations["search_season_api_v1_titles__title_id__seasons__number__search_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1800,6 +1977,40 @@ export interface components {
             /** Title Id */
             title_id: string | null;
         };
+        /** CalendarEntry */
+        CalendarEntry: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Episode */
+            episode: number | null;
+            /** Episode Name */
+            episode_name: string | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "episode" | "movie";
+            /** Monitored */
+            monitored: boolean;
+            /** Name */
+            name: string;
+            /** Poster Url */
+            poster_url: string | null;
+            /**
+             * Release
+             * @description Movies: which release this date is
+             */
+            release: ("cinema" | "digital" | "disc") | null;
+            /** Season */
+            season: number | null;
+            /** State */
+            state: string;
+            /** Title Id */
+            title_id: string;
+        };
         /** CheckResult */
         CheckResult: {
             /** Fix Url */
@@ -1894,6 +2105,11 @@ export interface components {
             priority: number;
             /** Running */
             running: boolean;
+            /**
+             * Saves To
+             * @description Where downloads go, as Fetchbox sees it; null: the client's own folder
+             */
+            saves_to: string | null;
             /** Settings */
             settings: {
                 [key: string]: unknown;
@@ -2158,6 +2374,20 @@ export interface components {
             /** Season */
             season: number;
         };
+        /** EpisodeOut */
+        EpisodeOut: {
+            /** Absolute Number */
+            absolute_number: number | null;
+            /** Air Date */
+            air_date: string | null;
+            /** Id */
+            id: string;
+            /** Name */
+            name: string | null;
+            /** Number */
+            number: number;
+            wanted: components["schemas"]["WantedOut"];
+        };
         /** EvaluateIn */
         EvaluateIn: {
             /** Original Language */
@@ -2239,6 +2469,17 @@ export interface components {
             size: number;
             /** Wanted Item Ids */
             wanted_item_ids: string[];
+        };
+        /** FolderOut */
+        FolderOut: {
+            /** Destination Id */
+            destination_id: string;
+            /** Path */
+            path: string;
+            /** Status */
+            status: string;
+            /** Status Message */
+            status_message: string | null;
         };
         /** FormatIn */
         FormatIn: {
@@ -2387,6 +2628,31 @@ export interface components {
             /** Next Cursor */
             next_cursor: string | null;
         };
+        /**
+         * HostInfo
+         * @description Where Fetchbox runs: every path it shows is on this machine.
+         */
+        HostInfo: {
+            /** Data Dir */
+            data_dir: string;
+            /** Downloads Root */
+            downloads_root: string;
+            /**
+             * Name
+             * @description Host name
+             */
+            name: string;
+            /**
+             * Os
+             * @description e.g. Linux, Windows, macOS
+             */
+            os: string;
+            /**
+             * Wsl Distro
+             * @description Set when running in WSL: paths are inside that distro
+             */
+            wsl_distro?: string | null;
+        };
         /** ImportOut */
         ImportOut: {
             /** Attempts */
@@ -2525,8 +2791,21 @@ export interface components {
              * @description Best first; rejected ones last, with reasons
              */
             releases: components["schemas"]["ReleaseOut"][];
-            /** Wanted Item Id */
-            wanted_item_id: string;
+            /**
+             * Season
+             * @description Set for a season search
+             */
+            season?: number | null;
+            /**
+             * Title Id
+             * @default
+             */
+            title_id: string;
+            /**
+             * Wanted Item Id
+             * @description The movie or episode searched
+             */
+            wanted_item_id: string | null;
         };
         /** JobOut */
         JobOut: {
@@ -2673,6 +2952,8 @@ export interface components {
              * @default []
              */
             alt_titles: string[];
+            /** Digital Date */
+            digital_date?: string | null;
             /**
              * Genres
              * @default []
@@ -2697,6 +2978,8 @@ export interface components {
              * @default
              */
             overview: string;
+            /** Physical Date */
+            physical_date?: string | null;
             /** Poster Url */
             poster_url?: string | null;
             /** Release Date */
@@ -2705,10 +2988,53 @@ export interface components {
             runtime?: number | null;
             /** Status */
             status?: string | null;
+            /** Theatrical Date */
+            theatrical_date?: string | null;
             /** Tmdb Id */
             tmdb_id: number;
             /** Year */
             year?: number | null;
+        };
+        /** NamingIn */
+        NamingIn: {
+            /** Patterns */
+            patterns: {
+                [key: string]: string;
+            };
+        };
+        /** NamingOptionsOut */
+        NamingOptionsOut: {
+            /** Presets */
+            presets: components["schemas"]["PresetOut"][];
+            /** Season Folders */
+            season_folders: components["schemas"]["SeasonFolderOut"][];
+            /** Tokens */
+            tokens: {
+                [key: string]: string;
+            };
+        };
+        /** NamingOut */
+        NamingOut: {
+            folder: components["schemas"]["FolderOut"];
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "movie" | "series";
+            /**
+             * Patterns
+             * @description Only this kind's patterns
+             */
+            patterns: {
+                [key: string]: string;
+            };
+            /**
+             * Preset
+             * @description A preset id, or custom
+             */
+            preset: string;
+            /** Samples */
+            samples: components["schemas"]["SampleOut"][];
         };
         /** NodeOut */
         NodeOut: {
@@ -2944,7 +3270,7 @@ export interface components {
             path_mappings: components["schemas"]["PathMapping"][];
             /**
              * Save Path
-             * @description Where torrents download; default <downloads root>/Torrents
+             * @description Download folder as Fetchbox sees it. Built-in clients: default <downloads root>/Torrents; external clients: default is the client's own folder
              */
             save_path?: string | null;
             /**
@@ -2975,6 +3301,19 @@ export interface components {
              * @default 120
              */
             stall_minutes: number;
+        };
+        /** PresetOut */
+        PresetOut: {
+            /** Description */
+            description: string;
+            /** Id */
+            id: string;
+            /** Label */
+            label: string;
+            /** Patterns */
+            patterns: {
+                [key: string]: string;
+            };
         };
         /** PreviewIn */
         PreviewIn: {
@@ -3329,6 +3668,43 @@ export interface components {
             /** Tier */
             tier: string | null;
         };
+        /** RenameFailureOut */
+        RenameFailureOut: {
+            /** Current */
+            current: string;
+            /** Error */
+            error: string;
+            /** File Id */
+            file_id: string;
+        };
+        /** RenameIn */
+        RenameIn: {
+            /**
+             * File Ids
+             * @description Null: every file listed
+             */
+            file_ids?: string[] | null;
+        };
+        /** RenameOut */
+        RenameOut: {
+            /** Failed */
+            failed: components["schemas"]["RenameFailureOut"][];
+            /** Renamed */
+            renamed: components["schemas"]["RenameStepOut"][];
+        };
+        /** RenameStepOut */
+        RenameStepOut: {
+            /** Current */
+            current: string;
+            /** File Id */
+            file_id: string;
+            /** New */
+            new: string;
+            /** Title */
+            title: string;
+            /** Title Id */
+            title_id: string;
+        };
         /** Revision */
         Revision: {
             /**
@@ -3341,6 +3717,13 @@ export interface components {
              * @default 1
              */
             version: number;
+        };
+        /** SampleOut */
+        SampleOut: {
+            /** Label */
+            label: string;
+            /** Path */
+            path: string;
         };
         /** ScheduleOut */
         ScheduleOut: {
@@ -3414,6 +3797,27 @@ export interface components {
             /** Number */
             number: number;
         };
+        /** SeasonFolderOut */
+        SeasonFolderOut: {
+            /** Label */
+            label: string;
+            /** Pattern */
+            pattern: string;
+        };
+        /** SeasonOut */
+        SeasonOut: {
+            /** Episodes */
+            episodes: components["schemas"]["EpisodeOut"][];
+            /** Monitored */
+            monitored: boolean;
+            /** Number */
+            number: number;
+        };
+        /** SeasonPatch */
+        SeasonPatch: {
+            /** Monitored */
+            monitored: boolean;
+        };
         /** SelftestIn */
         SelftestIn: {
             /**
@@ -3475,6 +3879,23 @@ export interface components {
             tvdb_id?: number | null;
             /** Year */
             year?: number | null;
+        };
+        /** SeriesStats */
+        SeriesStats: {
+            /** Acquired */
+            acquired: number;
+            /**
+             * Episodes
+             * @description Excluding unmonitored specials
+             */
+            episodes: number;
+            /**
+             * Missing
+             * @description Monitored, aired, no file yet
+             */
+            missing: number;
+            /** Monitored */
+            monitored: number;
         };
         /** SessionOut */
         SessionOut: {
@@ -3541,6 +3962,7 @@ export interface components {
             database: string;
             /** Event Subscribers */
             event_subscribers: number;
+            host?: components["schemas"]["HostInfo"] | null;
             /** Schema Head */
             schema_head: string | null;
             /** Schema Revision */
@@ -3630,7 +4052,22 @@ export interface components {
              */
             kind: "movie" | "series";
             /**
+             * Minimum Availability
+             * @description Movies: start searching once it is announced, in cinemas, or released (digital or physical)
+             * @default released
+             * @enum {string}
+             */
+            minimum_availability: "announced" | "in_cinemas" | "released";
+            /**
+             * Monitor Mode
+             * @description Series: all, future, missing, first_season, latest_season or none
+             * @default all
+             * @enum {string}
+             */
+            monitor_mode: "all" | "future" | "missing" | "first_season" | "latest_season" | "none";
+            /**
              * Monitored
+             * @description Movies: monitored or not
              * @default true
              */
             monitored: boolean;
@@ -3657,8 +4094,17 @@ export interface components {
              * @default []
              */
             alt_titles: string[];
+            /**
+             * Available From
+             * @description Movies: when automatic search starts (null: now)
+             */
+            available_from?: string | null;
             /** Destination Id */
             destination_id: string | null;
+            /** Digital Date */
+            digital_date?: string | null;
+            /** @description For a series: counts (see /titles/{id}/episodes for the list) */
+            episodes?: components["schemas"]["SeriesStats"] | null;
             /** Etag */
             readonly etag: string;
             /**
@@ -3672,6 +4118,8 @@ export interface components {
             imdb_id: string | null;
             /** Kind */
             kind: string;
+            /** Minimum Availability */
+            minimum_availability: string;
             /** Monitor Mode */
             monitor_mode: string;
             /** Name */
@@ -3685,6 +4133,8 @@ export interface components {
              * @default
              */
             overview: string;
+            /** Physical Date */
+            physical_date?: string | null;
             /** Poster Url */
             poster_url?: string | null;
             /** Profile Id */
@@ -3697,6 +4147,8 @@ export interface components {
             sort_name: string;
             /** Status */
             status: string | null;
+            /** Theatrical Date */
+            theatrical_date?: string | null;
             /** Tmdb Id */
             tmdb_id: number | null;
             /** Tvdb Id */
@@ -3719,6 +4171,8 @@ export interface components {
         };
         /** TitlePatch */
         TitlePatch: {
+            /** Minimum Availability */
+            minimum_availability?: ("announced" | "in_cinemas" | "released") | null;
             /** Monitor Mode */
             monitor_mode?: string | null;
             /** Profile Id */
@@ -3856,10 +4310,16 @@ export interface components {
         };
         /** WantedRow */
         WantedRow: {
+            /** Air Date */
+            air_date?: string | null;
             /** Cutoff Met */
             cutoff_met: boolean;
             /** Episode Id */
             episode_id: string | null;
+            /** Episode Name */
+            episode_name?: string | null;
+            /** Episode Number */
+            episode_number?: number | null;
             /** Etag */
             readonly etag: string;
             /** Id */
@@ -3872,6 +4332,8 @@ export interface components {
             monitored: boolean;
             /** Next Search At */
             next_search_at: string | null;
+            /** Season Number */
+            season_number?: number | null;
             /** State */
             state: string;
             /** Title Id */
@@ -4763,6 +5225,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_calendar_api_v1_calendar_get: {
+        parameters: {
+            query: {
+                /** @description First day (inclusive) */
+                start: string;
+                /** @description Last day (inclusive) */
+                end: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarEntry"][];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
                 };
             };
         };
@@ -7299,6 +7796,225 @@ export interface operations {
             };
         };
     };
+    naming_options_api_v1_library_naming_options_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NamingOptionsOut"];
+                };
+            };
+        };
+    };
+    get_naming_api_v1_library_naming__kind__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: "movie" | "series";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NamingOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_naming_api_v1_library_naming__kind__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: "movie" | "series";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NamingIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NamingOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    preview_naming_api_v1_library_naming__kind__preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: "movie" | "series";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NamingIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NamingOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    rename_preview_api_v1_library_rename__kind__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: "movie" | "series";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RenameStepOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rename_files_api_v1_library_rename__kind__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: "movie" | "series";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RenameIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RenameOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_templates_api_v1_naming_templates_get: {
         parameters: {
             query?: never;
@@ -7750,8 +8466,12 @@ export interface operations {
     };
     interactive_search_api_v1_releases_get: {
         parameters: {
-            query: {
-                wanted_item_id: string;
+            query?: {
+                /** @description A movie or an episode */
+                wanted_item_id?: string | null;
+                /** @description With season: a season search */
+                title_id?: string | null;
+                season?: number | null;
             };
             header?: never;
             path?: never;
@@ -7770,6 +8490,16 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8307,6 +9037,57 @@ export interface operations {
             };
         };
     };
+    list_episodes_api_v1_titles__title_id__episodes_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                title_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeasonOut"][];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     title_files_api_v1_titles__title_id__files_get: {
         parameters: {
             query?: never;
@@ -8463,6 +9244,107 @@ export interface operations {
             };
             path: {
                 title_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_season_api_v1_titles__title_id__seasons__number__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                title_id: string;
+                number: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SeasonPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TitleOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    search_season_api_v1_titles__title_id__seasons__number__search_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Retry-safe key: repeats with the same body return the first response */
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                title_id: string;
+                number: number;
             };
             cookie?: never;
         };

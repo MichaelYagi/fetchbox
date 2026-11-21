@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, Header, Query, Request, Response
 from pydantic import BaseModel, Field, computed_field
@@ -11,7 +11,18 @@ from fetchbox.core.errors import problem_responses as pr
 from fetchbox.modules.auth.deps import CurrentPrincipal, require
 from fetchbox.modules.downloads.models import Download
 from fetchbox.modules.library.models import MediaFile, NamingTemplate
-from fetchbox.modules.library.naming import TOKENS, movie_path, render, safe_component
+from fetchbox.modules.library.naming import (
+    KIND_KEYS,
+    PATTERN_KEYS,
+    PRESETS,
+    SEASON_FOLDERS,
+    TOKENS,
+    movie_path,
+    preset_of,
+    preview_samples,
+    render,
+    safe_component,
+)
 from fetchbox.modules.library.service import LibraryService
 
 router = APIRouter(tags=["library"])
@@ -254,3 +265,166 @@ async def preview(body: PreviewIn) -> PreviewOut:
     parts = [safe_component(render(patterns[k], ep_ctx)) for k in keys]
     episode = "/".join(parts) + ".mkv"
     return PreviewOut(movie=movie_path(patterns, movie_ctx, "mkv"), episode=episode, tokens=TOKENS)
+
+
+# ---- library settings: one naming per kind, presets, preview, rename existing ---------------
+
+LibKind = Literal["movie", "series"]
+
+
+class PresetOut(BaseModel):
+    id: str
+    label: str
+    description: str
+    patterns: dict[str, str]
+
+
+class SeasonFolderOut(BaseModel):
+    pattern: str
+    label: str
+
+
+class SampleOut(BaseModel):
+    label: str
+    path: str
+
+
+class FolderOut(BaseModel):
+    destination_id: str
+    path: str
+    status: str
+    status_message: str | None
+
+
+class NamingOut(BaseModel):
+    kind: LibKind
+    folder: FolderOut
+    patterns: dict[str, str] = Field(description="Only this kind's patterns")
+    preset: str = Field(description="A preset id, or custom")
+    samples: list[SampleOut]
+
+
+class NamingOptionsOut(BaseModel):
+    presets: list[PresetOut]
+    season_folders: list[SeasonFolderOut]
+    tokens: dict[str, str]
+
+
+class NamingIn(BaseModel):
+    patterns: dict[str, str]
+
+
+class RenameStepOut(BaseModel):
+    file_id: str
+    title_id: str
+    title: str
+    current: str
+    new: str
+
+
+class RenameIn(BaseModel):
+    file_ids: list[str] | None = Field(default=None, description="Null: every file listed")
+
+
+class RenameFailureOut(BaseModel):
+    file_id: str
+    current: str
+    error: str
+
+
+class RenameOut(BaseModel):
+    renamed: list[RenameStepOut]
+    failed: list[RenameFailureOut]
+
+
+def _keys(kind: str) -> tuple[str, ...]:
+    return (*KIND_KEYS[kind], *(("season_folder",) if kind == "series" else ()))
+
+
+def _naming(kind: str, dest: Any, patterns: dict[str, str]) -> NamingOut:
+    return NamingOut(
+        kind=kind,
+        folder=FolderOut(
+            destination_id=dest.id,
+            path=dest.path,
+            status=dest.status,
+            status_message=dest.status_message,
+        ),
+        patterns={k: patterns[k] for k in _keys(kind)},
+        preset=preset_of(kind, patterns),
+        samples=[SampleOut(**x) for x in preview_samples(kind, patterns)],
+    )
+
+
+@router.get("/library/naming-options", response_model=NamingOptionsOut, dependencies=_read)
+async def naming_options() -> NamingOptionsOut:
+    """Naming presets, season folder choices and the tokens patterns can use."""
+    return NamingOptionsOut(
+        presets=[
+            PresetOut(
+                id=pid,
+                label=p["label"],
+                description=p["description"],
+                patterns={k: v for k, v in p.items() if k in PATTERN_KEYS},
+            )
+            for pid, p in PRESETS.items()
+        ],
+        season_folders=[SeasonFolderOut(pattern=p, label=lb) for p, lb in SEASON_FOLDERS],
+        tokens=TOKENS,
+    )
+
+
+@router.get(
+    "/library/naming/{kind}", response_model=NamingOut, dependencies=_read, responses=pr(409)
+)
+async def get_naming(kind: LibKind, request: Request) -> NamingOut:
+    """How new movies or episodes are named and where they go, with example names."""
+    dest, patterns = await _svc(request).naming(kind)
+    return _naming(kind, dest, patterns)
+
+
+@router.put(
+    "/library/naming/{kind}",
+    response_model=NamingOut,
+    dependencies=_profiles_write,
+    responses=pr(409, 422),
+)
+async def put_naming(
+    kind: LibKind, body: NamingIn, request: Request, p: CurrentPrincipal
+) -> NamingOut:
+    """Save the naming for movies or series. Patterns of the other kind are ignored.
+    Files already in the library keep their names until renamed."""
+    dest, patterns = await _svc(request).set_naming(kind, body.patterns, actor=p.actor())
+    return _naming(kind, dest, patterns)
+
+
+@router.post(
+    "/library/naming/{kind}/preview",
+    response_model=NamingOut,
+    dependencies=_read,
+    responses=pr(409, 422),
+)
+async def preview_naming(kind: LibKind, body: NamingIn, request: Request) -> NamingOut:
+    """Example names for patterns, before saving them."""
+    svc = _svc(request)
+    dest, current = await svc.naming(kind)
+    changes = {k: v for k, v in body.patterns.items() if k in _keys(kind)}
+    return _naming(kind, dest, svc.check_patterns({**current, **changes}))
+
+
+@router.get("/library/rename/{kind}", response_model=list[RenameStepOut], dependencies=_read)
+async def rename_preview(kind: LibKind, request: Request) -> list[RenameStepOut]:
+    """Files whose name differs from what the current naming gives, old and new."""
+    return [RenameStepOut(**x) for x in await _svc(request).rename_plan(kind)]
+
+
+@router.post("/library/rename/{kind}", response_model=RenameOut, dependencies=_write)
+async def rename_files(
+    kind: LibKind, body: RenameIn, request: Request, p: CurrentPrincipal
+) -> RenameOut:
+    """Rename files to the current naming (on the same disk: nothing is copied)."""
+    out = await _svc(request).rename(kind, body.file_ids, actor=p.actor())
+    return RenameOut(
+        renamed=[RenameStepOut(**x) for x in out["renamed"]],
+        failed=[RenameFailureOut(**x) for x in out["failed"]],
+    )

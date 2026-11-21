@@ -178,7 +178,7 @@ def create_app(
             sources=sources,
             config=config,
         )
-        autosearch.register_jobs()
+        autosearch.register_jobs(state.scheduler)
         app.state.autosearch = autosearch
         downloads = DownloadsService(
             db,
@@ -200,7 +200,7 @@ def create_app(
             torrents_dir=settings.downloads_dir / "Torrents",
         )
         app.state.storage = storage
-        library = LibraryService(db, bus, jobs, storage, downloads, profiles)
+        library = LibraryService(db, bus, jobs, storage, downloads, profiles, media)
         library.register_jobs()
         app.state.library = library
         app.state.unlock = UnlockService(

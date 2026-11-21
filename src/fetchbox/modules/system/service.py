@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import os
 import platform
+import socket
 import sys
 from datetime import UTC, datetime
+from pathlib import Path
 
 from sqlalchemy import text
 
@@ -11,7 +14,7 @@ from fetchbox import migrations
 from fetchbox.core.health import HealthReport
 from fetchbox.core.providers import HealthStatus
 from fetchbox.core.state import AppState
-from fetchbox.modules.system.schemas import StatusInfo, VersionInfo
+from fetchbox.modules.system.schemas import HostInfo, StatusInfo, VersionInfo
 
 
 def libtorrent_version() -> str | None:
@@ -31,7 +34,21 @@ def version_info() -> VersionInfo:
     )
 
 
-async def status_info(state: AppState) -> StatusInfo:
+def host_info(data_dir: Path, downloads_root: Path) -> HostInfo:
+    system = platform.system()
+    distro = os.environ.get("WSL_DISTRO_NAME") if system == "Linux" else None
+    if system == "Linux" and distro is None and "microsoft" in platform.release().lower():
+        distro = "WSL"
+    return HostInfo(
+        name=socket.gethostname(),
+        os={"Darwin": "macOS"}.get(system, system),
+        wsl_distro=distro,
+        data_dir=str(data_dir.resolve()),
+        downloads_root=str(downloads_root.expanduser().resolve()),
+    )
+
+
+async def status_info(state: AppState, downloads_root: Path | None = None) -> StatusInfo:
     now = datetime.now(UTC)
     return StatusInfo(
         version=fetchbox.__version__,
@@ -41,6 +58,7 @@ async def status_info(state: AppState) -> StatusInfo:
         schema_revision=await migrations.current_revision(state.db.engine),
         schema_head=migrations.head_revision(),
         event_subscribers=state.bus.subscriber_count,
+        host=host_info(state.data_dir, downloads_root) if downloads_root else None,
     )
 
 

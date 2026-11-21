@@ -1,0 +1,172 @@
+{"event": "Started server process [1556535]", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T14:08:11.261758Z"}
+{"event": "Waiting for application startup.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T14:08:11.262663Z"}
+{"path": "/mnt/c/Users/Michael/Documents/development/fetchbox/web/data/secrets.key", "hint": "back this file up; secrets cannot be recovered without it", "event": "secrets_key_created", "level": "warning", "logger": "fetchbox.core.secrets", "timestamp": "2026-11-21T14:08:12.328901Z"}
+{"admin": "admin", "key_prefix": "5iy1slqw", "event": "auth_bootstrapped", "level": "info", "logger": "fetchbox.modules.auth.service", "timestamp": "2026-11-21T14:08:12.446001Z"}
+{"port": 6881, "torrents": 0, "event": "builtin.started", "level": "info", "logger": "fetchbox.providers.download_clients.builtin", "timestamp": "2026-11-21T14:08:12.865004Z"}
+{"version": "0.1.0.dev0", "data_dir": "/mnt/c/Users/Michael/Documents/development/fetchbox/web/data", "bind": "127.0.0.1:8787", "plugins": [], "event": "started", "level": "info", "logger": "fetchbox.app", "timestamp": "2026-11-21T14:08:13.286375Z"}
+{"event": "Application startup complete.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T14:08:13.290422Z"}
+{"event": "Uvicorn running on http://127.0.0.1:8787 (Press CTRL+C to quit)", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T14:08:13.297663Z"}
+{"wanted_item_id": "01M7Z78YNJXK0WZ30NHAQ4BQC3", "mode": "missing", "results": 6, "accepted": 0, "failed_indexers": [], "event": "search.automatic", "level": "info", "logger": "fetchbox.modules.automation.search", "timestamp": "2026-11-21T14:13:30.624659Z"}
+{"wanted_item_id": "01M7Z78YNJXK0WZ30NHAQ4BQC3", "mode": "missing", "results": 6, "accepted": 0, "failed_indexers": [], "event": "search.automatic", "level": "info", "logger": "fetchbox.modules.automation.search", "timestamp": "2026-11-21T14:13:40.690289Z"}
+{"event": "Shutting down", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T15:43:41.163776Z"}
+{"event": "Waiting for application shutdown.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T15:43:41.264419Z"}
+{"event": "builtin.stopped", "level": "info", "logger": "fetchbox.providers.download_clients.builtin", "timestamp": "2026-11-21T15:43:41.283064Z"}
+{"event": "stopped", "level": "info", "logger": "fetchbox.app", "timestamp": "2026-11-21T15:43:41.337713Z"}
+{"event": "Application shutdown complete.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T15:43:41.339019Z"}
+{"event": "Finished server process [1556535]", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T15:43:41.339791Z"}
+{"event": "Started server process [1620580]", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T15:48:12.192020Z"}
+{"event": "Waiting for application startup.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T15:48:12.192692Z"}
+{"port": 6881, "torrents": 0, "event": "builtin.started", "level": "info", "logger": "fetchbox.providers.download_clients.builtin", "timestamp": "2026-11-21T15:48:13.132088Z"}
+{"version": "0.1.0.dev0", "data_dir": "/mnt/c/Users/Michael/Documents/development/fetchbox/web/data", "bind": "127.0.0.1:8787", "plugins": [], "event": "started", "level": "info", "logger": "fetchbox.app", "timestamp": "2026-11-21T15:48:13.553524Z"}
+{"event": "Application startup complete.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T15:48:13.558432Z"}
+{"event": "Uvicorn running on http://127.0.0.1:8787 (Press CTRL+C to quit)", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T15:48:13.566059Z"}
+{"event": "Shutting down", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T15:56:03.745052Z"}
+{"event": "Waiting for application shutdown.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T15:56:03.846289Z"}
+{"event": "builtin.stopped", "level": "info", "logger": "fetchbox.providers.download_clients.builtin", "timestamp": "2026-11-21T15:56:03.863308Z"}
+{"event": "stopped", "level": "info", "logger": "fetchbox.app", "timestamp": "2026-11-21T15:56:03.913048Z"}
+{"event": "Application shutdown complete.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T15:56:03.914226Z"}
+{"event": "Finished server process [1620580]", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T15:56:03.914938Z"}
+{"event": "Started server process [1641207]", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T15:58:30.169245Z"}
+{"event": "Waiting for application startup.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T15:58:30.169922Z"}
+{"port": 6881, "torrents": 0, "event": "builtin.started", "level": "info", "logger": "fetchbox.providers.download_clients.builtin", "timestamp": "2026-11-21T15:58:31.121152Z"}
+{"version": "0.1.0.dev0", "data_dir": "/mnt/c/Users/Michael/Documents/development/fetchbox/web/data", "bind": "127.0.0.1:8787", "plugins": [], "event": "started", "level": "info", "logger": "fetchbox.app", "timestamp": "2026-11-21T15:58:31.593921Z"}
+{"event": "Application startup complete.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T15:58:31.599163Z"}
+{"event": "Uvicorn running on http://127.0.0.1:8787 (Press CTRL+C to quit)", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T15:58:31.606430Z"}
+{"event": "Shutting down", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T15:59:11.546848Z"}
+{"event": "Waiting for application shutdown.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T15:59:11.648527Z"}
+{"event": "builtin.stopped", "level": "info", "logger": "fetchbox.providers.download_clients.builtin", "timestamp": "2026-11-21T15:59:11.664602Z"}
+{"event": "stopped", "level": "info", "logger": "fetchbox.app", "timestamp": "2026-11-21T15:59:11.705208Z"}
+{"event": "Application shutdown complete.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T15:59:11.706512Z"}
+{"event": "Finished server process [1641207]", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T15:59:11.707196Z"}
+{"event": "Started server process [1645815]", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:07:17.266589Z"}
+{"event": "Waiting for application startup.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:07:17.267233Z"}
+{"port": 6881, "torrents": 0, "event": "builtin.started", "level": "info", "logger": "fetchbox.providers.download_clients.builtin", "timestamp": "2026-11-21T16:07:18.200227Z"}
+{"version": "0.1.0.dev0", "data_dir": "/mnt/c/Users/Michael/Documents/development/fetchbox/web/data", "bind": "127.0.0.1:8787", "plugins": [], "event": "started", "level": "info", "logger": "fetchbox.app", "timestamp": "2026-11-21T16:07:18.610367Z"}
+{"event": "Application startup complete.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:07:18.615058Z"}
+{"event": "Uvicorn running on http://127.0.0.1:8787 (Press CTRL+C to quit)", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:07:18.622667Z"}
+{"event": "Shutting down", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:11:13.686027Z"}
+{"event": "Waiting for application shutdown.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:11:13.787434Z"}
+{"event": "builtin.stopped", "level": "info", "logger": "fetchbox.providers.download_clients.builtin", "timestamp": "2026-11-21T16:11:13.803235Z"}
+{"event": "stopped", "level": "info", "logger": "fetchbox.app", "timestamp": "2026-11-21T16:11:13.843347Z"}
+{"event": "Application shutdown complete.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:11:13.844324Z"}
+{"event": "Finished server process [1645815]", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:11:13.845106Z"}
+{"event": "Started server process [1647137]", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:14:54.657212Z"}
+{"event": "Waiting for application startup.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:14:54.658106Z"}
+{"port": 6881, "torrents": 0, "event": "builtin.started", "level": "info", "logger": "fetchbox.providers.download_clients.builtin", "timestamp": "2026-11-21T16:14:55.621758Z"}
+{"version": "0.1.0.dev0", "data_dir": "/mnt/c/Users/Michael/Documents/development/fetchbox/web/data", "bind": "127.0.0.1:8787", "plugins": [], "event": "started", "level": "info", "logger": "fetchbox.app", "timestamp": "2026-11-21T16:14:56.080560Z"}
+{"event": "Application startup complete.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:14:56.088333Z"}
+{"event": "Uvicorn running on http://127.0.0.1:8787 (Press CTRL+C to quit)", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:14:56.097104Z"}
+{"event": "Shutting down", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:15:16.718015Z"}
+{"event": "Waiting for application shutdown.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:15:16.819209Z"}
+{"event": "builtin.stopped", "level": "info", "logger": "fetchbox.providers.download_clients.builtin", "timestamp": "2026-11-21T16:15:16.838009Z"}
+{"event": "stopped", "level": "info", "logger": "fetchbox.app", "timestamp": "2026-11-21T16:15:16.884862Z"}
+{"event": "Application shutdown complete.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:15:16.885790Z"}
+{"event": "Finished server process [1647137]", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:15:16.886680Z"}
+{"event": "Started server process [1648941]", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:17:00.878940Z"}
+{"event": "Waiting for application startup.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:17:00.879724Z"}
+{"port": 6881, "torrents": 0, "event": "builtin.started", "level": "info", "logger": "fetchbox.providers.download_clients.builtin", "timestamp": "2026-11-21T16:17:01.737645Z"}
+{"version": "0.1.0.dev0", "data_dir": "/mnt/c/Users/Michael/Documents/development/fetchbox/web/data", "bind": "127.0.0.1:8787", "plugins": [], "event": "started", "level": "info", "logger": "fetchbox.app", "timestamp": "2026-11-21T16:17:02.259830Z"}
+{"event": "Application startup complete.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:17:02.269337Z"}
+{"event": "Uvicorn running on http://127.0.0.1:8787 (Press CTRL+C to quit)", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:17:02.281137Z"}
+{"event": "Shutting down", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:17:11.053605Z"}
+{"event": "Waiting for application shutdown.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:17:11.154157Z"}
+{"event": "builtin.stopped", "level": "info", "logger": "fetchbox.providers.download_clients.builtin", "timestamp": "2026-11-21T16:17:11.170315Z"}
+{"event": "stopped", "level": "info", "logger": "fetchbox.app", "timestamp": "2026-11-21T16:17:11.210584Z"}
+{"event": "Application shutdown complete.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:17:11.211814Z"}
+{"event": "Finished server process [1648941]", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:17:11.212538Z"}
+{"event": "Started server process [1652651]", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:17:59.554298Z"}
+{"event": "Waiting for application startup.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:17:59.554947Z"}
+{"port": 6881, "torrents": 0, "event": "builtin.started", "level": "info", "logger": "fetchbox.providers.download_clients.builtin", "timestamp": "2026-11-21T16:18:00.472128Z"}
+{"version": "0.1.0.dev0", "data_dir": "/mnt/c/Users/Michael/Documents/development/fetchbox/web/data", "bind": "127.0.0.1:8787", "plugins": [], "event": "started", "level": "info", "logger": "fetchbox.app", "timestamp": "2026-11-21T16:18:00.914267Z"}
+{"event": "Application startup complete.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:18:00.919165Z"}
+{"event": "Uvicorn running on http://127.0.0.1:8787 (Press CTRL+C to quit)", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:18:00.925124Z"}
+{"event": "Shutting down", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:47:20.099922Z"}
+{"event": "Waiting for application shutdown.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:47:20.201252Z"}
+{"event": "builtin.stopped", "level": "info", "logger": "fetchbox.providers.download_clients.builtin", "timestamp": "2026-11-21T16:47:20.219708Z"}
+{"event": "stopped", "level": "info", "logger": "fetchbox.app", "timestamp": "2026-11-21T16:47:20.283889Z"}
+{"event": "Application shutdown complete.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:47:20.284931Z"}
+{"event": "Finished server process [1652651]", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:47:20.285643Z"}
+{"event": "Started server process [1659660]", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:49:20.684249Z"}
+{"event": "Waiting for application startup.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:49:20.684900Z"}
+{"port": 6881, "torrents": 0, "event": "builtin.started", "level": "info", "logger": "fetchbox.providers.download_clients.builtin", "timestamp": "2026-11-21T16:49:21.660716Z"}
+{"version": "0.1.0.dev0", "data_dir": "/mnt/c/Users/Michael/Documents/development/fetchbox/web/data", "bind": "127.0.0.1:8787", "plugins": [], "event": "started", "level": "info", "logger": "fetchbox.app", "timestamp": "2026-11-21T16:49:22.106956Z"}
+{"event": "Application startup complete.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:49:22.111768Z"}
+{"event": "Uvicorn running on http://127.0.0.1:8787 (Press CTRL+C to quit)", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:49:22.119176Z"}
+{"event": "Shutting down", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:54:10.504613Z"}
+{"event": "Waiting for application shutdown.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:54:10.606145Z"}
+{"event": "builtin.stopped", "level": "info", "logger": "fetchbox.providers.download_clients.builtin", "timestamp": "2026-11-21T16:54:10.625523Z"}
+{"event": "stopped", "level": "info", "logger": "fetchbox.app", "timestamp": "2026-11-21T16:54:10.669389Z"}
+{"event": "Application shutdown complete.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:54:10.670366Z"}
+{"event": "Finished server process [1659660]", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:54:10.671050Z"}
+{"event": "Started server process [1660400]", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:54:20.390770Z"}
+{"event": "Waiting for application startup.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:54:20.391434Z"}
+{"port": 6881, "torrents": 0, "event": "builtin.started", "level": "info", "logger": "fetchbox.providers.download_clients.builtin", "timestamp": "2026-11-21T16:54:21.317182Z"}
+{"version": "0.1.0.dev0", "data_dir": "/mnt/c/Users/Michael/Documents/development/fetchbox/web/data", "bind": "127.0.0.1:8787", "plugins": [], "event": "started", "level": "info", "logger": "fetchbox.app", "timestamp": "2026-11-21T16:54:21.788914Z"}
+{"event": "Application startup complete.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:54:21.793970Z"}
+{"event": "Uvicorn running on http://127.0.0.1:8787 (Press CTRL+C to quit)", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:54:21.800605Z"}
+{"event": "Shutting down", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:01:26.571105Z"}
+{"event": "Waiting for application shutdown.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:01:26.672397Z"}
+{"event": "builtin.stopped", "level": "info", "logger": "fetchbox.providers.download_clients.builtin", "timestamp": "2026-11-21T17:01:26.689724Z"}
+{"event": "stopped", "level": "info", "logger": "fetchbox.app", "timestamp": "2026-11-21T17:01:26.739638Z"}
+{"event": "Application shutdown complete.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:01:26.740657Z"}
+{"event": "Finished server process [1660400]", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:01:26.741341Z"}
+{"event": "Started server process [1663685]", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:05:13.676697Z"}
+{"event": "Waiting for application startup.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:05:13.677502Z"}
+{"port": 6881, "torrents": 0, "event": "builtin.started", "level": "info", "logger": "fetchbox.providers.download_clients.builtin", "timestamp": "2026-11-21T17:05:14.594562Z"}
+{"version": "0.1.0.dev0", "data_dir": "/mnt/c/Users/Michael/Documents/development/fetchbox/web/data", "bind": "127.0.0.1:8787", "plugins": [], "event": "started", "level": "info", "logger": "fetchbox.app", "timestamp": "2026-11-21T17:05:15.022725Z"}
+{"event": "Application startup complete.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:05:15.027136Z"}
+{"event": "Uvicorn running on http://127.0.0.1:8787 (Press CTRL+C to quit)", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:05:15.034156Z"}
+{"event": "Shutting down", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:23:57.964956Z"}
+{"event": "Waiting for application shutdown.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:23:58.065306Z"}
+{"event": "builtin.stopped", "level": "info", "logger": "fetchbox.providers.download_clients.builtin", "timestamp": "2026-11-21T17:23:58.086693Z"}
+{"event": "stopped", "level": "info", "logger": "fetchbox.app", "timestamp": "2026-11-21T17:23:58.160778Z"}
+{"event": "Application shutdown complete.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:23:58.162153Z"}
+{"event": "Finished server process [1663685]", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:23:58.162926Z"}
+{"event": "Started server process [1675424]", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:25:30.541254Z"}
+{"event": "Waiting for application startup.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:25:30.541936Z"}
+{"port": 6881, "torrents": 0, "event": "builtin.started", "level": "info", "logger": "fetchbox.providers.download_clients.builtin", "timestamp": "2026-11-21T17:25:31.567668Z"}
+{"version": "0.1.0.dev0", "data_dir": "/mnt/c/Users/Michael/Documents/development/fetchbox/web/data", "bind": "127.0.0.1:8787", "plugins": [], "event": "started", "level": "info", "logger": "fetchbox.app", "timestamp": "2026-11-21T17:25:32.015755Z"}
+{"event": "Application startup complete.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:25:32.021645Z"}
+{"event": "Uvicorn running on http://127.0.0.1:8787 (Press CTRL+C to quit)", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:25:32.028333Z"}
+{"event": "Shutting down", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:34:37.957391Z"}
+{"event": "Waiting for application shutdown.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:34:38.058682Z"}
+{"event": "builtin.stopped", "level": "info", "logger": "fetchbox.providers.download_clients.builtin", "timestamp": "2026-11-21T17:34:38.074864Z"}
+{"event": "stopped", "level": "info", "logger": "fetchbox.app", "timestamp": "2026-11-21T17:34:38.120912Z"}
+{"event": "Application shutdown complete.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:34:38.122034Z"}
+{"event": "Finished server process [1675424]", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:34:38.122759Z"}
+{"event": "Started server process [1678630]", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:34:47.680936Z"}
+{"event": "Waiting for application startup.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:34:47.681606Z"}
+{"port": 6881, "torrents": 0, "event": "builtin.started", "level": "info", "logger": "fetchbox.providers.download_clients.builtin", "timestamp": "2026-11-21T17:34:48.625551Z"}
+{"version": "0.1.0.dev0", "data_dir": "/mnt/c/Users/Michael/Documents/development/fetchbox/web/data", "bind": "127.0.0.1:8787", "plugins": [], "event": "started", "level": "info", "logger": "fetchbox.app", "timestamp": "2026-11-21T17:34:49.117369Z"}
+{"event": "Application startup complete.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:34:49.122720Z"}
+{"event": "Uvicorn running on http://127.0.0.1:8787 (Press CTRL+C to quit)", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:34:49.128973Z"}
+{"event": "Shutting down", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:38:21.454460Z"}
+{"event": "Waiting for application shutdown.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:38:21.556034Z"}
+{"event": "builtin.stopped", "level": "info", "logger": "fetchbox.providers.download_clients.builtin", "timestamp": "2026-11-21T17:38:21.572306Z"}
+{"event": "stopped", "level": "info", "logger": "fetchbox.app", "timestamp": "2026-11-21T17:38:21.617689Z"}
+{"event": "Application shutdown complete.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:38:21.618707Z"}
+{"event": "Finished server process [1678630]", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:38:21.619466Z"}
+{"event": "Started server process [1678984]", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:38:31.022983Z"}
+{"event": "Waiting for application startup.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:38:31.023731Z"}
+{"port": 6881, "torrents": 0, "event": "builtin.started", "level": "info", "logger": "fetchbox.providers.download_clients.builtin", "timestamp": "2026-11-21T17:38:31.934827Z"}
+{"version": "0.1.0.dev0", "data_dir": "/mnt/c/Users/Michael/Documents/development/fetchbox/web/data", "bind": "127.0.0.1:8787", "plugins": [], "event": "started", "level": "info", "logger": "fetchbox.app", "timestamp": "2026-11-21T17:38:32.378233Z"}
+{"event": "Application startup complete.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:38:32.383244Z"}
+{"event": "Uvicorn running on http://127.0.0.1:8787 (Press CTRL+C to quit)", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:38:32.389356Z"}
+{"event": "Shutting down", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:42:20.089887Z"}
+{"event": "Waiting for application shutdown.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:42:20.191353Z"}
+{"event": "builtin.stopped", "level": "info", "logger": "fetchbox.providers.download_clients.builtin", "timestamp": "2026-11-21T17:42:20.207893Z"}
+{"event": "stopped", "level": "info", "logger": "fetchbox.app", "timestamp": "2026-11-21T17:42:20.254343Z"}
+{"event": "Application shutdown complete.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:42:20.255371Z"}
+{"event": "Finished server process [1678984]", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:42:20.256178Z"}
+{"event": "Started server process [1682005]", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:49:28.659211Z"}
+{"event": "Waiting for application startup.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:49:28.659936Z"}
+{"port": 6881, "torrents": 0, "event": "builtin.started", "level": "info", "logger": "fetchbox.providers.download_clients.builtin", "timestamp": "2026-11-21T17:49:29.605316Z"}
+{"version": "0.1.0.dev0", "data_dir": "/mnt/c/Users/Michael/Documents/development/fetchbox/web/data", "bind": "127.0.0.1:8787", "plugins": [], "event": "started", "level": "info", "logger": "fetchbox.app", "timestamp": "2026-11-21T17:49:30.032955Z"}
+{"event": "Application startup complete.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:49:30.038175Z"}
+{"event": "Uvicorn running on http://127.0.0.1:8787 (Press CTRL+C to quit)", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:49:30.045021Z"}
+{"event": "Shutting down", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:50:32.325773Z"}
+{"event": "Waiting for application shutdown.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:50:32.426233Z"}
+{"event": "builtin.stopped", "level": "info", "logger": "fetchbox.providers.download_clients.builtin", "timestamp": "2026-11-21T17:50:32.442435Z"}
+{"event": "stopped", "level": "info", "logger": "fetchbox.app", "timestamp": "2026-11-21T17:50:32.486169Z"}
+{"event": "Application shutdown complete.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:50:32.487140Z"}
+{"event": "Finished server process [1682005]", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:50:32.487870Z"}

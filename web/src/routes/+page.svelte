@@ -22,7 +22,15 @@
 		return () => clearInterval(t);
 	});
 
-	const stateOf = (t: Title) => t.wanted[0]?.state ?? 'missing';
+	function stateOf(t: Title): string {
+		if (t.kind === 'series') {
+			const e = t.episodes;
+			if (!e) return 'missing';
+			if (t.wanted.some((w) => !['missing', 'acquired'].includes(w.state))) return 'downloading';
+			return e.missing > 0 ? 'missing' : 'acquired';
+		}
+		return t.wanted[0]?.state ?? 'missing';
+	}
 	const shown = $derived(
 		(titles ?? []).filter((t) => {
 			const s = stateOf(t);
@@ -47,7 +55,7 @@
 				<option value="active">Downloading</option>
 				<option value="missing">Missing</option>
 			</select>
-			<a class="button primary" href="/add">Add movie</a>
+			<a class="button primary" href="/add">Add movie or show</a>
 		</div>
 	</div>
 
@@ -58,7 +66,7 @@
 	{:else if titles.length === 0}
 		<div class="empty card">
 			<p>Nothing here yet.</p>
-			<p><a class="button primary" href="/add">Add your first movie</a></p>
+			<p><a class="button primary" href="/add">Add your first movie or show</a></p>
 		</div>
 	{:else if shown.length === 0}
 		<p class="empty">No titles match.</p>
@@ -75,7 +83,13 @@
 						<div class="name" title={t.name}>{t.name}</div>
 						<div class="spread">
 							<span class="muted small">{t.year ?? ''}</span>
-							<Badge state={stateOf(t)} />
+							{#if t.kind === 'series' && t.episodes}
+								<span class="badge {t.episodes.missing ? 'warn' : 'ok'}" title="Episodes downloaded of monitored">
+									{t.episodes.acquired}/{t.episodes.monitored}
+								</span>
+							{:else}
+								<Badge state={stateOf(t)} />
+							{/if}
 						</div>
 					</div>
 				</a>

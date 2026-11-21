@@ -52,11 +52,39 @@ async def _indexer(
     return out
 
 
-async def _movie(c: httpx.AsyncClient, *, search: bool = False) -> dict[str, Any]:
-    """Dune (2021), Standard HD. No search on add unless asked: most tests drive the
-    search and grab by hand."""
+# The old "Standard HD" default (720p and 1080p, cutoff WEB 1080p). Pipeline tests use
+# 720p releases as fallbacks, so they keep this profile rather than the strict 1080p one.
+STANDARD_HD: dict[str, Any] = {
+    "name": "Standard HD",
+    "ladder": [
+        {"name": "HDTV-720p", "qualities": ["HDTV-720p"]},
+        {"name": "WEB 720p", "qualities": ["WEBRip-720p", "WEBDL-720p"]},
+        {"name": "Bluray-720p", "qualities": ["Bluray-720p"]},
+        {"name": "HDTV-1080p", "qualities": ["HDTV-1080p"]},
+        {"name": "WEB 1080p", "qualities": ["WEBRip-1080p", "WEBDL-1080p"]},
+        {"name": "Bluray-1080p", "qualities": ["Bluray-1080p"]},
+    ],
+    "cutoff": "WEB 1080p",
+    "format_scores": {},
+}
+
+
+async def standard_hd(c: httpx.AsyncClient) -> str:
+    """Id of the Standard HD test profile, created on first use."""
     profiles = (await c.get("/quality-profiles")).json()
-    hd = next(p["id"] for p in profiles if p["name"] == "Standard HD")
+    found = next((p["id"] for p in profiles if p["name"] == STANDARD_HD["name"]), None)
+    if found:
+        return str(found)
+    body = {k: v for k, v in STANDARD_HD.items() if k != "format_scores"}
+    r = await c.post("/quality-profiles", json=body)
+    assert r.status_code == 201, r.text
+    return str(r.json()["id"])
+
+
+async def _movie(c: httpx.AsyncClient, *, search: bool = False) -> dict[str, Any]:
+    """Dune (2021), Standard HD (test profile). No search on add unless asked: most
+    tests drive the search and grab by hand."""
+    hd = await standard_hd(c)
     r = await c.post("/titles", json={"tmdb_id": 438631, "profile_id": hd, "search": search})
     assert r.status_code == 201, r.text
     out: dict[str, Any] = r.json()

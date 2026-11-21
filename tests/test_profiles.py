@@ -19,6 +19,7 @@ from fetchbox.modules.profiles.formats import (
 from fetchbox.modules.profiles.profile import ProfileSpec, evaluate, language_ok
 from fetchbox.modules.profiles.qualities import BY_NAME, SizeLimit, default_size, size_ok
 from fetchbox.modules.releases.parser import parse_release, quality_name
+from tests.pipeline import STANDARD_HD
 
 CONDS: TypeAdapter[list[Condition]] = TypeAdapter(list[Condition])
 
@@ -174,7 +175,7 @@ def test_scores_use_profile_override_then_default() -> None:
 
 
 def _hd(**kw: Any) -> ProfileSpec:
-    return ProfileSpec.model_validate({**defaults.PROFILES[0], **kw})
+    return ProfileSpec.model_validate({**STANDARD_HD, **kw})
 
 
 def test_default_profiles_are_valid() -> None:
@@ -213,7 +214,7 @@ def test_evaluate_tiers_and_cutoff() -> None:
     cam = evaluate(hd, info("Movie.2020.CAM.x264-GRP"), [])
     assert not cam.allowed and cam.tier is None and not cam.cutoff_met
     uhd = evaluate(hd, info("Movie.2020.2160p.WEB-DL.x265-GRP"), [])
-    assert not uhd.allowed  # Standard HD doesn't include 4K
+    assert not uhd.allowed  # 1080p doesn't include 4K
 
 
 def test_cutoff_format_score_and_min_score() -> None:

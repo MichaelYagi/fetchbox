@@ -50,6 +50,10 @@ def _apply(row: QualityProfile, spec: ProfileSpec) -> None:
         setattr(row, f, data[f])
 
 
+OLD_DEFAULTS = {"Standard HD", "4K"}
+NEW_DEFAULTS = ("1080p", "2160p", "720p", "480p")
+
+
 class ProfilesService:
     def __init__(self, db: Database, bus: EventBus) -> None:
         self.db = db
@@ -72,8 +76,15 @@ class ProfilesService:
                 for row in (await s.execute(select(CustomFormat))).scalars():
                     if row.name in by_name:
                         ids[by_name[row.name]] = row.id
-            if not await s.scalar(select(func.count()).select_from(QualityProfile)):
+            names = set((await s.execute(select(QualityProfile.name))).scalars())
+            # Databases from before the resolution-named defaults (Standard HD, 4K) get
+            # them once, next to the old ones (titles may use those); a later deletion of a
+            # new one isn't undone, since this only runs while none of them exist.
+            upgrade = bool(names & OLD_DEFAULTS) and not names & set(NEW_DEFAULTS)
+            if not names or upgrade:
                 for p in defaults.PROFILES:
+                    if p["name"] in names:
+                        continue
                     scores = {ids[k]: v for k, v in p["format_scores"].items() if k in ids}
                     spec = ProfileSpec.model_validate({**p, "format_scores": scores})
                     profile = QualityProfile()

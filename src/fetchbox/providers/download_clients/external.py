@@ -124,6 +124,12 @@ _QBIT: dict[str, TorrentState] = {
 }  # fmt: skip  # everything else (downloading, stalledDL, queuedDL, moving...) downloads
 
 
+def _ref(t: dict[str, Any]) -> str:
+    """The v1 info hash (Fetchbox's ref) of a qBittorrent torrent row."""
+    v1 = str(t.get("infohash_v1") or "").lower()
+    return v1 if len(v1) == 40 else str(t["hash"]).lower()
+
+
 class QbittorrentClient(_External):
     kind: ClassVar[str] = "qbittorrent"
     product: ClassVar[str] = "qBittorrent"
@@ -133,6 +139,9 @@ class QbittorrentClient(_External):
         super().__init__(settings, **kw)
         self._logged_in = False
         self._v5: bool | None = None  # 5.x renamed pause/resume to stop/start
+        # Fetchbox's ref is the v1 info hash; qBittorrent 5 names hybrid (v1+v2) torrents
+        # by their truncated v2 hash instead. ref -> qBittorrent's id.
+        self._ids: dict[str, str] = {}
 
     async def _login(self) -> None:
         r = await self._request(
@@ -141,9 +150,10 @@ class QbittorrentClient(_External):
             data={"username": self.cfg.username or "", "password": self._password()},
             headers={"Referer": self.cfg.url},
         )
+        # 4.x: 200 "Ok." / 200 "Fails."; 5.x: 204 (empty) / 401. Checked against 5.3.0.
         if r.status_code == 403:
             raise DownloadClientError("rejected", "qBittorrent banned this IP after failed logins")
-        if r.status_code != 200 or r.text.strip() != "Ok.":
+        if r.status_code not in (200, 204) or r.text.strip() not in ("", "Ok."):
             raise DownloadClientError("rejected", "qBittorrent refused the username or password")
         self._logged_in = True
 
@@ -174,20 +184,20 @@ class QbittorrentClient(_External):
         ref = torrent_ref(src)
         if opts.category:
             try:
-                await self._api(
-                    "POST",
-                    "torrents/createCategory",
-                    data={"category": opts.category, "savePath": opts.save_path},
-                )
+                cat = {"category": opts.category}
+                if opts.save_path:
+                    cat["savePath"] = opts.save_path
+                await self._api("POST", "torrents/createCategory", data=cat)
             except DownloadClientError as exc:
                 if exc.kind != "rejected":  # 409: the category exists
                     raise
         data = {
-            "savepath": opts.save_path,
             "paused": str(opts.paused).lower(),
             "stopped": str(opts.paused).lower(),
             "autoTMM": "false",
         }
+        if opts.save_path:  # else qBittorrent's default save path
+            data["savepath"] = opts.save_path
         if opts.category:
             data["category"] = opts.category
         if opts.download_limit:
@@ -210,7 +220,7 @@ class QbittorrentClient(_External):
         size = t.get("size")
         eta = t.get("eta")
         return ClientTorrent(
-            ref=t["hash"].lower(),
+            ref=_ref(t),
             name=t.get("name", ""),
             state=state,
             progress=float(t.get("progress", 0.0)),
@@ -228,15 +238,28 @@ class QbittorrentClient(_External):
             eta_seconds=eta if isinstance(eta, int) and 0 <= eta < 8640000 else None,
         )
 
+    async def _all(self) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = (await self._api("GET", "torrents/info")).json()
+        for t in rows:
+            self._ids[_ref(t)] = str(t["hash"]).lower()
+        return rows
+
+    async def _qid(self, ref: ClientRef) -> str:
+        """qBittorrent's id for a ref (the same hash, except for hybrid torrents)."""
+        if ref not in self._ids:
+            await self._all()
+        return self._ids.get(ref, ref)
+
     async def status(self, refs: list[ClientRef] | None = None) -> list[ClientTorrent]:
-        params = {"hashes": "|".join(refs)} if refs else {}
         if refs is not None and not refs:
             return []
-        rows = (await self._api("GET", "torrents/info", params=params)).json()
-        return [self._torrent(t) for t in rows]
+        torrents = [self._torrent(t) for t in await self._all()]
+        return torrents if refs is None else [t for t in torrents if t.ref in set(refs)]
 
     async def files(self, ref: ClientRef) -> list[ClientFile]:
-        rows = (await self._api("GET", "torrents/files", params={"hash": ref})).json()
+        rows = (
+            await self._api("GET", "torrents/files", params={"hash": await self._qid(ref)})
+        ).json()
         return [
             ClientFile(path=f["name"], size=int(f["size"]), progress=float(f["progress"]))
             for f in rows
@@ -249,7 +272,7 @@ class QbittorrentClient(_External):
             )
             await self._api("POST", "transfer/setUploadLimit", data={"limit": limits.upload or 0})
             return
-        h = {"hashes": ref}
+        h = {"hashes": await self._qid(ref)}
         await self._api(
             "POST", "torrents/setDownloadLimit", data={**h, "limit": limits.download or 0}
         )
@@ -257,21 +280,21 @@ class QbittorrentClient(_External):
 
     async def pause(self, ref: ClientRef) -> None:
         await self._api("POST", "torrents/stop" if await self._is_v5() else "torrents/pause",
-                        data={"hashes": ref})  # fmt: skip
+                        data={"hashes": await self._qid(ref)})  # fmt: skip
 
     async def resume(self, ref: ClientRef) -> None:
         await self._api("POST", "torrents/start" if await self._is_v5() else "torrents/resume",
-                        data={"hashes": ref})  # fmt: skip
+                        data={"hashes": await self._qid(ref)})  # fmt: skip
 
     async def remove(self, ref: ClientRef, delete_data: bool) -> None:
         await self._api(
             "POST",
             "torrents/delete",
-            data={"hashes": ref, "deleteFiles": str(delete_data).lower()},
+            data={"hashes": await self._qid(ref), "deleteFiles": str(delete_data).lower()},
         )
 
     async def recheck(self, ref: ClientRef) -> None:
-        await self._api("POST", "torrents/recheck", data={"hashes": ref})
+        await self._api("POST", "torrents/recheck", data={"hashes": await self._qid(ref)})
 
 
 # ---- Transmission (RPC) -------------------------------------------------------------------------
@@ -329,7 +352,9 @@ class TransmissionClient(_External):
 
     async def add(self, src: TorrentSource, opts: AddOptions) -> ClientRef:
         ref = torrent_ref(src)
-        args: dict[str, Any] = {"download-dir": opts.save_path, "paused": opts.paused}
+        args: dict[str, Any] = {"paused": opts.paused}
+        if opts.save_path:  # else Transmission's default download folder
+            args["download-dir"] = opts.save_path
         if src.torrent is not None:
             args["metainfo"] = base64.b64encode(src.torrent).decode()
         else:
@@ -495,7 +520,9 @@ class DelugeClient(_External):
 
     async def add(self, src: TorrentSource, opts: AddOptions) -> ClientRef:
         ref = torrent_ref(src)
-        options: dict[str, Any] = {"download_location": opts.save_path, "add_paused": opts.paused}
+        options: dict[str, Any] = {"add_paused": opts.paused}
+        if opts.save_path:  # else Deluge's default download folder
+            options["download_location"] = opts.save_path
         if opts.download_limit:
             options["max_download_speed"] = _kib(opts.download_limit)
         if opts.upload_limit:

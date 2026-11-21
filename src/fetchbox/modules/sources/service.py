@@ -427,7 +427,10 @@ class SourcesService:
         if not enabled:
             return HealthStatus(
                 status="warning",
-                message="No indexers: add a Torznab indexer to search for releases",
+                message=(
+                    "No indexers: add Prowlarr (or a Torznab feed) in Settings > Indexers "
+                    "to search for releases"
+                ),
             )
         now = utcnow()
         backing_off = [r.name for r in enabled if r.disabled_until and r.disabled_until > now]

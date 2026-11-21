@@ -257,6 +257,9 @@ class ClientOut(_Versioned):
     media_kinds: list[str]
     tags: list[str]
     running: bool
+    saves_to: str | None = Field(
+        description="Where downloads go, as Fetchbox sees it; null: the client's own folder"
+    )
 
 
 class ClientPatch(BaseModel):
@@ -283,6 +286,7 @@ def _client_out(
         media_kinds=row.media_kinds or [],
         tags=row.tags or [],
         running=row.id in svc.clients,
+        saves_to=svc.saves_to(row),
     )
     if response is not None:
         response.headers["ETag"] = out.etag

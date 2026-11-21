@@ -19,13 +19,14 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import re
 from collections.abc import Sequence
 from datetime import timedelta
 from pathlib import Path
 from typing import Any, Literal
 
 import structlog
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field, ValidationError, field_validator
 from sqlalchemy import case, exists, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -65,6 +66,19 @@ BUILTIN_NAME = "Built-in"
 DIRECT_NAME = "Direct downloads"
 
 
+def _writable(folder: Path) -> str | None:
+    """None if Fetchbox can create and write files in ``folder``; else why not."""
+    try:
+        folder = folder.expanduser()
+        folder.mkdir(parents=True, exist_ok=True)
+        probe = folder / ".fetchbox-write-test"
+        probe.write_bytes(b"")
+        probe.unlink()
+    except OSError as exc:
+        return f"can't write to {folder}: {exc.strerror or exc}"
+    return None
+
+
 def _superseded(item_id: Any, created_at: Any) -> Any:
     """EXISTS a later grab for the same wanted item. A grab that failed before reaching
     a client has no download row; once a newer grab claims its items, it must not be
@@ -89,8 +103,22 @@ class Policy(BaseModel):
     stall_minutes: int = Field(default=120, ge=1, le=10080)
     stall_limit: int = Field(default=3, ge=1, le=20, description="Stalls before failing")
     save_path: str | None = Field(
-        default=None, description="Where torrents download; default <downloads root>/Torrents"
+        default=None,
+        description="Download folder as Fetchbox sees it. Built-in clients: default "
+        "<downloads root>/Torrents; external clients: default is the client's own folder",
     )
+
+    @field_validator("save_path", mode="before")
+    @classmethod
+    def _folder(cls, v: object) -> object:
+        if isinstance(v, str):
+            v = v.strip()
+            if not v:
+                return None  # empty: back to the default
+            if not (v.startswith("/") or re.match(r"^[A-Za-z]:[\\/]", v) or v.startswith("~")):
+                raise ValueError("must be an absolute folder path")
+        return v
+
     seed_ratio: float | None = Field(
         default=None, ge=0, description="Stop seeding at this upload ratio; null: no limit"
     )
@@ -116,6 +144,15 @@ class Policy(BaseModel):
             local = m.local.replace("\\", "/").rstrip("/")
             if norm == local or norm.startswith(local + "/"):
                 return m.client.rstrip("/\\") + norm[len(local) :]
+        return path
+
+    def to_local(self, path: str) -> str:
+        """The client's path as Fetchbox sees it (the reverse of ``to_client``)."""
+        norm = path.replace("\\", "/")
+        for m in sorted(self.path_mappings, key=lambda m: len(m.client), reverse=True):
+            remote = m.client.replace("\\", "/").rstrip("/")
+            if norm == remote or norm.startswith(remote + "/"):
+                return m.local.rstrip("/\\") + norm[len(remote) :]
         return path
 
     def seeding_done(self, ratio: float | None, seed_seconds: int | None) -> bool:
@@ -258,6 +295,12 @@ class DownloadsService:
     def policy(self, row: DownloadClient) -> Policy:
         return Policy.model_validate(row.policy or {})
 
+    def saves_to(self, row: DownloadClient) -> str | None:
+        """Where this client's downloads go (Fetchbox's view); None: the client decides."""
+        if row.kind in ("builtin", "direct") or self.policy(row).save_path:
+            return str(self.save_root(row))
+        return None
+
     def save_root(self, row: DownloadClient) -> Path:
         p = self.policy(row).save_path
         return Path(p).expanduser() if p else self.downloads_root / "Torrents"
@@ -339,15 +382,26 @@ class DownloadsService:
         try:
             src = await self._source(grab)
             row, client = await self._pick_client(media_kind, src)
-            save = self.save_root(row) / CATEGORY[media_kind]
+            policy = self.policy(row)
+            built_in = row.kind in ("builtin", "direct")
+            # Built-in clients save under the downloads root; an external client keeps its
+            # own folder unless the client's policy names one.
+            save: Path | None = (
+                self.save_root(row) / CATEGORY[media_kind] if built_in or policy.save_path else None
+            )
             ref = await client.add(
                 src,
                 AddOptions(
-                    save_path=self.policy(row).to_client(str(save)),
+                    save_path=policy.to_client(str(save)) if save else None,
                     category=CATEGORY[media_kind],
                     paused=True,
                 ),
             )
+            if save is None:  # where did the client put it? (as Fetchbox sees that path)
+                with contextlib.suppress(DownloadClientError):
+                    for t in await client.status([ref]):
+                        if t.save_path:
+                            save = Path(policy.to_local(t.save_path))
         except Exception as exc:
             kind = exc.kind if isinstance(exc, IndexerError | DownloadClientError) else None
             permanent = kind in ("invalid_torrent", "invalid_response", "auth", "config")
@@ -370,7 +424,7 @@ class DownloadsService:
             d = existing or Download(client_id=row.id, client_ref=ref)
             d.grab_id, d.name, d.media_kind = grab.id, grab.release_title, media_kind
             d.status, d.progress, d.error, d.attempts = "queued", 0.0, None, 0
-            d.save_path, d.last_progress_at, d.created_at = str(save), now, now
+            d.save_path, d.last_progress_at, d.created_at = (str(save) if save else None), now, now
             d.started_at = d.completed_at = d.removed_at = None
             d.import_status = d.import_error = d.import_retry_at = d.imported_at = None
             d.import_attempts = 0
@@ -528,6 +582,10 @@ class DownloadsService:
             return
         self.live[d.id] = t
         changes: dict[str, Any] = {}
+        if t.save_path and row.kind not in ("builtin", "direct"):
+            local = self.policy(row).to_local(t.save_path)  # the client may have moved it
+            if local != d.save_path:
+                changes["save_path"] = local
         if t.progress > d.progress + 1e-6:
             changes["last_progress_at"] = now
         changes.update(progress=t.progress, size=t.size, ratio=t.ratio, seed_seconds=t.seed_seconds)
@@ -750,6 +808,14 @@ class DownloadsService:
         d = await self.get(download_id)
         if d.status == "removed":
             return
+        # A finished download's data is only deleted once the library has its own copy:
+        # before a successful import it is the only copy, and a symlink import points at it.
+        if (
+            delete_data
+            and d.status == "completed"
+            and (d.import_status != "imported" or await self._symlinked(d))
+        ):
+            delete_data = False
         client = self.clients.get(d.client_id or "")
         # Under the poll lock: a poll that already listed this download would otherwise
         # find the torrent gone from the client and fail it.
@@ -780,10 +846,18 @@ class DownloadsService:
             with contextlib.suppress(DownloadClientError):
                 await client.remove(d.client_ref, True)
         async with self.db.sessionmaker() as s:
-            row = await s.get(Download, d.id)
+            # Conditional: whoever else touched the row meanwhile (the queue manager), the
+            # first to fail it wins and a second call does nothing.
+            failed = await s.execute(
+                update(Download)
+                .where(Download.id == d.id, Download.status.in_(ACTIVE))
+                .values(status="failed", error=reason, version=Download.version + 1)
+                .execution_options(synchronize_session=False)
+            )
+            if not failed.rowcount:  # type: ignore[attr-defined]
+                return
             grab = await s.get(Grab, d.grab_id)
-            assert row is not None and grab is not None
-            row.status, row.error = "failed", reason
+            assert grab is not None
             items = [w.id for w in await self._items(s, grab.id)]
             await self._release_items(s, items, grab, reason)
             await s.commit()
@@ -933,11 +1007,20 @@ class DownloadsService:
                 restart = True
             if "policy" in changes:
                 try:
-                    row.policy = Policy.model_validate(
-                        {**(row.policy or {}), **changes["policy"]}
-                    ).model_dump()
+                    policy = Policy.model_validate({**(row.policy or {}), **changes["policy"]})
                 except ValidationError as exc:
                     raise _invalid(exc, "body.policy") from None
+                if policy.save_path and row.kind in ("builtin", "direct"):
+                    # Fetchbox writes there itself: it must exist (or be creatable).
+                    problem = await asyncio.to_thread(_writable, Path(policy.save_path))
+                    if problem:
+                        raise ProblemError(
+                            422,
+                            "Validation Failed",
+                            slug="validation",
+                            errors=[FieldError(field="body.policy.save_path", message=problem)],
+                        )
+                row.policy = policy.model_dump()
             for f in ("enabled", "priority", "media_kinds", "tags"):
                 if f in changes:
                     setattr(row, f, changes[f])

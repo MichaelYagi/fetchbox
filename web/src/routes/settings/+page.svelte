@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { ApiError, del, get, patch, post, type S } from '#lib/api.ts';
+	import LibraryCard from '#lib/LibraryCard.svelte';
+	import Path from '#lib/Path.svelte';
 	import { session } from '#lib/session.svelte.ts';
 
 	type Cfg = { tmdb: { api_key: string | null; language: string }; search: Record<string, unknown> };
@@ -8,6 +10,7 @@
 	let definitions = $state<S['DefinitionOut'][]>([]);
 	let clients = $state<S['ClientOut'][]>([]);
 	let destinations = $state<S['DestinationOut'][]>([]);
+	let namingOptions = $state<S['NamingOptionsOut'] | null>(null);
 	let health = $state<S['HealthReport'] | null>(null);
 	let tests = $state<Record<string, S['TestResult']>>({});
 	let error = $state('');
@@ -15,8 +18,112 @@
 	let busy = $state('');
 
 	let tmdbKey = $state('');
-	let newIndexer = $state({ kind: 'torznab', name: '', url: '', api_key: '', definition: '' });
+	let newIndexer = $state({ kind: 'prowlarr', name: '', url: '', api_key: '', definition: '' });
 	let newClient = $state({ kind: 'qbittorrent', name: '', url: '', username: '', password: '' });
+	// Inline editing: one row at a time. Secrets left blank keep what is stored.
+	let editing = $state<string | null>(null);
+	let draft = $state({
+		name: '',
+		url: '',
+		api_key: '',
+		username: '',
+		password: '',
+		priority: 25,
+		local: '',
+		remote: '',
+		folder: ''
+	});
+
+	function editIndexer(i: S['IndexerOut']) {
+		const st = i.settings as Record<string, unknown>;
+		draft = {
+			name: i.name,
+			url: (st.url as string) ?? '',
+			api_key: '',
+			username: '',
+			password: '',
+			priority: i.priority,
+			local: '',
+			remote: '',
+			folder: ''
+		};
+		editing = i.id;
+	}
+
+	function editClient(c: S['ClientOut']) {
+		const st = c.settings as Record<string, unknown>;
+		const map = (c.policy.path_mappings ?? [])[0];
+		draft = {
+			name: c.name,
+			url: (st.url as string) ?? '',
+			api_key: '',
+			username: (st.username as string) ?? '',
+			password: '',
+			priority: c.priority,
+			local: map?.local ?? '',
+			remote: map?.client ?? '',
+			folder: c.policy.save_path ?? ''
+		};
+		editing = c.id;
+	}
+
+	// Torrent clients in the order they're tried; the first enabled, running one is used.
+	const torrentClients = $derived(clients.filter((c) => c.kind !== 'direct'));
+	const directClients = $derived(clients.filter((c) => c.kind === 'direct'));
+	const inUse = $derived(torrentClients.find((c) => c.enabled && c.running)?.id);
+
+	function move(c: S['ClientOut'], by: -1 | 1) {
+		const order = [...torrentClients];
+		const at = order.findIndex((x) => x.id === c.id);
+		const to = at + by;
+		if (to < 0 || to >= order.length) return;
+		[order[at], order[to]] = [order[to], order[at]];
+		// Store the visible order as priorities 1, 2, 3... (only those that change).
+		act(`move-${c.id}`, async () => {
+			for (const [n, x] of order.entries()) {
+				if (x.priority !== n + 1) {
+					await patch(`/download-clients/${x.id}`, { priority: n + 1 }, x.etag);
+				}
+			}
+		});
+	}
+
+	function saveIndexer(e: SubmitEvent, i: S['IndexerOut']) {
+		e.preventDefault();
+		const settings: Record<string, unknown> = {};
+		if (i.kind === 'torznab' || i.kind === 'prowlarr') settings.url = draft.url;
+		if (draft.api_key.trim()) settings.api_key = draft.api_key.trim();
+		const body: Record<string, unknown> = { name: draft.name, priority: draft.priority };
+		if (Object.keys(settings).length) body.settings = settings;
+		act(`save-${i.id}`, () => patch(`/indexers/${i.id}`, body, i.etag), `${draft.name} saved.`).then(
+			() => {
+				if (!error) editing = null;
+			}
+		);
+	}
+
+	function saveClient(e: SubmitEvent, c: S['ClientOut']) {
+		e.preventDefault();
+		// The built-in clients have nothing to connect to: only their priority is edited
+		// (sending settings would restart the torrent engine for nothing).
+		const builtIn = c.kind === 'builtin' || c.kind === 'direct';
+		const settings: Record<string, unknown> = { url: draft.url };
+		if (c.kind !== 'deluge') settings.username = draft.username || null;
+		if (draft.password) settings.password = draft.password;
+		const mappings =
+			draft.local.trim() && draft.remote.trim()
+				? [{ local: draft.local.trim(), client: draft.remote.trim() }]
+				: [];
+		const folder = draft.folder.trim() || null; // empty: back to the default
+		const body = builtIn
+			? { policy: { save_path: folder } }
+			: { settings, policy: { path_mappings: mappings, save_path: folder } };
+		act(`save-${c.id}`, () => patch(`/download-clients/${c.id}`, body, c.etag), `${c.name} saved.`).then(
+			() => {
+				if (!error) editing = null;
+			}
+		);
+	}
 
 	async function load() {
 		try {
@@ -35,6 +142,7 @@
 	}
 	$effect(() => {
 		load();
+		get<S['NamingOptionsOut']>('/library/naming-options').then((o) => (namingOptions = o));
 	});
 
 	async function act(key: string, fn: () => Promise<unknown>, done = '') {
@@ -68,15 +176,19 @@
 		e.preventDefault();
 		const n = newIndexer;
 		const body =
-			n.kind === 'torznab'
-				? { kind: 'torznab', name: n.name, settings: { url: n.url, api_key: n.api_key || null } }
+			n.kind === 'torznab' || n.kind === 'prowlarr'
+				? {
+						kind: n.kind,
+						name: n.name || (n.kind === 'prowlarr' ? 'Prowlarr' : 'Torznab'),
+						settings: { url: n.url, api_key: n.api_key || null }
+					}
 				: {
 						kind: 'definition',
 						name: n.name || definitions.find((d) => d.slug === n.definition)?.name,
 						settings: { definition: n.definition, ...(n.api_key ? { api_key: n.api_key } : {}) }
 					};
 		act('add-indexer', () => post('/indexers', body), 'Indexer added.').then(() => {
-			if (!error) newIndexer = { kind: 'torznab', name: '', url: '', api_key: '', definition: '' };
+			if (!error) newIndexer = { kind: 'prowlarr', name: '', url: '', api_key: '', definition: '' };
 		});
 	}
 
@@ -103,6 +215,34 @@
 	{#if error}<p class="notice error">{error}</p>{/if}
 	{#if saved}<p class="notice">{saved}</p>{/if}
 
+	{#if session.host}
+		<section id="computer">
+			<h2>This computer</h2>
+			<div class="card">
+				<table>
+					<tbody>
+						<tr>
+							<td class="w muted">Running on</td>
+							<td>
+								<strong>{session.host.name}</strong>
+								{session.host.wsl_distro
+									? `· Linux (${session.host.wsl_distro}) in WSL on Windows`
+									: `· ${session.host.os}`}
+								<div class="muted small">
+									Every folder in these settings is a folder on this machine{session.host.wsl_distro
+										? '; under each one is where Windows finds it'
+										: ''}.
+								</div>
+							</td>
+						</tr>
+						<tr><td class="w muted">Downloads</td><td><Path path={session.host.downloads_root} /></td></tr>
+						<tr><td class="w muted">Fetchbox data</td><td><Path path={session.host.data_dir} /></td></tr>
+					</tbody>
+				</table>
+			</div>
+		</section>
+	{/if}
+
 	<section id="health">
 		<h2>Health</h2>
 		{#if health}
@@ -127,7 +267,7 @@
 		<form class="card stack" onsubmit={saveTmdb}>
 			<p class="muted small">
 				Searching for movies needs a free API key from
-				<a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noreferrer">themoviedb.org</a>
+				<a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noreferrer">themoviedb.org/settings/api</a>
 				(the v3 key or the v4 read access token).
 				{#if config?.config.tmdb.api_key}A key is set.{:else}<strong>No key is set yet.</strong>{/if}
 			</p>
@@ -154,7 +294,10 @@
 						{#each indexers as i (i.id)}
 							<tr>
 								<td><strong>{i.name}</strong></td>
-								<td class="muted">{i.kind === 'definition' ? (i.settings.definition as string) : i.kind}</td>
+								<td class="muted">
+									{i.kind === 'definition' ? (i.settings.definition as string) : i.kind}
+									<span class="small">· priority {i.priority}</span>
+								</td>
 								<td class="small">
 									{#if !i.enabled}<span class="badge">Disabled</span>
 									{:else if i.disabled_until}<span class="badge warn" title={i.last_error ?? ''}>Backing off</span>
@@ -162,6 +305,9 @@
 									{#if tests[i.id]}<div class={tests[i.id].ok ? 'okt' : 'errt'}>{tests[i.id].message}</div>{/if}
 								</td>
 								<td><div class="row end">
+									<button class="small" onclick={() => (editing === i.id ? (editing = null) : editIndexer(i))} disabled={!!busy}>
+										{editing === i.id ? 'Cancel' : 'Edit'}
+									</button>
 									<button class="small" onclick={() => test('indexers', i.id)} disabled={!!busy}>Test</button>
 									<button class="small" onclick={() => act(i.id, () => patch(`/indexers/${i.id}`, { enabled: !i.enabled }, i.etag))} disabled={!!busy}>
 										{i.enabled ? 'Disable' : 'Enable'}
@@ -169,6 +315,22 @@
 									<button class="small danger" onclick={() => confirm(`Remove ${i.name}?`) && act(i.id, () => del(`/indexers/${i.id}`, undefined, i.etag))} disabled={!!busy}>Remove</button>
 								</div></td>
 							</tr>
+							{#if editing === i.id}
+								<tr class="editrow">
+									<td colspan="4">
+										<form class="row" onsubmit={(e) => saveIndexer(e, i)}>
+											<label>Name <input bind:value={draft.name} required /></label>
+											{#if i.kind === 'torznab' || i.kind === 'prowlarr'}
+												<label class="grow">URL <input bind:value={draft.url} required placeholder="http://localhost:9696/3" /></label>
+											{/if}
+											<label>API key <input type="password" bind:value={draft.api_key} placeholder="unchanged" autocomplete="off" /></label>
+											<label class="narrow">Priority <input type="number" min="1" max="50" bind:value={draft.priority} /></label>
+											<button class="primary" disabled={!!busy}>Save</button>
+										</form>
+										<p class="muted small hint">Lower priority numbers are preferred. Leave the API key empty to keep the stored one.</p>
+									</td>
+								</tr>
+							{/if}
 						{/each}
 					</tbody>
 				</table>
@@ -178,7 +340,8 @@
 			<strong>Add an indexer</strong>
 			<div class="row">
 				<select bind:value={newIndexer.kind} aria-label="Kind">
-					<option value="torznab">Torznab (Prowlarr, Jackett…)</option>
+					<option value="prowlarr">Prowlarr (all its indexers)</option>
+					<option value="torznab">Torznab feed (Jackett, one Prowlarr indexer…)</option>
 					<option value="definition">Built-in definition</option>
 				</select>
 				{#if newIndexer.kind === 'definition'}
@@ -187,15 +350,24 @@
 						{#each definitions as d (d.slug)}<option value={d.slug}>{d.name}</option>{/each}
 					</select>
 				{/if}
-				<input placeholder="Name" bind:value={newIndexer.name} required={newIndexer.kind === 'torznab'} />
-				{#if newIndexer.kind === 'torznab'}
-					<input class="grow" placeholder="URL, e.g. http://localhost:9696/1" bind:value={newIndexer.url} required />
+				<input placeholder="Name" bind:value={newIndexer.name} />
+				{#if newIndexer.kind === 'prowlarr'}
+					<input class="grow" placeholder="Prowlarr address, e.g. http://192.168.1.10:9696" bind:value={newIndexer.url} required />
+				{:else if newIndexer.kind === 'torznab'}
+					<input class="grow" placeholder="Torznab URL" bind:value={newIndexer.url} required />
 				{/if}
-				{#if newIndexer.kind === 'torznab' || needsKey}
+				{#if newIndexer.kind === 'torznab' || newIndexer.kind === 'prowlarr' || needsKey}
 					<input type="password" placeholder="API key" bind:value={newIndexer.api_key} autocomplete="off" />
 				{/if}
 				<button class="primary" disabled={busy === 'add-indexer'}>Add</button>
 			</div>
+			{#if newIndexer.kind === 'prowlarr'}
+				<p class="muted small">
+					The address you open Prowlarr at, and its API key from Prowlarr's Settings → General →
+					Security. Every enabled indexer in Prowlarr is searched; ones you add there later are
+					picked up automatically.
+				</p>
+			{/if}
 			{#if defn}<p class="muted small">{defn.description}</p>{/if}
 		</form>
 	</section>
@@ -206,28 +378,117 @@
 			<table>
 				<thead><tr><th>Name</th><th>Kind</th><th>Status</th><th></th></tr></thead>
 				<tbody>
-					{#each clients as c (c.id)}
+					{#each torrentClients as c, n (c.id)}
 						<tr>
-							<td><strong>{c.name}</strong></td>
+							<td>
+								<div class="row">
+									<div class="order">
+										<button class="tiny" title="Move up" aria-label="Move {c.name} up" onclick={() => move(c, -1)} disabled={!!busy || n === 0}>▲</button>
+										<button class="tiny" title="Move down" aria-label="Move {c.name} down" onclick={() => move(c, 1)} disabled={!!busy || n === torrentClients.length - 1}>▼</button>
+									</div>
+									<strong>{c.name}</strong>
+									{#if c.id === inUse}<span class="badge info">Used for torrents</span>{/if}
+								</div>
+								<div class="muted small where">
+									Saves to {#if c.saves_to}<Path path={c.saves_to} />{:else}{c.name}'s own download folder{/if}
+								</div>
+							</td>
 							<td class="muted">{c.kind}</td>
 							<td class="small">
 								<span class="badge {c.enabled ? (c.running ? 'ok' : 'warn') : ''}">{c.enabled ? (c.running ? 'Running' : 'Not running') : 'Disabled'}</span>
 								{#if tests[c.id]}<div class={tests[c.id].ok ? 'okt' : 'errt'}>{tests[c.id].message}</div>{/if}
 							</td>
 							<td><div class="row end">
+								<button class="small" onclick={() => (editing === c.id ? (editing = null) : editClient(c))} disabled={!!busy}>
+									{editing === c.id ? 'Cancel' : 'Edit'}
+								</button>
 								<button class="small" onclick={() => test('download-clients', c.id)} disabled={!!busy}>Test</button>
 								<button class="small" onclick={() => act(c.id, () => patch(`/download-clients/${c.id}`, { enabled: !c.enabled }, c.etag))} disabled={!!busy}>
 									{c.enabled ? 'Disable' : 'Enable'}
 								</button>
-								{#if c.kind !== 'builtin'}
+								{#if c.kind !== 'builtin' && c.kind !== 'direct'}
 									<button class="small danger" onclick={() => confirm(`Remove ${c.name}?`) && act(c.id, () => del(`/download-clients/${c.id}`, undefined, c.etag))} disabled={!!busy}>Remove</button>
 								{/if}
 							</div></td>
 						</tr>
+						{#if editing === c.id}
+							<tr class="editrow">
+								<td colspan="4">
+									<form class="row" onsubmit={(e) => saveClient(e, c)}>
+										{#if c.kind !== 'builtin' && c.kind !== 'direct'}
+											<label class="grow">URL <input bind:value={draft.url} required /></label>
+											{#if c.kind !== 'deluge'}<label>Username <input bind:value={draft.username} autocomplete="off" /></label>{/if}
+											<label>Password <input type="password" bind:value={draft.password} placeholder="unchanged" autocomplete="off" /></label>
+										{/if}
+										<label class="grow">
+											Download folder
+											<input
+												bind:value={draft.folder}
+												placeholder={c.kind === 'builtin' || c.kind === 'direct' ? 'default: ~/Downloads/Fetchbox/Torrents' : `empty: ${c.name}'s own folder`}
+											/>
+										</label>
+										<button class="primary" disabled={!!busy}>Save</button>
+									</form>
+									{#if c.kind !== 'builtin' && c.kind !== 'direct'}
+									<div class="mapping">
+										<p class="muted small hint">
+											<strong>Path mapping</strong>, only if this client runs on another machine or in
+											Docker: the same folder as Fetchbox sees it and as the client sees it.
+										</p>
+										<div class="row">
+											<label class="grow">Fetchbox path <input bind:value={draft.local} placeholder="/mnt/t/Torrents" /></label>
+											<label class="grow">Client path <input bind:value={draft.remote} placeholder="/Users/me/Torrents" /></label>
+										</div>
+									</div>
+									{/if}
+									<p class="muted small hint">The download folder applies to new downloads; ones in progress stay where they are.</p>
+								</td>
+							</tr>
+						{/if}
 					{/each}
+					{#each directClients as c (c.id)}
+						<tr class="direct">
+							<td><div class="row"><span class="order"></span><strong>{c.name}</strong>
+								{#if c.enabled && c.running}<span class="badge">Used for direct files</span>{/if}</div>
+								<div class="muted small where">Saves to <Path path={c.saves_to} /></div></td>
+							<td class="muted">{c.kind}</td>
+							<td class="small">
+								<span class="badge {c.enabled ? (c.running ? 'ok' : 'warn') : ''}">{c.enabled ? (c.running ? 'Running' : 'Not running') : 'Disabled'}</span>
+								{#if tests[c.id]}<div class={tests[c.id].ok ? 'okt' : 'errt'}>{tests[c.id].message}</div>{/if}
+							</td>
+							<td><div class="row end">
+								<button class="small" onclick={() => (editing === c.id ? (editing = null) : editClient(c))} disabled={!!busy}>
+				{editing === c.id ? 'Cancel' : 'Edit'}
+			</button>
+			<button class="small" onclick={() => test('download-clients', c.id)} disabled={!!busy}>Test</button>
+								<button class="small" onclick={() => act(c.id, () => patch(`/download-clients/${c.id}`, { enabled: !c.enabled }, c.etag))} disabled={!!busy}>
+									{c.enabled ? 'Disable' : 'Enable'}
+								</button>
+							</div></td>
+						</tr>
+	{#if editing === c.id}
+		<tr class="editrow">
+			<td colspan="4">
+				<form class="row" onsubmit={(e) => saveClient(e, c)}>
+					<label class="grow">
+						Download folder
+						<input bind:value={draft.folder} placeholder="default: ~/Downloads/Fetchbox/Torrents" />
+					</label>
+					<button class="primary" disabled={!!busy}>Save</button>
+				</form>
+				<p class="muted small hint">The download folder applies to new downloads; ones in progress stay where they are.</p>
+			</td>
+		</tr>
+	{/if}
+{/each}
 				</tbody>
 			</table>
 		</div>
+		<p class="muted small hint">
+			Torrents go to the first client in this list that is enabled and running; use ▲ ▼ to
+			change the order. Direct downloads (web-seeded files, e.g. Internet Archive films) always
+			use the direct client.
+		</p>
 		<form class="card stack add" onsubmit={addClient}>
 			<strong>Add a download client</strong>
 			<p class="muted small">Optional: the built-in engine works on its own.</p>
@@ -246,28 +507,27 @@
 		</form>
 	</section>
 
-	<section>
-		<h2>Library folders</h2>
-		<div class="card table-wrap">
-			<table>
-				<thead><tr><th>Name</th><th>Folder</th><th>Status</th></tr></thead>
-				<tbody>
-					{#each destinations as d (d.id)}
-						<tr>
-							<td><strong>{d.name}</strong> <span class="muted small">{d.media_kind === 'movie' ? 'Movies' : 'TV'}</span></td>
-							<td><code>{d.path}</code></td>
-							<td class="small"><span class="badge {tone(d.status)}">{d.status}</span> {d.status_message ?? ''}</td>
-						</tr>
-					{/each}
-				</tbody>
-			</table>
-		</div>
+	<section id="library">
+		<h2>Library</h2>
+		<p class="muted small">Where finished downloads go and how they're named. Most people only pick a folder and a style.</p>
+		{#if namingOptions}
+			<div class="libs">
+				{#each ['movie', 'series'] as const as kind (kind)}
+					<LibraryCard {kind} dest={destinations.find((d) => d.media_kind === kind && d.is_default) ?? destinations.find((d) => d.media_kind === kind)} options={namingOptions} onChanged={load} />
+				{/each}
+			</div>
+		{/if}
 	</section>
 </main>
 
 <style>
 	section {
 		margin-bottom: 1.5rem;
+	}
+	.libs {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+		gap: 1rem;
 	}
 	.grow {
 		flex: 1;
@@ -287,13 +547,42 @@
 	.end {
 		justify-content: flex-end;
 	}
+	.order {
+		display: inline-flex;
+		flex-direction: column;
+		gap: 2px;
+		width: 1.6rem;
+	}
+	.tiny {
+		padding: 0 0.3rem;
+		font-size: 0.6rem;
+		line-height: 1.3;
+	}
+	.where {
+		margin: 0.2rem 0 0 2.1rem;
+	}
+	.mapping {
+		margin-top: 0.6rem;
+	}
+	tr.direct td {
+		color: var(--muted);
+	}
+	.editrow td {
+		background: var(--surface-2);
+	}
+	.editrow form {
+		align-items: end;
+	}
+	.narrow input {
+		width: 5rem;
+	}
+	.hint {
+		margin: 0.4rem 0 0;
+	}
 	.okt {
 		color: var(--ok);
 	}
 	.errt {
 		color: var(--error);
-	}
-	code {
-		word-break: break-all;
 	}
 </style>

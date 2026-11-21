@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Path from '#lib/Path.svelte';
 	import { ago, ApiError, bytes, del, duration, get, post, rate, type Download, type S } from '#lib/api.ts';
 
 	let downloads = $state<Download[] | null>(null);
@@ -41,7 +42,9 @@
 		const active = ['queued', 'downloading', 'paused'].includes(d.status);
 		const msg = active
 			? `Stop and remove ${d.name}? Its data is deleted and the release is blocklisted, so another one is searched for.`
-			: `Remove ${d.name} from the client? Library files are kept.`;
+			: `Stop seeding ${d.name}? The torrent and its copy in the torrent folder are removed; ` +
+				`the file in your library stays (it's a separate link or copy). A download that ` +
+				`hasn't been imported yet keeps its files.`;
 		if (!confirm(msg)) return;
 		act(d.id, () => del(`/downloads/${d.id}`, { delete_data: true, blocklist: active }));
 	}
@@ -110,6 +113,9 @@
 						{/if}
 						{#if d.stalls}<span>· stalled {d.stalls}×</span>{/if}
 					</div>
+					<div class="small muted">
+						Saving to {#if d.save_path}<Path path={d.save_path} />{:else}the client's own folder{/if}
+					</div>
 				</div>
 			{/each}
 		</div>
@@ -127,7 +133,11 @@
 				<tbody>
 					{#each done as d (d.id)}
 						<tr>
-							<td class="name">{d.name}{#if d.error}<div class="small err">{d.error}</div>{/if}</td>
+							<td class="name">
+								{d.name}
+								{#if d.save_path}<div class="small muted"><Path path={d.save_path} /></div>{/if}
+								{#if d.error}<div class="small err">{d.error}</div>{/if}
+							</td>
 							<td><span class="badge {tone(d)}">{label(d)}</span></td>
 							<td>{bytes(d.size)}</td>
 							<td>{d.ratio?.toFixed(2) ?? '—'}</td>

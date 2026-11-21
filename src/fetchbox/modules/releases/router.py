@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Query, Request, Response
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 
-from fetchbox.core.errors import ProblemError
+from fetchbox.core.errors import FieldError, ProblemError
 from fetchbox.core.errors import problem_responses as pr
 from fetchbox.core.idempotency import IdempotencyKey, idempotent
 from fetchbox.core.state import State
@@ -37,21 +37,39 @@ class IndexerFailureOut(BaseModel):
 
 
 class InteractiveOut(BaseModel):
-    wanted_item_id: str
+    wanted_item_id: str | None = Field(description="The movie or episode searched")
+    title_id: str = ""
+    season: int | None = Field(default=None, description="Set for a season search")
     indexers_searched: int
     releases: list[ReleaseOut] = Field(description="Best first; rejected ones last, with reasons")
     picks: list[str] = Field(description="release_ids an automatic search would grab")
     failures: list[IndexerFailureOut]
 
 
-@router.get("", response_model=InteractiveOut, dependencies=_read, responses=pr(404, 422))
+@router.get("", response_model=InteractiveOut, dependencies=_read, responses=pr(404, 409, 422))
 async def interactive_search(
     request: Request,
     p: CurrentPrincipal,
-    wanted_item_id: str = Query(min_length=1),
+    wanted_item_id: str | None = Query(None, min_length=1, description="A movie or an episode"),
+    title_id: str | None = Query(None, min_length=1, description="With season: a season search"),
+    season: int | None = Query(None, ge=0),
 ) -> InteractiveOut:
-    """Search every enabled indexer now and return every result, scored and ranked."""
-    res = await _svc(request).interactive(wanted_item_id, actor=p.actor())
+    """Search every enabled indexer now and return every result, scored and ranked: for
+    one movie or episode (`wanted_item_id`), or a whole season (`title_id` + `season`,
+    which also finds season packs; grabbing one covers every episode it contains)."""
+    svc = _svc(request)
+    if wanted_item_id:
+        res = await svc.interactive(wanted_item_id, actor=p.actor())
+    elif title_id and season is not None:
+        res = await svc.interactive_season(title_id, season, actor=p.actor())
+    else:
+        raise ProblemError(
+            422,
+            "Validation Failed",
+            "give wanted_item_id, or title_id and season",
+            slug="validation",
+            errors=[FieldError(field="query.wanted_item_id", message="required")],
+        )
     by_decision = {
         id(d): rid for d, rid in zip(res.outcome.decisions, res.release_ids, strict=True)
     }
@@ -61,6 +79,8 @@ async def interactive_search(
     ]
     return InteractiveOut(
         wanted_item_id=res.wanted_item_id,
+        title_id=res.title_id,
+        season=res.season,
         indexers_searched=res.indexers,
         releases=releases,
         picks=[by_decision[id(d)] for d in res.outcome.picks],

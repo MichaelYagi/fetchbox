@@ -586,6 +586,115 @@
     "title": "BlockOut",
     "type": "object"
    },
+   "CalendarEntry": {
+    "properties": {
+     "date": {
+      "format": "date",
+      "title": "Date",
+      "type": "string"
+     },
+     "episode": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Episode"
+     },
+     "episode_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Episode Name"
+     },
+     "kind": {
+      "enum": [
+       "episode",
+       "movie"
+      ],
+      "title": "Kind",
+      "type": "string"
+     },
+     "monitored": {
+      "title": "Monitored",
+      "type": "boolean"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "poster_url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Poster Url"
+     },
+     "release": {
+      "anyOf": [
+       {
+        "enum": [
+         "cinema",
+         "digital",
+         "disc"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Movies: which release this date is",
+      "title": "Release"
+     },
+     "season": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Season"
+     },
+     "state": {
+      "title": "State",
+      "type": "string"
+     },
+     "title_id": {
+      "title": "Title Id",
+      "type": "string"
+     }
+    },
+    "required": [
+     "date",
+     "kind",
+     "title_id",
+     "name",
+     "poster_url",
+     "season",
+     "episode",
+     "episode_name",
+     "release",
+     "state",
+     "monitored"
+    ],
+    "title": "CalendarEntry",
+    "type": "object"
+   },
    "CheckResult": {
     "properties": {
      "fix_url": {
@@ -753,6 +862,18 @@
       "title": "Running",
       "type": "boolean"
      },
+     "saves_to": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Where downloads go, as Fetchbox sees it; null: the client's own folder",
+      "title": "Saves To"
+     },
      "settings": {
       "additionalProperties": true,
       "title": "Settings",
@@ -777,6 +898,7 @@
      "media_kinds",
      "tags",
      "running",
+     "saves_to",
      "etag"
     ],
     "title": "ClientOut",
@@ -1574,6 +1696,65 @@
     "title": "EpisodeDetail",
     "type": "object"
    },
+   "EpisodeOut": {
+    "properties": {
+     "absolute_number": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Absolute Number"
+     },
+     "air_date": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Air Date"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Name"
+     },
+     "number": {
+      "title": "Number",
+      "type": "integer"
+     },
+     "wanted": {
+      "$ref": "#/components/schemas/WantedOut"
+     }
+    },
+    "required": [
+     "id",
+     "number",
+     "absolute_number",
+     "name",
+     "air_date",
+     "wanted"
+    ],
+    "title": "EpisodeOut",
+    "type": "object"
+   },
    "EvaluateIn": {
     "properties": {
      "original_language": {
@@ -1833,6 +2014,41 @@
      "imported_at"
     ],
     "title": "FileOut",
+    "type": "object"
+   },
+   "FolderOut": {
+    "properties": {
+     "destination_id": {
+      "title": "Destination Id",
+      "type": "string"
+     },
+     "path": {
+      "title": "Path",
+      "type": "string"
+     },
+     "status": {
+      "title": "Status",
+      "type": "string"
+     },
+     "status_message": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Status Message"
+     }
+    },
+    "required": [
+     "destination_id",
+     "path",
+     "status",
+     "status_message"
+    ],
+    "title": "FolderOut",
     "type": "object"
    },
    "FormatIn": {
@@ -2310,6 +2526,49 @@
     "title": "HistoryPage",
     "type": "object"
    },
+   "HostInfo": {
+    "description": "Where Fetchbox runs: every path it shows is on this machine.",
+    "properties": {
+     "data_dir": {
+      "title": "Data Dir",
+      "type": "string"
+     },
+     "downloads_root": {
+      "title": "Downloads Root",
+      "type": "string"
+     },
+     "name": {
+      "description": "Host name",
+      "title": "Name",
+      "type": "string"
+     },
+     "os": {
+      "description": "e.g. Linux, Windows, macOS",
+      "title": "Os",
+      "type": "string"
+     },
+     "wsl_distro": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Set when running in WSL: paths are inside that distro",
+      "title": "Wsl Distro"
+     }
+    },
+    "required": [
+     "name",
+     "os",
+     "data_dir",
+     "downloads_root"
+    ],
+    "title": "HostInfo",
+    "type": "object"
+   },
    "ImportOut": {
     "properties": {
      "attempts": {
@@ -2667,9 +2926,34 @@
       "title": "Releases",
       "type": "array"
      },
-     "wanted_item_id": {
-      "title": "Wanted Item Id",
+     "season": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Set for a season search",
+      "title": "Season"
+     },
+     "title_id": {
+      "default": "",
+      "title": "Title Id",
       "type": "string"
+     },
+     "wanted_item_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "The movie or episode searched",
+      "title": "Wanted Item Id"
      }
     },
     "required": [
@@ -3087,6 +3371,18 @@
       "title": "Alt Titles",
       "type": "array"
      },
+     "digital_date": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Digital Date"
+     },
      "genres": {
       "default": [],
       "items": {
@@ -3146,6 +3442,18 @@
       "title": "Overview",
       "type": "string"
      },
+     "physical_date": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Physical Date"
+     },
      "poster_url": {
       "anyOf": [
        {
@@ -3191,6 +3499,18 @@
       ],
       "title": "Status"
      },
+     "theatrical_date": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Theatrical Date"
+     },
      "tmdb_id": {
       "title": "Tmdb Id",
       "type": "integer"
@@ -3212,6 +3532,98 @@
      "name"
     ],
     "title": "MovieDetail",
+    "type": "object"
+   },
+   "NamingIn": {
+    "properties": {
+     "patterns": {
+      "additionalProperties": {
+       "type": "string"
+      },
+      "title": "Patterns",
+      "type": "object"
+     }
+    },
+    "required": [
+     "patterns"
+    ],
+    "title": "NamingIn",
+    "type": "object"
+   },
+   "NamingOptionsOut": {
+    "properties": {
+     "presets": {
+      "items": {
+       "$ref": "#/components/schemas/PresetOut"
+      },
+      "title": "Presets",
+      "type": "array"
+     },
+     "season_folders": {
+      "items": {
+       "$ref": "#/components/schemas/SeasonFolderOut"
+      },
+      "title": "Season Folders",
+      "type": "array"
+     },
+     "tokens": {
+      "additionalProperties": {
+       "type": "string"
+      },
+      "title": "Tokens",
+      "type": "object"
+     }
+    },
+    "required": [
+     "presets",
+     "season_folders",
+     "tokens"
+    ],
+    "title": "NamingOptionsOut",
+    "type": "object"
+   },
+   "NamingOut": {
+    "properties": {
+     "folder": {
+      "$ref": "#/components/schemas/FolderOut"
+     },
+     "kind": {
+      "enum": [
+       "movie",
+       "series"
+      ],
+      "title": "Kind",
+      "type": "string"
+     },
+     "patterns": {
+      "additionalProperties": {
+       "type": "string"
+      },
+      "description": "Only this kind's patterns",
+      "title": "Patterns",
+      "type": "object"
+     },
+     "preset": {
+      "description": "A preset id, or custom",
+      "title": "Preset",
+      "type": "string"
+     },
+     "samples": {
+      "items": {
+       "$ref": "#/components/schemas/SampleOut"
+      },
+      "title": "Samples",
+      "type": "array"
+     }
+    },
+    "required": [
+     "kind",
+     "folder",
+     "patterns",
+     "preset",
+     "samples"
+    ],
+    "title": "NamingOut",
     "type": "object"
    },
    "NodeOut": {
@@ -3704,7 +4116,7 @@
         "type": "null"
        }
       ],
-      "description": "Where torrents download; default <downloads root>/Torrents",
+      "description": "Download folder as Fetchbox sees it. Built-in clients: default <downloads root>/Torrents; external clients: default is the client's own folder",
       "title": "Save Path"
      },
      "seed_action": {
@@ -3760,6 +4172,37 @@
      }
     },
     "title": "Policy",
+    "type": "object"
+   },
+   "PresetOut": {
+    "properties": {
+     "description": {
+      "title": "Description",
+      "type": "string"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "label": {
+      "title": "Label",
+      "type": "string"
+     },
+     "patterns": {
+      "additionalProperties": {
+       "type": "string"
+      },
+      "title": "Patterns",
+      "type": "object"
+     }
+    },
+    "required": [
+     "id",
+     "label",
+     "description",
+     "patterns"
+    ],
+    "title": "PresetOut",
     "type": "object"
    },
    "PreviewIn": {
@@ -4579,6 +5022,107 @@
     "title": "ReleaseOut",
     "type": "object"
    },
+   "RenameFailureOut": {
+    "properties": {
+     "current": {
+      "title": "Current",
+      "type": "string"
+     },
+     "error": {
+      "title": "Error",
+      "type": "string"
+     },
+     "file_id": {
+      "title": "File Id",
+      "type": "string"
+     }
+    },
+    "required": [
+     "file_id",
+     "current",
+     "error"
+    ],
+    "title": "RenameFailureOut",
+    "type": "object"
+   },
+   "RenameIn": {
+    "properties": {
+     "file_ids": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Null: every file listed",
+      "title": "File Ids"
+     }
+    },
+    "title": "RenameIn",
+    "type": "object"
+   },
+   "RenameOut": {
+    "properties": {
+     "failed": {
+      "items": {
+       "$ref": "#/components/schemas/RenameFailureOut"
+      },
+      "title": "Failed",
+      "type": "array"
+     },
+     "renamed": {
+      "items": {
+       "$ref": "#/components/schemas/RenameStepOut"
+      },
+      "title": "Renamed",
+      "type": "array"
+     }
+    },
+    "required": [
+     "renamed",
+     "failed"
+    ],
+    "title": "RenameOut",
+    "type": "object"
+   },
+   "RenameStepOut": {
+    "properties": {
+     "current": {
+      "title": "Current",
+      "type": "string"
+     },
+     "file_id": {
+      "title": "File Id",
+      "type": "string"
+     },
+     "new": {
+      "title": "New",
+      "type": "string"
+     },
+     "title": {
+      "title": "Title",
+      "type": "string"
+     },
+     "title_id": {
+      "title": "Title Id",
+      "type": "string"
+     }
+    },
+    "required": [
+     "file_id",
+     "title_id",
+     "title",
+     "current",
+     "new"
+    ],
+    "title": "RenameStepOut",
+    "type": "object"
+   },
    "Revision": {
     "properties": {
      "real": {
@@ -4593,6 +5137,24 @@
      }
     },
     "title": "Revision",
+    "type": "object"
+   },
+   "SampleOut": {
+    "properties": {
+     "label": {
+      "title": "Label",
+      "type": "string"
+     },
+     "path": {
+      "title": "Path",
+      "type": "string"
+     }
+    },
+    "required": [
+     "label",
+     "path"
+    ],
+    "title": "SampleOut",
     "type": "object"
    },
    "ScheduleOut": {
@@ -4778,6 +5340,63 @@
     "title": "SeasonDetail",
     "type": "object"
    },
+   "SeasonFolderOut": {
+    "properties": {
+     "label": {
+      "title": "Label",
+      "type": "string"
+     },
+     "pattern": {
+      "title": "Pattern",
+      "type": "string"
+     }
+    },
+    "required": [
+     "pattern",
+     "label"
+    ],
+    "title": "SeasonFolderOut",
+    "type": "object"
+   },
+   "SeasonOut": {
+    "properties": {
+     "episodes": {
+      "items": {
+       "$ref": "#/components/schemas/EpisodeOut"
+      },
+      "title": "Episodes",
+      "type": "array"
+     },
+     "monitored": {
+      "title": "Monitored",
+      "type": "boolean"
+     },
+     "number": {
+      "title": "Number",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "number",
+     "monitored",
+     "episodes"
+    ],
+    "title": "SeasonOut",
+    "type": "object"
+   },
+   "SeasonPatch": {
+    "properties": {
+     "monitored": {
+      "title": "Monitored",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "monitored"
+    ],
+    "title": "SeasonPatch",
+    "type": "object"
+   },
    "SelftestIn": {
     "properties": {
      "seconds": {
@@ -4940,6 +5559,36 @@
     "title": "SeriesDetail",
     "type": "object"
    },
+   "SeriesStats": {
+    "properties": {
+     "acquired": {
+      "title": "Acquired",
+      "type": "integer"
+     },
+     "episodes": {
+      "description": "Excluding unmonitored specials",
+      "title": "Episodes",
+      "type": "integer"
+     },
+     "missing": {
+      "description": "Monitored, aired, no file yet",
+      "title": "Missing",
+      "type": "integer"
+     },
+     "monitored": {
+      "title": "Monitored",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "episodes",
+     "monitored",
+     "acquired",
+     "missing"
+    ],
+    "title": "SeriesStats",
+    "type": "object"
+   },
    "SessionOut": {
     "properties": {
      "csrf_token": {
@@ -5096,6 +5745,16 @@
      "event_subscribers": {
       "title": "Event Subscribers",
       "type": "integer"
+     },
+     "host": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/HostInfo"
+       },
+       {
+        "type": "null"
+       }
+      ]
      },
      "schema_head": {
       "anyOf": [
@@ -5311,8 +5970,34 @@
       "title": "Kind",
       "type": "string"
      },
+     "minimum_availability": {
+      "default": "released",
+      "description": "Movies: start searching once it is announced, in cinemas, or released (digital or physical)",
+      "enum": [
+       "announced",
+       "in_cinemas",
+       "released"
+      ],
+      "title": "Minimum Availability",
+      "type": "string"
+     },
+     "monitor_mode": {
+      "default": "all",
+      "description": "Series: all, future, missing, first_season, latest_season or none",
+      "enum": [
+       "all",
+       "future",
+       "missing",
+       "first_season",
+       "latest_season",
+       "none"
+      ],
+      "title": "Monitor Mode",
+      "type": "string"
+     },
      "monitored": {
       "default": true,
+      "description": "Movies: monitored or not",
       "title": "Monitored",
       "type": "boolean"
      },
@@ -5354,6 +6039,19 @@
       "title": "Alt Titles",
       "type": "array"
      },
+     "available_from": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Movies: when automatic search starts (null: now)",
+      "title": "Available From"
+     },
      "destination_id": {
       "anyOf": [
        {
@@ -5364,6 +6062,29 @@
        }
       ],
       "title": "Destination Id"
+     },
+     "digital_date": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Digital Date"
+     },
+     "episodes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/SeriesStats"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "For a series: counts (see /titles/{id}/episodes for the list)"
      },
      "etag": {
       "readOnly": true,
@@ -5395,6 +6116,10 @@
      },
      "kind": {
       "title": "Kind",
+      "type": "string"
+     },
+     "minimum_availability": {
+      "title": "Minimum Availability",
       "type": "string"
      },
      "monitor_mode": {
@@ -5431,6 +6156,18 @@
       "default": "",
       "title": "Overview",
       "type": "string"
+     },
+     "physical_date": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Physical Date"
      },
      "poster_url": {
       "anyOf": [
@@ -5484,6 +6221,18 @@
        }
       ],
       "title": "Status"
+     },
+     "theatrical_date": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Theatrical Date"
      },
      "tmdb_id": {
       "anyOf": [
@@ -5543,6 +6292,7 @@
      "monitor_mode",
      "added_at",
      "refreshed_at",
+     "minimum_availability",
      "etag"
     ],
     "title": "TitleOut",
@@ -5578,6 +6328,22 @@
    },
    "TitlePatch": {
     "properties": {
+     "minimum_availability": {
+      "anyOf": [
+       {
+        "enum": [
+         "announced",
+         "in_cinemas",
+         "released"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Minimum Availability"
+     },
      "monitor_mode": {
       "anyOf": [
        {
@@ -5994,6 +6760,18 @@
    },
    "WantedRow": {
     "properties": {
+     "air_date": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Air Date"
+     },
      "cutoff_met": {
       "title": "Cutoff Met",
       "type": "boolean"
@@ -6008,6 +6786,28 @@
        }
       ],
       "title": "Episode Id"
+     },
+     "episode_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Episode Name"
+     },
+     "episode_number": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Episode Number"
      },
      "etag": {
       "readOnly": true,
@@ -6056,6 +6856,17 @@
        }
       ],
       "title": "Next Search At"
+     },
+     "season_number": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Season Number"
      },
      "state": {
       "title": "State",
@@ -7613,6 +8424,80 @@
     "summary": "Delete Blocklist",
     "tags": [
      "releases"
+    ]
+   }
+  },
+  "/api/v1/calendar": {
+   "get": {
+    "description": "Episodes airing and movie release dates between two days (at most 100 days).",
+    "operationId": "get_calendar_api_v1_calendar_get",
+    "parameters": [
+     {
+      "description": "First day (inclusive)",
+      "in": "query",
+      "name": "start",
+      "required": true,
+      "schema": {
+       "description": "First day (inclusive)",
+       "format": "date",
+       "title": "Start",
+       "type": "string"
+      }
+     },
+     {
+      "description": "Last day (inclusive)",
+      "in": "query",
+      "name": "end",
+      "required": true,
+      "schema": {
+       "description": "Last day (inclusive)",
+       "format": "date",
+       "title": "End",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/CalendarEntry"
+         },
+         "title": "Response Get Calendar Api V1 Calendar Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Unprocessable Content"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Get Calendar",
+    "tags": [
+     "media"
     ]
    }
   },
@@ -11870,6 +12755,394 @@
     ]
    }
   },
+  "/api/v1/library/naming-options": {
+   "get": {
+    "description": "Naming presets, season folder choices and the tokens patterns can use.",
+    "operationId": "naming_options_api_v1_library_naming_options_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/NamingOptionsOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Naming Options",
+    "tags": [
+     "library"
+    ]
+   }
+  },
+  "/api/v1/library/naming/{kind}": {
+   "get": {
+    "description": "How new movies or episodes are named and where they go, with example names.",
+    "operationId": "get_naming_api_v1_library_naming__kind__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "kind",
+      "required": true,
+      "schema": {
+       "enum": [
+        "movie",
+        "series"
+       ],
+       "title": "Kind",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/NamingOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Conflict"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Get Naming",
+    "tags": [
+     "library"
+    ]
+   },
+   "put": {
+    "description": "Save the naming for movies or series. Patterns of the other kind are ignored.\nFiles already in the library keep their names until renamed.",
+    "operationId": "put_naming_api_v1_library_naming__kind__put",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "kind",
+      "required": true,
+      "schema": {
+       "enum": [
+        "movie",
+        "series"
+       ],
+       "title": "Kind",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/NamingIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/NamingOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Conflict"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Unprocessable Content"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Put Naming",
+    "tags": [
+     "library"
+    ]
+   }
+  },
+  "/api/v1/library/naming/{kind}/preview": {
+   "post": {
+    "description": "Example names for patterns, before saving them.",
+    "operationId": "preview_naming_api_v1_library_naming__kind__preview_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "kind",
+      "required": true,
+      "schema": {
+       "enum": [
+        "movie",
+        "series"
+       ],
+       "title": "Kind",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/NamingIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/NamingOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Conflict"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Unprocessable Content"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Preview Naming",
+    "tags": [
+     "library"
+    ]
+   }
+  },
+  "/api/v1/library/rename/{kind}": {
+   "get": {
+    "description": "Files whose name differs from what the current naming gives, old and new.",
+    "operationId": "rename_preview_api_v1_library_rename__kind__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "kind",
+      "required": true,
+      "schema": {
+       "enum": [
+        "movie",
+        "series"
+       ],
+       "title": "Kind",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/RenameStepOut"
+         },
+         "title": "Response Rename Preview Api V1 Library Rename  Kind  Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Rename Preview",
+    "tags": [
+     "library"
+    ]
+   },
+   "post": {
+    "description": "Rename files to the current naming (on the same disk: nothing is copied).",
+    "operationId": "rename_files_api_v1_library_rename__kind__post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "kind",
+      "required": true,
+      "schema": {
+       "enum": [
+        "movie",
+        "series"
+       ],
+       "title": "Kind",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/RenameIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/RenameOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Rename Files",
+    "tags": [
+     "library"
+    ]
+   }
+  },
   "/api/v1/naming-templates": {
    "get": {
     "operationId": "list_templates_api_v1_naming_templates_get",
@@ -12604,17 +13877,62 @@
   },
   "/api/v1/releases": {
    "get": {
-    "description": "Search every enabled indexer now and return every result, scored and ranked.",
+    "description": "Search every enabled indexer now and return every result, scored and ranked: for\none movie or episode (`wanted_item_id`), or a whole season (`title_id` + `season`,\nwhich also finds season packs; grabbing one covers every episode it contains).",
     "operationId": "interactive_search_api_v1_releases_get",
     "parameters": [
      {
+      "description": "A movie or an episode",
       "in": "query",
       "name": "wanted_item_id",
-      "required": true,
+      "required": false,
       "schema": {
-       "minLength": 1,
-       "title": "Wanted Item Id",
-       "type": "string"
+       "anyOf": [
+        {
+         "minLength": 1,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "A movie or an episode",
+       "title": "Wanted Item Id"
+      }
+     },
+     {
+      "description": "With season: a season search",
+      "in": "query",
+      "name": "title_id",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "minLength": 1,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "With season: a season search",
+       "title": "Title Id"
+      }
+     },
+     {
+      "in": "query",
+      "name": "season",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "minimum": 0,
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Season"
       }
      }
     ],
@@ -12639,6 +13957,17 @@
        "application/problem+json": {}
       },
       "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Conflict"
      },
      "422": {
       "content": {
@@ -13038,6 +14367,7 @@
   },
   "/api/v1/system/status": {
    "get": {
+    "description": "Includes `host`: the machine Fetchbox runs on; every path it shows is there.",
     "operationId": "get_status_api_v1_system_status_get",
     "responses": {
      "200": {
@@ -13211,7 +14541,7 @@
     ]
    },
    "post": {
-    "description": "Add a movie by TMDB id with a quality profile; creates its wanted item.",
+    "description": "Add a movie or series by TMDB id with a quality profile. A movie gets one wanted\nitem; a series one per episode, monitored per `monitor_mode` (specials never).",
     "operationId": "add_title_api_v1_titles_post",
     "requestBody": {
      "content": {
@@ -13559,6 +14889,86 @@
     ]
    }
   },
+  "/api/v1/titles/{title_id}/episodes": {
+   "get": {
+    "description": "A series' seasons and episodes, each with its wanted item (state, monitored...).",
+    "operationId": "list_episodes_api_v1_titles__title_id__episodes_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "title_id",
+      "required": true,
+      "schema": {
+       "title": "Title Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/SeasonOut"
+         },
+         "title": "Response List Episodes Api V1 Titles  Title Id  Episodes Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Conflict"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "List Episodes",
+    "tags": [
+     "media"
+    ]
+   }
+  },
   "/api/v1/titles/{title_id}/files": {
    "get": {
     "operationId": "title_files_api_v1_titles__title_id__files_get",
@@ -13809,7 +15219,7 @@
   },
   "/api/v1/titles/{title_id}/search": {
    "post": {
-    "description": "Movies: the same as searching the title's wanted item.",
+    "description": "A movie: its wanted item. A series: every season with aired episodes still to\nget, one search per season (season packs first). Returns the first season's job.",
     "operationId": "search_title_api_v1_titles__title_id__search_post",
     "parameters": [
      {
@@ -13898,6 +15308,195 @@
      }
     ],
     "summary": "Search Title",
+    "tags": [
+     "releases"
+    ]
+   }
+  },
+  "/api/v1/titles/{title_id}/seasons/{number}": {
+   "patch": {
+    "description": "Monitor or unmonitor a whole season (specials included: season 0).",
+    "operationId": "update_season_api_v1_titles__title_id__seasons__number__patch",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "title_id",
+      "required": true,
+      "schema": {
+       "title": "Title Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "number",
+      "required": true,
+      "schema": {
+       "title": "Number",
+       "type": "integer"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/SeasonPatch"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TitleOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Update Season",
+    "tags": [
+     "media"
+    ]
+   }
+  },
+  "/api/v1/titles/{title_id}/seasons/{number}/search": {
+   "post": {
+    "description": "Search a season now: season packs first, then single episodes for the gaps.\nCovers its aired episodes that aren't downloaded yet (or upgradable).",
+    "operationId": "search_season_api_v1_titles__title_id__seasons__number__search_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "title_id",
+      "required": true,
+      "schema": {
+       "title": "Title Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "number",
+      "required": true,
+      "schema": {
+       "title": "Number",
+       "type": "integer"
+      }
+     },
+     {
+      "description": "Retry-safe key: repeats with the same body return the first response",
+      "in": "header",
+      "name": "Idempotency-Key",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "maxLength": 255,
+         "minLength": 1,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Retry-safe key: repeats with the same body return the first response",
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "responses": {
+     "202": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/JobOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Conflict"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Search Season",
     "tags": [
      "releases"
     ]

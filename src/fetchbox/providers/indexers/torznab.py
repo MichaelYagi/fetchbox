@@ -21,6 +21,7 @@ import httpx
 from pydantic import BaseModel, Field, SecretStr, field_validator
 
 from fetchbox.core.providers import TestResult, registry
+from fetchbox.core.secrets import strip_key
 from fetchbox.providers.indexers import (
     IndexerError,
     IndexerProvider,
@@ -30,6 +31,8 @@ from fetchbox.providers.indexers import (
 )
 
 TORZNAB_NS = "{http://torznab.com/schemas/2015/feed}"
+# No wildcard, so an app's own JSON API isn't mistaken for a feed.
+ACCEPT = "application/rss+xml, application/xml, text/xml"
 TIMEOUT = httpx.Timeout(30.0, connect=10.0)
 MAX_BODY = 20 * 1024 * 1024
 MAX_TORRENT = 10 * 1024 * 1024
@@ -37,11 +40,21 @@ CAPS_TTL = 3600.0
 _HASH = re.compile(r"^[0-9a-fA-F]{40}$")
 _BTIH = re.compile(r"urn:btih:([0-9a-zA-Z]{32,40})", re.I)
 # Newznab error codes: 100-103 account problems, 500/501 limits.
+NOT_A_FEED = (
+    "this address is an app's own API, not a Torznab feed. For Prowlarr, use one "
+    "indexer's Torznab URL, e.g. http://localhost:9696/3 (Indexers > the indexer > Copy "
+    "Torznab URL); Prowlarr has no feed for all indexers at once"
+)
 _AUTH_CODES = {"100", "101", "102", "103"}
 _LIMIT_CODES = {"500", "501"}
 
 
 class TorznabSettings(BaseModel):
+    @field_validator("api_key", mode="before")
+    @classmethod
+    def _strip_key(cls, v: object) -> object:
+        return strip_key(v)  # a pasted key often carries a trailing space or newline
+
     url: str = Field(
         description="Base URL, e.g. http://localhost:9696/1 (Prowlarr) or "
         "http://localhost:9117/api/v2.0/indexers/all/results/torznab (Jackett)"
@@ -59,7 +72,8 @@ class TorznabSettings(BaseModel):
         parts = urlsplit(v)
         if parts.scheme not in ("http", "https") or not parts.netloc:
             raise ValueError("must be an http(s) URL")
-        return v
+        # Prowlarr's "Copy Torznab URL" ends in /api, which api_path adds again.
+        return v.removesuffix("/api") if parts.path.endswith("/api") else v
 
 
 @dataclass
@@ -198,13 +212,32 @@ def parse_item(item: ET.Element) -> ReleaseCandidate | None:
     )
 
 
-def _parse_xml(body: bytes) -> ET.Element:
+def _snippet(body: bytes, content_type: str | None) -> str:
+    """What came back, for the error message: type and the first bytes, keys redacted."""
+    text = body[:160].decode("utf-8", "replace").strip()
+    text = re.sub(r"(?i)(api_?key[\"'=:\s]+)[\w-]+", r"\1***", text)
+    text = " ".join(text.split())
+    return f"{content_type or 'no content type'}, starting {text!r}" if text else "an empty body"
+
+
+def _parse_xml(body: bytes, content_type: str | None = None) -> ET.Element:
+    head = body[:4096].lstrip()
+    if head.startswith((b"<!DOCTYPE html", b"<!doctype html", b"<html")):
+        raise IndexerError(
+            "invalid_response",
+            "the URL answered with a web page, not a Torznab feed: use the indexer's "
+            "Torznab URL (Prowlarr: Indexers > the indexer > Copy Torznab URL)",
+        )
     if b"<!ENTITY" in body[:4096] or b"<!DOCTYPE" in body[:4096]:
         raise IndexerError("invalid_response", "indexer returned XML with a DTD; refused")
     try:
         root = ET.fromstring(body)
     except ET.ParseError as exc:
-        raise IndexerError("invalid_response", f"indexer returned invalid XML: {exc}") from None
+        raise IndexerError(
+            "invalid_response",
+            f"indexer returned something other than Torznab XML ({exc}): "
+            f"{_snippet(body, content_type)}",
+        ) from None
     if root.tag == "error":
         code = root.get("code", "")
         desc = root.get("description") or "unknown error"
@@ -240,7 +273,9 @@ class TorznabProvider(IndexerProvider):
         self._http = httpx.AsyncClient(
             timeout=TIMEOUT,
             transport=transport,
-            headers={"User-Agent": "Fetchbox", "Accept": "application/rss+xml, text/xml"},
+            # Caps come back as application/xml, results as application/rss+xml; Prowlarr
+            # answers 406 to an Accept header that rules out what it sends.
+            headers={"User-Agent": "Fetchbox", "Accept": ACCEPT},
         )
         self._caps: tuple[float, Caps] | None = None
 
@@ -271,16 +306,34 @@ class TorznabProvider(IndexerProvider):
             query["apikey"] = self.cfg.api_key.get_secret_value()
         r = await self._fetch(self._endpoint, query, MAX_BODY, follow=True)
         if r.status in (401, 403):
-            raise IndexerError("auth", f"indexer refused the request (HTTP {r.status})")
+            hint = (
+                "check the API key (Prowlarr: Settings > General; Jackett: top of its page) "
+                "and that the URL is one indexer's Torznab feed without /api, e.g. "
+                "http://localhost:9696/3 for Prowlarr"
+            )
+            if self.cfg.api_key is None:
+                hint = "no API key is set; " + hint
+            raise IndexerError("auth", f"indexer refused the request (HTTP {r.status}): {hint}")
         if r.status == 429:
             retry = _float(r.headers.get("Retry-After"))
             raise IndexerError("rate_limited", "indexer rate limit hit", retry_after=retry)
+        ctype = (r.headers.get("content-type") or "").lower()
+        if r.status == 406 or (r.status < 400 and "json" in ctype):
+            # Seen with Prowlarr's main address: its /api is Prowlarr's own JSON API (406
+            # to an XML Accept header), not a feed. Every indexer has its own.
+            raise IndexerError("config", NOT_A_FEED)
+        if r.status == 404:
+            raise IndexerError(
+                "config",
+                "nothing at this URL (HTTP 404): for Prowlarr, check the indexer number in "
+                "http://host:9696/<number> (Indexers > the indexer > Copy Torznab URL)",
+            )
         if r.status >= 400:
             # Torznab servers often put an <error> document in a 4xx/5xx body.
             if r.body.lstrip().startswith(b"<"):
-                _parse_xml(r.body)
+                _parse_xml(r.body, r.headers.get("content-type"))
             raise IndexerError("unavailable", f"indexer returned HTTP {r.status}")
-        return _parse_xml(r.body)
+        return _parse_xml(r.body, r.headers.get("content-type"))
 
     async def caps(self, *, fresh: bool = False) -> Caps:
         if not fresh and self._caps and self._caps[0] > time.monotonic():

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Annotated, Any, Literal, get_args
 
 from fastapi import APIRouter, Depends, Header, Query, Request, Response
@@ -13,8 +13,16 @@ from fetchbox.core.errors import problem_responses as pr
 from fetchbox.core.pagination import Page, Sort, paginate
 from fetchbox.modules.auth.deps import CurrentPrincipal, require
 from fetchbox.modules.media.models import HISTORY_TYPES, HistoryEvent, Title, WantedItem
-from fetchbox.modules.media.service import MediaService, WantedFilter
+from fetchbox.modules.media.series import SeriesMode
+from fetchbox.modules.media.service import (
+    CALENDAR_MAX_DAYS,
+    MediaService,
+    WantedFilter,
+    available_from,
+    calendar,
+)
 
+Availability = Literal["announced", "in_cinemas", "released"]
 router = APIRouter(tags=["media"])
 _read = [Depends(require("media:read"))]
 _write = [Depends(require("media:write"))]
@@ -49,6 +57,13 @@ class WantedOut(_Versioned):
     next_search_at: datetime | None
 
 
+class SeriesStats(BaseModel):
+    episodes: int = Field(description="Excluding unmonitored specials")
+    monitored: int
+    acquired: int
+    missing: int = Field(description="Monitored, aired, no file yet")
+
+
 class TitleOut(_Versioned):
     id: str
     kind: str
@@ -72,9 +87,22 @@ class TitleOut(_Versioned):
     added_at: datetime
     refreshed_at: datetime | None
     wanted: list[WantedOut] = Field(default=[], description="For a movie, its one wanted item")
+    minimum_availability: str
+    available_from: date | None = Field(
+        default=None,
+        description="Movies: when automatic search starts (null: now)",
+    )
+    theatrical_date: date | None = None
+    digital_date: date | None = None
+    physical_date: date | None = None
+    episodes: SeriesStats | None = Field(
+        default=None, description="For a series: counts (see /titles/{id}/episodes for the list)"
+    )
 
 
-def title_out(t: Title, wanted: list[WantedItem] | None = None) -> TitleOut:
+def title_out(
+    t: Title, wanted: list[WantedItem] | None = None, stats: dict[str, int] | None = None
+) -> TitleOut:
     meta = t.meta or {}
     return TitleOut(
         id=t.id,
@@ -90,6 +118,11 @@ def title_out(t: Title, wanted: list[WantedItem] | None = None) -> TitleOut:
         profile_id=t.profile_id,
         destination_id=t.destination_id,
         monitor_mode=t.monitor_mode,
+        minimum_availability=t.minimum_availability,
+        available_from=_future(available_from(t)),
+        theatrical_date=meta.get("theatrical_date"),
+        digital_date=meta.get("digital_date"),
+        physical_date=meta.get("physical_date"),
         original_name=meta.get("original_name"),
         original_language=meta.get("original_language"),
         runtime=meta.get("runtime"),
@@ -99,12 +132,24 @@ def title_out(t: Title, wanted: list[WantedItem] | None = None) -> TitleOut:
         alt_titles=meta.get("alt_titles") or [],
         added_at=t.added_at,
         refreshed_at=t.refreshed_at,
-        wanted=[WantedOut.model_validate(w) for w in wanted or []],
+        wanted=[WantedOut.model_validate(w) for w in wanted or []] if t.kind == "movie" else [],
+        episodes=SeriesStats(**stats) if stats is not None else None,
     )
 
 
+async def _many(svc: MediaService, titles: list[Title]) -> list[TitleOut]:
+    movies = [t.id for t in titles if t.kind == "movie"]
+    wanted = await svc.wanted_for(movies)
+    stats = await svc.series_stats([t.id for t in titles if t.kind == "series"])
+    return [title_out(t, wanted.get(t.id, []), stats.get(t.id)) for t in titles]
+
+
+def _future(d: date | None) -> date | None:
+    return d if d is not None and d > utcnow().date() else None
+
+
 async def _one(svc: MediaService, t: Title, response: Response | None = None) -> TitleOut:
-    out = title_out(t, (await svc.wanted_for([t.id])).get(t.id, []))
+    [out] = await _many(svc, [t])
     if response is not None:
         response.headers["ETag"] = out.etag
     return out
@@ -128,7 +173,16 @@ class TitleIn(BaseModel):
     kind: Literal["movie", "series"] = "movie"
     tmdb_id: int = Field(gt=0)
     profile_id: str
-    monitored: bool = True
+    monitored: bool = Field(default=True, description="Movies: monitored or not")
+    monitor_mode: SeriesMode = Field(
+        default="all",
+        description="Series: all, future, missing, first_season, latest_season or none",
+    )
+    minimum_availability: Availability = Field(
+        default="released",
+        description="Movies: start searching once it is announced, in cinemas, or released "
+        "(digital or physical)",
+    )
     search: bool = Field(
         default=True,
         description="Search for it now; otherwise at the regular missing-search interval",
@@ -138,6 +192,7 @@ class TitleIn(BaseModel):
 class TitlePatch(BaseModel):
     profile_id: str | None = None
     monitor_mode: str | None = Field(default=None, min_length=1, max_length=20)
+    minimum_availability: Availability | None = None
 
 
 @router.get("/titles", response_model=TitlePage, dependencies=_read, responses=pr(422))
@@ -153,8 +208,7 @@ async def list_titles(
         rows, nxt = await paginate(
             s, svc.list_query(kind), TITLE_SORT, sort_param=sort, limit=limit, cursor=cursor
         )
-    wanted = await svc.wanted_for([t.id for t in rows])
-    return TitlePage(items=[title_out(t, wanted.get(t.id, [])) for t in rows], next_cursor=nxt)
+    return TitlePage(items=await _many(svc, list(rows)), next_cursor=nxt)
 
 
 @router.post(
@@ -167,24 +221,28 @@ async def list_titles(
 async def add_title(
     body: TitleIn, request: Request, response: Response, p: CurrentPrincipal
 ) -> TitleOut:
-    """Add a movie by TMDB id with a quality profile; creates its wanted item."""
-    if body.kind == "series":
-        raise ProblemError(
-            422,
-            "Validation Failed",
-            "Adding series arrives with the TV pipeline (Phase 2)",
-            slug="validation",
-            errors=[FieldError(field="body.kind", message="series are not supported yet")],
-        )
+    """Add a movie or series by TMDB id with a quality profile. A movie gets one wanted
+    item; a series one per episode, monitored per `monitor_mode` (specials never)."""
     svc = _svc(request)
     hours = request.app.state.config.current.search.missing_every_hours
-    t = await svc.add_movie(
-        body.tmdb_id,
-        profile_id=body.profile_id,
-        monitored=body.monitored,
-        actor=p.actor(),
-        search_after=None if body.search else utcnow() + timedelta(hours=hours),
-    )
+    later = None if body.search else utcnow() + timedelta(hours=hours)
+    if body.kind == "series":
+        t = await svc.add_series(
+            body.tmdb_id,
+            profile_id=body.profile_id,
+            monitor_mode=body.monitor_mode,
+            actor=p.actor(),
+            search_after=later,
+        )
+    else:
+        t = await svc.add_movie(
+            body.tmdb_id,
+            profile_id=body.profile_id,
+            monitored=body.monitored,
+            actor=p.actor(),
+            search_after=later,
+            minimum_availability=body.minimum_availability,
+        )
     response.headers["Location"] = f"{request.url.path}/{t.id}"
     return await _one(svc, t, response)
 
@@ -230,6 +288,68 @@ async def refresh_title(
     return await _one(svc, await svc.refresh_title(title_id, actor=p.actor()), response)
 
 
+class EpisodeOut(BaseModel):
+    id: str
+    number: int
+    absolute_number: int | None
+    name: str | None
+    air_date: date | None
+    wanted: WantedOut
+
+
+class SeasonOut(BaseModel):
+    number: int
+    monitored: bool
+    episodes: list[EpisodeOut]
+
+
+class SeasonPatch(BaseModel):
+    monitored: bool
+
+
+@router.get(
+    "/titles/{title_id}/episodes",
+    response_model=list[SeasonOut],
+    dependencies=_read,
+    responses=pr(404, 409),
+)
+async def list_episodes(title_id: str, request: Request) -> list[SeasonOut]:
+    """A series' seasons and episodes, each with its wanted item (state, monitored...)."""
+    return [
+        SeasonOut(
+            number=season.number,
+            monitored=season.monitored,
+            episodes=[
+                EpisodeOut(
+                    id=ep.id,
+                    number=ep.number,
+                    absolute_number=ep.absolute_number,
+                    name=ep.name,
+                    air_date=ep.air_date,
+                    wanted=WantedOut.model_validate(w),
+                )
+                for ep, w in rows
+            ],
+        )
+        for season, rows in await _svc(request).episodes(title_id)
+    ]
+
+
+@router.patch(
+    "/titles/{title_id}/seasons/{number}",
+    response_model=TitleOut,
+    dependencies=_write,
+    responses=pr(404),
+)
+async def update_season(
+    title_id: str, number: int, body: SeasonPatch, request: Request, p: CurrentPrincipal
+) -> TitleOut:
+    """Monitor or unmonitor a whole season (specials included: season 0)."""
+    svc = _svc(request)
+    await svc.set_season_monitored(title_id, number, body.monitored, actor=p.actor())
+    return await _one(svc, await svc.get_title(title_id))
+
+
 @router.delete("/titles/{title_id}", status_code=204, dependencies=_write, responses=pr(404, 412))
 async def delete_title(
     title_id: str, request: Request, p: CurrentPrincipal, if_match: IfMatch = None
@@ -246,6 +366,10 @@ class WantedRow(WantedOut):
     title_name: str
     title_year: int | None
     title_kind: str
+    season_number: int | None = None
+    episode_number: int | None = None
+    episode_name: str | None = None
+    air_date: date | None = None
 
 
 class WantedPage(Page[WantedRow]):
@@ -286,16 +410,23 @@ async def list_wanted(
             cursor=cursor,
         )
     titles = await svc.titles_by_id({w.title_id for w in rows})
-    items = [
-        WantedRow(
-            **WantedOut.model_validate(w).model_dump(),
-            version=w.version,
-            title_name=titles[w.title_id].name,
-            title_year=titles[w.title_id].year,
-            title_kind=titles[w.title_id].kind,
+    eps = await svc.episode_info({w.episode_id for w in rows if w.episode_id})
+    items = []
+    for w in rows:
+        season, ep = eps.get(w.episode_id or "", (None, None))
+        items.append(
+            WantedRow(
+                **WantedOut.model_validate(w).model_dump(),
+                version=w.version,
+                title_name=titles[w.title_id].name,
+                title_year=titles[w.title_id].year,
+                title_kind=titles[w.title_id].kind,
+                season_number=season,
+                episode_number=ep.number if ep else None,
+                episode_name=ep.name if ep else None,
+                air_date=ep.air_date if ep else None,
+            )
         )
-        for w in rows
-    ]
     return WantedPage(items=items, next_cursor=nxt)
 
 
@@ -390,3 +521,36 @@ async def title_history(
     await svc.get_title(title_id)  # 404 for an unknown title
     return await _history_page(svc, title_id=title_id, wanted_item_id=None, type_=None,
                                limit=limit, cursor=cursor)  # fmt: skip
+
+
+class CalendarEntry(BaseModel):
+    date: date
+    kind: Literal["episode", "movie"]
+    title_id: str
+    name: str
+    poster_url: str | None
+    season: int | None
+    episode: int | None
+    episode_name: str | None
+    release: Literal["cinema", "digital", "disc"] | None = Field(
+        description="Movies: which release this date is"
+    )
+    state: str
+    monitored: bool
+
+
+@router.get("/calendar", response_model=list[CalendarEntry], dependencies=_read, responses=pr(422))
+async def get_calendar(
+    request: Request,
+    start: Annotated[date, Query(description="First day (inclusive)")],
+    end: Annotated[date, Query(description="Last day (inclusive)")],
+) -> list[CalendarEntry]:
+    """Episodes airing and movie release dates between two days (at most 100 days)."""
+    if end < start or (end - start).days > CALENDAR_MAX_DAYS:
+        raise ProblemError(
+            422,
+            "Validation Failed",
+            slug="validation",
+            errors=[FieldError(field="query.end", message="end must be 0-100 days after start")],
+        )
+    return [CalendarEntry(**e) for e in await calendar(_svc(request).db, start, end)]

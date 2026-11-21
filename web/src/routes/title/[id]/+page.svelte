@@ -2,6 +2,8 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import Badge from '#lib/Badge.svelte';
+	import Path from '#lib/Path.svelte';
+	import ReleasesTable from '#lib/ReleasesTable.svelte';
 	import { ago, ApiError, bytes, del, duration, get, patch, post, type S, type Title } from '#lib/api.ts';
 
 	const id = $derived(page.params.id ?? '');
@@ -9,12 +11,17 @@
 	let files = $state<S['FileOut'][]>([]);
 	let history = $state<S['HistoryOut'][]>([]);
 	let profiles = $state<S['ProfileOut'][]>([]);
+	let destinations = $state<S['DestinationOut'][]>([]);
 	let releases = $state<S['InteractiveOut'] | null>(null);
+	let releasesFor = $state('');
+	let seasons = $state<S['SeasonOut'][]>([]);
+	let open = $state<Record<number, boolean>>({});
 	let error = $state('');
 	let message = $state('');
 	let busy = $state('');
 
-	const wanted = $derived(title?.wanted[0] ?? null);
+	const series = $derived(title?.kind === 'series');
+	const wanted = $derived(series ? null : (title?.wanted[0] ?? null));
 	const profileName = $derived(profiles.find((p) => p.id === title?.profile_id)?.name ?? '');
 
 	async function load() {
@@ -27,6 +34,16 @@
 			title = t;
 			files = f;
 			history = h.items;
+			if (t.kind === 'series') {
+				seasons = await get<S['SeasonOut'][]>(`/titles/${id}/episodes`);
+				if (Object.keys(open).length === 0) {
+					// open the newest season with something to do, else the newest
+					const regular = seasons.filter((x) => x.number > 0);
+					const todo = [...regular].reverse().find((x) => x.episodes.some((e) => e.wanted.state !== 'acquired' && e.wanted.monitored));
+					const pick = todo ?? regular[regular.length - 1];
+					if (pick) open = { [pick.number]: true };
+				}
+			}
 		} catch (e) {
 			error = e instanceof ApiError ? e.message : String(e);
 		}
@@ -36,6 +53,7 @@
 		void id;
 		load();
 		get<S['ProfileOut'][]>('/quality-profiles').then((p) => (profiles = p));
+		get<S['DestinationOut'][]>('/destinations').then((d) => (destinations = d));
 		const t = setInterval(load, 5000);
 		return () => clearInterval(t);
 	});
@@ -59,17 +77,68 @@
 		act('search', () => post(`/titles/${id}/search`), 'Searching every indexer; the best release is grabbed automatically.');
 	const interactive = () =>
 		act('interactive', async () => {
+			releasesFor = '';
 			releases = await get<S['InteractiveOut']>('/releases', { wanted_item_id: wanted!.id });
+		});
+	const reveal = () => setTimeout(() => document.getElementById('releases')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+	const pad = (n: number) => String(n).padStart(2, '0');
+	const seasonName = (n: number) => (n === 0 ? 'Specials' : `Season ${n}`);
+	const chooseSeason = (n: number) =>
+		act('interactive', async () => {
+			releases = null;
+			releasesFor = `${seasonName(n)}: season packs first, then single episodes`;
+			releases = await get<S['InteractiveOut']>('/releases', { title_id: id, season: n });
+			reveal();
+		});
+	const chooseEpisode = (sn: number, e: S['EpisodeOut']) =>
+		act('interactive', async () => {
+			releases = null;
+			releasesFor = `S${pad(sn)}E${pad(e.number)}${e.name ? ` · ${e.name}` : ''}`;
+			releases = await get<S['InteractiveOut']>('/releases', { wanted_item_id: e.wanted.id });
+			reveal();
 		});
 	const grab = (r: S['ReleaseOut']) =>
 		act('grab', async () => {
+			const item = releases?.wanted_item_id;
 			await post('/grabs', {
 				release_id: r.release_id,
-				wanted_item_ids: [wanted!.id],
+				...(item ? { wanted_item_ids: [item] } : {}),
 				allow_rejected: !r.accepted
 			});
 			releases = null;
 		}, `Grabbed ${r.candidate.title}.`);
+	const searchSeason = (n: number) =>
+		act('search', () => post(`/titles/${id}/seasons/${n}/search`), `Searching ${seasonName(n)}: a season pack if there is one, else each episode.`);
+	const monitorSeason = (n: number, on: boolean) =>
+		act('monitor', () => patch(`/titles/${id}/seasons/${n}`, { monitored: on }));
+	const monitorEpisode = (w: S['WantedOut'], on: boolean) =>
+		act('monitor', () => patch(`/wanted/${w.id}`, { monitored: on }, w.etag));
+	const setMode = (mode: string) =>
+		act('mode', () => patch(`/titles/${id}`, { monitor_mode: mode }, title!.etag));
+	const setAvailability = (v: string) =>
+		act('availability', () => patch(`/titles/${id}`, { minimum_availability: v }, title!.etag));
+	const aired = (e: S['EpisodeOut']) => !!e.air_date && e.air_date <= new Date().toISOString().slice(0, 10);
+	function epState(e: S['EpisodeOut']): string {
+		if (e.wanted.state === 'missing' && !aired(e)) return e.air_date ? `Airs ${e.air_date}` : 'Not aired';
+		return '';
+	}
+	function seasonCount(x: S['SeasonOut']): string {
+		const got = x.episodes.filter((e) => e.wanted.state === 'acquired').length;
+		return `${got} of ${x.episodes.length}`;
+	}
+	const MODES: [string, string][] = [
+		['all', 'All episodes'],
+		['future', 'Only new episodes'],
+		['missing', 'Episodes without a file, and new ones'],
+		['first_season', 'First season'],
+		['latest_season', 'Latest season'],
+		['none', 'Nothing']
+	];
+	const AVAIL: [string, string][] = [
+		['released', 'Once released (digital or disc)'],
+		['in_cinemas', 'Once in cinemas'],
+		['announced', 'Right away']
+	];
 	const monitor = (on: boolean) =>
 		act('monitor', () => patch(`/wanted/${wanted!.id}`, { monitored: on }, wanted!.etag));
 	const setProfile = (pid: string) =>
@@ -88,6 +157,13 @@
 		});
 	};
 
+	function fullPath(f: S['FileOut']): string {
+		const dest = destinations.find((d) => d.id === f.destination_id);
+		if (!dest) return f.relative_path;
+		const sep = dest.path.includes('\\') && !dest.path.includes('/') ? '\\' : '/';
+		return dest.path.replace(/[\\/]+$/, '') + sep + f.relative_path;
+	}
+
 	const EVENTS: Record<string, string> = {
 		grabbed: 'Grabbed',
 		imported: 'Imported',
@@ -96,6 +172,18 @@
 		deleted: 'File deleted',
 		unlocked: 'Unlocked'
 	};
+	// One row per event; a grab or import of several episodes at once shows once, counted.
+	const grouped = $derived.by(() => {
+		const out: { h: S['HistoryOut']; n: number }[] = [];
+		for (const h of history) {
+			const last = out[out.length - 1];
+			const d = h.data as Record<string, unknown>;
+			const ld = last?.h.data as Record<string, unknown> | undefined;
+			if (last && last.h.type === h.type && ld?.release_title === d.release_title && ld?.path === d.path && ld?.reason === d.reason) last.n++;
+			else out.push({ h, n: 1 });
+		}
+		return out;
+	});
 	function describe(h: S['HistoryOut']): string {
 		const d = h.data as Record<string, unknown>;
 		return [d.release_title, d.quality, d.reason, d.path].filter(Boolean).join(' · ');
@@ -118,7 +206,7 @@
 						{#if title.runtime}<span>{title.runtime} min</span>{/if}
 						{#if title.genres.length}<span>· {title.genres.join(', ')}</span>{/if}
 						{#if title.tmdb_id}
-							<span>· <a href="https://www.themoviedb.org/movie/{title.tmdb_id}" target="_blank" rel="noreferrer">TMDB</a></span>
+							<span>· <a href="https://www.themoviedb.org/{series ? 'tv' : 'movie'}/{title.tmdb_id}" target="_blank" rel="noreferrer">TMDB</a></span>
 						{/if}
 					</div>
 				</div>
@@ -157,40 +245,107 @@
 						{/if}
 						<button class="danger" onclick={remove} disabled={!!busy}>Remove</button>
 					</div>
+					<div class="row small muted">
+						<label class="inline">
+							Start searching
+							<select value={title.minimum_availability} onchange={(e) => setAvailability(e.currentTarget.value)} disabled={!!busy}>
+								{#each AVAIL as [v, l] (v)}<option value={v}>{l}</option>{/each}
+							</select>
+						</label>
+						{#if title.available_from && wanted.state !== 'acquired'}
+							<span>Automatic search waits until {title.available_from}.</span>
+						{/if}
+					</div>
+					{#if title.theatrical_date || title.digital_date || title.physical_date}
+						<div class="row small muted">
+							{#if title.theatrical_date}<span>Cinemas {title.theatrical_date}</span>{/if}
+							{#if title.digital_date}<span>· Digital {title.digital_date}</span>{/if}
+							{#if title.physical_date}<span>· Disc {title.physical_date}</span>{/if}
+						</div>
+					{/if}
+				{:else if series}
+					{#if title.episodes}
+						<div class="row small">
+							<span class="badge ok">{title.episodes.acquired} downloaded</span>
+							{#if title.episodes.missing}<span class="badge warn">{title.episodes.missing} missing</span>{/if}
+							<span class="muted">{title.episodes.monitored} of {title.episodes.episodes} episodes monitored</span>
+						</div>
+					{/if}
+					<div class="row">
+						<label class="inline">
+							Quality
+							<select value={title.profile_id} onchange={(e) => setProfile(e.currentTarget.value)} disabled={!!busy}>
+								{#each profiles as p (p.id)}<option value={p.id}>{p.name}</option>{/each}
+							</select>
+						</label>
+						<label class="inline">
+							Download
+							<select value={title.monitor_mode} onchange={(e) => setMode(e.currentTarget.value)} disabled={!!busy}>
+								{#each MODES as [v, l] (v)}<option value={v}>{l}</option>{/each}
+							</select>
+						</label>
+					</div>
+					<div class="row">
+						<button class="primary" onclick={searchNow} disabled={!!busy} title="Every season with aired episodes still to get">Search all missing</button>
+						<button class="danger" onclick={remove} disabled={!!busy}>Remove</button>
+					</div>
 				{/if}
 			</div>
 		</div>
 
-		{#if releases}
-			<h2>Releases <span class="muted small">from {releases.indexers_searched} indexer{releases.indexers_searched === 1 ? '' : 's'}</span></h2>
-			{#each releases.failures as f}<p class="notice warn">{f.indexer_name}: {f.error}</p>{/each}
-			{#if releases.releases.length === 0}
-				<p class="empty card">No releases found. {releases.indexers_searched === 0 ? 'Add an indexer in Settings.' : ''}</p>
-			{:else}
-				<div class="card table-wrap">
-					<table>
-						<thead><tr><th>Release</th><th>Quality</th><th>Size</th><th>Seeds</th><th>Indexer</th><th></th></tr></thead>
-						<tbody>
-							{#each releases.releases as r (r.release_id)}
-								<tr class:rejected={!r.accepted}>
-									<td>
-										<div class="name">{r.candidate.title}</div>
-										{#each r.rejections as rej}<div class="small reason">{rej.message}</div>{/each}
-									</td>
-									<td>{r.quality}{r.format_score ? ` (${r.format_score > 0 ? '+' : ''}${r.format_score})` : ''}</td>
-									<td>{bytes(r.candidate.size)}</td>
-									<td>{r.candidate.seeders ?? '—'}</td>
-									<td class="muted">{r.candidate.source_name}</td>
-									<td>
-										<button class={r.accepted ? 'primary' : ''} onclick={() => grab(r)} disabled={!!busy}
-											title={r.accepted ? '' : 'Rejected: grab anyway'}>Grab</button>
-									</td>
-								</tr>
-							{/each}
-						</tbody>
-					</table>
+		{#if series}
+			<h2>Seasons</h2>
+			{#each [...seasons].sort((a, b) => (a.number === 0 ? 1 : b.number === 0 ? -1 : b.number - a.number)) as x (x.number)}
+				<div class="card season">
+					<div class="spread season-head">
+						<button class="link" onclick={() => (open = { ...open, [x.number]: !open[x.number] })} aria-expanded={!!open[x.number]}>
+							{open[x.number] ? '▾' : '▸'} <strong>{seasonName(x.number)}</strong>
+							<span class="muted small">{seasonCount(x)} downloaded</span>
+						</button>
+						<div class="row">
+							<label class="inline small">
+								<input type="checkbox" checked={x.monitored} onchange={(e) => monitorSeason(x.number, e.currentTarget.checked)} disabled={!!busy} />
+								Monitored
+							</label>
+							<button onclick={() => searchSeason(x.number)} disabled={!!busy}>Search</button>
+							<button onclick={() => chooseSeason(x.number)} disabled={!!busy}>Choose a release</button>
+						</div>
+					</div>
+					{#if open[x.number]}
+						<div class="table-wrap">
+							<table class="episodes">
+								<tbody>
+									{#each x.episodes as e (e.id)}
+										<tr class:unmonitored={!e.wanted.monitored}>
+											<td class="num muted">{e.number}</td>
+											<td>{e.name ?? `Episode ${e.number}`}</td>
+											<td class="muted small date">{e.air_date ?? ''}</td>
+											<td>
+												{#if epState(e)}<span class="muted small">{epState(e)}</span>{:else}<Badge state={e.wanted.state} />{/if}
+											</td>
+											<td>
+												<input type="checkbox" title="Monitored" aria-label="Monitored" checked={e.wanted.monitored} onchange={(ev) => monitorEpisode(e.wanted, ev.currentTarget.checked)} disabled={!!busy} />
+											</td>
+											<td>
+												<button class="small" onclick={() => chooseEpisode(x.number, e)} disabled={!!busy || !aired(e)} title="Search and choose a release">Search</button>
+											</td>
+										</tr>
+									{/each}
+								</tbody>
+							</table>
+						</div>
+					{/if}
 				</div>
-			{/if}
+			{/each}
+		{/if}
+
+		{#if busy === 'interactive'}<p class="muted">Searching every indexer…</p>{/if}
+		{#if releases}
+			<div class="spread" id="releases">
+				<h2>Releases {#if releasesFor}<span class="muted small">for {releasesFor}</span>{/if}</h2>
+				<button class="link" onclick={() => (releases = null)}>Close</button>
+			</div>
+			<ReleasesTable result={releases} busy={!!busy} onGrab={grab} />
 		{/if}
 
 		<h2>Files</h2>
@@ -199,7 +354,7 @@
 		{:else}
 			{#each files as f (f.id)}
 				<div class="card stack file">
-					<code>{f.relative_path}</code>
+					<div><Path path={fullPath(f)} /></div>
 					<div class="row small muted">
 						<span class="badge">{f.quality.name}</span>
 						<span>{bytes(f.size)}</span>
@@ -224,10 +379,10 @@
 			<div class="card table-wrap">
 				<table>
 					<tbody>
-						{#each history as h (h.id)}
+						{#each grouped as { h, n } (h.id)}
 							<tr>
 								<td class="when muted small">{ago(h.created_at)}</td>
-								<td><strong>{EVENTS[h.type] ?? h.type}</strong></td>
+								<td><strong>{EVENTS[h.type] ?? h.type}</strong>{#if n > 1}<span class="muted small count">{n} episodes</span>{/if}</td>
 								<td class="small">{describe(h)}</td>
 							</tr>
 						{/each}
@@ -268,14 +423,56 @@
 		align-items: center;
 		gap: 0.5rem;
 	}
-	.name {
-		word-break: break-all;
+	.season {
+		padding: 0.5rem 0.75rem;
+		margin-bottom: 0.5rem;
 	}
-	.reason {
-		color: var(--warn);
+	.season-head {
+		flex-wrap: wrap;
+		gap: 0.5rem;
 	}
-	tr.rejected .name {
-		color: var(--muted);
+	button.link {
+		background: none;
+		border: none;
+		padding: 0.25rem 0;
+		cursor: pointer;
+		color: inherit;
+		display: flex;
+		gap: 0.5rem;
+		align-items: baseline;
+	}
+	.episodes {
+		table-layout: fixed;
+		width: 100%;
+	}
+	.episodes td:nth-child(3) {
+		width: 7rem;
+	}
+	.episodes td:nth-child(4) {
+		width: 7.5rem;
+	}
+	.episodes td:nth-child(5) {
+		width: 2.5rem;
+	}
+	.episodes td:nth-child(6) {
+		width: 5.5rem;
+		text-align: right;
+	}
+	.episodes td {
+		padding: 0.3rem 0.5rem;
+	}
+	.num {
+		width: 2.5rem;
+		text-align: right;
+	}
+	.date {
+		white-space: nowrap;
+	}
+	tr.unmonitored td {
+		opacity: 0.55;
+	}
+	.count {
+		margin-left: 0.4rem;
 	}
 	.when {
 		white-space: nowrap;
@@ -284,8 +481,5 @@
 	.file {
 		gap: 0.4rem;
 		margin-bottom: 0.5rem;
-	}
-	code {
-		word-break: break-all;
 	}
 </style>

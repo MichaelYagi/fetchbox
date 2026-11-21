@@ -1,4 +1,8 @@
-"""Search: query every indexer for a wanted item and decide each result.
+"""Search: query every indexer for wanted items and decide each result.
+
+A search covers one movie, one episode, or episodes of one season (a season search asks
+indexers for the whole season, so season packs come back too; the decision engine then
+prefers packs and fills gaps with single episodes).
 
 Interactive search returns everything; automatic search (``modules.automation``) grabs
 the top pick. Both judge an acquired item's results against its current file, so only
@@ -17,23 +21,41 @@ from typing import Literal
 from sqlalchemy import select
 
 from fetchbox.core.db import Database, utcnow
-from fetchbox.core.errors import FieldError, ProblemError
+from fetchbox.core.errors import FieldError, NotFoundError, ProblemError
 from fetchbox.core.events import Actor, EventBus, Subject
 from fetchbox.core.ids import new_id
 from fetchbox.modules.library.models import MediaFile, MediaFileItem
-from fetchbox.modules.media.models import WantedItem
+from fetchbox.modules.media.models import Title, WantedItem
 from fetchbox.modules.media.service import MediaService
 from fetchbox.modules.profiles.service import ProfilesService, to_spec
-from fetchbox.modules.releases.decision import Decision, DecisionContext, Existing, Target
+from fetchbox.modules.releases.decision import (
+    Candidate,
+    Decision,
+    DecisionContext,
+    EpisodeKey,
+    Existing,
+    Target,
+    WantedEpisode,
+    decide_all,
+)
+from fetchbox.modules.releases.decision import select as pick_releases
 from fetchbox.modules.releases.grabs import GrabsService, Reason, blocklist_keys, grabbed_keys
 from fetchbox.modules.releases.models import Grab
-from fetchbox.modules.releases.search import SearchOutcome, search
-from fetchbox.modules.releases.targets import movie_target
+from fetchbox.modules.releases.search import SearchOutcome, dedupe, search
+from fetchbox.modules.releases.targets import movie_target, series_target
 from fetchbox.modules.sources.service import SourcesService
 from fetchbox.modules.system.config import ConfigService
 from fetchbox.providers.indexers import SearchQuery
 
 Mode = Literal["interactive", "automatic"]
+
+
+def _daily(title: Title) -> bool:
+    """Daily shows (talk shows, news) are searched by air date. TMDB has no flag for it;
+    the genre is the hint."""
+    return any(g in ("Talk", "News") for g in (title.meta or {}).get("genres") or [])
+
+
 CACHE_TTL = 3600.0
 CACHE_SIZE = 5000
 
@@ -41,17 +63,37 @@ CACHE_SIZE = 5000
 @dataclass(frozen=True)
 class CachedRelease:
     release_id: str
-    wanted_item_id: str
+    wanted_item_id: str  # the first item it covers (a movie's only one)
     decision: Decision
     expires: float
+    wanted_item_ids: tuple[str, ...] = ()  # every item it covers (a season pack: many)
 
 
 @dataclass(frozen=True)
 class InteractiveResult:
-    wanted_item_id: str
+    wanted_item_id: str | None  # the episode or movie searched; None for a season search
     indexers: int
     outcome: SearchOutcome
     release_ids: list[str]  # parallel to outcome.decisions
+    title_id: str = ""
+    season: int | None = None
+
+
+@dataclass
+class Plan:
+    """One search: what it's for, the query, how to judge results, and which wanted item
+    each covered episode is (a movie: its one item under the key (0, 0))."""
+
+    title_id: str
+    target: Target
+    query: SearchQuery
+    ctx: DecisionContext
+    items: dict[EpisodeKey, str]
+
+    def covered(self, d: Decision) -> list[str]:
+        if self.target.kind == "movie":
+            return list(self.items.values())
+        return [self.items[e] for e in d.episodes if e in self.items]
 
 
 class ReleaseCache:
@@ -59,9 +101,15 @@ class ReleaseCache:
         self.size = size
         self._data: OrderedDict[str, CachedRelease] = OrderedDict()
 
-    def put(self, wanted_item_id: str, decision: Decision) -> str:
+    def put(self, wanted_item_ids: list[str], decision: Decision) -> str:
         rid = new_id()
-        self._data[rid] = CachedRelease(rid, wanted_item_id, decision, time.monotonic() + CACHE_TTL)
+        self._data[rid] = CachedRelease(
+            rid,
+            wanted_item_ids[0] if wanted_item_ids else "",
+            decision,
+            time.monotonic() + CACHE_TTL,
+            tuple(wanted_item_ids),
+        )
         while len(self._data) > self.size:
             self._data.popitem(last=False)
         return rid
@@ -94,29 +142,60 @@ class ReleasesService:
         self.sources = sources
         self.cache = ReleaseCache()
 
-    async def _target(self, wanted: WantedItem) -> tuple[Target, SearchQuery, DecisionContext]:
-        title = await self.media.get_title(wanted.title_id)
-        if title.kind != "movie":
-            raise ProblemError(
-                422,
-                "Validation Failed",
-                "Searching for episodes arrives with the TV pipeline (Phase 2)",
-                slug="validation",
-                errors=[FieldError(field="wanted_item_id", message="series are not supported yet")],
-            )
-        # Only an acquired item is compared with its file: after a redownload the item is
-        # missing and the kept file is just replaced.
-        existing = await self.existing(wanted.id) if wanted.state == "acquired" else None
-        target = movie_target(title, existing)
+    async def plan(self, items: list[WantedItem], *, season_query: bool = False) -> Plan:
+        """Build a search for some wanted items of one title: a movie, one episode, or
+        episodes of one season (``season_query``: ask indexers for the season, so packs
+        come back too)."""
+        if not items:
+            raise ValueError("nothing to search for")
+        title = await self.media.get_title(items[0].title_id)
         ids = {"tmdb": str(title.tmdb_id)} if title.tmdb_id else {}
         if title.imdb_id:
             ids["imdb"] = title.imdb_id
-        query = SearchQuery("movie", (title.name,), year=title.year, ids=ids)
+        by_key: dict[EpisodeKey, str] = {}
+        if title.kind == "movie":
+            w = items[0]
+            # Only an acquired item is compared with its file: after a redownload the item
+            # is missing and the kept file is just replaced.
+            existing = await self.existing(w.id) if w.state == "acquired" else None
+            target = movie_target(title, existing)
+            query = SearchQuery("movie", (title.name,), year=title.year, ids=ids)
+            by_key[(0, 0)] = w.id
+        else:
+            if title.tvdb_id:
+                ids["tvdb"] = str(title.tvdb_id)
+            rows = await self.media.episode_items(title.id, item_ids=[w.id for w in items])
+            wanted_eps = []
+            for season, ep, w in rows:
+                existing = await self.existing(w.id) if w.state == "acquired" else None
+                wanted_eps.append(
+                    WantedEpisode(
+                        season, ep.number, ep.absolute_number, ep.air_date, existing=existing
+                    )
+                )
+                by_key[(season, ep.number)] = w.id
+            if not wanted_eps:
+                raise ProblemError(
+                    422, "Validation Failed", "no episodes to search for", slug="validation"
+                )
+            seasons = await self.media.season_info(title.id)
+            target = series_target(title, wanted_eps, seasons)
+            first = wanted_eps[0]
+            single = len(wanted_eps) == 1 and not season_query
+            query = SearchQuery(
+                "series",
+                (title.name,),
+                year=title.year,
+                season=first.season,
+                episode=first.episode if single else None,
+                air_date=first.air_date if single and _daily(title) else None,
+                ids=ids,
+            )
         profile = to_spec(await self.profiles.get_profile(title.profile_id))
         cfg = self.config.current.search
         async with self.db.sessionmaker() as s:
             blocked = await blocklist_keys(s, title.id)
-            grabbed = await grabbed_keys(s, wanted.id)
+            grabbed = [k for w in items for k in await grabbed_keys(s, w.id)]
         ctx = DecisionContext(
             profile=profile,
             formats=await self.profiles.format_specs(),
@@ -125,7 +204,7 @@ class ReleasesService:
             min_seeders=cfg.min_seeders,
             season_pack_share=cfg.season_pack_share,
         )
-        return target, query, ctx
+        return Plan(title.id, target, query, ctx, by_key)
 
     async def existing(self, wanted_item_id: str) -> Existing | None:
         """The item's current file, as the decision engine compares upgrades against it."""
@@ -146,36 +225,72 @@ class ReleasesService:
         )
 
     async def run(
-        self, wanted: WantedItem, *, mode: Mode, actor: Actor
-    ) -> tuple[int, SearchOutcome]:
-        """Search every enabled indexer for one item. Returns (indexers asked, outcome)."""
-        target, query, ctx = await self._target(wanted)
+        self, items: list[WantedItem], *, mode: Mode, actor: Actor, season_query: bool = False
+    ) -> tuple[int, SearchOutcome, Plan]:
+        """Search every enabled indexer. Returns (indexers asked, outcome, the plan)."""
+        plan = await self.plan(items, season_query=season_query)
         sources = await self.sources.release_sources()
-        subject = Subject(type="wanted_item", id=wanted.id)
+        q = plan.query
+        what = plan.target.names[0]
+        if q.kind == "series" and q.season is not None:
+            what += f" S{q.season:02d}" + (f"E{q.episode:02d}" if q.episode is not None else "")
+        subject = (
+            Subject(type="wanted_item", id=items[0].id)
+            if len(items) == 1
+            else Subject(type="title", id=plan.title_id)
+        )
         await self.bus.emit(
-            "search.started", subject=subject, actor=actor, name=target.names[0],
+            "search.started", subject=subject, actor=actor, name=what,
             mode=mode, indexers=len(sources),
         )  # fmt: skip
-        outcome = await search(sources, query, target, ctx)
-        await self.media.mark_searched(wanted.id, utcnow())
+        outcome = await search(sources, q, plan.target, plan.ctx)
+        now = utcnow()
+        for w in items:
+            await self.media.mark_searched(w.id, now)
         await self.bus.emit(
             "search.completed",
             subject=subject,
             actor=actor,
-            name=target.names[0],
+            name=what,
             mode=mode,
             indexers=len(sources),
             results=len(outcome.decisions),
             accepted=sum(d.accepted for d in outcome.decisions),
             failed_indexers=[f.source_name for f in outcome.failures],
         )
-        return len(sources), outcome
+        return len(sources), outcome, plan
+
+    async def evaluate(
+        self, items: list[WantedItem], candidates: list[Candidate]
+    ) -> tuple[SearchOutcome, Plan]:
+        """Decide on releases found some other way (an RSS feed) as a search would."""
+        plan = await self.plan(items, season_query=True)
+        decisions = decide_all(dedupe(candidates), plan.target, plan.ctx)
+        return SearchOutcome(decisions, pick_releases(decisions, plan.target), []), plan
+
+    def _cache(self, plan: Plan, outcome: SearchOutcome) -> list[str]:
+        return [self.cache.put(plan.covered(d), d) for d in outcome.decisions]
 
     async def interactive(self, wanted_item_id: str, *, actor: Actor) -> InteractiveResult:
+        """One movie or one episode."""
         wanted = await self.media.get_wanted(wanted_item_id)
-        n, outcome = await self.run(wanted, mode="interactive", actor=actor)
-        ids = [self.cache.put(wanted.id, d) for d in outcome.decisions]
-        return InteractiveResult(wanted.id, n, outcome, ids)
+        n, outcome, plan = await self.run([wanted], mode="interactive", actor=actor)
+        return InteractiveResult(wanted.id, n, outcome, self._cache(plan, outcome), plan.title_id)
+
+    async def interactive_season(
+        self, title_id: str, season: int, *, actor: Actor
+    ) -> InteractiveResult:
+        """A whole season: packs and single episodes, judged against every episode of it
+        that isn't on disk yet (or all of them when every one is)."""
+        title = await self.media.get_title(title_id)
+        if title.kind != "series":
+            raise ProblemError(409, "Conflict", "only series have seasons", slug="conflict")
+        rows = await self.media.episode_items(title_id, season=season)
+        if not rows:
+            raise NotFoundError("season", f"{title_id}/{season}")
+        items = [w for _, _, w in rows if w.state != "acquired"] or [w for _, _, w in rows]
+        n, outcome, plan = await self.run(items, mode="interactive", actor=actor, season_query=True)
+        return InteractiveResult(None, n, outcome, self._cache(plan, outcome), title_id, season)
 
     def cached(self, release_id: str) -> CachedRelease | None:
         return self.cache.get(release_id)
@@ -212,5 +327,5 @@ class ReleasesService:
                     FieldError(field="body.release_id", message=r.message) for r in d.rejections
                 ],
             )
-        return await self.grabs.grab(d, wanted_item_ids or [hit.wanted_item_id], reason=reason,
-                                     actor=actor)  # fmt: skip
+        ids = wanted_item_ids or list(hit.wanted_item_ids) or [hit.wanted_item_id]
+        return await self.grabs.grab(d, ids, reason=reason, actor=actor)

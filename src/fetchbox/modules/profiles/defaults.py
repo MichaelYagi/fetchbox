@@ -49,13 +49,13 @@ FORMATS: dict[str, dict[str, Any]] = {
 }
 
 # format_scores here use FORMATS slugs; seeding maps them to ids.
+# Named by resolution: each takes only that resolution (sources ranked within it), so
+# what you pick is what you get. "Any" also takes releases that don't state a quality.
+WEB_480 = ["WEBRip-480p", "WEBDL-480p"]
 PROFILES: list[dict[str, Any]] = [
     {
-        "name": "Standard HD",
+        "name": "1080p",
         "ladder": [
-            {"name": "HDTV-720p", "qualities": ["HDTV-720p"]},
-            {"name": "WEB 720p", "qualities": WEB_720},
-            {"name": "Bluray-720p", "qualities": ["Bluray-720p"]},
             {"name": "HDTV-1080p", "qualities": ["HDTV-1080p"]},
             {"name": "WEB 1080p", "qualities": WEB_1080},
             {"name": "Bluray-1080p", "qualities": ["Bluray-1080p"]},
@@ -64,15 +64,33 @@ PROFILES: list[dict[str, Any]] = [
         "format_scores": {},
     },
     {
-        "name": "4K",
+        "name": "2160p",
         "ladder": [
-            {"name": "WEB 1080p", "qualities": WEB_1080},
-            {"name": "Bluray-1080p", "qualities": ["Bluray-1080p"]},
             {"name": "WEB 2160p", "qualities": WEB_2160},
             {"name": "Bluray-2160p", "qualities": ["Bluray-2160p"]},
         ],
         "cutoff": "WEB 2160p",
         "format_scores": {"dolby_vision": 20, "hdr10_plus": 10},
+    },
+    {
+        "name": "720p",
+        "ladder": [
+            {"name": "HDTV-720p", "qualities": ["HDTV-720p"]},
+            {"name": "WEB 720p", "qualities": WEB_720},
+            {"name": "Bluray-720p", "qualities": ["Bluray-720p"]},
+        ],
+        "cutoff": "WEB 720p",
+        "format_scores": {},
+    },
+    {
+        "name": "480p",
+        "ladder": [
+            {"name": "SDTV", "qualities": ["SDTV", "Unknown-480p"]},
+            {"name": "WEB 480p", "qualities": WEB_480},
+            {"name": "DVD", "qualities": ["DVD", "Bluray-480p", "Bluray-576p"]},
+        ],
+        "cutoff": "WEB 480p",
+        "format_scores": {},
     },
     {
         # Releases that don't state a quality land here, e.g. Internet Archive films

@@ -37,3 +37,12 @@ def test_parse_prints_json_per_name(capsys: pytest.CaptureFixture[str]) -> None:
     assert movie["title"] == "Heat" and movie["year"] == 1995
     assert movie["quality"] == "Bluray-1080p" and movie["media_type"] == "movie"
     assert show["seasons"] == [1] and show["episodes"] == [2] and show["media_type"] == "series"
+
+
+def test_data_dir_after_the_command(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """`fetchbox migrate --data DIR` works like `fetchbox --data DIR migrate`."""
+    monkeypatch.delenv("FETCHBOX_DB_URL", raising=False)
+    assert main(["migrate", "--data", str(tmp_path / "after")]) == 0
+    assert (tmp_path / "after" / "fetchbox.db").exists()
+    assert main(["--data", str(tmp_path / "before"), "migrate"]) == 0
+    assert (tmp_path / "before" / "fetchbox.db").exists()

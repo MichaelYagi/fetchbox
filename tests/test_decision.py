@@ -9,7 +9,6 @@ from typing import Any
 import pytest
 from pydantic import TypeAdapter
 
-from fetchbox.modules.profiles import defaults
 from fetchbox.modules.profiles.formats import Condition, FormatSpec
 from fetchbox.modules.profiles.profile import ProfileSpec
 from fetchbox.modules.releases.decision import (
@@ -26,6 +25,7 @@ from fetchbox.modules.releases.decision import (
     title_key,
 )
 from fetchbox.modules.releases.search import SearchQuery, search
+from tests.pipeline import STANDARD_HD
 
 CONDS: TypeAdapter[list[Condition]] = TypeAdapter(list[Condition])
 GB = 1_000_000_000
@@ -37,7 +37,7 @@ ATMOS = FormatSpec("atmos", "Atmos", tuple(CONDS.validate_python(
 
 
 def hd(**kw: Any) -> ProfileSpec:
-    return ProfileSpec.model_validate({**defaults.PROFILES[0], "format_scores": {}, **kw})
+    return ProfileSpec.model_validate({**STANDARD_HD, "format_scores": {}, **kw})
 
 
 def ctx(**kw: Any) -> DecisionContext:

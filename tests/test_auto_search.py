@@ -25,7 +25,7 @@ from tests.torrents import make_torrent, until
 
 MB = 1024 * 1024
 BEST = "Dune.2021.1080p.WEB-DL.DDP5.1.Atmos.H.264-FLUX"
-NEXT = "Dune.2021.720p.BluRay.x264-SPARKS"
+NEXT = "Dune.2021.1080p.WEBRip.x264-SPARKS"
 
 
 @pytest.fixture(autouse=True)
@@ -167,7 +167,7 @@ async def test_unmonitored_items_are_left_alone_but_can_be_searched(
     c: httpx.AsyncClient, fakes: Fakes, items: list[Item], server: Running
 ) -> None:
     profiles = (await c.get("/quality-profiles")).json()
-    hd = next(p["id"] for p in profiles if p["name"] == "Standard HD")
+    hd = next(p["id"] for p in profiles if p["name"] == "1080p")
     movie = (
         await c.post("/titles", json={"tmdb_id": 438631, "profile_id": hd, "monitored": False})
     ).json()
@@ -185,7 +185,7 @@ async def test_automatic_off_still_searches_new_titles(
     assert r.status_code == 200, r.text
     await _indexer(c, fakes, "one", items)
     profiles = (await c.get("/quality-profiles")).json()
-    hd = next(p["id"] for p in profiles if p["name"] == "Standard HD")
+    hd = next(p["id"] for p in profiles if p["name"] == "1080p")
     old = (await c.post("/titles", json={"tmdb_id": 194, "profile_id": hd, "search": False})).json()
     async with server.app.state.fb.db.sessionmaker() as s:  # overdue
         await s.execute(update(WantedItem).values(next_search_at=utcnow() - timedelta(hours=1)))
@@ -316,3 +316,49 @@ async def test_a_grab_that_never_started_is_not_retried_after_its_alternative(
     assert [h["type"] for h in hist] == ["grabbed", "failed", "grabbed"]
     w = await _wanted(c, wid)
     assert w["state"] == "downloading"
+
+
+def test_available_from_rules() -> None:
+    from fetchbox.modules.media.models import Title
+    from fetchbox.modules.media.service import available_from
+
+    def t(mode: str, **dates: str) -> Title:
+        return Title(kind="movie", name="X", sort_name="x", profile_id="p",
+                     minimum_availability=mode, meta=dict(dates))  # fmt: skip
+
+    cinema = {"theatrical_date": "2030-03-01"}
+    assert available_from(t("announced", **cinema)) is None
+    assert str(available_from(t("in_cinemas", **cinema))) == "2030-03-01"
+    assert str(available_from(t("released", **cinema))) == "2030-05-30"  # + 90 days
+    home = {**cinema, "digital_date": "2030-04-10", "physical_date": "2030-05-01"}
+    assert str(available_from(t("released", **home))) == "2030-04-10"
+    assert available_from(t("released")) is None  # nothing known: search
+    assert available_from(Title(kind="series", name="S", sort_name="s", profile_id="p")) is None
+
+
+async def test_unreleased_movie_waits_for_its_release(
+    c: httpx.AsyncClient, fakes: Fakes, items: list[Item], server: Running
+) -> None:
+    soon = (utcnow() + timedelta(days=40)).date().isoformat()
+    # in cinemas in 40 days (the year stays 2021, so the Dune.2021 releases match)
+    fakes.tmdb.movies[438631]["release_dates"] = {
+        "results": [
+            {"iso_3166_1": "US", "release_dates": [
+                {"type": 3, "release_date": f"{soon}T00:00:00.000Z"},
+            ]},
+        ]
+    }  # fmt: skip
+    await _indexer(c, fakes, "one", items)
+    movie = await _movie(c, search=True)
+    assert movie["theatrical_date"] == soon and movie["minimum_availability"] == "released"
+    released = (utcnow() + timedelta(days=130)).date().isoformat()
+    assert movie["available_from"] == released
+    wid = movie["wanted"][0]["id"]
+    w = await _settled(c, wid)
+    assert w["next_search_at"].startswith(released) and await _grabs(c, wid) == []
+
+    # in_cinemas: available on the cinema date; a manual search ignores the wait
+    r = await c.patch(f"/titles/{movie['id']}", json={"minimum_availability": "in_cinemas"})
+    assert r.status_code == 200 and r.json()["available_from"] == soon
+    job = await _job(c, (await c.post(f"/wanted/{wid}/search")).json()["id"])
+    assert job["result"].get("grabbed"), job

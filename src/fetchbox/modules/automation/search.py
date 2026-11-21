@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-from datetime import timedelta
+from datetime import UTC, datetime, time, timedelta
 from typing import Any, Literal
 
 import structlog
@@ -34,10 +34,15 @@ from fetchbox.core.db import Database, utcnow
 from fetchbox.core.errors import ConflictError, NotFoundError, ProblemError
 from fetchbox.core.events import Actor, EventBus
 from fetchbox.core.jobs import Job, JobContext, JobRunner
-from fetchbox.modules.media.models import HistoryEvent, Title, WantedItem
-from fetchbox.modules.media.service import MediaService
+from fetchbox.core.schedules import ScheduleDef, Scheduler
+from fetchbox.modules.automation.rss import RSS_JOB, rss_sync
+from fetchbox.modules.media.models import Episode, HistoryEvent, Season, Title, WantedItem
+from fetchbox.modules.media.series import aired
+from fetchbox.modules.media.service import MediaService, available_from
 from fetchbox.modules.profiles.models import QualityProfile
+from fetchbox.modules.releases.decision import Candidate
 from fetchbox.modules.releases.grabs import BUSY, GrabsService
+from fetchbox.modules.releases.grabs import Reason as GrabReason
 from fetchbox.modules.releases.service import ReleasesService
 from fetchbox.modules.sources.service import SourcesService
 from fetchbox.modules.system.config import ConfigService
@@ -45,6 +50,8 @@ from fetchbox.modules.system.config import ConfigService
 log = structlog.get_logger(__name__)
 
 SEARCH_JOB = "search.wanted"
+SEASON_JOB = "search.season"
+EPISODE_FALLBACK = 5  # after a season search, episodes still uncovered searched one by one
 SWEEP_INTERVAL = 60.0
 BATCH = 10  # searches queued per sweep; the net queue runs a few at a time
 Reason = Literal["automatic", "manual"]
@@ -78,11 +85,33 @@ class AutoSearch:
 
     # ---- lifecycle ----------------------------------------------------------------------------
 
-    def register_jobs(self) -> None:
+    def register_jobs(self, scheduler: Scheduler | None = None) -> None:
+        @self.jobs.handler(RSS_JOB, queue="net", max_attempts=1)
+        async def run_rss(ctx: JobContext) -> dict[str, Any]:
+            return await rss_sync(self)
+
+        if scheduler is not None:
+            scheduler.define(
+                ScheduleDef(
+                    "rss_sync",
+                    RSS_JOB,
+                    timedelta(minutes=15),
+                    description="Read every indexer's newest releases and grab wanted ones",
+                )
+            )
+
         @self.jobs.handler(SEARCH_JOB, queue="net", max_attempts=1)
         async def run(ctx: JobContext) -> dict[str, Any]:
             return await self.search(
                 ctx.payload["wanted_item_id"], reason=ctx.payload.get("reason", "automatic")
+            )
+
+        @self.jobs.handler(SEASON_JOB, queue="net", max_attempts=1)
+        async def run_season(ctx: JobContext) -> dict[str, Any]:
+            return await self.search_season(
+                ctx.payload["title_id"],
+                int(ctx.payload["season"]),
+                reason=ctx.payload.get("reason", "automatic"),
             )
 
     async def start(self) -> None:
@@ -133,6 +162,8 @@ class AutoSearch:
     # ---- sweep --------------------------------------------------------------------------------
 
     def due_query(self, *, scheduled: bool) -> Any:
+        """(wanted item id, title id, season number or None) of due items: movies, and
+        episodes that have aired."""
         now = utcnow()
         when = (
             or_(WantedItem.next_search_at.is_(None), WantedItem.next_search_at <= now)
@@ -146,28 +177,72 @@ class AutoSearch:
             & WantedItem.cutoff_met.is_(False)
             & QualityProfile.upgrade_allowed.is_(True)
         )
+        kind_ok = or_(
+            Title.kind == "movie",
+            (Title.kind == "series") & (Episode.air_date <= now.date()),
+        )
         return (
-            select(WantedItem.id)
+            select(WantedItem.id, WantedItem.title_id, Season.number)
             .join(Title, Title.id == WantedItem.title_id)
             .join(QualityProfile, QualityProfile.id == Title.profile_id)
-            .where(WantedItem.monitored.is_(True), Title.kind == "movie", when, missing | upgrade)
+            .outerjoin(Episode, Episode.id == WantedItem.episode_id)
+            .outerjoin(Season, Season.id == Episode.season_id)
+            .where(WantedItem.monitored.is_(True), kind_ok, when, missing | upgrade)
             .order_by(WantedItem.next_search_at.is_not(None), WantedItem.next_search_at)
             .limit(BATCH)
         )
 
     async def sweep(self) -> int:
-        """Queue searches for due items. Nothing happens until an indexer is enabled:
-        items stay due, so adding one searches them straight away."""
+        """Queue searches for due items: a movie on its own, episodes one job per season.
+        Nothing happens until an indexer is enabled: items stay due, so adding one
+        searches them straight away."""
         if not await self.sources.release_sources():
             return 0
         scheduled = self.config.current.search.automatic
         async with self.db.sessionmaker() as s:
-            ids = list((await s.execute(self.due_query(scheduled=scheduled))).scalars())
+            rows = list((await s.execute(self.due_query(scheduled=scheduled))).all())
         n = 0
-        for wid in ids:
-            if await self.queue(wid, reason="automatic") is not None:
-                n += 1
+        seasons: set[tuple[str, int]] = set()
+        for wid, title_id, season in rows:
+            if season is None:
+                n += await self.queue(wid, reason="automatic") is not None
+            elif (title_id, season) not in seasons:
+                seasons.add((title_id, season))
+                n += await self.queue_season(title_id, season, reason="automatic") is not None
         return n
+
+    async def queue_season(self, title_id: str, season: int, *, reason: Reason) -> Job | None:
+        return await self.jobs.enqueue(
+            SEASON_JOB,
+            {"title_id": title_id, "season": season, "reason": reason},
+            dedupe_key=f"search:season:{title_id}:{season}",
+        )
+
+    async def request_title(self, title_id: str) -> Job:
+        """A user's "search now" for a title: a movie's item, or every season of a series
+        with aired episodes still to get. 409 if nothing could be queued."""
+        title = await self.media.get_title(title_id)
+        if title.kind == "movie":
+            items = (await self.media.wanted_for([title_id])).get(title_id, [])
+            if not items:
+                raise ConflictError(f"title {title_id} has no wanted items")
+            return await self.request(items[0].id)
+        today = utcnow().date()
+        seasons = sorted(
+            {
+                n
+                for n, ep, w in await self.media.episode_items(title_id)
+                if w.state not in ("acquired", *BUSY) and aired(ep.air_date, today)
+            }
+        )
+        jobs = [await self.queue_season(title_id, n, reason="manual") for n in seasons]
+        queued = [j for j in jobs if j is not None]
+        if not queued:
+            raise ConflictError(
+                "nothing to search for: every aired episode is downloaded or downloading, "
+                "or a search is already queued"
+            )
+        return queued[0]
 
     async def queue(self, wanted_item_id: str, *, reason: Reason) -> Job | None:
         """None when a search for this item is already pending or running."""
@@ -231,73 +306,187 @@ class AutoSearch:
         return None
 
     async def search(self, wanted_item_id: str, *, reason: Reason) -> dict[str, Any]:
+        """One movie or one episode."""
         try:
             w = await self.media.get_wanted(wanted_item_id)
         except NotFoundError:
             return {"skipped": "wanted item removed"}
-        if (why := self._eligible(w, reason)) is not None:
-            return {"skipped": why}
-        cfg = self.config.current.search
-        upgrade = w.state == "acquired"
-        every = cfg.upgrade_every_hours if upgrade else cfg.missing_every_hours
-        later = utcnow() + timedelta(hours=every)
-        if upgrade and await self.releases.existing(w.id) is None:
-            # Locked but its file is gone: surfaced in the library, not silently re-grabbed.
-            await self._set(w.id, next_search_at=later)
-            return {"skipped": "acquired but the file is missing"}
-        if (
-            reason == "automatic"
-            and w.next_search_at is None
-            and (n := await self._failures_in_a_row(w.id)) > cfg.retry_alternatives
-        ):
-            await self._set(w.id, next_search_at=later)
-            return {"skipped": f"{n} failed downloads in a row; next search at the interval"}
+        return await self._search([w], reason=reason, season_query=False)
 
-        if not upgrade:
-            async with self.db.sessionmaker() as s:  # claim: missing -> searching
-                r = await s.execute(
+    async def search_season(self, title_id: str, season: int, *, reason: Reason) -> dict[str, Any]:
+        """Every eligible aired episode of a season: one season search (packs first, then
+        single episodes for the gaps), then a few episode searches for what's left."""
+        try:
+            rows = await self.media.episode_items(title_id, season=season)
+        except NotFoundError:
+            return {"skipped": "title removed"}
+        today = utcnow().date()
+        items = [w for _, ep, w in rows if aired(ep.air_date, today)]
+        if not items:
+            return {"skipped": "no aired episodes in this season"}
+        return await self._search(items, reason=reason, season_query=True)
+
+    async def _search(
+        self,
+        candidates: list[WantedItem],
+        *,
+        reason: Reason,
+        season_query: bool,
+        feed: list[Candidate] | None = None,
+    ) -> dict[str, Any]:
+        """Search for ``candidates`` and grab the best, or (``feed``) decide on releases
+        already found (RSS): then the items' search schedule is left alone."""
+        cfg = self.config.current.search
+        now = utcnow()
+        later = {
+            "missing": now + timedelta(hours=cfg.missing_every_hours),
+            "upgrade": now + timedelta(hours=cfg.upgrade_every_hours),
+        }
+
+        def mode(w: WantedItem) -> str:
+            return "upgrade" if w.state == "acquired" else "missing"
+
+        if reason == "automatic" and candidates:
+            title = await self.media.get_title(candidates[0].title_id)
+            start = available_from(title)
+            if start is not None and start > now.date():
+                # Not out yet (by its minimum availability): wait for that day.
+                when = datetime.combine(start, time.min, tzinfo=UTC)
+                for w in candidates:
+                    await self._set(w.id, next_search_at=when)
+                return {"skipped": f"not available until {start.isoformat()}"}
+
+        eligible: list[WantedItem] = []
+        skipped: list[str] = []
+        for w in candidates:
+            if (why := self._eligible(w, reason)) is not None:
+                skipped.append(why)
+                continue
+            if mode(w) == "upgrade" and await self.releases.existing(w.id) is None:
+                # Locked but its file is gone: surfaced in the library, not silently re-grabbed.
+                await self._set(w.id, next_search_at=later["upgrade"])
+                skipped.append("acquired but the file is missing")
+                continue
+            if (
+                reason == "automatic"
+                and w.next_search_at is None
+                and (n := await self._failures_in_a_row(w.id)) > cfg.retry_alternatives
+            ):
+                await self._set(w.id, next_search_at=later["missing"])
+                skipped.append(f"{n} failed downloads in a row; next search at the interval")
+                continue
+            eligible.append(w)
+
+        # claim: missing -> searching (one that changed meanwhile drops out)
+        missing_ids = [w.id for w in eligible if mode(w) == "missing"]
+        if missing_ids:
+            async with self.db.sessionmaker() as s:
+                await s.execute(
                     update(WantedItem)
-                    .where(WantedItem.id == w.id, WantedItem.state == "missing")
+                    .where(WantedItem.id.in_(missing_ids), WantedItem.state == "missing")
                     .values(state="searching")
                     .execution_options(synchronize_session=False)
                 )
                 await s.commit()
-            if not r.rowcount:  # type: ignore[attr-defined]
-                return {"skipped": "no longer missing"}
-        mode = "upgrade" if upgrade else "missing"
-        result: dict[str, Any] = {"wanted_item_id": w.id, "mode": mode}
+                claimed = set(
+                    (
+                        await s.execute(
+                            select(WantedItem.id).where(
+                                WantedItem.id.in_(missing_ids), WantedItem.state == "searching"
+                            )
+                        )
+                    ).scalars()
+                )
+            eligible = [w for w in eligible if mode(w) == "upgrade" or w.id in claimed]
+            if missing_ids and not claimed and len(candidates) == 1:
+                skipped.append("no longer missing")
+        if not eligible:
+            return {"skipped": skipped[0] if len(skipped) == 1 else "; ".join(sorted(set(skipped)))}
+
+        ids = [w.id for w in eligible]
+        result: dict[str, Any] = {
+            "mode": mode(eligible[0]) if len(eligible) == 1 else "season",
+            "items": len(eligible),
+        }
+        if len(eligible) == 1:
+            result["wanted_item_id"] = eligible[0].id
+        grabs: list[tuple[str, str]] = []
+        taken: set[str] = set()
         scheduled = False
         try:
-            _, outcome = await self.releases.run(w, mode="automatic", actor=SYSTEM)
-            # Before grabbing: a download that fails right away sets next_search_at back
-            # to "now" (search for an alternative), which must not be overwritten here.
-            await self._set(w.id, next_search_at=later)
-            scheduled = True
+            if feed is not None:
+                outcome, plan = await self.releases.evaluate(eligible, feed)
+                scheduled = True  # RSS doesn't move the next search
+            else:
+                _, outcome, plan = await self.releases.run(
+                    eligible, mode="automatic", actor=SYSTEM, season_query=season_query
+                )
+                # Before grabbing: a download that fails right away sets next_search_at
+                # back to "now" (search for an alternative), which mustn't be overwritten.
+                for w in eligible:
+                    await self._set(w.id, next_search_at=later[mode(w)])
+                scheduled = True
             result |= {
                 "results": len(outcome.decisions),
                 "accepted": sum(d.accepted for d in outcome.decisions),
                 "failed_indexers": [f.source_name for f in outcome.failures],
             }
-            for pick in outcome.picks[:1]:
-                try:
-                    grab, _ = await self.grabs.grab(
-                        pick, [w.id], reason="upgrade" if upgrade else "search", actor=SYSTEM
-                    )
-                except ProblemError as exc:  # e.g. a manual grab got there first
-                    result["grab_error"] = exc.problem.detail
-                else:
-                    result |= {"grabbed": grab.id, "release_title": grab.release_title}
+            for pick in outcome.picks:
+                await self._grab(
+                    pick, plan.covered(pick), ids, taken, grabs, result,
+                    via="rss" if feed is not None else "search",
+                )  # fmt: skip
+            if season_query and feed is None:  # episodes the season search didn't cover, one by one
+                left = [w for w in eligible if w.id not in taken][:EPISODE_FALLBACK]
+                for w in left:
+                    _, more, eplan = await self.releases.run([w], mode="automatic", actor=SYSTEM)
+                    for pick in more.picks[:1]:
+                        await self._grab(pick, eplan.covered(pick), ids, taken, grabs, result)
         finally:
             async with self.db.sessionmaker() as s:
-                # Not grabbed: back to missing (a grab already moved it on).
+                # Not grabbed: back to missing (a grab already moved them on).
                 await s.execute(
                     update(WantedItem)
-                    .where(WantedItem.id == w.id, WantedItem.state == "searching")
+                    .where(WantedItem.id.in_(ids), WantedItem.state == "searching")
                     .values(state="missing")
                     .execution_options(synchronize_session=False)
                 )
                 await s.commit()
             if not scheduled:  # the search itself failed
-                await self._set(w.id, next_search_at=later)
-        log.info("search.automatic", **result)
+                for w in eligible:
+                    await self._set(w.id, next_search_at=later[mode(w)])
+        if grabs:
+            result["grabbed"], result["release_title"] = grabs[0]
+            if len(grabs) > 1:
+                result["grabs"] = [{"grab": g, "release_title": t} for g, t in grabs]
+        if feed is None:
+            log.info("search.automatic", **result)
         return result
+
+    async def _grab(
+        self,
+        pick: Any,
+        covered: list[str],
+        ids: list[str],
+        taken: set[str],
+        grabs: list[tuple[str, str]],
+        result: dict[str, Any],
+        *,
+        via: GrabReason = "search",
+    ) -> None:
+        """Grab ``pick`` for the eligible items it covers that nothing else took yet."""
+        mine = [i for i in covered if i in ids and i not in taken]
+        if not mine:
+            return
+        async with self.db.sessionmaker() as s:
+            states = set(
+                (await s.execute(select(WantedItem.state).where(WantedItem.id.in_(mine)))).scalars()
+            )
+        reason: GrabReason = "upgrade" if states == {"acquired"} else via
+        try:
+            grab, _ = await self.grabs.grab(pick, mine, reason=reason, actor=SYSTEM)
+        except ProblemError as exc:  # e.g. a manual grab got there first
+            result.setdefault("grab_errors", []).append(exc.problem.detail)
+            return
+        taken.update(mine)
+        grabs.append((grab.id, grab.release_title))
