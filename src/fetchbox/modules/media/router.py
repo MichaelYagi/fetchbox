@@ -112,7 +112,7 @@ def title_out(
         destination_id=t.destination_id,
         monitor_mode=t.monitor_mode,
         minimum_availability=t.minimum_availability,
-        available_from=available_from(t),
+        available_from=_future(available_from(t)),
         theatrical_date=meta.get("theatrical_date"),
         digital_date=meta.get("digital_date"),
         physical_date=meta.get("physical_date"),
@@ -135,6 +135,10 @@ async def _many(svc: MediaService, titles: list[Title]) -> list[TitleOut]:
     wanted = await svc.wanted_for(movies)
     stats = await svc.series_stats([t.id for t in titles if t.kind == "series"])
     return [title_out(t, wanted.get(t.id, []), stats.get(t.id)) for t in titles]
+
+
+def _future(d: date | None) -> date | None:
+    return d if d is not None and d > utcnow().date() else None
 
 
 async def _one(svc: MediaService, t: Title, response: Response | None = None) -> TitleOut:

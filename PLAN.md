@@ -220,7 +220,12 @@ season-pack rule; RSS sync, missing search, upgrades
       edge cases (multi-episode, specials, no year, illegal characters), and "rename
       existing files" with a preview before anything moves. Must be intuitive enough that
       most users only pick a folder and a preset
-- [ ] Calendar (`GET /calendar?start=&end=`) + UI: series add, series page, calendar
+- [x] UI: add page with Movies / TV shows (monitor mode for shows, "start searching" for
+      movies); series page with seasons (monitor, search, choose a release incl. packs) and
+      episodes (monitor, choose a release); library tiles show episodes downloaded
+- [x] Movies: minimum availability (announced / in cinemas / released) from TMDB release
+      dates; automatic search waits until then
+- [ ] Calendar (`GET /calendar?start=&end=`) + calendar page
 - [ ] Optional TVDB (scene / absolute numbering)
 - [ ] Grow the parser corpus from real indexer results
 

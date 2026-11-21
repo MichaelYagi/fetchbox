@@ -7,6 +7,23 @@
 	let profiles = $state<S['ProfileOut'][]>([]);
 	let profile = $state('');
 	let searchNow = $state(true);
+	let kind = $state<'movie' | 'series'>('movie');
+	let monitorMode = $state('all');
+	let availability = $state('released');
+	const MODES: [string, string][] = [
+		['all', 'All episodes'],
+		['future', 'Only new episodes'],
+		['missing', 'Episodes without a file, and new ones'],
+		['first_season', 'First season'],
+		['latest_season', 'Latest season'],
+		['none', 'Nothing for now']
+	];
+	const AVAIL: [string, string][] = [
+		['released', 'Once released (digital or disc)'],
+		['in_cinemas', 'Once in cinemas'],
+		['announced', 'Right away']
+	];
+	const noun = $derived(kind === 'movie' ? 'movie' : 'TV show');
 	let error = $state<ApiError | null>(null);
 	let busy = $state(false);
 	let adding = $state<number | null>(null);
@@ -28,7 +45,7 @@
 		busy = true;
 		error = null;
 		try {
-			results = await get<S['TitleSummary'][]>('/discovery/search', { q: q.trim(), kind: 'movie' });
+			results = await get<S['TitleSummary'][]>('/discovery/search', { q: q.trim(), kind });
 		} catch (err) {
 			error = err instanceof ApiError ? err : new ApiError(0, String(err));
 			results = null;
@@ -42,9 +59,11 @@
 		error = null;
 		try {
 			const t = await post<Title>('/titles', {
+				kind,
 				tmdb_id: r.tmdb_id,
 				profile_id: profile,
-				search: searchNow
+				search: searchNow,
+				...(kind === 'series' ? { monitor_mode: monitorMode } : { minimum_availability: availability })
 			});
 			await goto(`/title/${t.id}`);
 		} catch (err) {
@@ -56,12 +75,25 @@
 </script>
 
 <main>
-	<h1>Add a movie</h1>
+	<h1>Add a {noun}</h1>
+	<div class="tabs" role="tablist">
+		{#each [['movie', 'Movies'], ['series', 'TV shows']] as [k, label] (k)}
+			<button
+				role="tab"
+				aria-selected={kind === k}
+				class:active={kind === k}
+				onclick={() => {
+					kind = k as 'movie' | 'series';
+					results = null;
+				}}>{label}</button
+			>
+		{/each}
+	</div>
 	<form class="card stack" onsubmit={search}>
 		<div class="row">
 			<input
 				class="grow"
-				placeholder="Movie title, e.g. Dune"
+				placeholder={kind === 'movie' ? 'Movie title, e.g. Dune' : 'Show title, e.g. Severance'}
 				bind:value={q}
 				aria-label="Search"
 			/>
@@ -74,6 +106,21 @@
 					{#each profiles as p (p.id)}<option value={p.id}>{p.name}</option>{/each}
 				</select>
 			</label>
+			{#if kind === 'series'}
+				<label class="inline">
+					Download
+					<select bind:value={monitorMode}>
+						{#each MODES as [v, l] (v)}<option value={v}>{l}</option>{/each}
+					</select>
+				</label>
+			{:else}
+				<label class="inline">
+					Start searching
+					<select bind:value={availability}>
+						{#each AVAIL as [v, l] (v)}<option value={v}>{l}</option>{/each}
+					</select>
+				</label>
+			{/if}
 			<label class="inline check">
 				<input type="checkbox" bind:checked={searchNow} /> Search for it right away
 			</label>
@@ -98,7 +145,7 @@
 
 	{#if results !== null}
 		{#if results.length === 0}
-			<p class="empty">No movies found for “{q}”.</p>
+			<p class="empty">No {kind === 'movie' ? 'movies' : 'TV shows'} found for “{q}”.</p>
 		{:else}
 			<div class="results">
 				{#each results as r (r.tmdb_id)}
@@ -136,6 +183,16 @@
 </main>
 
 <style>
+	.tabs {
+		display: flex;
+		gap: 0.25rem;
+		margin-bottom: 0.75rem;
+	}
+	.tabs button.active {
+		background: var(--accent);
+		color: var(--accent-text);
+		border-color: var(--accent);
+	}
 	.grow {
 		flex: 1;
 		min-width: 12rem;

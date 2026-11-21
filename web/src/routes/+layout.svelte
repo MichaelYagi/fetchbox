@@ -9,7 +9,7 @@
 
 	const nav = [
 		{ href: '/', label: 'Library' },
-		{ href: '/add', label: 'Add movie' },
+		{ href: '/add', label: 'Add' },
 		{ href: '/queue', label: 'Queue' },
 		{ href: '/settings', label: 'Settings' }
 	];
