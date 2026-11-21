@@ -417,7 +417,8 @@
 					{#each directClients as c (c.id)}
 						<tr class="direct">
 							<td><div class="row"><span class="order"></span><strong>{c.name}</strong>
-								{#if c.enabled && c.running}<span class="badge">Used for direct files</span>{/if}</div></td>
+								{#if c.enabled && c.running}<span class="badge">Used for direct files</span>{/if}</div>
+								<div class="muted small where">Saves to <code>{c.saves_to}</code></div></td>
 							<td class="muted">{c.kind}</td>
 							<td class="small">
 								<span class="badge {c.enabled ? (c.running ? 'ok' : 'warn') : ''}">{c.enabled ? (c.running ? 'Running' : 'Not running') : 'Disabled'}</span>
