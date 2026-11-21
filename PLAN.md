@@ -454,10 +454,14 @@ named; a better edition or format upgrades it; an existing tagged music folder i
 8. Anime fansub names often state only a resolution (`[SubsPlease] ... (1080p)`), which
    parses to `Unknown-1080p` and no default profile allows it. Decide in Phase 2 whether
    to treat it as WEB-DL (Sonarr's choice) or ship an anime profile.
-9. SQLite "database is locked" under load (writers waiting > busy_timeout 5 s): seen in
-   Phase 1 and reproducible in `tests/test_tv_search.py::test_automatic_search_packs_first_then_episodes`
-   (job claims, poll updates, API-key touches, activity inserts time out). Instrumenting
-   showed no SQLAlchemy connection inside a transaction at the moment of the error, so
-   it is not a transaction left open. Effects are retried or best-effort (claims, polls,
-   key touches), but up to 5 s stalls are possible. Next: try `BEGIN IMMEDIATE` for
-   writing sessions / a dedicated writer connection, and check WAL checkpointing.
+9. (Mitigated) SQLite "database is locked" under load. Findings (2026-11-21): reads run
+   outside transactions (pysqlite's default), so it is not stale-snapshot upgrades; the
+   lock is a write transaction held across a stalled event loop: synchronous work in a
+   coroutine delays the commit while every other writer waits on busy_timeout. A guard
+   (`FETCHBOX_DB_GUARD=1`: slow writes, nested writes, loop stalls > 0.5 s with the
+   blocking stack) found no culprit in the search, import, RSS and download suites; the
+   remaining suspect is synchronous libtorrent calls on a busy disk (Risk 1).
+   busy_timeout is now 30 s. The reproducer also showed lost updates for
+   read-modify-write outside version checks: indexer failure counts now increment in
+   SQL. Next if it recurs: run the guard on the affected install; move libtorrent
+   status calls to a thread.
