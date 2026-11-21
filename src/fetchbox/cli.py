@@ -25,6 +25,12 @@ def _parser() -> argparse.ArgumentParser:
     serve.add_argument("--log-level", choices=["debug", "info", "warning", "error"])
     serve.add_argument("--log-format", choices=["auto", "json", "console"])
 
+    corpus = sub.add_parser("corpus", help="collect real release names for parser tests")
+    corpus.add_argument("action", choices=["capture"])
+    corpus.add_argument("--out", required=True, help="JSONL file to write")
+    corpus.add_argument("--search", action="append", default=[], help="also search this")
+    corpus.add_argument("--limit", type=int, default=500)
+
     tray = sub.add_parser("tray", help="desktop tray: start the server and open the UI")
     tray.add_argument("--host", help="bind address (default 127.0.0.1)")
     tray.add_argument("--port", type=int, help="port (default 8787)")
@@ -187,10 +193,20 @@ def main(argv: Sequence[str] | None = None) -> int:
     from fetchbox.config import load_settings
     from fetchbox.core.logging import configure_logging
 
-    skip = {"command", "data_dir", "revision", "username", "password_stdin"}
+    skip = {"command", "data_dir", "revision", "username", "password_stdin", "action", "out",
+            "search", "limit"}  # fmt: skip
     cli = {k: v for k, v in vars(args).items() if k not in skip}
     settings = load_settings(args.data_dir, **cli)
     configure_logging(settings.log_level, settings.log_format, settings.logs_dir)
+
+    if args.command == "corpus":
+        import asyncio
+
+        from fetchbox.corpus import capture
+
+        n = asyncio.run(capture(settings, Path(args.out), args.search, args.limit))
+        print(f"{n} new release names written to {args.out}")
+        return 0
 
     if args.command == "tray":
         from fetchbox import tray

@@ -306,6 +306,11 @@ Progress:
       password so it can listen on the LAN; CI builds and runs it on every push (answers,
       serves the UI, login works, not root); release.yml publishes
       ghcr.io/michaelyagi/fetchbox for linux/amd64 + arm64
+- [x] Parser corpus from real results: `fetchbox corpus capture --out f.jsonl [--search X]`
+      reads every enabled indexer's feed (and searches) through the server's providers and
+      writes new release names with today's parse, for review into
+      tests/fixtures/releases. Checked against real Prowlarr 3.0.2. Growing the corpus
+      itself is ongoing: run it against real indexers and review the output
 - [x] Rename preview (Phase 2, library settings)
 - [x] qBittorrent / Transmission / Deluge, path mappings (Phase 1-2 feedback)
 
