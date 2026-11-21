@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import AsyncIterator, Callable, Sequence
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import structlog
 from fastapi import APIRouter, FastAPI
@@ -51,6 +52,7 @@ from fetchbox.modules.system.activity import ActivityWriter
 from fetchbox.modules.system.config import ConfigService
 from fetchbox.modules.system.service import register_core_checks
 from fetchbox.providers import builtin as _builtin_providers  # noqa: F401 (registers them)
+from fetchbox.ui import STATIC_DIR, install_ui
 
 API_PREFIX = "/api/v1"
 log = structlog.get_logger("fetchbox.app")
@@ -106,6 +108,7 @@ def create_app(
     *,
     job_handler_hooks: Sequence[Callable[[JobRunner], None]] = (),
     on_bootstrap_key: Callable[[str], None] = print_bootstrap_key,
+    static_dir: Path | None = None,
 ) -> FastAPI:
     """`job_handler_hooks` let modules (and tests) register job handlers before start."""
 
@@ -263,4 +266,5 @@ def create_app(
     )
     install_error_handlers(app)
     app.include_router(build_api_router())
+    install_ui(app, static_dir or STATIC_DIR)
     return app

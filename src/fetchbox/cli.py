@@ -36,7 +36,22 @@ def _parser() -> argparse.ArgumentParser:
     pr.add_argument("names", nargs="*", help="release names (default: stdin, one per line)")
     pr.add_argument("--all", action="store_true", help="include fields that are empty/default")
 
+    sub.add_parser("openapi", help="print the API's OpenAPI document (for client generation)")
+
     return p
+
+
+def _openapi() -> int:
+    import json
+    import tempfile
+
+    from fetchbox.app import create_app
+    from fetchbox.config import load_settings
+
+    with tempfile.TemporaryDirectory() as tmp:  # the schema needs no running app or data
+        doc = create_app(load_settings(tmp)).openapi()
+    print(json.dumps(doc, indent=1, sort_keys=True))
+    return 0
 
 
 def _parse_names(names: Sequence[str], *, show_all: bool) -> int:
@@ -116,6 +131,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     if args.command == "parse":
         return _parse_names(args.names, show_all=args.all)
+    if args.command == "openapi":
+        return _openapi()
     # Imports deferred so `fetchbox --version` stays fast.
     from fetchbox.config import load_settings
     from fetchbox.core.logging import configure_logging

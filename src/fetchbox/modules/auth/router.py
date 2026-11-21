@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, Request, Response, status
+from pydantic import BaseModel, Field
 
 from fetchbox.core.concurrency import etag_of
 from fetchbox.core.errors import ProblemError, problem_responses
@@ -71,6 +72,16 @@ async def list_scopes() -> list[ScopeInfo]:
 @router.get("/me", response_model=Me, dependencies=[Depends(authenticated())])
 async def me(p: CurrentPrincipal) -> Me:
     return Me(type=p.type, id=p.id, name=p.name, scopes=sorted(p.scopes), via=p.via)
+
+
+class AuthStatus(BaseModel):
+    setup_required: bool = Field(description="No admin password yet: show first-run setup")
+
+
+@router.get("/status", response_model=AuthStatus, dependencies=[Depends(public())])
+async def auth_status(request: Request) -> AuthStatus:
+    """Public: lets the web UI choose between the setup and sign-in screens."""
+    return AuthStatus(setup_required=not await _auth(request).has_password())
 
 
 @router.post(

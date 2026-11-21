@@ -14,6 +14,7 @@ from fetchbox.modules.auth.scopes import CATALOG
 PUBLIC = {
     ("POST", "/api/v1/auth/login"),
     ("POST", "/api/v1/auth/setup"),
+    ("GET", "/api/v1/auth/status"),  # only says whether first-run setup is pending
     ("GET", "/api/v1/system/ping"),
 }
 

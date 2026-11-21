@@ -1,0 +1,165 @@
+<script lang="ts">
+	import { ago, ApiError, bytes, del, duration, get, post, rate, type Download, type S } from '#lib/api.ts';
+
+	let downloads = $state<Download[] | null>(null);
+	let imports = $state<S['ImportOut'][]>([]);
+	let error = $state('');
+	let busy = $state('');
+	let showDone = $state(false);
+
+	async function load() {
+		try {
+			[downloads, imports] = await Promise.all([
+				get<Download[]>('/downloads'),
+				get<S['ImportOut'][]>('/imports')
+			]);
+			error = '';
+		} catch (e) {
+			error = e instanceof ApiError ? e.message : String(e);
+		}
+	}
+
+	$effect(() => {
+		load();
+		const t = setInterval(load, 2000);
+		return () => clearInterval(t);
+	});
+
+	async function act(key: string, fn: () => Promise<unknown>) {
+		busy = key;
+		try {
+			await fn();
+			await load();
+		} catch (e) {
+			error = e instanceof ApiError ? e.message : String(e);
+		} finally {
+			busy = '';
+		}
+	}
+
+	function remove(d: Download) {
+		const active = ['queued', 'downloading', 'paused'].includes(d.status);
+		const msg = active
+			? `Stop and remove ${d.name}? Its data is deleted and the release is blocklisted, so another one is searched for.`
+			: `Remove ${d.name} from the client? Library files are kept.`;
+		if (!confirm(msg)) return;
+		act(d.id, () => del(`/downloads/${d.id}`, { delete_data: true, blocklist: active }));
+	}
+
+	const LABEL: Record<string, string> = {
+		queued: 'Queued',
+		downloading: 'Downloading',
+		paused: 'Paused',
+		completed: 'Seeding',
+		failed: 'Failed',
+		removed: 'Removed'
+	};
+	const tone = (d: Download) =>
+		d.status === 'failed' ? 'error' : d.status === 'completed' ? 'ok' : d.status === 'paused' ? '' : 'info';
+	const active = $derived((downloads ?? []).filter((d) => ['queued', 'downloading', 'paused'].includes(d.status)));
+	const done = $derived((downloads ?? []).filter((d) => !['queued', 'downloading', 'paused'].includes(d.status)));
+	const attention = $derived(imports.filter((i) => i.status === 'needs_attention'));
+	const label = (d: Download) => (d.status === 'completed' && d.seeded_at ? 'Done' : LABEL[d.status] ?? d.status);
+</script>
+
+<main>
+	<div class="spread">
+		<h1>Queue</h1>
+		<div class="row">
+			<button onclick={() => act('pause', () => post('/downloads/pause-all'))} disabled={!!busy || active.length === 0}>Pause all</button>
+			<button onclick={() => act('resume', () => post('/downloads/resume-all'))} disabled={!!busy || active.length === 0}>Resume all</button>
+		</div>
+	</div>
+	{#if error}<p class="notice error">{error}</p>{/if}
+
+	{#each attention as i (i.download_id)}
+		<div class="notice warn spread">
+			<span><strong>Import needs attention:</strong> {i.name} — {i.error} {i.retry_at ? `(retrying ${ago(i.retry_at)})` : ''}</span>
+			<button onclick={() => act(i.download_id, () => post(`/imports/${i.download_id}/retry`))} disabled={!!busy}>Retry now</button>
+		</div>
+	{/each}
+
+	{#if downloads === null}
+		<p class="muted">Loading…</p>
+	{:else if active.length === 0}
+		<p class="empty card">Nothing downloading. Movies you add are searched for and appear here.</p>
+	{:else}
+		<div class="stack">
+			{#each active as d (d.id)}
+				<div class="card stack item">
+					<div class="spread">
+						<strong class="name">{d.name}</strong>
+						<div class="row">
+							<span class="badge {tone(d)}">{label(d)}</span>
+							{#if d.status === 'paused'}
+								<button onclick={() => act(d.id, () => post(`/downloads/${d.id}/resume`))} disabled={!!busy}>Resume</button>
+							{:else}
+								<button onclick={() => act(d.id, () => post(`/downloads/${d.id}/pause`))} disabled={!!busy}>Pause</button>
+							{/if}
+							<button class="danger" onclick={() => remove(d)} disabled={!!busy}>Remove</button>
+						</div>
+					</div>
+					<div class="progress" aria-label="Progress"><div style="width: {Math.round(d.progress * 100)}%"></div></div>
+					<div class="row small muted">
+						<span>{Math.floor(d.progress * 100)}% of {bytes(d.size)}</span>
+						{#if d.live}
+							<span>· ↓ {rate(d.live.download_rate)}</span>
+							<span>· ↑ {rate(d.live.upload_rate)}</span>
+							<span>· {d.live.seeds} seeds, {d.live.peers} peers</span>
+							{#if d.live.eta_seconds}<span>· {duration(d.live.eta_seconds)} left</span>{/if}
+						{/if}
+						{#if d.stalls}<span>· stalled {d.stalls}×</span>{/if}
+					</div>
+				</div>
+			{/each}
+		</div>
+	{/if}
+
+	<h2>
+		<button class="link" onclick={() => (showDone = !showDone)}>
+			{showDone ? '▾' : '▸'} Finished ({done.length})
+		</button>
+	</h2>
+	{#if showDone}
+		<div class="card table-wrap">
+			<table>
+				<thead><tr><th>Name</th><th>Status</th><th>Size</th><th>Ratio</th><th>Finished</th><th></th></tr></thead>
+				<tbody>
+					{#each done as d (d.id)}
+						<tr>
+							<td class="name">{d.name}{#if d.error}<div class="small err">{d.error}</div>{/if}</td>
+							<td><span class="badge {tone(d)}">{label(d)}</span></td>
+							<td>{bytes(d.size)}</td>
+							<td>{d.ratio?.toFixed(2) ?? '—'}</td>
+							<td class="muted small">{ago(d.completed_at ?? d.removed_at)}</td>
+							<td>
+								{#if d.status === 'completed' && !d.seeded_at}
+									<button class="small" onclick={() => remove(d)} disabled={!!busy}>Stop seeding</button>
+								{/if}
+							</td>
+						</tr>
+					{/each}
+				</tbody>
+			</table>
+		</div>
+	{/if}
+</main>
+
+<style>
+	.name {
+		word-break: break-all;
+	}
+	.item {
+		gap: 0.5rem;
+	}
+	.err {
+		color: var(--error);
+	}
+	.link {
+		border: 0;
+		background: none;
+		padding: 0;
+		font: inherit;
+		color: var(--text);
+	}
+</style>

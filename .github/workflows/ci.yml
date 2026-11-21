@@ -21,6 +21,28 @@ jobs:
           uv run pip-licenses --partial-match
           --fail-on="GNU General Public License;GNU Affero General Public License;GPL-2.0;GPL-3.0;AGPL"
 
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - name: Typed client matches the API
+        run: |
+          (cd .. && uv run --python 3.12 fetchbox openapi) > openapi.json
+          npx openapi-typescript openapi.json -o src/lib/schema.d.ts
+          git diff --exit-code -- openapi.json src/lib/schema.d.ts
+      - run: npm run check
+      - run: npm run build
+
   test:
     strategy:
       fail-fast: false

@@ -15,4 +15,15 @@ uv run pytest
 uv run ruff check . && uv run mypy && uv run lint-imports
 ```
 
+The web UI lives in `web/` (SvelteKit, Node 24). `npm run build` writes it into
+`src/fetchbox/static`, which `fetchbox serve` then serves at http://127.0.0.1:8787/.
+
+```sh
+cd web && npm ci
+npm run dev        # live-reloading UI on :5173, API proxied to a running fetchbox serve
+npm run build      # build into the Python package
+npm run check      # type-check against the API's generated types
+npm run gen        # after an API change: regenerate openapi.json + src/lib/schema.d.ts
+```
+
 License: MIT.

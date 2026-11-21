@@ -154,7 +154,13 @@ Remaining unchecked items above are Phase 0 hardening, not gate blockers.
       codec, HDR10 / HLG / Dolby Vision, duration, audio codecs, channels, languages.
       Stored on `media_file.mediainfo`, shown on `/files`; fills naming tokens the release
       name leaves out (the name wins when both say something)
-- [ ] Minimal UI (search, add, queue, library)
+- [x] Minimal UI (`web/`, SvelteKit SPA built into `fetchbox/static`, served with
+      deep-link fallback): first-run setup / sign-in, library grid, add (TMDB search,
+      quality, search on add), title page (search now, choose a release with rejection
+      reasons, monitor, quality, unlock / redownload, files with mediainfo, history),
+      queue (progress, pause / resume / remove, imports needing attention), settings
+      (health, TMDB key, indexers incl. definitions, download clients, library folders).
+      Types generated from the OpenAPI document (`web/openapi.json`, checked in CI)
 
 **Gate:** on a clean machine with no external tools, adding a movie results in a correctly
 named file in Downloads.
@@ -287,6 +293,10 @@ three OSes; a backup restores on a fresh machine.
 - Definitions use fixed setting slots (`base_url`, `api_key`, `username`, `password`,
   `cookie`) plus declared non-secret `options`, so secrets are always encrypted at rest.
   `DELETE /indexer-definitions/{slug}` (user definitions not in use) is an addition.
+- `GET /auth/status` (public): whether first-run setup is pending, for the UI's first
+  screen. `fetchbox openapi` prints the API document for client generation.
+- SvelteKit 3 config lives in `vite.config.ts` and uses `#lib` (package.json imports)
+  instead of `$lib`.
 - Removing a download client keeps its finished downloads (`client_id` becomes null);
   it is refused while the client has unfinished or still-seeding downloads, and for
   the built-in engine. A finished torrent counts as seeding even when the client has
