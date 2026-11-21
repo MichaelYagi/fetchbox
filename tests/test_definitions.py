@@ -320,3 +320,45 @@ async def test_first_run_adds_the_builtin_indexers(settings: Any) -> None:
         await srv.app.state.sources.sync_definitions(seed=True)  # not a first run any more
         async with srv.client() as c:
             assert (await c.get("/indexers")).json() == []
+
+
+async def test_internet_archive_films_are_accepted_by_the_any_profile(
+    c: httpx.AsyncClient, fakes: Fakes, server: Running
+) -> None:
+    """The built-in definition, end to end through the decision engine, against a canned
+    archive.org answer. Its titles don't state a quality: "Any" takes them, Standard HD
+    rightly doesn't."""
+    docs = [
+        {"identifier": "notld_201610", "title": "Night of the Living Dead", "year": "1968",
+         "item_size": 724700396, "publicdate": "2016-10-30T12:00:00Z"},
+    ]  # fmt: skip
+
+    def archive(req: httpx.Request) -> httpx.Response:
+        assert req.url.host == "archive.org" and req.url.path == "/advancedsearch.php"
+        q = req.url.params["q"]
+        found = docs if "Night of the Living Dead" in q else []
+        return httpx.Response(200, json={"response": {"docs": found}})
+
+    server.app.state.sources.provider_kwargs = {"transport": httpx.MockTransport(archive)}
+    fakes.tmdb.movies[10331] = {
+        **fakes.tmdb.movies[438631],
+        "id": 10331, "title": "Night of the Living Dead", "original_title":
+        "Night of the Living Dead", "release_date": "1968-10-01", "imdb_id": "tt0063350",
+        "runtime": 96,
+    }  # fmt: skip
+    body = {"kind": "definition", "name": "IA", "settings": {"definition": "internet-archive"}}
+    assert (await c.post("/indexers", json=body)).status_code == 201
+    profiles = {p["name"]: p["id"] for p in (await c.get("/quality-profiles")).json()}
+    for name, accepted in (("Any", True), ("Standard HD", False)):
+        r = await c.post("/titles", json={"tmdb_id": 10331, "profile_id": profiles[name],
+                                          "search": False})  # fmt: skip
+        assert r.status_code == 201, r.text
+        t = r.json()
+        res = (await c.get("/releases", params={"wanted_item_id": t["wanted"][0]["id"]})).json()
+        [rel] = res["releases"]
+        assert rel["candidate"]["title"] == "Night of the Living Dead 1968"
+        assert rel["candidate"]["download_url"] == (
+            "https://archive.org/download/notld_201610/notld_201610_archive.torrent"
+        )
+        assert rel["accepted"] is accepted, rel["rejections"]
+        assert (await c.delete(f"/titles/{t['id']}")).status_code == 204

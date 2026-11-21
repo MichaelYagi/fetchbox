@@ -78,6 +78,10 @@
 				<input type="checkbox" bind:checked={searchNow} /> Search for it right away
 			</label>
 		</div>
+		<p class="muted small hint">
+			“Any” also accepts releases that don't name their quality, such as the public-domain
+			films from Internet Archive.
+		</p>
 	</form>
 
 	{#if error}
@@ -140,6 +144,9 @@
 	}
 	.check {
 		cursor: pointer;
+	}
+	.hint {
+		margin: 0;
 	}
 	.results {
 		display: grid;

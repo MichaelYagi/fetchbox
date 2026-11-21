@@ -51,6 +51,7 @@ from fetchbox.providers.download_clients import (
     TransferLimits,
 )
 from fetchbox.providers.download_clients.builtin import BuiltinClient
+from fetchbox.providers.download_clients.direct import DirectClient
 from fetchbox.providers.indexers import IndexerError, ReleaseCandidate, TorrentSource
 
 log = structlog.get_logger(__name__)
@@ -61,6 +62,7 @@ POLL_INTERVAL = 2.0
 SWEEP_EVERY = 15  # polls between sweeps when nothing wakes us
 CATEGORY = {"movie": "fetchbox-movies", "series": "fetchbox-tv"}
 BUILTIN_NAME = "Built-in"
+DIRECT_NAME = "Direct downloads"
 
 
 def _superseded(item_id: Any, created_at: Any) -> Any:
@@ -204,21 +206,24 @@ class DownloadsService:
         self.clients.clear()
 
     async def _seed_builtin(self) -> None:
+        """The built-in torrent engine and the direct (HTTP) client, once each."""
+        seeds: list[tuple[str, str, type[DownloadClientProvider], Policy]] = [
+            ("builtin", BUILTIN_NAME, BuiltinClient, Policy()),
+            # A direct download has nothing to seed: drop its copy once imported.
+            ("direct", DIRECT_NAME, DirectClient, Policy(seed_minutes=0, seed_action="remove")),
+        ]
         async with self.db.sessionmaker() as s:
-            if await s.scalar(select(DownloadClient.id).where(DownloadClient.kind == "builtin")):
-                return
-            row = DownloadClient(
-                kind="builtin",
-                name=BUILTIN_NAME,
-                priority=1,
-                policy=Policy().model_dump(),
-                settings={},
-            )
-            s.add(row)
-            await s.flush()
-            row.settings = seal_settings(
-                self.box, BuiltinClient.Settings(), context=f"download_client:{row.id}"
-            )
+            for kind, name, cls, policy in seeds:
+                if await s.scalar(select(DownloadClient.id).where(DownloadClient.kind == kind)):
+                    continue
+                row = DownloadClient(
+                    kind=kind, name=name, priority=1, policy=policy.model_dump(), settings={}
+                )
+                s.add(row)
+                await s.flush()
+                row.settings = seal_settings(
+                    self.box, cls.Settings(), context=f"download_client:{row.id}"
+                )
             await s.commit()
 
     def _settings(self, row: DownloadClient) -> BaseModel:
@@ -240,6 +245,9 @@ class DownloadsService:
         kwargs: dict[str, Any] = {}
         if row.kind == "builtin":
             kwargs["state_dir"] = self.state_dir
+        elif row.kind == "direct":
+            kwargs["state_dir"] = self.state_dir.parent / "direct"
+            kwargs.update(self.provider_kwargs)
         else:
             kwargs.update(self.provider_kwargs)
         client = cls(self._settings(row), **kwargs)
@@ -275,15 +283,22 @@ class DownloadsService:
                 n += 1
         return n
 
-    async def _pick_client(self, media_kind: str) -> tuple[DownloadClient, DownloadClientProvider]:
+    async def _pick_client(
+        self, media_kind: str, src: TorrentSource
+    ) -> tuple[DownloadClient, DownloadClientProvider]:
+        """Torrents go to the best enabled torrent client; direct files to the direct one."""
+        direct = src.url is not None
         async with self.db.sessionmaker() as s:
             q = select(DownloadClient).where(DownloadClient.enabled.is_(True))
             rows = sorted((await s.execute(q)).scalars(), key=lambda r: (r.priority, r.name))
         for row in rows:
             kinds = row.media_kinds or []
+            if (row.kind == "direct") != direct:
+                continue
             if (not kinds or media_kind in kinds) and row.id in self.clients:
                 return row, self.clients[row.id]
-        raise DownloadClientError("unavailable", "no enabled download client is running")
+        what = "direct download client" if direct else "torrent client"
+        raise DownloadClientError("unavailable", f"no enabled {what} is running")
 
     async def _source(self, grab: Grab) -> TorrentSource:
         c = ReleaseCandidate.model_validate(grab.release["candidate"])
@@ -323,7 +338,7 @@ class DownloadsService:
         media_kind = title.kind if title else "movie"
         try:
             src = await self._source(grab)
-            row, client = await self._pick_client(media_kind)
+            row, client = await self._pick_client(media_kind, src)
             save = self.save_root(row) / CATEGORY[media_kind]
             ref = await client.add(
                 src,
@@ -817,8 +832,8 @@ class DownloadsService:
         """An external client. Its connection is tested; a failure is reported, not fatal
         (the client may simply be off right now)."""
         kind = data["kind"]
-        if kind == "builtin":
-            raise ConflictError("the built-in engine exists already; there is only one")
+        if kind in ("builtin", "direct"):
+            raise ConflictError(f"the built-in {kind} client exists already; there is only one")
         try:
             cls = self.providers.get("download_client", kind)
         except LookupError:
@@ -869,8 +884,8 @@ class DownloadsService:
             if row is None:
                 raise NotFoundError("download client", client_id)
             check_if_match(row, if_match)
-            if row.kind == "builtin":
-                raise ConflictError("the built-in engine can't be removed; disable it instead")
+            if row.kind in ("builtin", "direct"):
+                raise ConflictError(f"{row.name} is built in; disable it instead")
             busy = await s.scalar(
                 select(Download.id).where(
                     Download.client_id == row.id,
@@ -978,8 +993,8 @@ class DownloadsService:
 
     async def health(self) -> HealthStatus:
         rows = [r for r in await self.client_rows() if r.enabled]
-        if not rows:
-            return HealthStatus(status="error", message="No download client is enabled")
+        if not any(r.kind != "direct" for r in rows):
+            return HealthStatus(status="error", message="No torrent client is enabled")
         problems = []
         for r in rows:
             c = self.clients.get(r.id)

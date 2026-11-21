@@ -65,10 +65,14 @@ class ReleaseCandidate(BaseModel):
 
 @dataclass(frozen=True)
 class TorrentSource:
-    """What a download client is given: a magnet link or .torrent bytes."""
+    """What a download client is given: a magnet link or .torrent bytes, or a direct
+    HTTP(S) file (``url``, fetched by the built-in ``direct`` client into ``name``/)."""
 
     magnet: str | None = None
     torrent: bytes | None = None
+    url: str | None = None
+    name: str | None = None  # direct downloads: folder name
+    size: int | None = None  # direct downloads: expected bytes, if known
 
 
 class IndexerProvider(Provider):

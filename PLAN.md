@@ -70,7 +70,8 @@ Remaining unchecked items above are Phase 0 hardening, not gate blockers.
       streaming service, edition, languages/multi/subs/hardsubs, group, revision, flags.
       Corpus: 677 names in `tests/fixtures/releases/*.jsonl`, 8 strict-xfail known gaps;
       `fetchbox parse NAME` prints the parse for turning bad cases into fixtures.
-- [ ] Grow the corpus from real indexer results once Torznab lands (corpus is hand-written)
+- [ ] ~~Grow the corpus from real indexer results~~ moved to Phase 2: needs real indexer
+      output (the TV work adds most names anyway); `fetchbox parse` turns cases into fixtures
 - [x] TMDB provider (`providers/metadata/tmdb.py`; v3 key or v4 token) + discovery
       (`/discovery/search|movies|series`, TTL cache); runtime config `GET/PATCH
       /system/config` (TMDB key encrypted, `FETCHBOX_TMDB_API_KEY` overrides); movie
@@ -103,7 +104,13 @@ Remaining unchecked items above are Phase 0 hardening, not gate blockers.
       with filters; `indexer_definition` table, `GET/POST/DELETE /indexer-definitions`.
       Built-in: Internet Archive (public-domain films, web-seeded torrents), added as an
       enabled indexer on first run (`FETCHBOX_SEED_INDEXERS`)
-- [ ] HTML (CSS selector) responses for definitions: needs a parser dependency
+- [x] Direct downloads (`providers/download_clients/direct.py`, seeded like the engine):
+      one HTTP(S) file, `.part` + Range resume, survives restarts; dropped once imported.
+      Definitions with `download: webseed` fetch a torrent's largest video file from its web
+      seed: Internet Archive item torrents often can't complete (files change after the
+      torrent is made; 4 of 6 popular items stalled at 95-99% in a live test)
+- [ ] ~~HTML (CSS selector) responses for definitions~~ moved to Phase 3: no built-in
+      definition needs it; it adds a parser dependency
 - [x] Built-in libtorrent engine (`providers/download_clients/builtin.py`): magnet and
       .torrent, added paused (no libtorrent auto-management), resume data on metadata /
       finish / every 5 min / shutdown, pad files hidden, isolated mode for tests
@@ -164,10 +171,18 @@ Remaining unchecked items above are Phase 0 hardening, not gate blockers.
 
 **Gate:** on a clean machine with no external tools, adding a movie results in a correctly
 named file in Downloads.
+**Status:** met. `tests/test_direct_downloads.py::test_internet_archive_end_to_end` runs the
+built-in Internet Archive definition against a fake archive.org: add a movie (profile
+"Any") -> search -> web-seed download -> `Downloads/Fetchbox/Movies/Night of the Living
+Dead (1968) {tmdb-10331}/Night of the Living Dead (1968).mp4`. Live, against the real
+archive.org, a licensed 34 MB film downloaded in 4 s and was read by the probe. With a
+Torznab indexer the same flow is `test_library_api.py::test_gate_add_movie_get_named_file`
+(real torrent, real engine). The only setup is a TMDB key.
 
 ### Phase 2 — TV + automation
 Series/seasons/episodes, six monitor modes; parser TV cases (packs, multi-ep, daily, anime
-absolute, specials); optional TVDB; season-pack rule; RSS sync, missing search, upgrades
+absolute, specials; grow the parser corpus from real indexer results); optional TVDB;
+season-pack rule; RSS sync, missing search, upgrades
 (replace only after new import succeeds); calendar.
 
 **Gate:** a "future only" series grabs a new episode via RSS; season-pack selection correct;
@@ -177,7 +192,8 @@ an upgrade replaces the file safely.
 qBittorrent/Transmission/Deluge; path mappings + client path probe; mount nodes, 60 s health
 checks, all link modes, recycle folder, duplicate detection; existing-library import
 (read-only until apply), match correction, rename preview, maintenance; Plex/Jellyfin/Emby;
-webhook + Discord; interface bind + kill switch.
+webhook + Discord; interface bind + kill switch; HTML (CSS selector) responses for
+indexer definitions.
 
 **Gate:** Docker + remote qBittorrent + NAS mount + Plex: import an existing library, apply,
 Plex refreshes.
@@ -293,6 +309,9 @@ three OSes; a backup restores on a fresh machine.
 - Definitions use fixed setting slots (`base_url`, `api_key`, `username`, `password`,
   `cookie`) plus declared non-secret `options`, so secrets are always encrypted at rest.
   `DELETE /indexer-definitions/{slug}` (user definitions not in use) is an addition.
+- A third default profile, "Any" (Unknown, SD, 720p, 1080p; cutoff 1080p), for releases
+  that don't state a quality; "Unknown" is left out of file names (the file's
+  resolution is used when it can be read).
 - `GET /auth/status` (public): whether first-run setup is pending, for the UI's first
   screen. `fetchbox openapi` prints the API document for client generation.
 - SvelteKit 3 config lives in `vite.config.ts` and uses `#lib` (package.json imports)
@@ -302,7 +321,8 @@ three OSes; a backup restores on a fresh machine.
   the built-in engine. A finished torrent counts as seeding even when the client has
   stopped it.
 - Built-in definitions are limited to sources that distribute content legally (Internet
-  Archive so far). Definitions for other sites are the user's choice, added through
+  Archive so far, and only items whose uploader marked them public domain or Creative
+  Commons: the `feature_films` collection also holds uploads that are neither). Definitions for other sites are the user's choice, added through
   `POST /indexer-definitions`.
 
 ## Decisions taken here

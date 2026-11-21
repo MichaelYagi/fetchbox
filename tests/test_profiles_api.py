@@ -28,7 +28,7 @@ async def test_defaults_are_seeded_once(server: Running, settings: Any) -> None:
     async with server.client() as c:
         profiles = (await c.get("/quality-profiles")).json()
         formats = (await c.get("/custom-formats")).json()
-    assert [p["name"] for p in profiles] == ["4K", "Standard HD"]
+    assert [p["name"] for p in profiles] == ["4K", "Any", "Standard HD"]
     hd = next(p for p in profiles if p["name"] == "Standard HD")
     assert hd["cutoff"] == "WEB 1080p" and hd["languages"] == ["original"]
     assert {f["name"] for f in formats} >= {"Hardcoded subtitles", "3D", "Dolby Vision"}
@@ -59,7 +59,7 @@ async def test_seed_does_not_overwrite_edits(settings: Any) -> None:
         Running(app, key).client() as c,
     ):
         names = {p["name"]: p for p in (await c.get("/quality-profiles")).json()}
-    assert set(names) == {"Standard HD"}  # a deleted default stays deleted
+    assert set(names) == {"Any", "Standard HD"}  # a deleted default stays deleted
     assert names["Standard HD"]["cutoff"] == "Bluray-1080p"
 
 

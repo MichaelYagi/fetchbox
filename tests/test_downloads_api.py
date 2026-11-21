@@ -243,8 +243,10 @@ async def test_stalls_requeue_then_fail(
 
 
 async def test_clients_limits_and_health(c: httpx.AsyncClient, server: Running) -> None:
-    [client] = (await c.get("/download-clients")).json()
+    client, direct = (await c.get("/download-clients")).json()
     assert client["kind"] == "builtin" and client["running"] and client["name"] == "Built-in"
+    assert direct["kind"] == "direct" and direct["running"]
+    assert direct["policy"]["seed_minutes"] == 0  # nothing to seed: dropped once imported
     assert client["policy"]["max_active"] == 3 and client["settings"]["dht"] is True
     assert (await c.post(f"/download-clients/{client['id']}/test")).json()["ok"]
 

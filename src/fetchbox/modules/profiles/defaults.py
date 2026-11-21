@@ -74,4 +74,31 @@ PROFILES: list[dict[str, Any]] = [
         "cutoff": "WEB 2160p",
         "format_scores": {"dolby_vision": 20, "hdr10_plus": 10},
     },
+    {
+        # Releases that don't state a quality land here, e.g. Internet Archive films
+        # (the built-in indexer): the file's real resolution is read on import.
+        "name": "Any",
+        "ladder": [
+            {"name": "Unknown", "qualities": ["Unknown"]},
+            {
+                "name": "SD",
+                "qualities": [
+                    "SDTV",
+                    "DVD",
+                    "Unknown-480p",
+                    "WEBRip-480p",
+                    "WEBDL-480p",
+                    "Bluray-480p",
+                    "Bluray-576p",
+                ],
+            },
+            {"name": "720p", "qualities": ["Unknown-720p", "HDTV-720p", *WEB_720, "Bluray-720p"]},
+            {
+                "name": "1080p",
+                "qualities": ["Unknown-1080p", "HDTV-1080p", *WEB_1080, "Bluray-1080p"],
+            },
+        ],
+        "cutoff": "1080p",
+        "format_scores": {},
+    },
 ]

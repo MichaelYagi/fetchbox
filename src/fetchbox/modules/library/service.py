@@ -168,7 +168,10 @@ def movie_context(
         "TmdbId": title.tmdb_id,
         "ImdbId": title.imdb_id,
         "Edition": parsed.edition,
-        "Quality": quality,
+        # "Unknown" says nothing: the file's resolution if read, else left out.
+        "Quality": quality
+        if not quality.startswith("Unknown")
+        else (f"{resolution}p" if resolution else None),
         "Resolution": f"{resolution}p" if resolution else None,
         "Source": SOURCE_NAMES.get(parsed.source or "", parsed.source),
         "HDR": hdr,

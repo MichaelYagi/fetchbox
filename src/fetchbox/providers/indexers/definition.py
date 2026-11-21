@@ -58,9 +58,10 @@ from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
 from importlib import resources
 from typing import Any, ClassVar, Literal
-from urllib.parse import quote_plus, urljoin, urlsplit
+from urllib.parse import quote, quote_plus, urljoin, urlsplit
 
 import httpx
+import libtorrent as lt
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, ValidationError, model_validator
 
@@ -171,6 +172,12 @@ class Definition(_Strict):
     search: SearchSpec
     rss: SearchSpec | None = None
     test_term: str = "test"
+    download: Literal["torrent", "webseed"] = Field(
+        default="torrent",
+        description="webseed: fetch the release's .torrent, then download its largest video "
+        "file straight from the torrent's web seed over HTTP (for sites whose torrents "
+        "can't complete, e.g. when files changed after the torrent was made)",
+    )
 
     @model_validator(mode="after")
     def _check(self) -> Definition:
@@ -706,7 +713,44 @@ class DefinitionProvider(IndexerProvider):
             return TorrentSource(magnet=r.location)
         if not r.body.startswith(b"d"):
             raise IndexerError("invalid_response", "download is not a .torrent file")
+        if self.d.download == "webseed":
+            src = webseed_file(r.body)
+            if not self.d.allows(src.url or ""):
+                raise IndexerError("invalid_response", f"web seed outside {self.d.name}: {src.url}")
+            return src
         return TorrentSource(torrent=r.body)
+
+
+VIDEO_EXTENSIONS = (
+    ".mkv", ".mp4", ".m4v", ".avi", ".mov", ".webm", ".ogv", ".mpg", ".mpeg", ".wmv", ".ts",
+)  # fmt: skip
+
+
+def webseed_file(torrent: bytes) -> TorrentSource:
+    """The torrent's largest video file as a direct download from its first web seed
+    (BEP 19: a seed URL ending in "/" is the folder holding the torrent's files)."""
+    try:
+        ti = lt.torrent_info(lt.bdecode(torrent))  # type: ignore[arg-type]
+    except RuntimeError as exc:
+        raise IndexerError("invalid_response", f"not a valid .torrent: {exc}") from None
+    seeds = [w["url"] for w in ti.web_seeds() if w.get("url", "").startswith(("http:", "https:"))]
+    if not seeds:
+        raise IndexerError("invalid_response", "the torrent has no web seed")
+    fs = ti.files()
+    videos = [
+        i
+        for i in range(fs.num_files())
+        if fs.file_path(i).lower().endswith(VIDEO_EXTENSIONS)
+        and "sample" not in fs.file_path(i).lower()
+        and not fs.file_flags(i) & lt.file_storage.flag_pad_file
+    ]
+    if not videos:
+        raise IndexerError("invalid_response", "the torrent has no video file")
+    best = max(videos, key=fs.file_size)
+    path = fs.file_path(best).replace("\\", "/")
+    seed = seeds[0]  # ends in "/": a folder; otherwise (single file) the file itself
+    url = seed + "/".join(quote(p) for p in path.split("/")) if seed.endswith("/") else seed
+    return TorrentSource(url=url, name=ti.name(), size=fs.file_size(best))
 
 
 for _d, _text in builtin_definitions():

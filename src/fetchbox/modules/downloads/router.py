@@ -313,7 +313,7 @@ async def list_client_kinds(request: Request) -> list[ClientKindOut]:
     return [
         ClientKindOut(kind=c.kind, settings_schema=c.Settings.model_json_schema())
         for c in _svc(request).kinds()
-        if c.kind != "builtin"
+        if c.kind not in ("builtin", "direct")  # built in, one of each
     ]
 
 
