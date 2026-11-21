@@ -100,6 +100,8 @@ jobs:
             curl -sf http://127.0.0.1:8787/api/v1/system/ping && break; sleep 2
           done
           curl -sf http://127.0.0.1:8787/ | grep -qi "<html"
+          # the library folders appear with the first storage check, just after startup
+          for i in $(seq 1 45); do test -d /tmp/media/Movies && break; sleep 2; done
           # the server runs as PUID 1000, not root (tini, PID 1, stays root to reap)
           docker exec fb sh -c 'for p in /proc/[0-9]*; do grep -qa "fetchbox" $p/cmdline 2>/dev/null && grep "^Uid:" $p/status; done' | tee /dev/stderr | grep -qE "Uid:\s+1000\b"
           test "$(stat -c %u /tmp/media/Movies)" = 1000            # what it creates is the user's
