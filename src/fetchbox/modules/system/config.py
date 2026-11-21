@@ -61,9 +61,16 @@ class SearchConfig(BaseModel):
     )
 
 
+class StorageConfig(BaseModel):
+    recycle_days: int = Field(
+        default=7, ge=1, le=365, description="Days deleted files stay in recycle folders"
+    )
+
+
 class SystemConfig(BaseModel):
     tmdb: TmdbConfig = TmdbConfig()
     search: SearchConfig = SearchConfig()
+    storage: StorageConfig = StorageConfig()
 
 
 SECRETS: tuple[tuple[str, str], ...] = (("tmdb", "api_key"),)

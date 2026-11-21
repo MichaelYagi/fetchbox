@@ -1489,6 +1489,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/storage/mounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Mounts
+         * @description Drives and network shares mounted on this computer: candidates for library folders.
+         */
+        get: operations["list_mounts_api_v1_storage_mounts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/storage/nodes": {
         parameters: {
             query?: never;
@@ -2405,6 +2425,11 @@ export interface components {
              * @enum {string}
              */
             media_kind: "movie" | "series";
+            /**
+             * Mount Point
+             * @description The share or drive it lives on, watched for unmounting
+             */
+            mount_point?: string | null;
             /** Name */
             name: string;
             /** Naming Template Id */
@@ -2417,7 +2442,7 @@ export interface components {
             recycle: boolean;
             /**
              * Status
-             * @description online, degraded, low_space, offline, unknown
+             * @description online, degraded, low_space, offline, unmounted (its NAS share or drive is disconnected), unknown
              */
             status: string;
             /** Status Message */
@@ -3213,6 +3238,24 @@ export interface components {
             message: string;
             /** Ok */
             ok: boolean;
+        };
+        /** MountOut */
+        MountOut: {
+            /** Device */
+            device: string;
+            /** Free */
+            free: number;
+            /** Fstype */
+            fstype: string;
+            /**
+             * Network
+             * @description A NAS / network share
+             */
+            network: boolean;
+            /** Path */
+            path: string;
+            /** Total */
+            total: number;
         };
         /** MovieDetail */
         MovieDetail: {
@@ -9169,6 +9212,26 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Problem"];
                     "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    list_mounts_api_v1_storage_mounts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MountOut"][];
                 };
             };
         };

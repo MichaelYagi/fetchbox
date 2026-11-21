@@ -43,6 +43,9 @@ class Destination(IdMixin, VersionMixin, Base):
     status: Mapped[str] = mapped_column(String(20), default="unknown")
     status_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     checked_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
+    # The mount (NAS share, other drive) the folder lives on, learned while it's mounted:
+    # if it later isn't, the folder underneath is an empty local one, never written to.
+    mount_point: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
 
     __table_args__ = (

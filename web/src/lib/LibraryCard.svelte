@@ -137,6 +137,19 @@
 			showRenames = renames.length > 0;
 		});
 
+	const LINK_MODES: [string, string][] = [
+		['hardlink_or_copy', 'Hardlink when possible, else copy (recommended: keeps seeding, no double space)'],
+		['hardlink_only', 'Hardlink only (fail rather than use double space)'],
+		['copy', 'Always copy'],
+		['move', 'Move (after seeding is done; for no seeding or little space)'],
+		['symlink', 'Symlink (advanced; some media servers dislike it)']
+	];
+	const setLinkMode = (mode: string) =>
+		act('link', async () => {
+			await patch(`/destinations/${dest!.id}`, { link_mode: mode }, dest!.etag);
+			onChanged();
+		}, 'Saved.');
+
 	const saveFolder = (e: SubmitEvent) => {
 		e.preventDefault();
 		act('folder', async () => {
@@ -196,6 +209,15 @@
 			<div class="muted small">Checked when you save: it must exist or be creatable, be writable, and have free space.</div>
 		{/if}
 	</div>
+
+	{#if dest}
+		<div class="field">
+			<label class="label" for="linkmode-{kind}">How finished downloads get here</label>
+			<select id="linkmode-{kind}" value={dest.link_mode} onchange={(e) => setLinkMode(e.currentTarget.value)} disabled={!!busy}>
+				{#each LINK_MODES as [v, l] (v)}<option value={v}>{l}</option>{/each}
+			</select>
+		</div>
+	{/if}
 
 	{#if saved}
 		<div class="field">

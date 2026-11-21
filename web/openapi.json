@@ -1313,6 +1313,18 @@
       "title": "Media Kind",
       "type": "string"
      },
+     "mount_point": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "The share or drive it lives on, watched for unmounting",
+      "title": "Mount Point"
+     },
      "name": {
       "title": "Name",
       "type": "string"
@@ -1341,7 +1353,7 @@
       "type": "boolean"
      },
      "status": {
-      "description": "online, degraded, low_space, offline, unknown",
+      "description": "online, degraded, low_space, offline, unmounted (its NAS share or drive is disconnected), unknown",
       "title": "Status",
       "type": "string"
      },
@@ -3716,6 +3728,45 @@
      "coverage"
     ],
     "title": "MediaServerTestOut",
+    "type": "object"
+   },
+   "MountOut": {
+    "properties": {
+     "device": {
+      "title": "Device",
+      "type": "string"
+     },
+     "free": {
+      "title": "Free",
+      "type": "integer"
+     },
+     "fstype": {
+      "title": "Fstype",
+      "type": "string"
+     },
+     "network": {
+      "description": "A NAS / network share",
+      "title": "Network",
+      "type": "boolean"
+     },
+     "path": {
+      "title": "Path",
+      "type": "string"
+     },
+     "total": {
+      "title": "Total",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "path",
+     "device",
+     "fstype",
+     "network",
+     "total",
+     "free"
+    ],
+    "title": "MountOut",
     "type": "object"
    },
    "MovieDetail": {
@@ -14959,6 +15010,43 @@
     "summary": "Interactive Search",
     "tags": [
      "releases"
+    ]
+   }
+  },
+  "/api/v1/storage/mounts": {
+   "get": {
+    "description": "Drives and network shares mounted on this computer: candidates for library folders.",
+    "operationId": "list_mounts_api_v1_storage_mounts_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/MountOut"
+         },
+         "title": "Response List Mounts Api V1 Storage Mounts Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "List Mounts",
+    "tags": [
+     "storage"
     ]
    }
   },

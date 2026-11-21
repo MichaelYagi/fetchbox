@@ -272,6 +272,13 @@ Progress:
       Checked against real Plex 1.43.5 (partial scan adds the movie in ~2 s) and
       Jellyfin 12.4 (picks up new/renamed files after its 60 s monitor delay; needs a
       library that has been scanned once). Emby: by its documented API only
+- [x] NAS shares / mounts: each library folder learns the mount it lives on while
+      mounted; if that mount disappears the folder is `unmounted` (health error), nothing
+      is created or written underneath, imports wait. Checked every minute with the
+      health check. `GET /storage/mounts` lists drives and network shares (psutil).
+- [x] Link mode per library folder in the UI (hardlink-or-copy, hardlink only, copy,
+      move, symlink); recycle-folder retention (`storage.recycle_days`, default 7, daily
+      `recycle_cleanup` schedule)
 - [x] Rename preview (Phase 2, library settings)
 - [x] qBittorrent / Transmission / Deluge, path mappings (Phase 1-2 feedback)
 

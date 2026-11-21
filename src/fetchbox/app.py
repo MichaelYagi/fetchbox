@@ -206,6 +206,7 @@ def create_app(
         )
         app.state.storage = storage
         library = LibraryService(db, bus, jobs, storage, downloads, profiles, media)
+        storage.register_jobs(jobs, state.scheduler, lambda: config.current.storage.recycle_days)
         integrations = IntegrationsService(db, bus, box, provider_registry)
         app.state.integrations = integrations
         existing = ExistingLibrary(

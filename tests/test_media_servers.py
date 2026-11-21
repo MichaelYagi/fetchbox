@@ -165,8 +165,13 @@ async def test_imports_and_renames_trigger_one_refresh_each(
         ("1", "/data/movies/Amélie (2001)"),
         ("1", "/data/movies/Dune (2021) {tmdb-438631}"),
     ]
+    async def recorded() -> bool:  # written just after the calls: wait for it
+        rows = (await c.get("/media-servers")).json()
+        return all(x["last_refresh_at"] for x in rows)
+
+    await until(recorded, within=10)
     rows = (await c.get("/media-servers")).json()
-    assert all(x["last_refresh_at"] and x["last_error"] is None for x in rows)
+    assert all(x["last_error"] is None for x in rows), rows
 
     # a rename: old and new folders are both rescanned
     servers.updated.clear()
