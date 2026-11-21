@@ -3996,7 +3996,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description Unprocessable Entity */
+            /** @description Unprocessable Content */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -4158,7 +4158,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description Unprocessable Entity */
+            /** @description Unprocessable Content */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -4441,7 +4441,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description Unprocessable Entity */
+            /** @description Unprocessable Content */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -4580,7 +4580,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description Unprocessable Entity */
+            /** @description Unprocessable Content */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -4716,7 +4716,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description Unprocessable Entity */
+            /** @description Unprocessable Content */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -4819,7 +4819,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description Unprocessable Entity */
+            /** @description Unprocessable Content */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -4981,7 +4981,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description Unprocessable Entity */
+            /** @description Unprocessable Content */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -5056,7 +5056,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description Unprocessable Entity */
+            /** @description Unprocessable Content */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -5218,7 +5218,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description Unprocessable Entity */
+            /** @description Unprocessable Content */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -5508,7 +5508,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description Unprocessable Entity */
+            /** @description Unprocessable Content */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -5690,7 +5690,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description Unprocessable Entity */
+            /** @description Unprocessable Content */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -5817,7 +5817,7 @@ export interface operations {
                     "application/json": components["schemas"]["LimitsIO"];
                 };
             };
-            /** @description Unprocessable Entity */
+            /** @description Unprocessable Content */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -5871,7 +5871,7 @@ export interface operations {
                     "application/json": components["schemas"]["DownloadOut"][];
                 };
             };
-            /** @description Unprocessable Entity */
+            /** @description Unprocessable Content */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -6035,7 +6035,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description Unprocessable Entity */
+            /** @description Unprocessable Content */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -6244,7 +6244,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description Unprocessable Entity */
+            /** @description Unprocessable Content */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -6493,7 +6493,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description Unprocessable Entity */
+            /** @description Unprocessable Content */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -6570,7 +6570,7 @@ export interface operations {
                     "application/json": components["schemas"]["HistoryPage"];
                 };
             };
-            /** @description Unprocessable Entity */
+            /** @description Unprocessable Content */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -6705,7 +6705,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description Unprocessable Entity */
+            /** @description Unprocessable Content */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -6859,7 +6859,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description Unprocessable Entity */
+            /** @description Unprocessable Content */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -6913,7 +6913,7 @@ export interface operations {
                     "application/json": components["schemas"]["IndexerOut"][];
                 };
             };
-            /** @description Unprocessable Entity */
+            /** @description Unprocessable Content */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -7075,7 +7075,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description Unprocessable Entity */
+            /** @description Unprocessable Content */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -7154,7 +7154,7 @@ export interface operations {
                     "application/json": components["schemas"]["JobPage"];
                 };
             };
-            /** @description Unprocessable Entity */
+            /** @description Unprocessable Content */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -7351,7 +7351,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description Unprocessable Entity */
+            /** @description Unprocessable Content */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -7385,7 +7385,7 @@ export interface operations {
                     "application/json": components["schemas"]["PreviewOut"];
                 };
             };
-            /** @description Unprocessable Entity */
+            /** @description Unprocessable Content */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -7444,7 +7444,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description Unprocessable Entity */
+            /** @description Unprocessable Content */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -7528,7 +7528,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description Unprocessable Entity */
+            /** @description Unprocessable Content */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -7690,7 +7690,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description Unprocessable Entity */
+            /** @description Unprocessable Content */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -7736,7 +7736,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description Unprocessable Entity */
+            /** @description Unprocessable Content */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -7778,7 +7778,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description Unprocessable Entity */
+            /** @description Unprocessable Content */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -7917,7 +7917,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description Unprocessable Entity */
+            /** @description Unprocessable Content */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -8069,7 +8069,7 @@ export interface operations {
                     "application/json": components["schemas"]["TitlePage"];
                 };
             };
-            /** @description Unprocessable Entity */
+            /** @description Unprocessable Content */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -8123,7 +8123,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description Unprocessable Entity */
+            /** @description Unprocessable Content */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -8295,7 +8295,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description Unprocessable Entity */
+            /** @description Unprocessable Content */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -8371,7 +8371,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description Unprocessable Entity */
+            /** @description Unprocessable Content */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -8534,7 +8534,7 @@ export interface operations {
                     "application/json": components["schemas"]["WantedPage"];
                 };
             };
-            /** @description Unprocessable Entity */
+            /** @description Unprocessable Content */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -8593,7 +8593,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description Unprocessable Entity */
+            /** @description Unprocessable Content */
             422: {
                 headers: {
                     [name: string]: unknown;

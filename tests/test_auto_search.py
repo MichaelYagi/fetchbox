@@ -298,10 +298,10 @@ async def test_crash_mid_search_is_recovered(c: httpx.AsyncClient, server: Runni
 async def test_a_grab_that_never_started_is_not_retried_after_its_alternative(
     c: httpx.AsyncClient, fakes: Fakes, items: list[Item], server: Running
 ) -> None:
-    """The best release can't even be added (a broken magnet); the alternative is grabbed.
+    """The best release can't even be added (an unreadable .torrent); the alternative is grabbed.
     The failed grab has no download row, but it must not be picked up again once the
     alternative's grab puts the item back in "grabbed"."""
-    broken = Item(BEST, size=4 * GB, magnet="magnet:?xt=urn:btih:not-a-hash")  # unusable
+    broken = Item(BEST, size=4 * GB, link="http://one/dl/0")  # a .torrent with no info
     await _indexer(c, fakes, "one", [broken, items[1]])
     movie = await _movie(c, search=True)
     wid = movie["wanted"][0]["id"]
