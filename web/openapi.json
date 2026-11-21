@@ -1027,6 +1027,44 @@
     "title": "Count",
     "type": "object"
    },
+   "CoverageOut": {
+    "properties": {
+     "folder": {
+      "description": "A Fetchbox library folder",
+      "title": "Folder",
+      "type": "string"
+     },
+     "library": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "The server's library holding it; null: none",
+      "title": "Library"
+     },
+     "local": {
+      "title": "Local",
+      "type": "string"
+     },
+     "remote": {
+      "description": "The same folder as the server sees it",
+      "title": "Remote",
+      "type": "string"
+     }
+    },
+    "required": [
+     "folder",
+     "local",
+     "remote",
+     "library"
+    ],
+    "title": "CoverageOut",
+    "type": "object"
+   },
    "DefinitionIn": {
     "properties": {
      "yaml": {
@@ -3246,6 +3284,43 @@
     "title": "KindOut",
     "type": "object"
    },
+   "Library": {
+    "properties": {
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "kind": {
+      "enum": [
+       "movie",
+       "series",
+       "music",
+       "other"
+      ],
+      "title": "Kind",
+      "type": "string"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "paths": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Paths",
+      "type": "array"
+     }
+    },
+    "required": [
+     "id",
+     "name",
+     "kind",
+     "paths"
+    ],
+    "title": "Library",
+    "type": "object"
+   },
    "LimitsIO": {
     "properties": {
      "download": {
@@ -3435,6 +3510,212 @@
      "via"
     ],
     "title": "Me",
+    "type": "object"
+   },
+   "MediaServerIn": {
+    "properties": {
+     "enabled": {
+      "default": true,
+      "title": "Enabled",
+      "type": "boolean"
+     },
+     "kind": {
+      "description": "plex, jellyfin or emby",
+      "title": "Kind",
+      "type": "string"
+     },
+     "name": {
+      "maxLength": 100,
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+     },
+     "path_mappings": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/PathMapping-Input"
+      },
+      "title": "Path Mappings",
+      "type": "array"
+     },
+     "settings": {
+      "additionalProperties": true,
+      "title": "Settings",
+      "type": "object"
+     }
+    },
+    "required": [
+     "kind",
+     "name",
+     "settings"
+    ],
+    "title": "MediaServerIn",
+    "type": "object"
+   },
+   "MediaServerOut": {
+    "properties": {
+     "enabled": {
+      "title": "Enabled",
+      "type": "boolean"
+     },
+     "etag": {
+      "readOnly": true,
+      "title": "Etag",
+      "type": "string"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "kind": {
+      "title": "Kind",
+      "type": "string"
+     },
+     "last_error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "The last refresh's problem, if any",
+      "title": "Last Error"
+     },
+     "last_refresh_at": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Last Refresh At"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "path_mappings": {
+      "items": {
+       "$ref": "#/components/schemas/fetchbox__modules__integrations__service__PathMapping"
+      },
+      "title": "Path Mappings",
+      "type": "array"
+     },
+     "settings": {
+      "additionalProperties": true,
+      "description": "Secrets come back masked",
+      "title": "Settings",
+      "type": "object"
+     }
+    },
+    "required": [
+     "id",
+     "kind",
+     "name",
+     "enabled",
+     "settings",
+     "path_mappings",
+     "last_refresh_at",
+     "last_error",
+     "etag"
+    ],
+    "title": "MediaServerOut",
+    "type": "object"
+   },
+   "MediaServerPatch": {
+    "properties": {
+     "enabled": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Enabled"
+     },
+     "name": {
+      "anyOf": [
+       {
+        "maxLength": 100,
+        "minLength": 1,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Name"
+     },
+     "path_mappings": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/PathMapping-Input"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Path Mappings"
+     },
+     "settings": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Send the mask back to keep a secret",
+      "title": "Settings"
+     }
+    },
+    "title": "MediaServerPatch",
+    "type": "object"
+   },
+   "MediaServerTestOut": {
+    "properties": {
+     "coverage": {
+      "items": {
+       "$ref": "#/components/schemas/CoverageOut"
+      },
+      "title": "Coverage",
+      "type": "array"
+     },
+     "libraries": {
+      "items": {
+       "$ref": "#/components/schemas/Library"
+      },
+      "title": "Libraries",
+      "type": "array"
+     },
+     "message": {
+      "title": "Message",
+      "type": "string"
+     },
+     "ok": {
+      "title": "Ok",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "ok",
+     "message",
+     "libraries",
+     "coverage"
+    ],
+    "title": "MediaServerTestOut",
     "type": "object"
    },
    "MovieDetail": {
@@ -4082,24 +4363,24 @@
     "title": "ParsedRelease",
     "type": "object"
    },
-   "PathMapping": {
+   "PathMapping-Input": {
     "properties": {
-     "client": {
-      "description": "The same path as the client sees it",
-      "minLength": 1,
-      "title": "Client",
-      "type": "string"
-     },
      "local": {
       "description": "Path as Fetchbox sees it",
       "minLength": 1,
       "title": "Local",
       "type": "string"
+     },
+     "remote": {
+      "description": "The same path as the media server sees it",
+      "minLength": 1,
+      "title": "Remote",
+      "type": "string"
      }
     },
     "required": [
      "local",
-     "client"
+     "remote"
     ],
     "title": "PathMapping",
     "type": "object"
@@ -4178,7 +4459,7 @@
       "default": [],
       "description": "Where the client sees Fetchbox's folders differently (Docker, another machine): each maps a Fetchbox path prefix to the client's",
       "items": {
-       "$ref": "#/components/schemas/PathMapping"
+       "$ref": "#/components/schemas/fetchbox__modules__downloads__service__PathMapping"
       },
       "title": "Path Mappings",
       "type": "array"
@@ -7019,6 +7300,50 @@
      "ids"
     ],
     "title": "ReorderIn",
+    "type": "object"
+   },
+   "fetchbox__modules__downloads__service__PathMapping": {
+    "properties": {
+     "client": {
+      "description": "The same path as the client sees it",
+      "minLength": 1,
+      "title": "Client",
+      "type": "string"
+     },
+     "local": {
+      "description": "Path as Fetchbox sees it",
+      "minLength": 1,
+      "title": "Local",
+      "type": "string"
+     }
+    },
+    "required": [
+     "local",
+     "client"
+    ],
+    "title": "PathMapping",
+    "type": "object"
+   },
+   "fetchbox__modules__integrations__service__PathMapping": {
+    "properties": {
+     "local": {
+      "description": "Path as Fetchbox sees it",
+      "minLength": 1,
+      "title": "Local",
+      "type": "string"
+     },
+     "remote": {
+      "description": "The same path as the media server sees it",
+      "minLength": 1,
+      "title": "Remote",
+      "type": "string"
+     }
+    },
+    "required": [
+     "local",
+     "remote"
+    ],
+    "title": "PathMapping",
     "type": "object"
    },
    "fetchbox__modules__sources__router__ReorderIn": {
@@ -13380,6 +13705,405 @@
     "summary": "Scan Library",
     "tags": [
      "library"
+    ]
+   }
+  },
+  "/api/v1/media-servers": {
+   "get": {
+    "operationId": "list_servers_api_v1_media_servers_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/MediaServerOut"
+         },
+         "title": "Response List Servers Api V1 Media Servers Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "List Servers",
+    "tags": [
+     "integrations"
+    ]
+   },
+   "post": {
+    "description": "Plex, Jellyfin or Emby to tell about new and changed files.",
+    "operationId": "add_server_api_v1_media_servers_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/MediaServerIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/MediaServerOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Conflict"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Unprocessable Content"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Add Server",
+    "tags": [
+     "integrations"
+    ]
+   }
+  },
+  "/api/v1/media-servers/kinds": {
+   "get": {
+    "operationId": "server_kinds_api_v1_media_servers_kinds_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "type": "string"
+         },
+         "title": "Response Server Kinds Api V1 Media Servers Kinds Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Server Kinds",
+    "tags": [
+     "integrations"
+    ]
+   }
+  },
+  "/api/v1/media-servers/{server_id}": {
+   "delete": {
+    "operationId": "remove_server_api_v1_media_servers__server_id__delete",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "server_id",
+      "required": true,
+      "schema": {
+       "title": "Server Id",
+       "type": "string"
+      }
+     },
+     {
+      "description": "ETag from a previous read; 412 if stale",
+      "in": "header",
+      "name": "if-match",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "ETag from a previous read; 412 if stale",
+       "title": "If-Match"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "412": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Precondition Failed"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Remove Server",
+    "tags": [
+     "integrations"
+    ]
+   },
+   "patch": {
+    "operationId": "update_server_api_v1_media_servers__server_id__patch",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "server_id",
+      "required": true,
+      "schema": {
+       "title": "Server Id",
+       "type": "string"
+      }
+     },
+     {
+      "description": "ETag from a previous read; 412 if stale",
+      "in": "header",
+      "name": "if-match",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "ETag from a previous read; 412 if stale",
+       "title": "If-Match"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/MediaServerPatch"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/MediaServerOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Conflict"
+     },
+     "412": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Precondition Failed"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Unprocessable Content"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Update Server",
+    "tags": [
+     "integrations"
+    ]
+   }
+  },
+  "/api/v1/media-servers/{server_id}/test": {
+   "post": {
+    "description": "Connect, list the server's libraries, and show which one holds each Fetchbox\nlibrary folder (after path mappings).",
+    "operationId": "test_server_api_v1_media_servers__server_id__test_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "server_id",
+      "required": true,
+      "schema": {
+       "title": "Server Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/MediaServerTestOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Test Server",
+    "tags": [
+     "integrations"
     ]
    }
   },

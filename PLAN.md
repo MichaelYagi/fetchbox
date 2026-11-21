@@ -263,6 +263,15 @@ Progress:
       an hour) and records files in place (`link_mode: existing`): a movie's biggest
       file, a show's files matched to episodes (multi-episode files too); cutoff judged
       from the file's quality. Re-scanning and re-importing are idempotent.
+- [x] Plex / Jellyfin / Emby: Settings > Media servers (address + token / API key, path
+      mappings when the server sees folders elsewhere). Test lists the server's libraries
+      and which one holds each Fetchbox library folder. Imports, upgrades, renames and
+      existing-library imports announce their folders; gathered for 5 s, each enabled
+      server rescans just those (Plex: partial section scan; Jellyfin/Emby:
+      /Library/Media/Updated). Failures are recorded on the connection, never raised.
+      Checked against real Plex 1.43.5 (partial scan adds the movie in ~2 s) and
+      Jellyfin 12.4 (picks up new/renamed files after its 60 s monitor delay; needs a
+      library that has been scanned once). Emby: by its documented API only
 - [x] Rename preview (Phase 2, library settings)
 - [x] qBittorrent / Transmission / Deluge, path mappings (Phase 1-2 feedback)
 

@@ -645,6 +645,8 @@ class LibraryService:
             year=title.year,
             path=rel,
             destination=dest.name,
+            destination_id=dest.id,
+            folders=[str((Path(dest.path) / rel).parent)],  # for media servers to rescan
             quality=quality,
             link_mode=mode,
         )
@@ -1090,6 +1092,14 @@ class LibraryService:
                 actor=actor,
                 kind=kind,
                 count=len(renamed),
+                # old and new folders: the server drops the old entry, finds the new one
+                folders=sorted(
+                    {
+                        str((Path(p["root"]) / p[k]).parent)
+                        for p in renamed
+                        for k in ("current", "new")
+                    }
+                ),
             )
         return {"renamed": renamed, "failed": failed}
 

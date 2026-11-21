@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { ApiError, del, get, patch, post, type S } from '#lib/api.ts';
 	import LibraryCard from '#lib/LibraryCard.svelte';
+	import MediaServersCard from '#lib/MediaServersCard.svelte';
 	import Path from '#lib/Path.svelte';
 	import { session } from '#lib/session.svelte.ts';
 
@@ -517,6 +518,11 @@
 				{/each}
 			</div>
 		{/if}
+	</section>
+
+	<section id="media-servers">
+		<h2>Media servers</h2>
+		<MediaServersCard {destinations} />
 	</section>
 </main>
 

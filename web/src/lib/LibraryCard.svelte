@@ -110,7 +110,7 @@
 		message = '';
 		try {
 			await fn();
-			message = done;
+			if (done) message = done; // an action may set its own message
 		} catch (e) {
 			error = e instanceof ApiError ? e.message : String(e);
 		} finally {
@@ -124,7 +124,6 @@
 			draft = { ...saved.patterns };
 			custom = saved.preset === 'custom';
 			renames = await get<S['RenameStepOut'][]>(`/library/rename/${kind}`);
-			showRenames = false;
 		}, 'Saved. New files will be named this way.');
 
 	const rename = () =>

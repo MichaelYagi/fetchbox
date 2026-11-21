@@ -1258,6 +1258,83 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/media-servers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Servers */
+        get: operations["list_servers_api_v1_media_servers_get"];
+        put?: never;
+        /**
+         * Add Server
+         * @description Plex, Jellyfin or Emby to tell about new and changed files.
+         */
+        post: operations["add_server_api_v1_media_servers_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/media-servers/kinds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Server Kinds */
+        get: operations["server_kinds_api_v1_media_servers_kinds_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/media-servers/{server_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove Server */
+        delete: operations["remove_server_api_v1_media_servers__server_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Server */
+        patch: operations["update_server_api_v1_media_servers__server_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/media-servers/{server_id}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Test Server
+         * @description Connect, list the server's libraries, and show which one holds each Fetchbox
+         *     library folder (after path mappings).
+         */
+        post: operations["test_server_api_v1_media_servers__server_id__test_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/naming-templates": {
         parameters: {
             query?: never;
@@ -2197,6 +2274,26 @@ export interface components {
             /** Count */
             count: number;
         };
+        /** CoverageOut */
+        CoverageOut: {
+            /**
+             * Folder
+             * @description A Fetchbox library folder
+             */
+            folder: string;
+            /**
+             * Library
+             * @description The server's library holding it; null: none
+             */
+            library: string | null;
+            /** Local */
+            local: string;
+            /**
+             * Remote
+             * @description The same folder as the server sees it
+             */
+            remote: string;
+        };
         /** DefinitionIn */
         DefinitionIn: {
             /**
@@ -2953,6 +3050,20 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /** Library */
+        Library: {
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "movie" | "series" | "music" | "other";
+            /** Name */
+            name: string;
+            /** Paths */
+            paths: string[];
+        };
         /** LimitsIO */
         LimitsIO: {
             /**
@@ -3022,6 +3133,86 @@ export interface components {
             type: string;
             /** Via */
             via: string;
+        };
+        /** MediaServerIn */
+        MediaServerIn: {
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /**
+             * Kind
+             * @description plex, jellyfin or emby
+             */
+            kind: string;
+            /** Name */
+            name: string;
+            /**
+             * Path Mappings
+             * @default []
+             */
+            path_mappings: components["schemas"]["PathMapping-Input"][];
+            /** Settings */
+            settings: {
+                [key: string]: unknown;
+            };
+        };
+        /** MediaServerOut */
+        MediaServerOut: {
+            /** Enabled */
+            enabled: boolean;
+            /** Etag */
+            readonly etag: string;
+            /** Id */
+            id: string;
+            /** Kind */
+            kind: string;
+            /**
+             * Last Error
+             * @description The last refresh's problem, if any
+             */
+            last_error: string | null;
+            /** Last Refresh At */
+            last_refresh_at: string | null;
+            /** Name */
+            name: string;
+            /** Path Mappings */
+            path_mappings: components["schemas"]["fetchbox__modules__integrations__service__PathMapping"][];
+            /**
+             * Settings
+             * @description Secrets come back masked
+             */
+            settings: {
+                [key: string]: unknown;
+            };
+        };
+        /** MediaServerPatch */
+        MediaServerPatch: {
+            /** Enabled */
+            enabled?: boolean | null;
+            /** Name */
+            name?: string | null;
+            /** Path Mappings */
+            path_mappings?: components["schemas"]["PathMapping-Input"][] | null;
+            /**
+             * Settings
+             * @description Send the mask back to keep a secret
+             */
+            settings?: {
+                [key: string]: unknown;
+            } | null;
+        };
+        /** MediaServerTestOut */
+        MediaServerTestOut: {
+            /** Coverage */
+            coverage: components["schemas"]["CoverageOut"][];
+            /** Libraries */
+            libraries: components["schemas"]["Library"][];
+            /** Message */
+            message: string;
+            /** Ok */
+            ok: boolean;
         };
         /** MovieDetail */
         MovieDetail: {
@@ -3284,17 +3475,17 @@ export interface components {
             year?: number | null;
         };
         /** PathMapping */
-        PathMapping: {
-            /**
-             * Client
-             * @description The same path as the client sees it
-             */
-            client: string;
+        "PathMapping-Input": {
             /**
              * Local
              * @description Path as Fetchbox sees it
              */
             local: string;
+            /**
+             * Remote
+             * @description The same path as the media server sees it
+             */
+            remote: string;
         };
         /**
          * PatternCondition
@@ -3345,7 +3536,7 @@ export interface components {
              * @description Where the client sees Fetchbox's folders differently (Docker, another machine): each maps a Fetchbox path prefix to the client's
              * @default []
              */
-            path_mappings: components["schemas"]["PathMapping"][];
+            path_mappings: components["schemas"]["fetchbox__modules__downloads__service__PathMapping"][];
             /**
              * Save Path
              * @description Download folder as Fetchbox sees it. Built-in clients: default <downloads root>/Torrents; external clients: default is the client's own folder
@@ -4435,6 +4626,32 @@ export interface components {
              * @description Download ids, first runs first
              */
             ids: string[];
+        };
+        /** PathMapping */
+        fetchbox__modules__downloads__service__PathMapping: {
+            /**
+             * Client
+             * @description The same path as the client sees it
+             */
+            client: string;
+            /**
+             * Local
+             * @description Path as Fetchbox sees it
+             */
+            local: string;
+        };
+        /** PathMapping */
+        fetchbox__modules__integrations__service__PathMapping: {
+            /**
+             * Local
+             * @description Path as Fetchbox sees it
+             */
+            local: string;
+            /**
+             * Remote
+             * @description The same path as the media server sees it
+             */
+            remote: string;
         };
         /** ReorderIn */
         fetchbox__modules__sources__router__ReorderIn: {
@@ -8186,6 +8403,252 @@ export interface operations {
             };
             /** @description Conflict */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_servers_api_v1_media_servers_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaServerOut"][];
+                };
+            };
+        };
+    };
+    add_server_api_v1_media_servers_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MediaServerIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaServerOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    server_kinds_api_v1_media_servers_kinds_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string[];
+                };
+            };
+        };
+    };
+    remove_server_api_v1_media_servers__server_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description ETag from a previous read; 412 if stale */
+                "if-match"?: string | null;
+            };
+            path: {
+                server_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_server_api_v1_media_servers__server_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description ETag from a previous read; 412 if stale */
+                "if-match"?: string | null;
+            };
+            path: {
+                server_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MediaServerPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaServerOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    test_server_api_v1_media_servers__server_id__test_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                server_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaServerTestOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

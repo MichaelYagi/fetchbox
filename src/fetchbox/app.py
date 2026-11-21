@@ -33,6 +33,8 @@ from fetchbox.modules.discovery.service import DiscoveryService
 from fetchbox.modules.downloads import router as downloads_router
 from fetchbox.modules.downloads.service import DownloadsService
 from fetchbox.modules.events import router as events_router
+from fetchbox.modules.integrations import router as integrations_router
+from fetchbox.modules.integrations.service import IntegrationsService
 from fetchbox.modules.library import router as library_router
 from fetchbox.modules.library.existing import ExistingLibrary
 from fetchbox.modules.library.service import LibraryService
@@ -80,6 +82,7 @@ API_ROUTERS: tuple[APIRouter, ...] = (
     downloads_router.router,
     storage_router.router,
     library_router.router,
+    integrations_router.router,
 )
 
 
@@ -203,6 +206,8 @@ def create_app(
         )
         app.state.storage = storage
         library = LibraryService(db, bus, jobs, storage, downloads, profiles, media)
+        integrations = IntegrationsService(db, bus, box, provider_registry)
+        app.state.integrations = integrations
         existing = ExistingLibrary(
             db, jobs, storage=storage, media=media, discovery=discovery, library=library
         )
@@ -257,6 +262,7 @@ def create_app(
             await state.bus.emit("system.stopping")
             if (stop := getattr(app.state, "watchdog_stop", None)) is not None:
                 stop.set()
+            await app.state.integrations.stop()
             await state.scheduler.stop()
             await state.jobs.stop(timeout=30)
             await autosearch.stop()

@@ -28,7 +28,7 @@ from sqlalchemy import select
 
 from fetchbox.core.db import Database, utcnow
 from fetchbox.core.errors import ConflictError, NotFoundError, ProblemError
-from fetchbox.core.events import Actor
+from fetchbox.core.events import Actor, Subject
 from fetchbox.core.jobs import Job, JobContext, JobRunner
 from fetchbox.modules.discovery.service import DiscoveryService
 from fetchbox.modules.library.models import MediaFile
@@ -300,6 +300,16 @@ class ExistingLibrary:
                 skipped.append({"folder": item["folder"], "reason": f"{type(exc).__name__}: {exc}"})
             if progress:
                 await progress(n / len(items), f"{n} of {len(items)}")
+        if files_recorded:
+            await self.library.bus.emit(
+                "library.imported_existing",
+                subject=Subject(type="destination", id=dest.id),
+                actor=actor,
+                count=len(added),
+                files=files_recorded,
+                folders=sorted({str(Path(dest.path) / i["folder"]) for i in items
+                                if any(a["folder"] == i["folder"] for a in added)}),
+            )  # fmt: skip
         return {"added": added, "skipped": skipped, "files": files_recorded}
 
     async def _title(
