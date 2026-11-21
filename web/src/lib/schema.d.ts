@@ -3004,7 +3004,7 @@ export interface components {
             path_mappings: components["schemas"]["PathMapping"][];
             /**
              * Save Path
-             * @description Where torrents download; default <downloads root>/Torrents
+             * @description Download folder as Fetchbox sees it. Built-in clients: default <downloads root>/Torrents; external clients: default is the client's own folder
              */
             save_path?: string | null;
             /**

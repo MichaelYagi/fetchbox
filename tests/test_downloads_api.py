@@ -278,3 +278,32 @@ async def test_scopes(server: Running) -> None:
         assert (await c.get("/downloads")).status_code == 200
         assert (await c.post("/downloads/pause-all")).status_code == 403
         assert (await c.put("/downloads/limits", json={})).status_code == 403
+
+
+async def test_built_in_download_folder(c: httpx.AsyncClient, tmp_path: Path) -> None:
+    clients = {x["kind"]: x for x in (await c.get("/download-clients")).json()}
+    builtin = clients["builtin"]
+    assert builtin["saves_to"].endswith("Torrents")
+    target = tmp_path / "Big disk" / "Torrents"
+    r = await c.patch(
+        f"/download-clients/{builtin['id']}", json={"policy": {"save_path": str(target)}}
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["saves_to"] == str(target) and target.is_dir()  # created
+    r = await c.patch(
+        f"/download-clients/{builtin['id']}", json={"policy": {"save_path": "relative/dir"}}
+    )
+    assert r.status_code == 422 and "absolute" in r.text
+    blocker = tmp_path / "a-file"
+    blocker.write_text("x")
+    r = await c.patch(
+        f"/download-clients/{builtin['id']}", json={"policy": {"save_path": str(blocker / "sub")}}
+    )
+    assert r.status_code == 422 and r.json()["errors"][0]["field"] == "body.policy.save_path"
+    r = await c.patch(f"/download-clients/{builtin['id']}", json={"policy": {"save_path": "  "}})
+    assert r.status_code == 200 and r.json()["saves_to"].endswith("Torrents")  # default again
+    direct = clients["direct"]
+    r = await c.patch(
+        f"/download-clients/{direct['id']}", json={"policy": {"save_path": str(target)}}
+    )
+    assert r.status_code == 200 and r.json()["saves_to"] == str(target)

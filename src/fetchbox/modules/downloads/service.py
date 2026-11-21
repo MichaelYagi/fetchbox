@@ -19,13 +19,14 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import re
 from collections.abc import Sequence
 from datetime import timedelta
 from pathlib import Path
 from typing import Any, Literal
 
 import structlog
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field, ValidationError, field_validator
 from sqlalchemy import case, exists, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -65,6 +66,19 @@ BUILTIN_NAME = "Built-in"
 DIRECT_NAME = "Direct downloads"
 
 
+def _writable(folder: Path) -> str | None:
+    """None if Fetchbox can create and write files in ``folder``; else why not."""
+    try:
+        folder = folder.expanduser()
+        folder.mkdir(parents=True, exist_ok=True)
+        probe = folder / ".fetchbox-write-test"
+        probe.write_bytes(b"")
+        probe.unlink()
+    except OSError as exc:
+        return f"can't write to {folder}: {exc.strerror or exc}"
+    return None
+
+
 def _superseded(item_id: Any, created_at: Any) -> Any:
     """EXISTS a later grab for the same wanted item. A grab that failed before reaching
     a client has no download row; once a newer grab claims its items, it must not be
@@ -89,8 +103,22 @@ class Policy(BaseModel):
     stall_minutes: int = Field(default=120, ge=1, le=10080)
     stall_limit: int = Field(default=3, ge=1, le=20, description="Stalls before failing")
     save_path: str | None = Field(
-        default=None, description="Where torrents download; default <downloads root>/Torrents"
+        default=None,
+        description="Download folder as Fetchbox sees it. Built-in clients: default "
+        "<downloads root>/Torrents; external clients: default is the client's own folder",
     )
+
+    @field_validator("save_path", mode="before")
+    @classmethod
+    def _folder(cls, v: object) -> object:
+        if isinstance(v, str):
+            v = v.strip()
+            if not v:
+                return None  # empty: back to the default
+            if not (v.startswith("/") or re.match(r"^[A-Za-z]:[\\/]", v) or v.startswith("~")):
+                raise ValueError("must be an absolute folder path")
+        return v
+
     seed_ratio: float | None = Field(
         default=None, ge=0, description="Stop seeding at this upload ratio; null: no limit"
     )
@@ -979,11 +1007,20 @@ class DownloadsService:
                 restart = True
             if "policy" in changes:
                 try:
-                    row.policy = Policy.model_validate(
-                        {**(row.policy or {}), **changes["policy"]}
-                    ).model_dump()
+                    policy = Policy.model_validate({**(row.policy or {}), **changes["policy"]})
                 except ValidationError as exc:
                     raise _invalid(exc, "body.policy") from None
+                if policy.save_path and row.kind in ("builtin", "direct"):
+                    # Fetchbox writes there itself: it must exist (or be creatable).
+                    problem = await asyncio.to_thread(_writable, Path(policy.save_path))
+                    if problem:
+                        raise ProblemError(
+                            422,
+                            "Validation Failed",
+                            slug="validation",
+                            errors=[FieldError(field="body.policy.save_path", message=problem)],
+                        )
+                row.policy = policy.model_dump()
             for f in ("enabled", "priority", "media_kinds", "tags"):
                 if f in changes:
                     setattr(row, f, changes[f])

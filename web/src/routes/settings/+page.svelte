@@ -27,7 +27,8 @@
 		password: '',
 		priority: 25,
 		local: '',
-		remote: ''
+		remote: '',
+		folder: ''
 	});
 
 	function editIndexer(i: S['IndexerOut']) {
@@ -40,7 +41,8 @@
 			password: '',
 			priority: i.priority,
 			local: '',
-			remote: ''
+			remote: '',
+			folder: ''
 		};
 		editing = i.id;
 	}
@@ -56,7 +58,8 @@
 			password: '',
 			priority: c.priority,
 			local: map?.local ?? '',
-			remote: map?.client ?? ''
+			remote: map?.client ?? '',
+			folder: c.policy.save_path ?? ''
 		};
 		editing = c.id;
 	}
@@ -108,9 +111,10 @@
 			draft.local.trim() && draft.remote.trim()
 				? [{ local: draft.local.trim(), client: draft.remote.trim() }]
 				: [];
+		const folder = draft.folder.trim() || null; // empty: back to the default
 		const body = builtIn
-			? {}
-			: { settings, policy: { path_mappings: mappings } };
+			? { policy: { save_path: folder } }
+			: { settings, policy: { path_mappings: mappings, save_path: folder } };
 		act(`save-${c.id}`, () => patch(`/download-clients/${c.id}`, body, c.etag), `${c.name} saved.`).then(
 			() => {
 				if (!error) editing = null;
@@ -363,11 +367,9 @@
 								{#if tests[c.id]}<div class={tests[c.id].ok ? 'okt' : 'errt'}>{tests[c.id].message}</div>{/if}
 							</td>
 							<td><div class="row end">
-								{#if c.kind !== 'builtin'}
-									<button class="small" onclick={() => (editing === c.id ? (editing = null) : editClient(c))} disabled={!!busy}>
-										{editing === c.id ? 'Cancel' : 'Edit'}
-									</button>
-								{/if}
+								<button class="small" onclick={() => (editing === c.id ? (editing = null) : editClient(c))} disabled={!!busy}>
+									{editing === c.id ? 'Cancel' : 'Edit'}
+								</button>
 								<button class="small" onclick={() => test('download-clients', c.id)} disabled={!!busy}>Test</button>
 								<button class="small" onclick={() => act(c.id, () => patch(`/download-clients/${c.id}`, { enabled: !c.enabled }, c.etag))} disabled={!!busy}>
 									{c.enabled ? 'Disable' : 'Enable'}
@@ -386,8 +388,16 @@
 											{#if c.kind !== 'deluge'}<label>Username <input bind:value={draft.username} autocomplete="off" /></label>{/if}
 											<label>Password <input type="password" bind:value={draft.password} placeholder="unchanged" autocomplete="off" /></label>
 										{/if}
+										<label class="grow">
+											Download folder
+											<input
+												bind:value={draft.folder}
+												placeholder={c.kind === 'builtin' || c.kind === 'direct' ? 'default: ~/Downloads/Fetchbox/Torrents' : `empty: ${c.name}'s own folder`}
+											/>
+										</label>
 										<button class="primary" disabled={!!busy}>Save</button>
 									</form>
+									{#if c.kind !== 'builtin' && c.kind !== 'direct'}
 									<div class="mapping">
 										<p class="muted small hint">
 											<strong>Path mapping</strong>, only if this client runs on another machine or in
@@ -398,6 +408,8 @@
 											<label class="grow">Client path <input bind:value={draft.remote} placeholder="/Users/me/Torrents" /></label>
 										</div>
 									</div>
+									{/if}
+									<p class="muted small hint">The download folder applies to new downloads; ones in progress stay where they are.</p>
 								</td>
 							</tr>
 						{/if}
@@ -412,13 +424,30 @@
 								{#if tests[c.id]}<div class={tests[c.id].ok ? 'okt' : 'errt'}>{tests[c.id].message}</div>{/if}
 							</td>
 							<td><div class="row end">
-								<button class="small" onclick={() => test('download-clients', c.id)} disabled={!!busy}>Test</button>
+								<button class="small" onclick={() => (editing === c.id ? (editing = null) : editClient(c))} disabled={!!busy}>
+				{editing === c.id ? 'Cancel' : 'Edit'}
+			</button>
+			<button class="small" onclick={() => test('download-clients', c.id)} disabled={!!busy}>Test</button>
 								<button class="small" onclick={() => act(c.id, () => patch(`/download-clients/${c.id}`, { enabled: !c.enabled }, c.etag))} disabled={!!busy}>
 									{c.enabled ? 'Disable' : 'Enable'}
 								</button>
 							</div></td>
 						</tr>
-					{/each}
+	{#if editing === c.id}
+		<tr class="editrow">
+			<td colspan="4">
+				<form class="row" onsubmit={(e) => saveClient(e, c)}>
+					<label class="grow">
+						Download folder
+						<input bind:value={draft.folder} placeholder="default: ~/Downloads/Fetchbox/Torrents" />
+					</label>
+					<button class="primary" disabled={!!busy}>Save</button>
+				</form>
+				<p class="muted small hint">The download folder applies to new downloads; ones in progress stay where they are.</p>
+			</td>
+		</tr>
+	{/if}
+{/each}
 				</tbody>
 			</table>
 		</div>
