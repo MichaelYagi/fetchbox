@@ -780,6 +780,14 @@ class DownloadsService:
         d = await self.get(download_id)
         if d.status == "removed":
             return
+        # A finished download's data is only deleted once the library has its own copy:
+        # before a successful import it is the only copy, and a symlink import points at it.
+        if (
+            delete_data
+            and d.status == "completed"
+            and (d.import_status != "imported" or await self._symlinked(d))
+        ):
+            delete_data = False
         client = self.clients.get(d.client_id or "")
         # Under the poll lock: a poll that already listed this download would otherwise
         # find the torrent gone from the client and fail it.

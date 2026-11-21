@@ -41,7 +41,9 @@
 		const active = ['queued', 'downloading', 'paused'].includes(d.status);
 		const msg = active
 			? `Stop and remove ${d.name}? Its data is deleted and the release is blocklisted, so another one is searched for.`
-			: `Remove ${d.name} from the client? Library files are kept.`;
+			: `Stop seeding ${d.name}? The torrent and its copy in the torrent folder are removed; ` +
+				`the file in your library stays (it's a separate link or copy). A download that ` +
+				`hasn't been imported yet keeps its files.`;
 		if (!confirm(msg)) return;
 		act(d.id, () => del(`/downloads/${d.id}`, { delete_data: true, blocklist: active }));
 	}
