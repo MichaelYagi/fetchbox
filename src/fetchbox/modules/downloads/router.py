@@ -50,7 +50,7 @@ class LiveOut(BaseModel):
 class DownloadOut(_Versioned):
     id: str
     grab_id: str
-    client_id: str
+    client_id: str | None = Field(description="null once its client was removed")
     info_hash: str
     name: str
     media_kind: str
@@ -287,6 +287,66 @@ def _client_out(
     if response is not None:
         response.headers["ETag"] = out.etag
     return out
+
+
+class ClientIn(BaseModel):
+    kind: str = Field(
+        description="qbittorrent, transmission or deluge (see /download-clients/kinds)"
+    )
+    name: str = Field(min_length=1, max_length=100)
+    enabled: bool = True
+    priority: int = Field(default=1, ge=1, le=50, description="Lower is tried first")
+    settings: dict[str, Any] = {}
+    policy: dict[str, Any] = {}
+    media_kinds: list[Literal["movie", "series"]] = Field(default=[], description="Empty = all")
+    tags: list[str] = []
+
+
+class ClientKindOut(BaseModel):
+    kind: str
+    settings_schema: dict[str, Any] = Field(description="JSON Schema for the settings form")
+
+
+@router.get("/download-clients/kinds", response_model=list[ClientKindOut], dependencies=_read)
+async def list_client_kinds(request: Request) -> list[ClientKindOut]:
+    """Client kinds this install can add, with the settings each one takes."""
+    return [
+        ClientKindOut(kind=c.kind, settings_schema=c.Settings.model_json_schema())
+        for c in _svc(request).kinds()
+        if c.kind != "builtin"
+    ]
+
+
+@router.post(
+    "/download-clients",
+    response_model=ClientOut,
+    status_code=201,
+    dependencies=_write,
+    responses=pr(409, 422),
+)
+async def add_client(
+    body: ClientIn, request: Request, response: Response, p: CurrentPrincipal
+) -> ClientOut:
+    """Add qBittorrent, Transmission or Deluge. Grabs go to the enabled client with the
+    best priority whose media kinds match; test it with `POST .../{id}/test`."""
+    svc = _svc(request)
+    row = await svc.create_client(body.model_dump(), actor=p.actor())
+    response.headers["Location"] = f"{request.url.path}/{row.id}"
+    return _client_out(svc, row, response)
+
+
+@router.delete(
+    "/download-clients/{client_id}",
+    status_code=204,
+    dependencies=_write,
+    responses=pr(404, 409, 412),
+)
+async def delete_client(
+    client_id: str, request: Request, p: CurrentPrincipal, if_match: IfMatch = None
+) -> Response:
+    """409 for the built-in engine, or while the client still has unfinished downloads."""
+    await _svc(request).delete_client(client_id, if_match=if_match, actor=p.actor())
+    return Response(status_code=204)
 
 
 @router.get("/download-clients", response_model=list[ClientOut], dependencies=_read)

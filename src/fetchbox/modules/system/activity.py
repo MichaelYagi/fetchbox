@@ -94,6 +94,8 @@ MESSAGES: dict[str, str] = {
     "download.seeded": "Finished seeding {name} (ratio {ratio}, {hours} h): {action}d",
     "source.definition_added": "Indexer definition {name} added",
     "source.definition_removed": "Indexer definition {name} removed",
+    "download_client.added": "Download client {name} added ({kind})",
+    "download_client.removed": "Download client {name} removed",
     "search.completed": "Searched for {name}: {results} results, {accepted} acceptable",
 }
 

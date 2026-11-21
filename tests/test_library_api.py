@@ -384,8 +384,13 @@ async def test_unlock_then_redownload(
 
     hist = [h["type"] for h in (await c.get(f"/titles/{movie['id']}/history")).json()["items"]]
     assert hist == ["unlocked", "deleted", "unlocked", "imported", "grabbed"]
-    acts = [a["message"] for a in (await c.get("/activity", params={"limit": 50})).json()["items"]]
-    assert "Redownloading Dune" in acts and any(m.startswith("Unlocked Dune") for m in acts)
+
+    async def logged() -> bool:  # the activity log is written asynchronously
+        acts = (await c.get("/activity", params={"limit": 50})).json()["items"]
+        msgs = [a["message"] for a in acts]
+        return "Redownloading Dune" in msgs and any(m.startswith("Unlocked Dune") for m in msgs)
+
+    await until(logged, within=10)
 
     assert (await c.post("/wanted/nope/unlock")).status_code == 404
     assert (await c.post("/wanted/nope/redownload")).status_code == 404

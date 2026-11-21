@@ -324,7 +324,7 @@ class LibraryService:
         return list((await s.execute(q)).scalars())
 
     async def _files(self, d: Download) -> list[ClientFile]:
-        client = self.downloads.clients.get(d.client_id)
+        client = self.downloads.clients.get(d.client_id or "")
         if client is not None:
             with contextlib.suppress(DownloadClientError):
                 return await client.files(d.client_ref)

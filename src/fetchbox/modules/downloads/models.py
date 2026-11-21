@@ -48,7 +48,10 @@ class Download(IdMixin, VersionMixin, Base):
     __tablename__ = "download"
 
     grab_id: Mapped[str] = mapped_column(ForeignKey("grab.id"))
-    client_id: Mapped[str] = mapped_column(ForeignKey("download_client.id"))
+    # NULL once its client is removed (finished downloads keep their history).
+    client_id: Mapped[str | None] = mapped_column(
+        ForeignKey("download_client.id", ondelete="SET NULL"), nullable=True
+    )
     client_ref: Mapped[str] = mapped_column(String(64))  # info hash
     name: Mapped[str] = mapped_column(Text)
     media_kind: Mapped[str] = mapped_column(String(10))

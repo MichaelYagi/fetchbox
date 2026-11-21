@@ -117,7 +117,11 @@ Remaining unchecked items above are Phase 0 hardening, not gate blockers.
 - [x] Failure retry: a failed download makes its items due at once, so the next sweep
       grabs the next-best release (the failed one is blocklisted); after
       `search.retry_alternatives` (3) failures in a row the item waits for its interval
-- [ ] External clients (qBittorrent, Transmission, Deluge) + `POST/DELETE /download-clients`
+- [x] External clients (`providers/download_clients/external.py`): qBittorrent (Web API
+      v2, 4.x and 5.x), Transmission (RPC, session id), Deluge (deluge-web JSON-RPC,
+      connects to its first daemon); `POST/DELETE /download-clients`,
+      `GET /download-clients/kinds`; per-client `policy.path_mappings` (Fetchbox path ->
+      client path) for Docker / remote clients
 - [x] Seeding goals: client policy `seed_ratio` / `seed_minutes` (whichever first; none
       by default = seed forever) and `seed_action` (`remove` with data, or `pause`); only
       after the import succeeded, never deleting data a symlink import points at;
@@ -279,6 +283,10 @@ three OSes; a backup restores on a fresh machine.
 - Definitions use fixed setting slots (`base_url`, `api_key`, `username`, `password`,
   `cookie`) plus declared non-secret `options`, so secrets are always encrypted at rest.
   `DELETE /indexer-definitions/{slug}` (user definitions not in use) is an addition.
+- Removing a download client keeps its finished downloads (`client_id` becomes null);
+  it is refused while the client has unfinished or still-seeding downloads, and for
+  the built-in engine. A finished torrent counts as seeding even when the client has
+  stopped it.
 - Built-in definitions are limited to sources that distribute content legally (Internet
   Archive so far). Definitions for other sites are the user's choice, added through
   `POST /indexer-definitions`.

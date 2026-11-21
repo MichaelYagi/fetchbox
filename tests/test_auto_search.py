@@ -96,10 +96,15 @@ async def test_search_on_add_grabs_the_best_release(
     assert w["state"] in ("grabbed", "downloading") and w["last_search_at"]
     assert _at(w["next_search_at"]) > utcnow() + timedelta(hours=5)
 
-    acts = (await c.get("/activity", params={"limit": 50})).json()["items"]
-    msgs = [a["message"] for a in acts]
-    assert any(m.startswith("Searched for Dune") for m in msgs)
-    assert any(m.startswith(f"Grabbed {BEST}") for m in msgs)
+    async def logged() -> bool:  # the activity log is written asynchronously
+        msgs = [
+            a["message"] for a in (await c.get("/activity", params={"limit": 50})).json()["items"]
+        ]
+        return any(m.startswith("Searched for Dune") for m in msgs) and any(
+            m.startswith(f"Grabbed {BEST}") for m in msgs
+        )
+
+    await until(logged, within=10)
 
 
 async def test_no_search_on_add_then_search_now(

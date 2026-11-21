@@ -27,15 +27,17 @@ from typing import Any, Literal
 import structlog
 from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy import case, exists, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from fetchbox.core.concurrency import check_if_match
 from fetchbox.core.db import Database, utcnow
 from fetchbox.core.errors import ConflictError, FieldError, NotFoundError, ProblemError
 from fetchbox.core.events import Actor, EventBus, Subject
+from fetchbox.core.ids import new_id
 from fetchbox.core.jobs import JobContext, JobRunner
 from fetchbox.core.providers import HealthStatus, ProviderRegistry, TestResult
-from fetchbox.core.secrets import SecretBox, mask_settings, open_settings, seal_settings
+from fetchbox.core.secrets import MASK, SecretBox, mask_settings, open_settings, seal_settings
 from fetchbox.modules.downloads.models import ACTIVE, Download, DownloadClient
 from fetchbox.modules.media.models import HistoryEvent, Title, WantedItem
 from fetchbox.modules.releases.models import BlocklistEntry, Grab, GrabItem
@@ -60,6 +62,11 @@ CATEGORY = {"movie": "fetchbox-movies", "series": "fetchbox-tv"}
 BUILTIN_NAME = "Built-in"
 
 
+class PathMapping(BaseModel):
+    local: str = Field(min_length=1, description="Path as Fetchbox sees it")
+    client: str = Field(min_length=1, description="The same path as the client sees it")
+
+
 class Policy(BaseModel):
     max_active: int = Field(default=3, ge=1, le=50, description="Downloads running at once")
     stall_minutes: int = Field(default=120, ge=1, le=10080)
@@ -78,6 +85,21 @@ class Policy(BaseModel):
         description="When a goal is met (whichever first, after import): remove the torrent "
         "and its downloaded data (library files are separate links or copies), or pause it",
     )
+
+    path_mappings: list[PathMapping] = Field(
+        default=[],
+        description="Where the client sees Fetchbox's folders differently (Docker, another "
+        "machine): each maps a Fetchbox path prefix to the client's",
+    )
+
+    def to_client(self, path: str) -> str:
+        """Fetchbox's path as the client sees it (longest matching prefix wins)."""
+        norm = path.replace("\\", "/")
+        for m in sorted(self.path_mappings, key=lambda m: len(m.local), reverse=True):
+            local = m.local.replace("\\", "/").rstrip("/")
+            if norm == local or norm.startswith(local + "/"):
+                return m.client.rstrip("/\\") + norm[len(local) :]
+        return path
 
     def seeding_done(self, ratio: float | None, seed_seconds: int | None) -> bool:
         if self.seed_ratio is not None and (ratio or 0.0) >= self.seed_ratio:
@@ -131,6 +153,7 @@ class DownloadsService:
         self._lock = asyncio.Lock()  # one poll/schedule pass at a time
         self._progress_pct: dict[str, int] = {}
         self.poll_interval = POLL_INTERVAL
+        self.provider_kwargs: dict[str, Any] = {}  # tests inject a mock transport
 
     # ---- lifecycle ----------------------------------------------------------------------------
 
@@ -202,6 +225,8 @@ class DownloadsService:
         kwargs: dict[str, Any] = {}
         if row.kind == "builtin":
             kwargs["state_dir"] = self.state_dir
+        else:
+            kwargs.update(self.provider_kwargs)
         client = cls(self._settings(row), **kwargs)
         assert isinstance(client, DownloadClientProvider)
         await client.start()
@@ -276,7 +301,12 @@ class DownloadsService:
             row, client = await self._pick_client(media_kind)
             save = self.save_root(row) / CATEGORY[media_kind]
             ref = await client.add(
-                src, AddOptions(save_path=str(save), category=CATEGORY[media_kind], paused=True)
+                src,
+                AddOptions(
+                    save_path=self.policy(row).to_client(str(save)),
+                    category=CATEGORY[media_kind],
+                    paused=True,
+                ),
             )
         except Exception as exc:
             kind = exc.kind if isinstance(exc, IndexerError | DownloadClientError) else None
@@ -424,7 +454,7 @@ class DownloadsService:
                 clients = {c.id: c for c in (await s.execute(select(DownloadClient))).scalars()}
             by_client: dict[str, list[Download]] = {}
             for d in rows:
-                by_client.setdefault(d.client_id, []).append(d)
+                by_client.setdefault(d.client_id or "", []).append(d)
             for client_id, downloads in by_client.items():
                 client = self.clients.get(client_id)
                 row = clients.get(client_id)
@@ -606,7 +636,7 @@ class DownloadsService:
             return list((await s.execute(q)).scalars())
 
     def _client_for(self, d: Download) -> DownloadClientProvider:
-        client = self.clients.get(d.client_id)
+        client = self.clients.get(d.client_id or "")
         if client is None:
             raise ConflictError("the download's client is not running")
         return client
@@ -680,7 +710,7 @@ class DownloadsService:
         d = await self.get(download_id)
         if d.status == "removed":
             return
-        client = self.clients.get(d.client_id)
+        client = self.clients.get(d.client_id or "")
         # Under the poll lock: a poll that already listed this download would otherwise
         # find the torrent gone from the client and fail it.
         async with self._lock, self.db.sessionmaker() as s:
@@ -705,7 +735,7 @@ class DownloadsService:
         d = await self.get(download_id)
         if d.status not in ACTIVE:  # already removed, failed or completed
             return
-        client = self.clients.get(d.client_id)
+        client = self.clients.get(d.client_id or "")
         if client is not None:
             with contextlib.suppress(DownloadClientError):
                 await client.remove(d.client_ref, True)
@@ -753,6 +783,91 @@ class DownloadsService:
         cls = self.providers.get("download_client", row.kind).Settings
         return mask_settings(cls, row.settings)
 
+    def kinds(self) -> list[type[DownloadClientProvider]]:
+        return [
+            c for c in self.providers.of("download_client") if issubclass(c, DownloadClientProvider)
+        ]
+
+    async def create_client(self, data: dict[str, Any], *, actor: Actor) -> DownloadClient:
+        """An external client. Its connection is tested; a failure is reported, not fatal
+        (the client may simply be off right now)."""
+        kind = data["kind"]
+        if kind == "builtin":
+            raise ConflictError("the built-in engine exists already; there is only one")
+        try:
+            cls = self.providers.get("download_client", kind)
+        except LookupError:
+            known = ", ".join(c.kind for c in self.kinds() if c.kind != "builtin")
+            raise ProblemError(
+                422,
+                "Validation Failed",
+                slug="validation",
+                errors=[FieldError(field="body.kind", message=f"unknown kind; known: {known}")],
+            ) from None
+        try:
+            model = cls.Settings.model_validate(data.get("settings") or {})
+            policy = Policy.model_validate(data.get("policy") or {})
+        except ValidationError as exc:
+            raise _invalid(exc, "body") from None
+        row = DownloadClient(
+            id=new_id(),
+            kind=kind,
+            name=data["name"],
+            enabled=data.get("enabled", True),
+            priority=data.get("priority", 1),
+            media_kinds=data.get("media_kinds") or [],
+            tags=data.get("tags") or [],
+            policy=policy.model_dump(),
+        )
+        row.settings = seal_settings(self.box, model, context=f"download_client:{row.id}")
+        async with self.db.sessionmaker() as s:
+            s.add(row)
+            try:
+                await s.commit()
+            except IntegrityError:
+                raise ConflictError(f"a download client named {row.name!r} exists") from None
+        if row.enabled:
+            await self._start_client(row)
+        await self.bus.emit(
+            "download_client.added",
+            subject=Subject(type="download_client", id=row.id),
+            actor=actor,
+            name=row.name,
+            kind=kind,
+        )
+        self._wake.set()
+        return row
+
+    async def delete_client(self, client_id: str, *, if_match: str | None, actor: Actor) -> None:
+        async with self.db.sessionmaker() as s:
+            row = await s.get(DownloadClient, client_id)
+            if row is None:
+                raise NotFoundError("download client", client_id)
+            check_if_match(row, if_match)
+            if row.kind == "builtin":
+                raise ConflictError("the built-in engine can't be removed; disable it instead")
+            busy = await s.scalar(
+                select(Download.id).where(
+                    Download.client_id == row.id,
+                    Download.status.in_(ACTIVE) | (Download.status == "completed"),
+                    Download.seeded_at.is_(None),
+                )
+            )
+            if busy:
+                raise ConflictError(
+                    f"{row.name} still has downloads; remove them or let them finish first"
+                )
+            await s.delete(row)  # finished downloads keep their rows, client_id NULL
+            await s.commit()
+        if (c := self.clients.pop(client_id, None)) is not None:
+            await c.stop()
+        await self.bus.emit(
+            "download_client.removed",
+            subject=Subject(type="download_client", id=client_id),
+            actor=actor,
+            name=row.name,
+        )
+
     async def update_client(
         self, client_id: str, changes: dict[str, Any], *, if_match: str | None, actor: Actor
     ) -> DownloadClient:
@@ -766,7 +881,10 @@ class DownloadsService:
                 cls = self.providers.get("download_client", row.kind).Settings
                 current = open_settings(
                     self.box, cls, row.settings, context=f"download_client:{row.id}"
-                ).model_dump()
+                ).model_dump(mode="python")
+                for k, v in list(changes["settings"].items()):  # MASK sent back = keep it
+                    if v == MASK:
+                        changes["settings"][k] = current.get(k)
                 try:
                     model = cls.model_validate({**current, **changes["settings"]})
                 except ValidationError as exc:
