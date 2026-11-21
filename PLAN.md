@@ -215,9 +215,10 @@ three OSes; a backup restores on a fresh machine.
    scene/P2P conventions, so 100% on it is not accuracy on real feeds; measure against
    captured indexer results when Torznab lands. Known gaps are strict xfails.
 3. Built-in indexer definitions: maintenance burden, Cloudflare; Torznab ships first.
-4. CI: on two runs, `test (windows-latest, 3.12)` crawled (48 tests in 74 min) while the
-   same commit passed elsewhere. Tests now time out at 120 s and jobs at 30 min, so the
-   next occurrence names the test.
+4. (Resolved) CI's Windows/3.12 job hung on three runs: `test_in_progress_returns_409`
+   assumed the first request claimed its idempotency key within 50 ms; on slow runners
+   the second call won the claim and waited on the gate forever. The test now waits for
+   the first request to be running. CI also runs verbose with a 120 s per-test timeout.
 4b. SQLite write contention between job workers and client polling. Phase 0 stress run:
    400 jobs, 8 workers, ~2,000 progress writes, 8.9 s, zero lock errors. Re-test with
    Phase 1's real polling load.

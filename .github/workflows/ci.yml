@@ -33,7 +33,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
       - run: uv sync --python ${{ matrix.python }}
-      - run: uv run pytest -q
+      - run: uv run pytest -v --durations=15
 
   freeze-smoke:
     # Proves libtorrent survives PyInstaller on every desktop target.
