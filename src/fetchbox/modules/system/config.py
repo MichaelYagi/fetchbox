@@ -10,13 +10,13 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from typing import Any
 
-from pydantic import BaseModel, Field, SecretStr, ValidationError
+from pydantic import BaseModel, Field, SecretStr, ValidationError, field_validator
 
 from fetchbox.core.concurrency import PreconditionFailed, check_if_match
 from fetchbox.core.db import Database
 from fetchbox.core.errors import FieldError, ProblemError
 from fetchbox.core.events import Actor, EventBus
-from fetchbox.core.secrets import MASK, SecretBox, is_encrypted
+from fetchbox.core.secrets import MASK, SecretBox, is_encrypted, strip_key
 from fetchbox.modules.system.models import ConfigRow
 
 ROW_ID = "system"
@@ -24,6 +24,11 @@ _AAD = "config"
 
 
 class TmdbConfig(BaseModel):
+    @field_validator("api_key", mode="before")
+    @classmethod
+    def _strip_key(cls, v: object) -> object:
+        return strip_key(v)  # a pasted key often carries a trailing space or newline
+
     api_key: SecretStr | None = Field(
         default=None, description="TMDB API key (v3) or read access token (v4)"
     )

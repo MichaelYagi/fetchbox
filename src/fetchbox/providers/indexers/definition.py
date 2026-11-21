@@ -63,9 +63,18 @@ from urllib.parse import quote, quote_plus, urljoin, urlsplit
 import httpx
 import libtorrent as lt
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, SecretStr, ValidationError, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    SecretStr,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
 
 from fetchbox.core.providers import TestResult, registry
+from fetchbox.core.secrets import strip_key
 from fetchbox.providers.indexers import (
     IndexerError,
     IndexerProvider,
@@ -432,6 +441,11 @@ class _Resp:
 
 
 class DefinitionSettings(BaseModel):
+    @field_validator("api_key", mode="before")
+    @classmethod
+    def _strip_key(cls, v: object) -> object:
+        return strip_key(v)  # a pasted key often carries a trailing space or newline
+
     definition: str = Field(description="Slug of the indexer definition to run")
     base_url: str | None = Field(default=None, description="Mirror: one of the definition's links")
     api_key: SecretStr | None = None

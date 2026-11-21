@@ -177,13 +177,34 @@ built-in Internet Archive definition against a fake archive.org: add a movie (pr
 Dead (1968) {tmdb-10331}/Night of the Living Dead (1968).mp4`. Live, against the real
 archive.org, a licensed 34 MB film downloaded in 4 s and was read by the probe. With a
 Torznab indexer the same flow is `test_library_api.py::test_gate_add_movie_get_named_file`
-(real torrent, real engine). The only setup is a TMDB key.
+(real torrent, real engine). The only setup is a TMDB key; that covers Internet Archive
+films. Mainstream releases also need a Torznab indexer (Prowlarr / Jackett): see README.
 
 ### Phase 2 — TV + automation
 Series/seasons/episodes, six monitor modes; parser TV cases (packs, multi-ep, daily, anime
 absolute, specials; grow the parser corpus from real indexer results); optional TVDB;
 season-pack rule; RSS sync, missing search, upgrades
 (replace only after new import succeeds); calendar.
+
+- [x] Series: add from TMDB with seasons + episodes, one wanted item per episode; six
+      monitor modes (`modules/media/series.py`: all, future, missing, first_season,
+      latest_season, none; specials never by mode); changing the mode re-applies it;
+      refresh (manual and the 12 h schedule) adds new episodes per the mode, and a new
+      season takes over under latest_season; `GET /titles/{id}/episodes`,
+      `PATCH /titles/{id}/seasons/{n}`; series counts on titles; episode fields on /wanted
+- [ ] TV search: episode and season queries; aired episodes only; season search (pack
+      first, then gap filling); automatic search per season, interactive per episode/season
+- [ ] TV import: map each file to its episodes (multi-episode files, season packs);
+      episode naming; upgrades replace only after the new import succeeds
+- [x] Prowlarr indexer kind (`providers/indexers/prowlarr.py`): Prowlarr's address + API
+      key; its enabled torrent indexers (listed from `/api/v1/indexer`, every 10 min) are
+      searched together through their Torznab feeds; one failing doesn't fail the search.
+      Checked against a real Prowlarr 3.0.2. Pasted API keys are trimmed; a Torznab URL that
+      is an app's own API (Prowlarr's main address) gets an error saying so
+- [ ] RSS sync (every 15 min): each indexer's feed, matched against all wanted items
+- [ ] Calendar (`GET /calendar?start=&end=`) + UI: series add, series page, calendar
+- [ ] Optional TVDB (scene / absolute numbering)
+- [ ] Grow the parser corpus from real indexer results
 
 **Gate:** a "future only" series grabs a new episode via RSS; season-pack selection correct;
 an upgrade replaces the file safely.
@@ -309,8 +330,12 @@ three OSes; a backup restores on a fresh machine.
 - Definitions use fixed setting slots (`base_url`, `api_key`, `username`, `password`,
   `cookie`) plus declared non-secret `options`, so secrets are always encrypted at rest.
   `DELETE /indexer-definitions/{slug}` (user definitions not in use) is an addition.
-- A third default profile, "Any" (Unknown, SD, 720p, 1080p; cutoff 1080p), for releases
-  that don't state a quality; "Unknown" is left out of file names (the file's
+- `GET /titles/{id}/episodes` and `PATCH /titles/{id}/seasons/{n}` (the spec lists no
+  episode endpoints). A series' `TitleOut.wanted` is empty; `episodes` carries counts.
+  An episode with no air date counts as not aired.
+- Default profiles are named by resolution and take only that resolution: 1080p (the UI's
+  default), 2160p, 720p, 480p; plus "Any" (Unknown, SD, 720p, 1080p; cutoff 1080p) for
+  releases that don't state a quality; "Unknown" is left out of file names (the file's
   resolution is used when it can be read).
 - `GET /auth/status` (public): whether first-run setup is pending, for the UI's first
   screen. `fetchbox openapi` prints the API document for client generation.

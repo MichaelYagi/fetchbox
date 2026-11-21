@@ -326,7 +326,7 @@ async def test_internet_archive_films_are_accepted_by_the_any_profile(
     c: httpx.AsyncClient, fakes: Fakes, server: Running
 ) -> None:
     """The built-in definition, end to end through the decision engine, against a canned
-    archive.org answer. Its titles don't state a quality: "Any" takes them, Standard HD
+    archive.org answer. Its titles don't state a quality: "Any" takes them, 1080p
     rightly doesn't."""
     docs = [
         {"identifier": "notld_201610", "title": "Night of the Living Dead", "year": "1968",
@@ -349,7 +349,7 @@ async def test_internet_archive_films_are_accepted_by_the_any_profile(
     body = {"kind": "definition", "name": "IA", "settings": {"definition": "internet-archive"}}
     assert (await c.post("/indexers", json=body)).status_code == 201
     profiles = {p["name"]: p["id"] for p in (await c.get("/quality-profiles")).json()}
-    for name, accepted in (("Any", True), ("Standard HD", False)):
+    for name, accepted in (("Any", True), ("1080p", False)):
         r = await c.post("/titles", json={"tmdb_id": 10331, "profile_id": profiles[name],
                                           "search": False})  # fmt: skip
         assert r.status_code == 201, r.text

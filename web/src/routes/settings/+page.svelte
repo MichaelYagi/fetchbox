@@ -15,8 +15,67 @@
 	let busy = $state('');
 
 	let tmdbKey = $state('');
-	let newIndexer = $state({ kind: 'torznab', name: '', url: '', api_key: '', definition: '' });
+	let newIndexer = $state({ kind: 'prowlarr', name: '', url: '', api_key: '', definition: '' });
 	let newClient = $state({ kind: 'qbittorrent', name: '', url: '', username: '', password: '' });
+	// Inline editing: one row at a time. Secrets left blank keep what is stored.
+	let editing = $state<string | null>(null);
+	let draft = $state({ name: '', url: '', api_key: '', username: '', password: '', priority: 25 });
+
+	function editIndexer(i: S['IndexerOut']) {
+		const st = i.settings as Record<string, unknown>;
+		draft = {
+			name: i.name,
+			url: (st.url as string) ?? '',
+			api_key: '',
+			username: '',
+			password: '',
+			priority: i.priority
+		};
+		editing = i.id;
+	}
+
+	function editClient(c: S['ClientOut']) {
+		const st = c.settings as Record<string, unknown>;
+		draft = {
+			name: c.name,
+			url: (st.url as string) ?? '',
+			api_key: '',
+			username: (st.username as string) ?? '',
+			password: '',
+			priority: c.priority
+		};
+		editing = c.id;
+	}
+
+	function saveIndexer(e: SubmitEvent, i: S['IndexerOut']) {
+		e.preventDefault();
+		const settings: Record<string, unknown> = {};
+		if (i.kind === 'torznab' || i.kind === 'prowlarr') settings.url = draft.url;
+		if (draft.api_key.trim()) settings.api_key = draft.api_key.trim();
+		const body: Record<string, unknown> = { name: draft.name, priority: draft.priority };
+		if (Object.keys(settings).length) body.settings = settings;
+		act(`save-${i.id}`, () => patch(`/indexers/${i.id}`, body, i.etag), `${draft.name} saved.`).then(
+			() => {
+				if (!error) editing = null;
+			}
+		);
+	}
+
+	function saveClient(e: SubmitEvent, c: S['ClientOut']) {
+		e.preventDefault();
+		// The built-in clients have nothing to connect to: only their priority is edited
+		// (sending settings would restart the torrent engine for nothing).
+		const builtIn = c.kind === 'builtin' || c.kind === 'direct';
+		const settings: Record<string, unknown> = { url: draft.url };
+		if (c.kind !== 'deluge') settings.username = draft.username || null;
+		if (draft.password) settings.password = draft.password;
+		const body = builtIn ? { priority: draft.priority } : { priority: draft.priority, settings };
+		act(`save-${c.id}`, () => patch(`/download-clients/${c.id}`, body, c.etag), `${c.name} saved.`).then(
+			() => {
+				if (!error) editing = null;
+			}
+		);
+	}
 
 	async function load() {
 		try {
@@ -68,15 +127,19 @@
 		e.preventDefault();
 		const n = newIndexer;
 		const body =
-			n.kind === 'torznab'
-				? { kind: 'torznab', name: n.name, settings: { url: n.url, api_key: n.api_key || null } }
+			n.kind === 'torznab' || n.kind === 'prowlarr'
+				? {
+						kind: n.kind,
+						name: n.name || (n.kind === 'prowlarr' ? 'Prowlarr' : 'Torznab'),
+						settings: { url: n.url, api_key: n.api_key || null }
+					}
 				: {
 						kind: 'definition',
 						name: n.name || definitions.find((d) => d.slug === n.definition)?.name,
 						settings: { definition: n.definition, ...(n.api_key ? { api_key: n.api_key } : {}) }
 					};
 		act('add-indexer', () => post('/indexers', body), 'Indexer added.').then(() => {
-			if (!error) newIndexer = { kind: 'torznab', name: '', url: '', api_key: '', definition: '' };
+			if (!error) newIndexer = { kind: 'prowlarr', name: '', url: '', api_key: '', definition: '' };
 		});
 	}
 
@@ -127,7 +190,7 @@
 		<form class="card stack" onsubmit={saveTmdb}>
 			<p class="muted small">
 				Searching for movies needs a free API key from
-				<a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noreferrer">themoviedb.org</a>
+				<a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noreferrer">themoviedb.org/settings/api</a>
 				(the v3 key or the v4 read access token).
 				{#if config?.config.tmdb.api_key}A key is set.{:else}<strong>No key is set yet.</strong>{/if}
 			</p>
@@ -154,7 +217,10 @@
 						{#each indexers as i (i.id)}
 							<tr>
 								<td><strong>{i.name}</strong></td>
-								<td class="muted">{i.kind === 'definition' ? (i.settings.definition as string) : i.kind}</td>
+								<td class="muted">
+									{i.kind === 'definition' ? (i.settings.definition as string) : i.kind}
+									<span class="small">· priority {i.priority}</span>
+								</td>
 								<td class="small">
 									{#if !i.enabled}<span class="badge">Disabled</span>
 									{:else if i.disabled_until}<span class="badge warn" title={i.last_error ?? ''}>Backing off</span>
@@ -162,6 +228,9 @@
 									{#if tests[i.id]}<div class={tests[i.id].ok ? 'okt' : 'errt'}>{tests[i.id].message}</div>{/if}
 								</td>
 								<td><div class="row end">
+									<button class="small" onclick={() => (editing === i.id ? (editing = null) : editIndexer(i))} disabled={!!busy}>
+										{editing === i.id ? 'Cancel' : 'Edit'}
+									</button>
 									<button class="small" onclick={() => test('indexers', i.id)} disabled={!!busy}>Test</button>
 									<button class="small" onclick={() => act(i.id, () => patch(`/indexers/${i.id}`, { enabled: !i.enabled }, i.etag))} disabled={!!busy}>
 										{i.enabled ? 'Disable' : 'Enable'}
@@ -169,6 +238,22 @@
 									<button class="small danger" onclick={() => confirm(`Remove ${i.name}?`) && act(i.id, () => del(`/indexers/${i.id}`, undefined, i.etag))} disabled={!!busy}>Remove</button>
 								</div></td>
 							</tr>
+							{#if editing === i.id}
+								<tr class="editrow">
+									<td colspan="4">
+										<form class="row" onsubmit={(e) => saveIndexer(e, i)}>
+											<label>Name <input bind:value={draft.name} required /></label>
+											{#if i.kind === 'torznab' || i.kind === 'prowlarr'}
+												<label class="grow">URL <input bind:value={draft.url} required placeholder="http://localhost:9696/3" /></label>
+											{/if}
+											<label>API key <input type="password" bind:value={draft.api_key} placeholder="unchanged" autocomplete="off" /></label>
+											<label class="narrow">Priority <input type="number" min="1" max="50" bind:value={draft.priority} /></label>
+											<button class="primary" disabled={!!busy}>Save</button>
+										</form>
+										<p class="muted small hint">Lower priority numbers are preferred. Leave the API key empty to keep the stored one.</p>
+									</td>
+								</tr>
+							{/if}
 						{/each}
 					</tbody>
 				</table>
@@ -178,7 +263,8 @@
 			<strong>Add an indexer</strong>
 			<div class="row">
 				<select bind:value={newIndexer.kind} aria-label="Kind">
-					<option value="torznab">Torznab (Prowlarr, Jackett…)</option>
+					<option value="prowlarr">Prowlarr (all its indexers)</option>
+					<option value="torznab">Torznab feed (Jackett, one Prowlarr indexer…)</option>
 					<option value="definition">Built-in definition</option>
 				</select>
 				{#if newIndexer.kind === 'definition'}
@@ -187,15 +273,24 @@
 						{#each definitions as d (d.slug)}<option value={d.slug}>{d.name}</option>{/each}
 					</select>
 				{/if}
-				<input placeholder="Name" bind:value={newIndexer.name} required={newIndexer.kind === 'torznab'} />
-				{#if newIndexer.kind === 'torznab'}
-					<input class="grow" placeholder="URL, e.g. http://localhost:9696/1" bind:value={newIndexer.url} required />
+				<input placeholder="Name" bind:value={newIndexer.name} />
+				{#if newIndexer.kind === 'prowlarr'}
+					<input class="grow" placeholder="Prowlarr address, e.g. http://192.168.1.10:9696" bind:value={newIndexer.url} required />
+				{:else if newIndexer.kind === 'torznab'}
+					<input class="grow" placeholder="Torznab URL" bind:value={newIndexer.url} required />
 				{/if}
-				{#if newIndexer.kind === 'torznab' || needsKey}
+				{#if newIndexer.kind === 'torznab' || newIndexer.kind === 'prowlarr' || needsKey}
 					<input type="password" placeholder="API key" bind:value={newIndexer.api_key} autocomplete="off" />
 				{/if}
 				<button class="primary" disabled={busy === 'add-indexer'}>Add</button>
 			</div>
+			{#if newIndexer.kind === 'prowlarr'}
+				<p class="muted small">
+					The address you open Prowlarr at, and its API key from Prowlarr's Settings → General →
+					Security. Every enabled indexer in Prowlarr is searched; ones you add there later are
+					picked up automatically.
+				</p>
+			{/if}
 			{#if defn}<p class="muted small">{defn.description}</p>{/if}
 		</form>
 	</section>
@@ -209,21 +304,43 @@
 					{#each clients as c (c.id)}
 						<tr>
 							<td><strong>{c.name}</strong></td>
-							<td class="muted">{c.kind}</td>
+							<td class="muted">{c.kind} <span class="small">· priority {c.priority}</span></td>
 							<td class="small">
 								<span class="badge {c.enabled ? (c.running ? 'ok' : 'warn') : ''}">{c.enabled ? (c.running ? 'Running' : 'Not running') : 'Disabled'}</span>
 								{#if tests[c.id]}<div class={tests[c.id].ok ? 'okt' : 'errt'}>{tests[c.id].message}</div>{/if}
 							</td>
 							<td><div class="row end">
+								<button class="small" onclick={() => (editing === c.id ? (editing = null) : editClient(c))} disabled={!!busy}>
+									{editing === c.id ? 'Cancel' : 'Edit'}
+								</button>
 								<button class="small" onclick={() => test('download-clients', c.id)} disabled={!!busy}>Test</button>
 								<button class="small" onclick={() => act(c.id, () => patch(`/download-clients/${c.id}`, { enabled: !c.enabled }, c.etag))} disabled={!!busy}>
 									{c.enabled ? 'Disable' : 'Enable'}
 								</button>
-								{#if c.kind !== 'builtin'}
+								{#if c.kind !== 'builtin' && c.kind !== 'direct'}
 									<button class="small danger" onclick={() => confirm(`Remove ${c.name}?`) && act(c.id, () => del(`/download-clients/${c.id}`, undefined, c.etag))} disabled={!!busy}>Remove</button>
 								{/if}
 							</div></td>
 						</tr>
+						{#if editing === c.id}
+							<tr class="editrow">
+								<td colspan="4">
+									<form class="row" onsubmit={(e) => saveClient(e, c)}>
+										{#if c.kind !== 'builtin' && c.kind !== 'direct'}
+											<label class="grow">URL <input bind:value={draft.url} required /></label>
+											{#if c.kind !== 'deluge'}<label>Username <input bind:value={draft.username} autocomplete="off" /></label>{/if}
+											<label>Password <input type="password" bind:value={draft.password} placeholder="unchanged" autocomplete="off" /></label>
+										{/if}
+										<label class="narrow">Priority <input type="number" min="1" max="50" bind:value={draft.priority} /></label>
+										<button class="primary" disabled={!!busy}>Save</button>
+									</form>
+									<p class="muted small hint">
+										Torrents go to the enabled client with the lowest priority number (a tie goes by
+										name). Direct downloads only ever take direct files.
+									</p>
+								</td>
+							</tr>
+						{/if}
 					{/each}
 				</tbody>
 			</table>
@@ -286,6 +403,18 @@
 	}
 	.end {
 		justify-content: flex-end;
+	}
+	.editrow td {
+		background: var(--surface-2);
+	}
+	.editrow form {
+		align-items: end;
+	}
+	.narrow input {
+		width: 5rem;
+	}
+	.hint {
+		margin: 0.4rem 0 0;
 	}
 	.okt {
 		color: var(--ok);

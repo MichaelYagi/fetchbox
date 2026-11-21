@@ -157,3 +157,13 @@ def merge_update(
         if incoming.get(name) == MASK:
             merged[name] = current.get(name)
     return merged
+
+
+def strip_key(v: object) -> object:
+    """Pydantic ``mode="before"`` validator body for API keys and tokens: drop the
+    whitespace and line breaks a copy-paste brings along (keys never contain any).
+    Not for passwords, which may."""
+    if isinstance(v, str):
+        v = v.strip()
+        return v or None
+    return v

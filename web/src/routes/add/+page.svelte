@@ -15,7 +15,7 @@
 	$effect(() => {
 		get<S['ProfileOut'][]>('/quality-profiles').then((p) => {
 			profiles = p;
-			profile = (p.find((x) => x.name === 'Standard HD') ?? p[0])?.id ?? '';
+			profile = (p.find((x) => x.name === '1080p') ?? p[0])?.id ?? '';
 		});
 		get<S['TitlePage']>('/titles', { limit: 500 }).then((page) => {
 			owned = new Map(page.items.filter((t) => t.tmdb_id).map((t) => [t.tmdb_id as number, t.id]));
@@ -88,7 +88,10 @@
 		<div class="notice error">
 			{error.message}
 			{#if error.slug === 'metadata-not-configured'}
-				— <a href="/settings#tmdb">add a TMDB API key in Settings</a>.
+				— get a free key at
+				<a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noreferrer"
+					>themoviedb.org/settings/api</a
+				>, then <a href="/settings#tmdb">paste it in Settings</a>.
 			{/if}
 		</div>
 	{/if}

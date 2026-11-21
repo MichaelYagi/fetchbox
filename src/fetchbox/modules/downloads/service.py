@@ -780,10 +780,18 @@ class DownloadsService:
             with contextlib.suppress(DownloadClientError):
                 await client.remove(d.client_ref, True)
         async with self.db.sessionmaker() as s:
-            row = await s.get(Download, d.id)
+            # Conditional: whoever else touched the row meanwhile (the queue manager), the
+            # first to fail it wins and a second call does nothing.
+            failed = await s.execute(
+                update(Download)
+                .where(Download.id == d.id, Download.status.in_(ACTIVE))
+                .values(status="failed", error=reason, version=Download.version + 1)
+                .execution_options(synchronize_session=False)
+            )
+            if not failed.rowcount:  # type: ignore[attr-defined]
+                return
             grab = await s.get(Grab, d.grab_id)
-            assert row is not None and grab is not None
-            row.status, row.error = "failed", reason
+            assert grab is not None
             items = [w.id for w in await self._items(s, grab.id)]
             await self._release_items(s, items, grab, reason)
             await s.commit()
