@@ -235,8 +235,9 @@ season-pack rule; RSS sync, missing search, upgrades
       grid (Monday first) of episodes airing and movie cinema / digital / disc dates,
       coloured by state (downloaded, downloading, out but missing, coming up, not
       monitored), `?month=YYYY-MM` links; on phones a list of the days with something
-- [ ] Optional TVDB (scene / absolute numbering)
-- [ ] Grow the parser corpus from real indexer results
+- [ ] ~~Optional TVDB (scene / absolute numbering)~~ moved to Phase 3: needs a paid TVDB key
+- [ ] ~~Grow the parser corpus from real indexer results~~ moved to Phase 3: ongoing, from
+      real Prowlarr results
 
 **Gate:** a "future only" series grabs a new episode via RSS; season-pack selection correct;
 an upgrade replaces the file safely.
@@ -246,7 +247,8 @@ qBittorrent/Transmission/Deluge; path mappings + client path probe; mount nodes,
 checks, all link modes, recycle folder, duplicate detection; existing-library import
 (read-only until apply), match correction, rename preview, maintenance; Plex/Jellyfin/Emby;
 webhook + Discord; interface bind + kill switch; HTML (CSS selector) responses for
-indexer definitions.
+indexer definitions. From Phase 2: optional TVDB (scene / absolute numbering); grow the
+parser corpus from real indexer results.
 
 **Gate:** Docker + remote qBittorrent + NAS mount + Plex: import an existing library, apply,
 Plex refreshes.
