@@ -24,6 +24,7 @@ from fetchbox.core.state import AppState
 from fetchbox.modules.auth import router as auth_router
 from fetchbox.modules.auth.service import AuthService
 from fetchbox.modules.automation import router as automation_router
+from fetchbox.modules.automation.search import AutoSearch
 from fetchbox.modules.discovery import router as discovery_router
 from fetchbox.modules.discovery.service import DiscoveryService
 from fetchbox.modules.downloads import router as downloads_router
@@ -63,6 +64,7 @@ API_ROUTERS: tuple[APIRouter, ...] = (
     events_router.router,
     activity_router.router,
     automation_router.router,
+    automation_router.search_router,
     profiles_router.router,
     discovery_router.router,
     media_router.router,
@@ -157,7 +159,20 @@ def create_app(
         state.health.register("indexers", sources.health, fix_url="/settings/indexers")
         grabs = GrabsService(db, bus)
         app.state.grabs = grabs
-        app.state.releases = ReleasesService(db, bus, grabs, media, profiles, config, sources)
+        releases = ReleasesService(db, bus, grabs, media, profiles, config, sources)
+        app.state.releases = releases
+        autosearch = AutoSearch(
+            db,
+            bus,
+            jobs,
+            releases=releases,
+            grabs=grabs,
+            media=media,
+            sources=sources,
+            config=config,
+        )
+        autosearch.register_jobs()
+        app.state.autosearch = autosearch
         downloads = DownloadsService(
             db,
             bus,
@@ -204,6 +219,7 @@ def create_app(
         # otherwise see the torrent engine "not running".
         await downloads.start()
         await library.start()
+        await autosearch.start()
         await state.scheduler.start()
 
         log.info(
@@ -220,6 +236,7 @@ def create_app(
             await state.bus.emit("system.stopping")
             await state.scheduler.stop()
             await state.jobs.stop(timeout=30)
+            await autosearch.stop()
             await library.stop()
             await downloads.stop()  # saves the engine's resume data
             await activity_writer.stop()

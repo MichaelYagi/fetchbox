@@ -1,7 +1,10 @@
-"""Interactive search: query every indexer for a wanted item and decide each result.
+"""Search: query every indexer for a wanted item and decide each result.
 
-Results are kept in an in-memory cache (``release_id`` -> release) for an hour, so a
-grab can refer to a release a user picked from the list without resending it.
+Interactive search returns everything; automatic search (``modules.automation``) grabs
+the top pick. Both judge an acquired item's results against its current file, so only
+real upgrades are accepted. Interactive results are kept in an in-memory cache
+(``release_id`` -> release) for an hour, so a grab can refer to a release a user picked
+from the list without resending it.
 """
 
 from __future__ import annotations
@@ -9,15 +12,19 @@ from __future__ import annotations
 import time
 from collections import OrderedDict
 from dataclasses import dataclass
+from typing import Literal
+
+from sqlalchemy import select
 
 from fetchbox.core.db import Database, utcnow
 from fetchbox.core.errors import FieldError, ProblemError
 from fetchbox.core.events import Actor, EventBus, Subject
 from fetchbox.core.ids import new_id
+from fetchbox.modules.library.models import MediaFile, MediaFileItem
 from fetchbox.modules.media.models import WantedItem
 from fetchbox.modules.media.service import MediaService
 from fetchbox.modules.profiles.service import ProfilesService, to_spec
-from fetchbox.modules.releases.decision import Decision, DecisionContext, Target
+from fetchbox.modules.releases.decision import Decision, DecisionContext, Existing, Target
 from fetchbox.modules.releases.grabs import GrabsService, Reason, blocklist_keys, grabbed_keys
 from fetchbox.modules.releases.models import Grab
 from fetchbox.modules.releases.search import SearchOutcome, search
@@ -26,6 +33,7 @@ from fetchbox.modules.sources.service import SourcesService
 from fetchbox.modules.system.config import ConfigService
 from fetchbox.providers.indexers import SearchQuery
 
+Mode = Literal["interactive", "automatic"]
 CACHE_TTL = 3600.0
 CACHE_SIZE = 5000
 
@@ -96,7 +104,7 @@ class ReleasesService:
                 slug="validation",
                 errors=[FieldError(field="wanted_item_id", message="series are not supported yet")],
             )
-        target = movie_target(title)
+        target = movie_target(title, await self.existing(wanted.id))
         ids = {"tmdb": str(title.tmdb_id)} if title.tmdb_id else {}
         if title.imdb_id:
             ids["imdb"] = title.imdb_id
@@ -116,14 +124,34 @@ class ReleasesService:
         )
         return target, query, ctx
 
-    async def interactive(self, wanted_item_id: str, *, actor: Actor) -> InteractiveResult:
-        wanted = await self.media.get_wanted(wanted_item_id)
+    async def existing(self, wanted_item_id: str) -> Existing | None:
+        """The item's current file, as the decision engine compares upgrades against it."""
+        q = (
+            select(MediaFile)
+            .join(MediaFileItem, MediaFileItem.media_file_id == MediaFile.id)
+            .where(MediaFileItem.wanted_item_id == wanted_item_id)
+            .order_by(MediaFile.imported_at.desc())
+        )
+        async with self.db.sessionmaker() as s:
+            f = (await s.execute(q)).scalars().first()
+        if f is None or not (f.quality or {}).get("name"):
+            return None
+        return Existing(
+            quality=f.quality["name"],
+            format_score=f.custom_format_score,
+            revision=int(f.quality.get("revision") or 1),
+        )
+
+    async def run(
+        self, wanted: WantedItem, *, mode: Mode, actor: Actor
+    ) -> tuple[int, SearchOutcome]:
+        """Search every enabled indexer for one item. Returns (indexers asked, outcome)."""
         target, query, ctx = await self._target(wanted)
         sources = await self.sources.release_sources()
         subject = Subject(type="wanted_item", id=wanted.id)
         await self.bus.emit(
             "search.started", subject=subject, actor=actor, name=target.names[0],
-            mode="interactive", indexers=len(sources),
+            mode=mode, indexers=len(sources),
         )  # fmt: skip
         outcome = await search(sources, query, target, ctx)
         await self.media.mark_searched(wanted.id, utcnow())
@@ -132,13 +160,19 @@ class ReleasesService:
             subject=subject,
             actor=actor,
             name=target.names[0],
-            mode="interactive",
+            mode=mode,
+            indexers=len(sources),
             results=len(outcome.decisions),
             accepted=sum(d.accepted for d in outcome.decisions),
             failed_indexers=[f.source_name for f in outcome.failures],
         )
+        return len(sources), outcome
+
+    async def interactive(self, wanted_item_id: str, *, actor: Actor) -> InteractiveResult:
+        wanted = await self.media.get_wanted(wanted_item_id)
+        n, outcome = await self.run(wanted, mode="interactive", actor=actor)
         ids = [self.cache.put(wanted.id, d) for d in outcome.decisions]
-        return InteractiveResult(wanted.id, len(sources), outcome, ids)
+        return InteractiveResult(wanted.id, n, outcome, ids)
 
     def cached(self, release_id: str) -> CachedRelease | None:
         return self.cache.get(release_id)

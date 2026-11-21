@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Annotated, Any, Literal, get_args
 
 from fastapi import APIRouter, Depends, Header, Query, Request, Response
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 from fetchbox.core.concurrency import etag
+from fetchbox.core.db import utcnow
 from fetchbox.core.errors import FieldError, ProblemError
 from fetchbox.core.errors import problem_responses as pr
 from fetchbox.core.pagination import Page, Sort, paginate
@@ -128,6 +129,10 @@ class TitleIn(BaseModel):
     tmdb_id: int = Field(gt=0)
     profile_id: str
     monitored: bool = True
+    search: bool = Field(
+        default=True,
+        description="Search for it now; otherwise at the regular missing-search interval",
+    )
 
 
 class TitlePatch(BaseModel):
@@ -172,8 +177,13 @@ async def add_title(
             errors=[FieldError(field="body.kind", message="series are not supported yet")],
         )
     svc = _svc(request)
+    hours = request.app.state.config.current.search.missing_every_hours
     t = await svc.add_movie(
-        body.tmdb_id, profile_id=body.profile_id, monitored=body.monitored, actor=p.actor()
+        body.tmdb_id,
+        profile_id=body.profile_id,
+        monitored=body.monitored,
+        actor=p.actor(),
+        search_after=None if body.search else utcnow() + timedelta(hours=hours),
     )
     response.headers["Location"] = f"{request.url.path}/{t.id}"
     return await _one(svc, t, response)

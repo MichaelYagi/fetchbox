@@ -39,6 +39,21 @@ class SearchConfig(BaseModel):
         le=1,
         description="Share of a finished season's episodes that must be wanted to grab a pack",
     )
+    automatic: bool = Field(
+        default=True, description="Search for missing items and upgrades on a schedule"
+    )
+    missing_every_hours: int = Field(
+        default=6, ge=1, le=24 * 30, description="How often each missing item is searched"
+    )
+    upgrade_every_hours: int = Field(
+        default=24, ge=1, le=24 * 30, description="How often each upgradable item is searched"
+    )
+    retry_alternatives: int = Field(
+        default=3,
+        ge=0,
+        le=20,
+        description="After a failed download, search again at once this many times",
+    )
 
 
 class SystemConfig(BaseModel):

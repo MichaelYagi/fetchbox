@@ -1,7 +1,8 @@
 """Import, files, destinations and naming, end to end with a real torrent.
 
-The first test is the Phase 1 gate in miniature: add a movie, search, grab, and a
-correctly named file appears under Downloads/Fetchbox/Movies.
+The first test is the Phase 1 gate in miniature: with an indexer set up, adding a movie
+is all it takes (search on add, grab, download, import) for a correctly named file to
+appear under Downloads/Fetchbox/Movies.
 """
 
 from __future__ import annotations
@@ -53,6 +54,7 @@ async def seed(made: Made) -> AsyncIterator[BuiltinClient]:
 def fast(server: Running) -> None:
     server.app.state.downloads.poll_interval = 0.1
     server.app.state.library.sweep_interval = 0.2
+    server.app.state.autosearch.sweep_interval = 0.2
 
 
 def _engine(server: Running) -> BuiltinClient:
@@ -62,14 +64,23 @@ def _engine(server: Running) -> BuiltinClient:
 
 
 async def _acquire(
-    c: httpx.AsyncClient, fakes: Fakes, server: Running, made: Made, seed: BuiltinClient
+    c: httpx.AsyncClient,
+    fakes: Fakes,
+    server: Running,
+    made: Made,
+    seed: BuiltinClient,
+    *,
+    automatic: bool = False,
 ) -> dict[str, Any]:
-    movie = await _movie(c)
+    """Grab ``made`` and wait until it's imported. ``automatic``: no search or grab by
+    hand, adding the movie is enough (search on add)."""
     await _indexer(c, fakes, "one", [Item(NAME, magnet=made.magnet, infohash=made.info_hash)])
-    wid = movie["wanted"][0]["id"]
-    rel = (await c.get("/releases", params={"wanted_item_id": wid})).json()["releases"][0]
-    assert rel["accepted"], rel["rejections"]
-    assert (await c.post("/grabs", json={"release_id": rel["release_id"]})).status_code == 201
+    movie = await _movie(c, search=automatic)
+    if not automatic:
+        wid = movie["wanted"][0]["id"]
+        rel = (await c.get("/releases", params={"wanted_item_id": wid})).json()["releases"][0]
+        assert rel["accepted"], rel["rejections"]
+        assert (await c.post("/grabs", json={"release_id": rel["release_id"]})).status_code == 201
 
     async def downloading() -> bool:
         return any(d["status"] == "downloading" for d in (await c.get("/downloads")).json())
@@ -93,7 +104,7 @@ async def test_gate_add_movie_get_named_file(
     seed: BuiltinClient,
     settings: Any,
 ) -> None:
-    movie = await _acquire(c, fakes, server, made, seed)
+    movie = await _acquire(c, fakes, server, made, seed, automatic=True)
     library = settings.downloads_dir / "Movies"
     placed = library / EXPECTED
     assert placed.is_file(), sorted(str(p) for p in library.rglob("*"))

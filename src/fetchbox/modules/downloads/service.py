@@ -26,7 +26,7 @@ from typing import Any
 
 import structlog
 from pydantic import BaseModel, Field, ValidationError
-from sqlalchemy import exists, select, update
+from sqlalchemy import case, exists, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from fetchbox.core.concurrency import check_if_match
@@ -319,12 +319,27 @@ class DownloadsService:
         )
 
     async def _release_items(
-        self, s: AsyncSession, item_ids: list[str], grab: Grab, reason: str, *, block: bool = True
+        self,
+        s: AsyncSession,
+        item_ids: list[str],
+        grab: Grab,
+        reason: str,
+        *,
+        block: bool = True,
+        search_soon: bool = True,
     ) -> None:
+        """Items go back to wanting a file. ``search_soon`` clears ``next_search_at`` so
+        automatic search looks for an alternative release on its next sweep."""
+        soon: dict[str, Any] = {"next_search_at": None} if search_soon else {}
         await s.execute(
             update(WantedItem)
             .where(WantedItem.id.in_(item_ids), WantedItem.state.in_(("grabbed", "downloading")))
-            .values(state="missing", version=WantedItem.version + 1)
+            # An upgrade's item still has its old file: back to acquired, not missing.
+            .values(
+                state=case((WantedItem.lock == "acquired", "acquired"), else_="missing"),
+                version=WantedItem.version + 1,
+                **soon,
+            )
             .execution_options(synchronize_session=False)
         )
         title_id = None
@@ -577,10 +592,12 @@ class DownloadsService:
         if d.status == "removed":
             return
         client = self.clients.get(d.client_id)
-        if client is not None:
-            with contextlib.suppress(DownloadClientError):
-                await client.remove(d.client_ref, delete_data)
+        # Under the poll lock: a poll that already listed this download would otherwise
+        # find the torrent gone from the client and fail it.
         async with self._lock, self.db.sessionmaker() as s:
+            if client is not None:
+                with contextlib.suppress(DownloadClientError):
+                    await client.remove(d.client_ref, delete_data)
             row = await s.get(Download, d.id)
             grab = await s.get(Grab, d.grab_id)
             assert row is not None and grab is not None
@@ -588,13 +605,17 @@ class DownloadsService:
             row.status, row.removed_at = "removed", utcnow()
             if was_active:  # the items still want a file
                 items = [w.id for w in await self._items(s, grab.id)]
-                await self._release_items(s, items, grab, "removed by user", block=blocklist)
+                await self._release_items(
+                    s, items, grab, "removed by user", block=blocklist, search_soon=False
+                )
             await s.commit()
         self.live.pop(d.id, None)
         await self._emit("download.removed", d, actor=actor, name=d.name, delete_data=delete_data)
 
     async def fail(self, download_id: str, reason: str) -> None:
         d = await self.get(download_id)
+        if d.status not in ACTIVE:  # already removed, failed or completed
+            return
         client = self.clients.get(d.client_id)
         if client is not None:
             with contextlib.suppress(DownloadClientError):
@@ -608,7 +629,6 @@ class DownloadsService:
             await self._release_items(s, items, grab, reason)
             await s.commit()
         self.live.pop(d.id, None)
-        # TODO(phase 1, retry): queue a search for an alternative release (up to 3).
         await self._emit("download.failed", d, name=d.name, error=reason)
 
     async def pause_all(self, *, actor: Actor) -> int:

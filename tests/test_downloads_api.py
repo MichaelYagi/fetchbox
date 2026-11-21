@@ -179,7 +179,9 @@ async def test_max_active_holds_the_second_download(
                 for n in ("ONE", "TWO")]  # fmt: skip
     movie = await _movie(c)
     amelie = (
-        await c.post("/titles", json={"tmdb_id": 194, "profile_id": movie["profile_id"]})
+        await c.post(
+            "/titles", json={"tmdb_id": 194, "profile_id": movie["profile_id"], "search": False}
+        )
     ).json()
     items = [Item(t.name, magnet=t.magnet, infohash=t.info_hash) for t in torrents]
     await _indexer(c, fakes, "one", items)

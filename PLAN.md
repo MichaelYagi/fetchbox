@@ -107,7 +107,9 @@ Remaining unchecked items above are Phase 0 hardening, not gate blockers.
       failure removes data, blocklists, returns items to `missing`; `/downloads` (+
       pause/resume/recheck/reorder/pause-all/resume-all/limits), `/download-clients`
       (GET/PATCH/test). Built-in client row seeded on first start.
-- [ ] Failure retry: search for an alternative release (up to 3)
+- [x] Failure retry: a failed download makes its items due at once, so the next sweep
+      grabs the next-best release (the failed one is blocklisted); after
+      `search.retry_alternatives` (3) failures in a row the item waits for its interval
 - [ ] External clients (qBittorrent, Transmission, Deluge) + `POST/DELETE /download-clients`
 - [ ] Seeding goals (ratio / time) once import exists
 - [x] Local node + default `~/Downloads/Fetchbox/Movies` and `TV` destinations; two-phase
@@ -121,7 +123,13 @@ Remaining unchecked items above are Phase 0 hardening, not gate blockers.
       on-disk size check, destination check, placement, `media_file`, items `acquired` +
       locked + `cutoff_met`, upgrade replaces into recycle, history; `needs_attention`
       with backoff retry; `/imports` (+ retry), `/files`, `/titles/{id}/files`
-- [ ] Automatic search (search on add; scheduled search for missing / cutoff unmet)
+- [x] Automatic search (`modules/automation/search.py`): an item is due when
+      `next_search_at` is NULL or past; a sweep (every minute, and on `title.added` /
+      `download.failed` / `source.added`) queues one `search.wanted` job per due item
+      (deduped), which grabs the top pick. Search on add (`search: true`, default),
+      missing every 6 h, upgrades (acquired, below cutoff, upgrades allowed, file present)
+      every 24 h; `POST /wanted/{id}/search`, `POST /titles/{id}/search` (202 + job).
+      Upgrade search judges results against the current file (interactive too)
 - [ ] Redownload / unlock (`POST /wanted/{id}/unlock|redownload`)
 - [ ] mediainfo (real resolution/codec/HDR from the file)
 - [ ] Minimal UI (search, add, queue, library)
@@ -239,6 +247,15 @@ three OSes; a backup restores on a fresh machine.
   rejected; the same info hash from several indexers is listed once (best priority).
   Extra reasons: `wrong_media_type`, `season_not_finished`, `season_pack_not_wanted`,
   `upgrades_disabled`, `cutoff_met`, `not_an_upgrade`.
+- Automatic search settings in `search`: `automatic` (scheduled searches on/off; off
+  still searches new titles and failed downloads), `missing_every_hours` (6),
+  `upgrade_every_hours` (24), `retry_alternatives` (3). Per-item cadence is
+  `next_search_at`, not a schedule row: one row per item would be noise in
+  `/automation/schedules`. No search runs while no indexer is enabled; items stay due.
+- The `searching` state is held only during an automatic search of a missing item;
+  a crash leaves it to startup recovery (back to `missing`, due).
+- A failed upgrade download returns its item to `acquired` (it still has its file),
+  not `missing`. Removing a download by hand doesn't trigger a new search.
 
 ## Decisions taken here
 

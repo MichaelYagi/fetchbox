@@ -86,8 +86,15 @@ class MediaService:
         return (await s.execute(q)).scalar_one_or_none()
 
     async def add_movie(
-        self, tmdb_id: int, *, profile_id: str, monitored: bool, actor: Actor
+        self,
+        tmdb_id: int,
+        *,
+        profile_id: str,
+        monitored: bool,
+        actor: Actor,
+        search_after: datetime | None = None,
     ) -> Title:
+        """``search_after`` None means search now (automatic search picks it up)."""
         await self._check_profile(profile_id)
         async with self.db.sessionmaker() as s:
             if (dup := await self._existing(s, "movie", tmdb_id)) is not None:
@@ -104,7 +111,7 @@ class MediaService:
         async with self.db.sessionmaker() as s:
             s.add(title)
             await s.flush()
-            s.add(WantedItem(title_id=title.id, monitored=monitored))
+            s.add(WantedItem(title_id=title.id, monitored=monitored, next_search_at=search_after))
             try:
                 await s.commit()
             except IntegrityError:  # lost a race with a concurrent add

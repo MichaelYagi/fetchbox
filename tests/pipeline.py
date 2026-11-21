@@ -52,10 +52,12 @@ async def _indexer(
     return out
 
 
-async def _movie(c: httpx.AsyncClient) -> dict[str, Any]:
+async def _movie(c: httpx.AsyncClient, *, search: bool = False) -> dict[str, Any]:
+    """Dune (2021), Standard HD. No search on add unless asked: most tests drive the
+    search and grab by hand."""
     profiles = (await c.get("/quality-profiles")).json()
     hd = next(p["id"] for p in profiles if p["name"] == "Standard HD")
-    r = await c.post("/titles", json={"tmdb_id": 438631, "profile_id": hd})
+    r = await c.post("/titles", json={"tmdb_id": 438631, "profile_id": hd, "search": search})
     assert r.status_code == 201, r.text
     out: dict[str, Any] = r.json()
     return out
