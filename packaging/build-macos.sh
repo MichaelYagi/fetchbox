@@ -12,5 +12,5 @@ rm -rf .venv-build build/pyi build/icons dist
 .venv-build/bin/python packaging/make_icons.py build/icons
 iconutil -c icns build/icons/fetchbox.iconset -o build/icons/fetchbox.icns
 .venv-build/bin/pyinstaller packaging/fetchbox.spec --noconfirm --distpath dist --workpath build/pyi
-rm -f dist/Fetchbox  # the bare executable; the .app holds its own copy
+rm -rf dist/Fetchbox  # the loose folder; the .app holds its own copy
 echo "built dist/Fetchbox.app"

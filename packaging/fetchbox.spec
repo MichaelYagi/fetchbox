@@ -1,9 +1,11 @@
 # PyInstaller spec for Fetchbox: one file per platform.
-#   Windows: Fetchbox.exe (tray, no console)    macOS: Fetchbox.app (tray, menu bar only)
+#   Windows: Fetchbox.exe (one file, tray, no console)
+#   macOS:   Fetchbox.app (tray, menu bar only; a folder inside, as .apps are)
 #   Linux:   fetchbox (command line, no tray: `fetchbox serve`)
 # Build with packaging/build-<platform>, which installs Fetchbox (with its built web UI)
 # into a fresh virtualenv first; this spec collects it from there.
 # ruff: noqa
+import os
 import sys
 from importlib.metadata import version
 
@@ -46,21 +48,19 @@ a = Analysis(
     noarchive=False,
 )
 pyz = PYZ(a.pure)
-icon = {"win32": "build/icons/fetchbox.ico", "darwin": "build/icons/fetchbox.icns"}.get(sys.platform)
-exe = EXE(
-    pyz,
-    a.scripts,
-    a.binaries,
-    a.datas,
-    [],
-    name="Fetchbox" if TRAY else "fetchbox",
-    console=not TRAY,
-    icon=icon,
-    upx=False,
-)
+# Paths in a spec are relative to the spec's folder: the icons are built in <repo>/build.
+ICONS = os.path.join(os.path.dirname(SPECPATH), "build", "icons")
+icon = {"win32": "fetchbox.ico", "darwin": "fetchbox.icns"}.get(sys.platform)
+icon = os.path.join(ICONS, icon) if icon else None
+
 if sys.platform == "darwin":
+    # A .app is a folder anyway: the "onedir" layout inside it (a one-file .app is
+    # deprecated by PyInstaller and clashes with macOS's code-signing checks).
+    exe = EXE(pyz, a.scripts, [], exclude_binaries=True, name="Fetchbox", console=False,
+              icon=icon, upx=False)  # fmt: skip
+    coll = COLLECT(exe, a.binaries, a.datas, name="Fetchbox", upx=False)
     app = BUNDLE(
-        exe,
+        coll,
         name="Fetchbox.app",
         icon=icon,
         bundle_identifier="dev.fetchbox.Fetchbox",
@@ -70,4 +70,16 @@ if sys.platform == "darwin":
             "LSUIElement": True,  # a menu bar app: no Dock icon
             "NSHighResolutionCapable": True,
         },
+    )
+else:
+    exe = EXE(
+        pyz,
+        a.scripts,
+        a.binaries,
+        a.datas,
+        [],
+        name="Fetchbox" if TRAY else "fetchbox",
+        console=not TRAY,
+        icon=icon,
+        upx=False,
     )
