@@ -76,7 +76,8 @@ Remaining unchecked items above are Phase 0 hardening, not gate blockers.
       /system/config` (TMDB key encrypted, `FETCHBOX_TMDB_API_KEY` overrides); movie
       titles + wanted items (`/titles`, `/wanted`); `metadata` health check; profile
       delete returns 409 while titles use it
-- [ ] Scheduled metadata refresh (daily, titles not refreshed in 7 days)
+- [x] Scheduled metadata refresh (`refresh_metadata` schedule, every 12 h per the spec:
+      movies not refreshed in 7 days, 200 per run, oldest first; skipped without a key)
 - [x] Quality profiles (Standard HD, 4K), custom formats, scoring: quality catalog with
       default size bounds; ladder of equal-rank tiers + cutoff; Radarr-compatible format
       matching (required / negate / OR within a type, AND across types); language rule;

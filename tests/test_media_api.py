@@ -4,12 +4,16 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import AsyncIterator
+from datetime import timedelta
 from typing import Any
 
 import httpx
 import pytest
 from pydantic import SecretStr
+from sqlalchemy import update
 
+from fetchbox.core.db import utcnow
+from fetchbox.modules.media.models import Title
 from tests.conftest import Running, running
 from tests.fake_tmdb import V3_KEY, FakeTmdb
 
@@ -269,3 +273,24 @@ async def test_scopes(server: Running, tmdb: FakeTmdb) -> None:
         assert (await c.get("/system/config")).status_code == 403
     async with server.client(disc["key"]) as c:
         assert (await c.get("/discovery/search", params={"q": "dune"})).status_code == 200
+
+
+async def test_scheduled_refresh_of_stale_titles(
+    c: httpx.AsyncClient, tmdb: FakeTmdb, server: Running
+) -> None:
+    t = await _add(c)
+    media = server.app.state.media
+    assert await media.refresh_stale() == {"refreshed": 0, "failed": []}  # fresh
+
+    async with server.app.state.fb.db.sessionmaker() as s:
+        await s.execute(update(Title).values(refreshed_at=utcnow() - timedelta(days=8)))
+        await s.commit()
+    tmdb.movies[438631]["runtime"] = 157
+    assert await media.refresh_stale() == {"refreshed": 1, "failed": []}
+    after = (await c.get(f"/titles/{t['id']}")).json()
+    assert after["runtime"] == 157 and after["refreshed_at"] > t["refreshed_at"]
+    assert after["etag"] != t["etag"]
+
+    rows = {r["name"]: r for r in (await c.get("/automation/schedules")).json()}
+    assert rows["refresh_metadata"]["job_type"] == "media.refresh_metadata"
+    assert rows["refresh_metadata"]["interval_seconds"] == 12 * 3600

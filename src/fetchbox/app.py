@@ -154,6 +154,7 @@ def create_app(
         app.state.discovery = discovery
         state.health.register("metadata", discovery.health, fix_url="/settings/general#tmdb")
         media = MediaService(db, bus, discovery, profiles)
+        media.register_jobs(jobs, state.scheduler)
         app.state.media = media
         sources = SourcesService(db, bus, box, provider_registry)
         app.state.sources = sources

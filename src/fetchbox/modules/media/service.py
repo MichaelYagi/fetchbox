@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Literal
 
-from sqlalchemy import Select, select, update
+from sqlalchemy import Select, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,12 +14,18 @@ from fetchbox.core.concurrency import check_if_match
 from fetchbox.core.db import Database, utcnow
 from fetchbox.core.errors import ConflictError, FieldError, NotFoundError, ProblemError
 from fetchbox.core.events import Actor, EventBus, Subject
+from fetchbox.core.jobs import JobContext, JobRunner
+from fetchbox.core.schedules import ScheduleDef, Scheduler
 from fetchbox.modules.discovery.service import DiscoveryService
 from fetchbox.modules.media.models import HistoryEvent, Title, WantedItem
 from fetchbox.modules.profiles.service import ProfilesService
 from fetchbox.providers.metadata import MovieDetail
 
 MOVIE_MONITOR_MODES = ("all", "none")
+REFRESH_JOB = "media.refresh_metadata"
+STALE_AFTER = timedelta(days=7)
+REFRESH_BATCH = 200
+SYSTEM = Actor(type="system", id="metadata-refresh", name="metadata refresh")
 WantedFilter = Literal["missing", "cutoff_unmet"]
 _ARTICLE = re.compile(r"^(?:the|a|an)\s+", re.I)
 
@@ -72,6 +78,20 @@ class MediaService:
         self.bus = bus
         self.discovery = discovery
         self.profiles = profiles
+
+    def register_jobs(self, jobs: JobRunner, scheduler: Scheduler) -> None:
+        @jobs.handler(REFRESH_JOB, queue="net", max_attempts=1)
+        async def run(ctx: JobContext) -> dict[str, Any]:
+            return await self.refresh_stale()
+
+        scheduler.define(
+            ScheduleDef(
+                "refresh_metadata",
+                REFRESH_JOB,
+                timedelta(hours=12),
+                description="Re-read metadata from TMDB for titles not refreshed in 7 days",
+            )
+        )
 
     # ---- titles -----------------------------------------------------------------------------
 
@@ -174,7 +194,39 @@ class MediaService:
         await self._emit("title.updated", row, actor, fields=sorted(changes))
         return row
 
-    async def refresh_title(self, title_id: str, *, actor: Actor) -> Title:
+    async def refresh_stale(
+        self, *, older_than: timedelta = STALE_AFTER, limit: int = REFRESH_BATCH
+    ) -> dict[str, Any]:
+        """Scheduled refresh: movies not refreshed for ``older_than``, oldest first. One
+        failing title doesn't stop the rest; no TMDB key means nothing to do."""
+        if self.discovery.config.current.tmdb.api_key is None:
+            return {"skipped": "metadata not configured"}
+        cutoff = utcnow() - older_than
+        async with self.db.sessionmaker() as s:
+            ids = list(
+                (
+                    await s.execute(
+                        select(Title.id)
+                        .where(
+                            Title.kind == "movie",
+                            Title.tmdb_id.is_not(None),
+                            or_(Title.refreshed_at.is_(None), Title.refreshed_at < cutoff),
+                        )
+                        .order_by(Title.refreshed_at.is_not(None), Title.refreshed_at)
+                        .limit(limit)
+                    )
+                ).scalars()
+            )
+        done, failed = 0, []
+        for tid in ids:
+            try:
+                await self.refresh_title(tid, actor=SYSTEM, emit=False)
+                done += 1
+            except (ProblemError, NotFoundError) as exc:
+                failed.append(f"{tid}: {exc}")
+        return {"refreshed": done, "failed": failed}
+
+    async def refresh_title(self, title_id: str, *, actor: Actor, emit: bool = True) -> Title:
         row = await self.get_title(title_id)
         if row.kind != "movie" or row.tmdb_id is None:
             raise ProblemError(
@@ -186,7 +238,8 @@ class MediaService:
             _apply_movie(row, detail)
             row.refreshed_at = utcnow()
             await s.commit()
-        await self._emit("title.refreshed", row, actor)
+        if emit:
+            await self._emit("title.refreshed", row, actor)
         return row
 
     async def delete_title(self, title_id: str, *, if_match: str | None, actor: Actor) -> None:
