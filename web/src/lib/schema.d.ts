@@ -1108,6 +1108,95 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/library/naming-options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Naming Options
+         * @description Naming presets, season folder choices and the tokens patterns can use.
+         */
+        get: operations["naming_options_api_v1_library_naming_options_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/library/naming/{kind}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Naming
+         * @description How new movies or episodes are named and where they go, with example names.
+         */
+        get: operations["get_naming_api_v1_library_naming__kind__get"];
+        /**
+         * Put Naming
+         * @description Save the naming for movies or series. Patterns of the other kind are ignored.
+         *     Files already in the library keep their names until renamed.
+         */
+        put: operations["put_naming_api_v1_library_naming__kind__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/library/naming/{kind}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Preview Naming
+         * @description Example names for patterns, before saving them.
+         */
+        post: operations["preview_naming_api_v1_library_naming__kind__preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/library/rename/{kind}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Rename Preview
+         * @description Files whose name differs from what the current naming gives, old and new.
+         */
+        get: operations["rename_preview_api_v1_library_rename__kind__get"];
+        put?: never;
+        /**
+         * Rename Files
+         * @description Rename files to the current naming (on the same disk: nothing is copied).
+         */
+        post: operations["rename_files_api_v1_library_rename__kind__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/naming-templates": {
         parameters: {
             query?: never;
@@ -2327,6 +2416,17 @@ export interface components {
             /** Wanted Item Ids */
             wanted_item_ids: string[];
         };
+        /** FolderOut */
+        FolderOut: {
+            /** Destination Id */
+            destination_id: string;
+            /** Path */
+            path: string;
+            /** Status */
+            status: string;
+            /** Status Message */
+            status_message: string | null;
+        };
         /** FormatIn */
         FormatIn: {
             /** Conditions */
@@ -2841,6 +2941,47 @@ export interface components {
             /** Year */
             year?: number | null;
         };
+        /** NamingIn */
+        NamingIn: {
+            /** Patterns */
+            patterns: {
+                [key: string]: string;
+            };
+        };
+        /** NamingOptionsOut */
+        NamingOptionsOut: {
+            /** Presets */
+            presets: components["schemas"]["PresetOut"][];
+            /** Season Folders */
+            season_folders: components["schemas"]["SeasonFolderOut"][];
+            /** Tokens */
+            tokens: {
+                [key: string]: string;
+            };
+        };
+        /** NamingOut */
+        NamingOut: {
+            folder: components["schemas"]["FolderOut"];
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "movie" | "series";
+            /**
+             * Patterns
+             * @description Only this kind's patterns
+             */
+            patterns: {
+                [key: string]: string;
+            };
+            /**
+             * Preset
+             * @description A preset id, or custom
+             */
+            preset: string;
+            /** Samples */
+            samples: components["schemas"]["SampleOut"][];
+        };
         /** NodeOut */
         NodeOut: {
             /**
@@ -3106,6 +3247,19 @@ export interface components {
              * @default 120
              */
             stall_minutes: number;
+        };
+        /** PresetOut */
+        PresetOut: {
+            /** Description */
+            description: string;
+            /** Id */
+            id: string;
+            /** Label */
+            label: string;
+            /** Patterns */
+            patterns: {
+                [key: string]: string;
+            };
         };
         /** PreviewIn */
         PreviewIn: {
@@ -3460,6 +3614,43 @@ export interface components {
             /** Tier */
             tier: string | null;
         };
+        /** RenameFailureOut */
+        RenameFailureOut: {
+            /** Current */
+            current: string;
+            /** Error */
+            error: string;
+            /** File Id */
+            file_id: string;
+        };
+        /** RenameIn */
+        RenameIn: {
+            /**
+             * File Ids
+             * @description Null: every file listed
+             */
+            file_ids?: string[] | null;
+        };
+        /** RenameOut */
+        RenameOut: {
+            /** Failed */
+            failed: components["schemas"]["RenameFailureOut"][];
+            /** Renamed */
+            renamed: components["schemas"]["RenameStepOut"][];
+        };
+        /** RenameStepOut */
+        RenameStepOut: {
+            /** Current */
+            current: string;
+            /** File Id */
+            file_id: string;
+            /** New */
+            new: string;
+            /** Title */
+            title: string;
+            /** Title Id */
+            title_id: string;
+        };
         /** Revision */
         Revision: {
             /**
@@ -3472,6 +3663,13 @@ export interface components {
              * @default 1
              */
             version: number;
+        };
+        /** SampleOut */
+        SampleOut: {
+            /** Label */
+            label: string;
+            /** Path */
+            path: string;
         };
         /** ScheduleOut */
         ScheduleOut: {
@@ -3544,6 +3742,13 @@ export interface components {
             name?: string | null;
             /** Number */
             number: number;
+        };
+        /** SeasonFolderOut */
+        SeasonFolderOut: {
+            /** Label */
+            label: string;
+            /** Pattern */
+            pattern: string;
         };
         /** SeasonOut */
         SeasonOut: {
@@ -7489,6 +7694,225 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Problem"];
                     "application/problem+json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    naming_options_api_v1_library_naming_options_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NamingOptionsOut"];
+                };
+            };
+        };
+    };
+    get_naming_api_v1_library_naming__kind__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: "movie" | "series";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NamingOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_naming_api_v1_library_naming__kind__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: "movie" | "series";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NamingIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NamingOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    preview_naming_api_v1_library_naming__kind__preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: "movie" | "series";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NamingIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NamingOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    rename_preview_api_v1_library_rename__kind__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: "movie" | "series";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RenameStepOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rename_files_api_v1_library_rename__kind__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: "movie" | "series";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RenameIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RenameOut"];
                 };
             };
             /** @description Validation Error */

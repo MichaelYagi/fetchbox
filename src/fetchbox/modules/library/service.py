@@ -41,6 +41,7 @@ from fetchbox.modules.downloads.service import DownloadsService
 from fetchbox.modules.library.models import MediaFile, MediaFileItem, NamingTemplate
 from fetchbox.modules.library.naming import (
     DEFAULT_PATTERNS,
+    KIND_KEYS,
     OLD_EPISODE_FILE,
     TemplateError,
     episode_path,
@@ -946,3 +947,174 @@ class LibraryService:
             name=row.name,
         )
         return row
+
+    # ---- library settings: naming per kind, renaming existing files --------------------------
+
+    async def naming(self, kind: str) -> tuple[Destination, dict[str, str]]:
+        """The default library folder for movies or series, and its naming patterns."""
+        dest = await self.storage.default_destination(kind)
+        return dest, await self._patterns(dest)
+
+    async def set_naming(
+        self, kind: str, patterns: dict[str, str], *, actor: Actor
+    ) -> tuple[Destination, dict[str, str]]:
+        """Save naming for a kind's library folder. A template shared with another folder
+        is copied first, so changing movie naming never renames TV (or the reverse)."""
+        dest = await self.storage.default_destination(kind)
+        keys = (*KIND_KEYS[kind], *(("season_folder",) if kind == "series" else ()))
+        changes = {k: v for k, v in patterns.items() if k in keys}
+        merged = self.check_patterns({**await self._patterns(dest), **changes})
+        async with self.db.sessionmaker() as s:
+            row = await s.get(Destination, dest.id)
+            assert row is not None
+            tpl = (
+                await s.get(NamingTemplate, row.naming_template_id)
+                if row.naming_template_id
+                else None
+            )
+            shared = tpl is not None and bool(
+                await s.scalar(
+                    select(Destination.id).where(
+                        Destination.naming_template_id == tpl.id, Destination.id != row.id
+                    )
+                )
+            )
+            if tpl is None or shared or tpl.name == DEFAULT_TEMPLATE:
+                tpl = NamingTemplate(name=f"{row.name} naming ({row.id[-6:]})", patterns=merged)
+                s.add(tpl)
+                await s.flush()
+                row.naming_template_id = tpl.id
+                row.version += 1
+            else:
+                tpl.patterns = merged
+            await s.commit()
+        await self.bus.emit(
+            "library.naming_updated",
+            subject=Subject(type="destination", id=dest.id),
+            actor=actor,
+            kind=kind,
+        )
+        return await self.naming(kind)
+
+    async def rename_plan(self, kind: str) -> list[dict[str, Any]]:
+        """Files of this kind whose name differs from what the naming would give now:
+        [{file_id, title_id, title, destination_id, root, current, new}]."""
+        async with self.db.sessionmaker() as s:
+            rows = (
+                await s.execute(
+                    select(MediaFile, Destination, WantedItem)
+                    .join(Destination, Destination.id == MediaFile.destination_id)
+                    .join(MediaFileItem, MediaFileItem.media_file_id == MediaFile.id)
+                    .join(WantedItem, WantedItem.id == MediaFileItem.wanted_item_id)
+                    .where(Destination.media_kind == kind)
+                    .order_by(MediaFile.relative_path)
+                )
+            ).all()
+        files: dict[str, tuple[MediaFile, Destination, list[WantedItem]]] = {}
+        for mf, dest, w in rows:
+            files.setdefault(mf.id, (mf, dest, []))[2].append(w)
+        patterns: dict[str, dict[str, str]] = {}
+        titles: dict[str, Title] = {}
+        plan: list[dict[str, Any]] = []
+        for mf, dest, items in files.values():
+            if dest.id not in patterns:
+                patterns[dest.id] = await self._patterns(dest)
+            tid = items[0].title_id
+            if tid not in titles:
+                titles[tid] = await self.media.get_title(tid)
+            title = titles[tid]
+            new = await self._name_for(mf, title, items, patterns[dest.id])
+            if new is None or new == mf.relative_path:
+                continue
+            plan.append(
+                {
+                    "file_id": mf.id,
+                    "title_id": title.id,
+                    "title": title.name,
+                    "destination_id": dest.id,
+                    "root": dest.path,
+                    "current": mf.relative_path,
+                    "new": new,
+                }
+            )
+        return plan
+
+    async def _name_for(
+        self, mf: MediaFile, title: Title, items: list[WantedItem], patterns: dict[str, str]
+    ) -> str | None:
+        """Where the naming puts an existing file, from what was recorded at import."""
+        q = mf.quality or {}
+        parsed = parse_release(PurePosixPath((mf.original_name or "").replace("\\", "/")).name)
+        if mf.release_group and not parsed.group:
+            parsed.group = mf.release_group
+        info = _info(mf.mediainfo)
+        quality = str(q.get("name") or parsed.quality)
+        ext = PurePosixPath(mf.relative_path).suffix
+        if title.kind == "movie":
+            return movie_path(patterns, movie_context(title, parsed, quality, info), ext)
+        rows = await self.media.episode_items(title.id, item_ids=[w.id for w in items])
+        if not rows:
+            return None
+        season = rows[0][0]
+        ctx = episode_context(title, parsed, quality, info, season, [ep for _, ep, _ in rows])
+        return episode_path(patterns, ctx, ext)
+
+    async def rename(
+        self, kind: str, file_ids: list[str] | None, *, actor: Actor
+    ) -> dict[str, Any]:
+        """Move files to the names the naming gives now (all that differ, or the listed
+        ones). Files stay on the same disk, so this is a rename, not a copy; folders left
+        empty are removed. Returns {renamed: [...], failed: [{file_id, current, error}]}."""
+        plan = await self.rename_plan(kind)
+        if file_ids is not None:
+            plan = [p for p in plan if p["file_id"] in set(file_ids)]
+        renamed: list[dict[str, Any]] = []
+        failed: list[dict[str, Any]] = []
+        for p in plan:
+            root = Path(p["root"])
+            src, dst = root / p["current"], root / p["new"]
+            try:
+                await asyncio.to_thread(_move, src, dst, root)
+            except OSError as exc:
+                failed.append({"file_id": p["file_id"], "current": p["current"], "error": str(exc)})
+                continue
+            async with self.db.sessionmaker() as s:
+                mf = await s.get(MediaFile, p["file_id"])
+                if mf is not None:
+                    mf.relative_path = p["new"]
+                    await s.commit()
+            renamed.append(p)
+        if renamed:
+            await self.bus.emit(
+                "library.renamed",
+                subject=Subject(type="destination", id=renamed[0]["destination_id"]),
+                actor=actor,
+                kind=kind,
+                count=len(renamed),
+            )
+        return {"renamed": renamed, "failed": failed}
+
+
+def _info(data: dict[str, Any] | None) -> MediaInfo | None:
+    if not data:
+        return None
+    fields = set(MediaInfo.__dataclass_fields__)
+    return MediaInfo(**{k: v for k, v in data.items() if k in fields})
+
+
+def _move(src: Path, dst: Path, root: Path) -> None:
+    """Rename ``src`` to ``dst`` (same disk), never over another file; then remove
+    the folders ``src`` leaves empty, up to ``root``."""
+    if not src.exists():
+        raise FileNotFoundError(f"{src} is not there any more")
+    if dst.exists() and not dst.samefile(src):
+        raise FileExistsError(f"{dst} already exists")
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    src.rename(dst)
+    parent = src.parent
+    while parent != root and root in parent.parents:
+        try:
+            parent.rmdir()  # only if empty
+        except OSError:
+            break
+        parent = parent.parent

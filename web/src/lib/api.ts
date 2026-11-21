@@ -29,7 +29,7 @@ function csrf(): string {
 type Query = Record<string, string | number | boolean | null | undefined>;
 
 export async function api<T>(
-	method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
+	method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
 	path: string,
 	opts: { body?: unknown; query?: Query; etag?: string } = {}
 ): Promise<T> {
@@ -68,6 +68,7 @@ export async function api<T>(
 export const get = <T>(path: string, query?: Query) => api<T>('GET', path, { query });
 export const post = <T>(path: string, body?: unknown, query?: Query) =>
 	api<T>('POST', path, { body, query });
+export const put = <T>(path: string, body: unknown) => api<T>('PUT', path, { body });
 export const patch = <T>(path: string, body: unknown, etag?: string) =>
 	api<T>('PATCH', path, { body, etag });
 export const del = (path: string, query?: Query, etag?: string) =>

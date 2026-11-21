@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { ApiError, del, get, patch, post, type S } from '#lib/api.ts';
+	import LibraryCard from '#lib/LibraryCard.svelte';
 	import Path from '#lib/Path.svelte';
 	import { session } from '#lib/session.svelte.ts';
 
@@ -9,6 +10,7 @@
 	let definitions = $state<S['DefinitionOut'][]>([]);
 	let clients = $state<S['ClientOut'][]>([]);
 	let destinations = $state<S['DestinationOut'][]>([]);
+	let namingOptions = $state<S['NamingOptionsOut'] | null>(null);
 	let health = $state<S['HealthReport'] | null>(null);
 	let tests = $state<Record<string, S['TestResult']>>({});
 	let error = $state('');
@@ -86,15 +88,6 @@
 		});
 	}
 
-	function saveFolder(e: SubmitEvent, d: S['DestinationOut']) {
-		e.preventDefault();
-		act(`folder-${d.id}`, () => patch(`/destinations/${d.id}`, { path: draft.folder.trim() }, d.etag), `${d.name} folder saved.`).then(
-			() => {
-				if (!error) editing = null;
-			}
-		);
-	}
-
 	function saveIndexer(e: SubmitEvent, i: S['IndexerOut']) {
 		e.preventDefault();
 		const settings: Record<string, unknown> = {};
@@ -149,6 +142,7 @@
 	}
 	$effect(() => {
 		load();
+		get<S['NamingOptionsOut']>('/library/naming-options').then((o) => (namingOptions = o));
 	});
 
 	async function act(key: string, fn: () => Promise<unknown>, done = '') {
@@ -513,48 +507,27 @@
 		</form>
 	</section>
 
-	<section>
-		<h2>Library folders</h2>
-		<div class="card table-wrap">
-			<table>
-				<thead><tr><th>Name</th><th>Folder</th><th>Status</th><th></th></tr></thead>
-				<tbody>
-					{#each destinations as d (d.id)}
-						<tr>
-							<td><strong>{d.name}</strong> <span class="muted small">{d.media_kind === 'movie' ? 'Movies' : 'TV'}</span></td>
-							<td><Path path={d.path} /></td>
-							<td class="small"><span class="badge {tone(d.status)}">{d.status}</span> {d.status_message ?? ''}</td>
-							<td><div class="row end">
-								<button class="small" onclick={() => (editing === d.id ? (editing = null) : ((draft.folder = d.path), (editing = d.id)))} disabled={!!busy}>
-									{editing === d.id ? 'Cancel' : 'Edit'}
-								</button>
-							</div></td>
-						</tr>
-						{#if editing === d.id}
-							<tr class="editrow">
-								<td colspan="4">
-									<form class="row" onsubmit={(e) => saveFolder(e, d)}>
-										<label class="grow">Folder <input bind:value={draft.folder} required placeholder="/home/me/Media/Movies" /></label>
-										<button class="primary" disabled={!!busy}>Save</button>
-									</form>
-									<p class="muted small hint">
-										New {d.media_kind === 'movie' ? 'movies' : 'episodes'} go here; files already in the
-										old folder stay there. The folder is checked when you save (it must be writable,
-										with enough free space).
-									</p>
-								</td>
-							</tr>
-						{/if}
-					{/each}
-				</tbody>
-			</table>
-		</div>
+	<section id="library">
+		<h2>Library</h2>
+		<p class="muted small">Where finished downloads go and how they're named. Most people only pick a folder and a style.</p>
+		{#if namingOptions}
+			<div class="libs">
+				{#each ['movie', 'series'] as const as kind (kind)}
+					<LibraryCard {kind} dest={destinations.find((d) => d.media_kind === kind && d.is_default) ?? destinations.find((d) => d.media_kind === kind)} options={namingOptions} onChanged={load} />
+				{/each}
+			</div>
+		{/if}
 	</section>
 </main>
 
 <style>
 	section {
 		margin-bottom: 1.5rem;
+	}
+	.libs {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+		gap: 1rem;
 	}
 	.grow {
 		flex: 1;

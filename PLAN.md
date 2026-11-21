@@ -213,13 +213,15 @@ season-pack rule; RSS sync, missing search, upgrades
       Checked against a real Prowlarr 3.0.2. Pasted API keys are trimmed; a Torznab URL that
       is an app's own API (Prowlarr's main address) gets an error saying so
 - [ ] RSS sync (every 15 min): each indexer's feed, matched against all wanted items
-- [ ] **Library settings UI (high priority, after TV import):** Settings > Library with a
-      Movies card and a TV card: folder (checked: exists, writable, free space, hardlinks),
-      style presets (Plex/Jellyfin, Kodi, Simple, Custom), TV season folders (Season 01 /
-      S01 / none), custom patterns edited by clicking tokens, a live preview tree with real
-      edge cases (multi-episode, specials, no year, illegal characters), and "rename
-      existing files" with a preview before anything moves. Must be intuitive enough that
-      most users only pick a folder and a preset
+- [x] **Library settings UI:** Settings > Library has a Movies card and a TV card: the
+      folder (status, free space, change), naming style presets (Plex / Jellyfin / Emby,
+      Kodi, Simple, Custom), TV season folders (Season 01 / Season 1 / S01 / none), custom
+      patterns with click-to-insert tokens, a live preview tree with edge cases (multi-
+      episode, specials, no year, characters Windows forbids), and "rename existing
+      files" with a review list first (same-disk rename, emptied folders removed, an
+      existing target is never overwritten). Movie and TV naming are stored separately.
+      API: `/library/naming-options`, `/library/naming/{kind}` (+ `/preview`),
+      `/library/rename/{kind}`
 - [x] UI: add page with Movies / TV shows (monitor mode for shows, "start searching" for
       movies); series page with seasons (monitor, search, choose a release incl. packs) and
       episodes (monitor, choose a release); library tiles show episodes downloaded

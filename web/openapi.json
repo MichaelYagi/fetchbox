@@ -1907,6 +1907,41 @@
     "title": "FileOut",
     "type": "object"
    },
+   "FolderOut": {
+    "properties": {
+     "destination_id": {
+      "title": "Destination Id",
+      "type": "string"
+     },
+     "path": {
+      "title": "Path",
+      "type": "string"
+     },
+     "status": {
+      "title": "Status",
+      "type": "string"
+     },
+     "status_message": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Status Message"
+     }
+    },
+    "required": [
+     "destination_id",
+     "path",
+     "status",
+     "status_message"
+    ],
+    "title": "FolderOut",
+    "type": "object"
+   },
    "FormatIn": {
     "properties": {
      "conditions": {
@@ -3390,6 +3425,98 @@
     "title": "MovieDetail",
     "type": "object"
    },
+   "NamingIn": {
+    "properties": {
+     "patterns": {
+      "additionalProperties": {
+       "type": "string"
+      },
+      "title": "Patterns",
+      "type": "object"
+     }
+    },
+    "required": [
+     "patterns"
+    ],
+    "title": "NamingIn",
+    "type": "object"
+   },
+   "NamingOptionsOut": {
+    "properties": {
+     "presets": {
+      "items": {
+       "$ref": "#/components/schemas/PresetOut"
+      },
+      "title": "Presets",
+      "type": "array"
+     },
+     "season_folders": {
+      "items": {
+       "$ref": "#/components/schemas/SeasonFolderOut"
+      },
+      "title": "Season Folders",
+      "type": "array"
+     },
+     "tokens": {
+      "additionalProperties": {
+       "type": "string"
+      },
+      "title": "Tokens",
+      "type": "object"
+     }
+    },
+    "required": [
+     "presets",
+     "season_folders",
+     "tokens"
+    ],
+    "title": "NamingOptionsOut",
+    "type": "object"
+   },
+   "NamingOut": {
+    "properties": {
+     "folder": {
+      "$ref": "#/components/schemas/FolderOut"
+     },
+     "kind": {
+      "enum": [
+       "movie",
+       "series"
+      ],
+      "title": "Kind",
+      "type": "string"
+     },
+     "patterns": {
+      "additionalProperties": {
+       "type": "string"
+      },
+      "description": "Only this kind's patterns",
+      "title": "Patterns",
+      "type": "object"
+     },
+     "preset": {
+      "description": "A preset id, or custom",
+      "title": "Preset",
+      "type": "string"
+     },
+     "samples": {
+      "items": {
+       "$ref": "#/components/schemas/SampleOut"
+      },
+      "title": "Samples",
+      "type": "array"
+     }
+    },
+    "required": [
+     "kind",
+     "folder",
+     "patterns",
+     "preset",
+     "samples"
+    ],
+    "title": "NamingOut",
+    "type": "object"
+   },
    "NodeOut": {
     "properties": {
      "created_at": {
@@ -3936,6 +4063,37 @@
      }
     },
     "title": "Policy",
+    "type": "object"
+   },
+   "PresetOut": {
+    "properties": {
+     "description": {
+      "title": "Description",
+      "type": "string"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "label": {
+      "title": "Label",
+      "type": "string"
+     },
+     "patterns": {
+      "additionalProperties": {
+       "type": "string"
+      },
+      "title": "Patterns",
+      "type": "object"
+     }
+    },
+    "required": [
+     "id",
+     "label",
+     "description",
+     "patterns"
+    ],
+    "title": "PresetOut",
     "type": "object"
    },
    "PreviewIn": {
@@ -4755,6 +4913,107 @@
     "title": "ReleaseOut",
     "type": "object"
    },
+   "RenameFailureOut": {
+    "properties": {
+     "current": {
+      "title": "Current",
+      "type": "string"
+     },
+     "error": {
+      "title": "Error",
+      "type": "string"
+     },
+     "file_id": {
+      "title": "File Id",
+      "type": "string"
+     }
+    },
+    "required": [
+     "file_id",
+     "current",
+     "error"
+    ],
+    "title": "RenameFailureOut",
+    "type": "object"
+   },
+   "RenameIn": {
+    "properties": {
+     "file_ids": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Null: every file listed",
+      "title": "File Ids"
+     }
+    },
+    "title": "RenameIn",
+    "type": "object"
+   },
+   "RenameOut": {
+    "properties": {
+     "failed": {
+      "items": {
+       "$ref": "#/components/schemas/RenameFailureOut"
+      },
+      "title": "Failed",
+      "type": "array"
+     },
+     "renamed": {
+      "items": {
+       "$ref": "#/components/schemas/RenameStepOut"
+      },
+      "title": "Renamed",
+      "type": "array"
+     }
+    },
+    "required": [
+     "renamed",
+     "failed"
+    ],
+    "title": "RenameOut",
+    "type": "object"
+   },
+   "RenameStepOut": {
+    "properties": {
+     "current": {
+      "title": "Current",
+      "type": "string"
+     },
+     "file_id": {
+      "title": "File Id",
+      "type": "string"
+     },
+     "new": {
+      "title": "New",
+      "type": "string"
+     },
+     "title": {
+      "title": "Title",
+      "type": "string"
+     },
+     "title_id": {
+      "title": "Title Id",
+      "type": "string"
+     }
+    },
+    "required": [
+     "file_id",
+     "title_id",
+     "title",
+     "current",
+     "new"
+    ],
+    "title": "RenameStepOut",
+    "type": "object"
+   },
    "Revision": {
     "properties": {
      "real": {
@@ -4769,6 +5028,24 @@
      }
     },
     "title": "Revision",
+    "type": "object"
+   },
+   "SampleOut": {
+    "properties": {
+     "label": {
+      "title": "Label",
+      "type": "string"
+     },
+     "path": {
+      "title": "Path",
+      "type": "string"
+     }
+    },
+    "required": [
+     "label",
+     "path"
+    ],
+    "title": "SampleOut",
     "type": "object"
    },
    "ScheduleOut": {
@@ -4952,6 +5229,24 @@
      "number"
     ],
     "title": "SeasonDetail",
+    "type": "object"
+   },
+   "SeasonFolderOut": {
+    "properties": {
+     "label": {
+      "title": "Label",
+      "type": "string"
+     },
+     "pattern": {
+      "title": "Pattern",
+      "type": "string"
+     }
+    },
+    "required": [
+     "pattern",
+     "label"
+    ],
+    "title": "SeasonFolderOut",
     "type": "object"
    },
    "SeasonOut": {
@@ -12274,6 +12569,394 @@
     "summary": "Retry Job",
     "tags": [
      "jobs"
+    ]
+   }
+  },
+  "/api/v1/library/naming-options": {
+   "get": {
+    "description": "Naming presets, season folder choices and the tokens patterns can use.",
+    "operationId": "naming_options_api_v1_library_naming_options_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/NamingOptionsOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Naming Options",
+    "tags": [
+     "library"
+    ]
+   }
+  },
+  "/api/v1/library/naming/{kind}": {
+   "get": {
+    "description": "How new movies or episodes are named and where they go, with example names.",
+    "operationId": "get_naming_api_v1_library_naming__kind__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "kind",
+      "required": true,
+      "schema": {
+       "enum": [
+        "movie",
+        "series"
+       ],
+       "title": "Kind",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/NamingOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Conflict"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Get Naming",
+    "tags": [
+     "library"
+    ]
+   },
+   "put": {
+    "description": "Save the naming for movies or series. Patterns of the other kind are ignored.\nFiles already in the library keep their names until renamed.",
+    "operationId": "put_naming_api_v1_library_naming__kind__put",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "kind",
+      "required": true,
+      "schema": {
+       "enum": [
+        "movie",
+        "series"
+       ],
+       "title": "Kind",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/NamingIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/NamingOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Conflict"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Unprocessable Content"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Put Naming",
+    "tags": [
+     "library"
+    ]
+   }
+  },
+  "/api/v1/library/naming/{kind}/preview": {
+   "post": {
+    "description": "Example names for patterns, before saving them.",
+    "operationId": "preview_naming_api_v1_library_naming__kind__preview_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "kind",
+      "required": true,
+      "schema": {
+       "enum": [
+        "movie",
+        "series"
+       ],
+       "title": "Kind",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/NamingIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/NamingOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Conflict"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Unprocessable Content"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Preview Naming",
+    "tags": [
+     "library"
+    ]
+   }
+  },
+  "/api/v1/library/rename/{kind}": {
+   "get": {
+    "description": "Files whose name differs from what the current naming gives, old and new.",
+    "operationId": "rename_preview_api_v1_library_rename__kind__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "kind",
+      "required": true,
+      "schema": {
+       "enum": [
+        "movie",
+        "series"
+       ],
+       "title": "Kind",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/RenameStepOut"
+         },
+         "title": "Response Rename Preview Api V1 Library Rename  Kind  Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Rename Preview",
+    "tags": [
+     "library"
+    ]
+   },
+   "post": {
+    "description": "Rename files to the current naming (on the same disk: nothing is copied).",
+    "operationId": "rename_files_api_v1_library_rename__kind__post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "kind",
+      "required": true,
+      "schema": {
+       "enum": [
+        "movie",
+        "series"
+       ],
+       "title": "Kind",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/RenameIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/RenameOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Rename Files",
+    "tags": [
+     "library"
     ]
    }
   },

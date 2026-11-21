@@ -191,9 +191,73 @@ def validate_patterns(patterns: Mapping[str, str]) -> dict[str, str]:
             parse(tpl)
         except TemplateError as exc:
             raise TemplateError(f"{key}: {exc}") from None
-        if not tpl.strip():
+        if not tpl.strip() and key != "season_folder":  # no season folder: allowed
             raise TemplateError(f"{key}: must not be empty")
+    used = {t.name for t in _tokens(out["episode_file"])}
+    if "Episode" not in used:
+        raise TemplateError(
+            "episode_file: must contain {Episode}, or every episode gets the same name"
+        )
+    if "Season" not in used and not out["season_folder"].strip():
+        raise TemplateError("episode_file: must contain {Season} when there are no season folders")
     return out
+
+
+def _tokens(tpl: str) -> list[_Tok]:
+    """Every token in a pattern, conditional segments included."""
+    out: list[_Tok] = []
+
+    for n in parse(tpl):
+        if isinstance(n, _Tok):
+            out.append(n)
+        elif isinstance(n, _Opt):
+            out += [p for p in n.parts if isinstance(p, _Tok)]
+    return out
+
+
+# Ready-made naming styles. Season folders are chosen separately (SEASON_FOLDERS).
+PRESETS: dict[str, dict[str, str]] = {
+    "plex": {
+        "label": "Plex / Jellyfin / Emby",
+        "description": "Folders carry the TMDB/TVDB id so the server always matches the "
+        "right title; quality in the file name",
+        "movie_folder": DEFAULT_PATTERNS["movie_folder"],
+        "movie_file": DEFAULT_PATTERNS["movie_file"],
+        "series_folder": DEFAULT_PATTERNS["series_folder"],
+        "episode_file": DEFAULT_PATTERNS["episode_file"],
+    },
+    "kodi": {
+        "label": "Kodi",
+        "description": "Title (Year) folders; Kodi-style S01E01E02 for multi-episode files",
+        "movie_folder": "{Title} ({Year})",
+        "movie_file": "{Title} ({Year})[ - {Quality}]",
+        "series_folder": "{Title} ({Year})",
+        "episode_file": "{Title} S{Season:00}E{Episode:00}[E{EpisodeEnd:00}][ - {EpisodeTitle}]",
+    },
+    "simple": {
+        "label": "Simple",
+        "description": "Just titles and numbers, nothing else",
+        "movie_folder": "{Title} ({Year})",
+        "movie_file": "{Title} ({Year})",
+        "series_folder": "{Title}",
+        "episode_file": "{Title} - S{Season:00}E{Episode:00}[-E{EpisodeEnd:00}]",
+    },
+}
+KIND_KEYS = {"movie": ("movie_folder", "movie_file"), "series": ("series_folder", "episode_file")}
+SEASON_FOLDERS: list[tuple[str, str]] = [
+    ("Season {Season:00}", "Season 01"),
+    ("Season {Season}", "Season 1"),
+    ("S{Season:00}", "S01"),
+    ("", "No season folders"),
+]
+
+
+def preset_of(kind: str, patterns: Mapping[str, str]) -> str:
+    """Which preset these patterns are (for this kind), or "custom"."""
+    for pid, p in PRESETS.items():
+        if all(patterns.get(k) == p[k] for k in KIND_KEYS[kind]):
+            return pid
+    return "custom"
 
 
 def movie_path(patterns: Mapping[str, str], ctx: Mapping[str, Any], extension: str) -> str:
@@ -213,3 +277,46 @@ def episode_path(patterns: Mapping[str, str], ctx: Mapping[str, Any], extension:
     ext = extension.lower().lstrip(".")
     name = f"{stem}.{ext}" if ext else stem
     return f"{series}/{safe_component(season)}/{name}" if season else f"{series}/{name}"
+
+
+# Example names for the preview: the ordinary case, then the ones that go wrong.
+_MOVIE_SAMPLES: list[tuple[str, dict[str, Any]]] = [
+    ("A typical movie", {"Title": "Dune: Part Two", "Year": 2024, "TmdbId": 693134,
+                         "Quality": "WEBDL-2160p", "HDR": ["DV", "HDR10"], "Codec": "x265",
+                         "Group": "FLUX", "Resolution": "2160p", "Source": "WEB-DL"}),
+    ("An edition, and characters Windows forbids",
+     {"Title": "Blade Runner: The Final Cut?", "Year": 1982, "TmdbId": 78,
+      "Edition": "Director's Cut", "Quality": "Bluray-1080p", "Codec": "x264",
+      "Group": "AMIABLE", "Resolution": "1080p", "Source": "BluRay"}),
+    ("No year or quality known", {"Title": "Untitled Archive Film", "TmdbId": 1001}),
+]  # fmt: skip
+_SEVERANCE = {"Title": "Severance", "Year": 2022, "TvdbId": 371980}
+_EPISODE_SAMPLES: list[tuple[str, dict[str, Any]]] = [
+    (
+        "A typical episode",
+        {**_SEVERANCE, "Season": 1, "Episode": 7, "AirDate": "2022-03-25",
+         "EpisodeTitle": "Defiant Jazz", "Quality": "WEBDL-1080p"},
+    ),
+    (
+        "Two episodes in one file",
+        {**_SEVERANCE, "Season": 1, "Episode": 1, "EpisodeEnd": 2, "AirDate": "2022-02-18",
+         "EpisodeTitle": "Good News About Hell + Half Loop", "Quality": "WEBDL-1080p"},
+    ),
+    (
+        "A special (season 0)",
+        {**_SEVERANCE, "Season": 0, "Episode": 1, "AirDate": "2022-04-01",
+         "EpisodeTitle": "Season 1 Recap", "Quality": "WEBDL-720p"},
+    ),
+    (
+        "No episode title, odd characters",
+        {"Title": "Marvel's Agents of S.H.I.E.L.D.", "Year": 2013, "TvdbId": 263365,
+         "Season": 10, "Episode": 112, "AirDate": "2023-08-10", "Quality": "HDTV-720p"},
+    ),
+]  # fmt: skip
+
+
+def preview_samples(kind: str, patterns: Mapping[str, str]) -> list[dict[str, str]]:
+    """[{label, path}] for the example titles, rendered with ``patterns``."""
+    if kind == "movie":
+        return [{"label": lb, "path": movie_path(patterns, c, "mkv")} for lb, c in _MOVIE_SAMPLES]
+    return [{"label": lb, "path": episode_path(patterns, c, "mkv")} for lb, c in _EPISODE_SAMPLES]
