@@ -1,0 +1,74 @@
+// Edge cases: junk, odd separators, misleading tokens, things that must not crash.
+
+{"name": "", "title": "", "type": "movie"}
+{"name": "   ", "title": "", "type": "movie"}
+{"name": "1080p", "title": "1080p", "type": "movie", "resolution": 1080}
+{"name": "x264-GRP", "title": "x264-GRP", "type": "movie", "codec": "h264"}
+{"name": "S01E01", "title": "S01E01", "type": "movie"}
+{"name": "2019", "title": "2019", "type": "movie", "year": null}
+{"name": "....", "title": "", "type": "movie"}
+{"name": "-GRP", "title": "GRP", "type": "movie"}
+{"name": "Movie.2020.1080p.BluRay.x264-", "title": "Movie", "type": "movie", "group": null}
+{"name": "Movie.2020.1080p.BluRay.x264--GRP", "title": "Movie", "type": "movie", "group": "GRP"}
+{"name": "Movie..2020..1080p..BluRay..x264-GRP", "title": "Movie", "type": "movie", "year": 2020, "quality": "Bluray-1080p"}
+{"name": "Movie - 2020 - 1080p - BluRay - x264", "title": "Movie", "type": "movie", "year": 2020, "quality": "Bluray-1080p"}
+{"name": "Movie [2020] [1080p] [BluRay] [x264]", "title": "Movie", "type": "movie", "year": 2020, "quality": "Bluray-1080p"}
+{"name": "Movie {2020} 1080p BluRay", "title": "Movie", "type": "movie", "year": 2020}
+{"name": "Movie.2020.1080p.BluRay.x264-GRP.mkv.part", "title": "Movie", "type": "movie", "group": "GRP", "ext": "mkv"}
+{"name": "Movie.2020.1080p.BluRay.x264-GRP.nzb", "title": "Movie", "type": "movie", "group": "GRP", "ext": "nzb"}
+{"name": "Movie.2020.1080p.BluRay.x264-GRP.torrent", "title": "Movie", "type": "movie", "group": "GRP", "ext": "torrent"}
+{"name": "Movie.2020.1080p.BluRay.x264-GRP.avi", "title": "Movie", "type": "movie", "ext": "avi"}
+{"name": "Movie.2020.720p.BluRay.x264-GRP.ts", "title": "Movie", "type": "movie", "ext": "ts", "quality": "Bluray-720p"}
+{"name": "movie.2020.1080p.bluray.x264-grp.MKV", "title": "movie", "type": "movie", "ext": "mkv"}
+{"name": "The.Cam.Girl.2015.1080p.BluRay.x264-GRP", "title": "The Cam Girl", "type": "movie", "quality": "Bluray-1080p"}
+{"name": "Charlottes.Web.2006.DVDRip.XviD-GRP", "title": "Charlottes Web", "type": "movie", "quality": "DVD"}
+{"name": "The.Proposal.2009.1080p.BluRay.x264-GRP", "title": "The Proposal", "type": "movie", "proper": false}
+{"name": "Real.Steel.2011.1080p.BluRay.x264-GRP", "title": "Real Steel", "type": "movie", "real": 0}
+{"name": "The.Extended.Family.2020.1080p.WEB.h264-GRP", "title": "The Extended Family", "type": "movie", "edition": null}
+{"name": "French.Kiss.1995.1080p.BluRay.x264-GRP", "title": "French Kiss", "type": "movie", "languages": []}
+{"name": "The.German.Doctor.2013.1080p.BluRay.x264-GRP", "title": "The German Doctor", "type": "movie", "languages": []}
+{"name": "The.Italian.Job.2003.1080p.BluRay.x264-GRP", "title": "The Italian Job", "type": "movie", "languages": []}
+{"name": "Remux.2020.1080p.WEB.h264-GRP", "title": "Remux", "type": "movie", "quality": "WEBDL-1080p"}
+{"name": "Season.of.the.Witch.2011.1080p.BluRay.x264-GRP", "title": "Season of the Witch", "type": "movie"}
+{"name": "Hunting.Season.2.2016.1080p.BluRay.x264-GRP", "title": "Hunting Season 2", "type": "movie", "xfail": "Season N in a movie title reads as a season pack"}
+{"name": "Episode.50.2011.1080p.BluRay.x264-GRP", "title": "Episode 50", "type": "movie", "year": 2011}
+{"name": "Final.Cut.2004.1080p.WEB.h264-GRP", "title": "Final Cut", "type": "movie", "year": 2004}
+{"name": "The.Limited.2015.1080p.WEB.h264-GRP", "title": "The Limited", "type": "movie", "limited": false}
+{"name": "Movie.2020.1080p.BluRay.x264-HD", "title": "Movie", "type": "movie", "group": null}
+{"name": "Movie.2020.1080p.BluRay.x264-1080p", "title": "Movie", "type": "movie", "group": null}
+{"name": "Movie.2020.1080p.BluRay.x264-12", "title": "Movie", "type": "movie", "group": null}
+{"name": "Movie.2020.1080p.BluRay.x264-D-Z0N3", "title": "Movie", "type": "movie", "group": "D-Z0N3", "xfail": "groups containing a dash are cut at the last dash"}
+{"name": "Movie.2020.1080p.BluRay.x264-d3g", "title": "Movie", "type": "movie", "group": "d3g"}
+{"name": "Movie.2020.1080p.BluRay.x264-NTb", "title": "Movie", "type": "movie", "group": "NTb"}
+{"name": "Movie.2020.1080p.WEB-DL.DDP5.1.H.264-playWEB", "title": "Movie", "type": "movie", "group": "playWEB", "quality": "WEBDL-1080p"}
+{"name": "Movie.2020.1080p.BluRay.x264-W4NK3R", "title": "Movie", "type": "movie", "group": "W4NK3R"}
+{"name": "Movie.2020.1080p.BluRay.x264-Tigole", "title": "Movie", "type": "movie", "group": "Tigole"}
+{"name": "Movie 2020 1080p BluRay x264 -GRP", "title": "Movie", "type": "movie", "group": "GRP"}
+{"name": "Movie.2030.1080p.WEB.h264-GRP", "title": "Movie 2030", "type": "movie", "year": null}
+{"name": "Movie.1899.1080p.WEB.h264-GRP", "title": "Movie 1899", "type": "movie", "year": null}
+{"name": "Movie.1900.1080p.WEB.h264-GRP", "title": "Movie", "type": "movie", "year": 1900}
+{"name": "Movie.2020.1080p.2160p.WEB.h264-GRP", "title": "Movie", "type": "movie", "resolution": 2160}
+{"name": "Movie.2020.720p.BluRay.1080p.WEB-DL.x264-GRP", "title": "Movie", "type": "movie", "quality": "WEBDL-1080p"}
+{"name": "A.Movie.About.1080p.Things.2020.BluRay-GRP", "title": "A Movie About", "type": "movie", "year": 2020}
+{"name": "Movie.2020.1080p.BluRay.x264-GRP-[rarbg.to]", "title": "Movie", "type": "movie", "group": "GRP"}
+{"name": "[TorrentCounter.to].Movie.2020.1080p.BluRay.x264.[1.4GB].mp4", "title": "Movie", "type": "movie", "year": 2020, "ext": "mp4"}
+{"name": "【www.site.com】Movie.2020.1080p.BluRay.x264-GRP", "title": "Movie", "type": "movie", "group": "GRP"}
+{"name": "Movie.2020.1080p.BluRay.x264-GRP [PublicHD]", "title": "Movie", "type": "movie", "group": "GRP"}
+{"name": "Movie.2020.1080p.BluRay.x264-GRP[TGx]", "title": "Movie", "type": "movie", "group": "GRP"}
+{"name": "Movie.2020.1080p.BluRay.x264-GRP[N1C]", "title": "Movie", "type": "movie", "group": "GRP", "xfail": "unknown trailing bracket tags are not stripped"}
+{"name": "Movie.2020.1080p.BluRay.x264-GRP[ABCD1234]", "title": "Movie", "type": "movie", "group": "GRP", "hash": "ABCD1234"}
+{"name": "Movie (2020)", "title": "Movie", "type": "movie", "year": 2020, "quality": "Unknown"}
+{"name": "Show S01E01", "title": "Show", "type": "series", "seasons": [1], "episodes": [1]}
+{"name": "Show 1x01", "title": "Show", "type": "series", "seasons": [1], "episodes": [1]}
+{"name": "Show.1920x1080.WEB.h264-GRP", "title": "Show", "type": "movie", "resolution": 1080, "seasons": []}
+{"name": "Show.S01E01E01.720p.HDTV.x264-GRP", "title": "Show", "type": "series", "episodes": [1]}
+{"name": "Show.S01E01-E80.720p.HDTV.x264-GRP", "title": "Show", "type": "series", "episodes": [1]}
+{"name": "Movie.2020.1080p.BluRay.x264-GRP-Obfuscated-postbot", "title": "Movie", "type": "movie", "group": "GRP"}
+{"name": "Movie 2020 1080p BluRay x264 DTS-HD MA 5.1 - GRP", "title": "Movie", "type": "movie", "group": "GRP", "xfail": "spaced dash before the group"}
+{"name": "Movie.2020.1080p.BluRay.x264.DTS-HD.MA.5.1-GRP", "title": "Movie", "type": "movie", "group": "GRP", "audio": ["dts-hd ma"], "channels": "5.1"}
+{"name": "Movie.2020.1080p.BluRay.x264.DTS-X-GRP", "title": "Movie", "type": "movie", "group": "GRP", "audio": ["dts-x"]}
+{"name": "Movie.2020.1080p.WEB-DL.DUAL-GRP", "title": "Movie", "type": "movie", "multi": true, "group": "GRP"}
+{"name": "Movie.2020.1080p.BluRay.x264.XviD-GRP", "title": "Movie", "type": "movie", "codec": "h264"}
+{"name": "Movie.2020.WEB-DL.x264-GRP.sample.mkv", "title": "Movie", "type": "movie", "sample": true}
+{"name": "Sample.Movie.2020.WEB-DL.x264-GRP", "title": "Sample Movie", "type": "movie", "sample": false}
+{"name": "Movie.2020.WEB-DL.x264-GRP.SAMPLE", "title": "Movie", "type": "movie", "sample": true, "group": "GRP", "xfail": "a trailing .SAMPLE after the group hides the group"}

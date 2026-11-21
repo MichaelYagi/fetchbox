@@ -21,7 +21,15 @@ from fetchbox.core.events import Event, EventBus, Subscription, matches
 
 log = structlog.get_logger(__name__)
 
-SKIP = ("*.progress", "job.queued", "job.started", "job.succeeded")
+SKIP = (
+    "*.progress",
+    "job.queued",
+    "job.started",
+    "job.succeeded",
+    "search.started",
+    "download.started",
+    "import.started",
+)
 BATCH = 200
 DEFAULT_RETENTION = timedelta(days=90)
 
@@ -40,6 +48,55 @@ MESSAGES: dict[str, str] = {
     "auth.password_changed": "Admin password changed for '{username}'",
     "job.failed": "Job {job_type} failed: {error}",
     "job.cancelled": "Job {job_type} cancelled",
+    "profiles.profile_created": "Quality profile '{name}' created",
+    "profiles.profile_updated": "Quality profile '{name}' updated",
+    "profiles.profile_deleted": "Quality profile '{name}' deleted",
+    "profiles.format_created": "Custom format '{name}' created",
+    "profiles.format_updated": "Custom format '{name}' updated",
+    "profiles.format_deleted": "Custom format '{name}' deleted",
+    "system.config_changed": "Settings changed: {fields}",
+    "title.added": "Added {name} ({year})",
+    "title.updated": "Updated {name} ({year})",
+    "title.refreshed": "Refreshed metadata for {name} ({year})",
+    "title.removed": "Removed {name} ({year})",
+    "wanted.updated": "Monitoring for {name} set to {monitored}",
+    "source.added": "Indexer '{name}' added",
+    "source.updated": "Indexer '{name}' updated",
+    "source.removed": "Indexer '{name}' removed",
+    "source.reordered": "Indexer priorities changed",
+    "source.failed": "Indexer '{name}' failed: {error} (retrying after {disabled_until})",
+    "source.recovered": "Indexer '{name}' is working again",
+    "release.grabbed": "Grabbed {release_title} for {name} ({quality}, {reason})",
+    "release.blocklisted": "Blocklisted {release_title}",
+    "release.unblocklisted": "Removed {release_title} from the blocklist",
+    "download.queued": "Queued download of {name}",
+    "download.completed": "Downloaded {name}",
+    "download.failed": "Download of {name} failed: {error}",
+    "download.stalled": "Download of {name} stalled (no peers); back in the queue",
+    "download.removed": "Removed download {name}",
+    "download.paused": "Paused download {name}",
+    "download.resumed": "Resumed download {name}",
+    "download_client.updated": "Download client '{name}' updated",
+    "import.completed": "Imported {name} ({year}) to {destination}: {path}",
+    "import.failed": "Import of {name} needs attention: {error}",
+    "file.upgraded": "Upgraded {name}: {path}",
+    "file.deleted": "Deleted file {path}",
+    "storage.offline": "Destination {name} is offline: {message}",
+    "storage.online": "Destination {name} is online",
+    "storage.low_space": "Destination {name} is low on space: {message}",
+    "storage.destination_added": "Destination {name} added ({path})",
+    "storage.destination_updated": "Destination {name} updated",
+    "storage.destination_removed": "Destination {name} removed",
+    "library.template_created": "Naming template '{name}' created",
+    "library.template_updated": "Naming template '{name}' updated",
+    "wanted.unlocked": "Unlocked {name}: automatic search may grab it again",
+    "wanted.redownload": "Redownloading {name}",
+    "download.seeded": "Finished seeding {name} (ratio {ratio}, {hours} h): {action}d",
+    "source.definition_added": "Indexer definition {name} added",
+    "source.definition_removed": "Indexer definition {name} removed",
+    "download_client.added": "Download client {name} added ({kind})",
+    "download_client.removed": "Download client {name} removed",
+    "search.completed": "Searched for {name}: {results} results, {accepted} acceptable",
 }
 
 

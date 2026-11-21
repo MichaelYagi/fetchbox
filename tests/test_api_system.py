@@ -22,9 +22,17 @@ async def test_health_ok_and_emits_change(client: httpx.AsyncClient, server: Run
     bus = server.app.state.fb.bus
     sub = bus.subscribe("system.health_changed")
     body = (await client.get("/system/health")).json()
-    assert body["status"] == "ok", body
-    assert {c["name"] for c in body["checks"]} >= {"database", "torrent_engine"}
-    assert sub.queue.get_nowait().data["status"] == "ok"
+    # A fresh install has no TMDB key and no indexer: those warn (with fix links).
+    checks = {c["name"]: c for c in body["checks"]}
+    for name in ("metadata", "indexers"):
+        assert checks[name]["status"] == "warning" and checks[name]["fix_url"]
+    assert {n for n, c in checks.items() if c["status"] != "ok"} == {"metadata", "indexers"}
+    assert {"database", "torrent_engine"} <= set(checks)
+    assert body["status"] == "warning"
+    events = []
+    while not sub.queue.empty():
+        events.append(sub.queue.get_nowait())
+    assert events and events[-1].data["status"] == "warning"  # (startup's check may come first)
     await client.get("/system/health")
     assert sub.queue.empty()  # unchanged status -> no new event
 

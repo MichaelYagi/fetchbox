@@ -1,0 +1,63 @@
+// Anime: fansub brackets, absolute numbering, versions, batches.
+
+{"name": "[SubsPlease] Jujutsu Kaisen - 24 (1080p) [ABCD1234].mkv", "title": "Jujutsu Kaisen", "type": "series", "absolute": [24], "resolution": 1080, "group": "SubsPlease", "hash": "ABCD1234", "ext": "mkv"}
+{"name": "[SubsPlease] Frieren - 28 (1080p) [5F3A9C21].mkv", "title": "Frieren", "type": "series", "absolute": [28], "hash": "5F3A9C21"}
+{"name": "[SubsPlease] Sousou no Frieren - 01 (720p) [B2C8E1F0].mkv", "title": "Sousou no Frieren", "type": "series", "absolute": [1], "resolution": 720}
+{"name": "[Erai-raws] One Piece - 1071 [1080p][Multiple Subtitle].mkv", "title": "One Piece", "type": "series", "absolute": [1071], "group": "Erai-raws"}
+{"name": "[Erai-raws] Spy x Family - 12 [1080p][Multiple Subtitle][D6B9E5A0].mkv", "title": "Spy x Family", "type": "series", "absolute": [12], "hash": "D6B9E5A0"}
+{"name": "[HorribleSubs] Shingeki no Kyojin - 59 [1080p].mkv", "title": "Shingeki no Kyojin", "type": "series", "absolute": [59], "group": "HorribleSubs"}
+{"name": "[HorribleSubs] Boku no Hero Academia - 88 [720p].mkv", "title": "Boku no Hero Academia", "type": "series", "absolute": [88]}
+{"name": "[Judas] Vinland Saga - S02E01 [1080p][HEVC x265 10bit][Multi-Subs].mkv", "title": "Vinland Saga", "type": "series", "seasons": [2], "episodes": [1], "codec": "h265", "bit_depth": 10, "group": "Judas"}
+{"name": "[Judas] Chainsaw Man - S01E05 [1080p][HEVC x265 10bit].mkv", "title": "Chainsaw Man", "type": "series", "seasons": [1], "episodes": [5]}
+{"name": "[SubsPlease] Oshi no Ko S2 - 05 (1080p) [A1B2C3D4].mkv", "title": "Oshi no Ko", "type": "series", "seasons": [2], "episodes": [5], "absolute": []}
+{"name": "[SubsPlease] Mushoku Tensei S2 - 13 (1080p) [0F1E2D3C].mkv", "title": "Mushoku Tensei", "type": "series", "seasons": [2], "episodes": [13]}
+{"name": "[SubsPlease] Kaguya-sama wa Kokurasetai S3 - 01 (1080p)", "title": "Kaguya-sama wa Kokurasetai", "type": "series", "seasons": [3], "episodes": [1]}
+{"name": "[Group] Tensei Shitara Slime Datta Ken 2nd Season - 05 [1080p]", "title": "Tensei Shitara Slime Datta Ken", "type": "series", "seasons": [2], "episodes": [5]}
+{"name": "[Group] Dr. Stone - 3rd Season - 11 [1080p]", "title": "Dr. Stone", "type": "series", "seasons": [3], "episodes": [11]}
+{"name": "[Group] Show - 05v2 [1080p][ABCDEF12].mkv", "title": "Show", "type": "series", "absolute": [5], "version": 2}
+{"name": "[Group] Show - 05 v2 [1080p]", "title": "Show", "type": "series", "absolute": [5], "version": 2}
+{"name": "[Group] Show - 12v3 (1080p)", "title": "Show", "type": "series", "absolute": [12], "version": 3}
+{"name": "[Group] Show - 001 [720p]", "title": "Show", "type": "series", "absolute": [1]}
+{"name": "[Group] Show - 1000 [1080p]", "title": "Show", "type": "series", "absolute": [1000]}
+{"name": "[Group] Show - 01-12 [1080p][Batch]", "title": "Show", "type": "series", "absolute": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]}
+{"name": "[Group] Show (01-26) [BD 1080p]", "title": "Show", "type": "series", "absolute": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]}
+{"name": "[Group] Show - 01 ~ 13 [1080p]", "title": "Show", "type": "series", "absolute": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]}
+{"name": "[Group] Show 05 [1080p]", "title": "Show", "type": "series", "absolute": [5]}
+{"name": "[Group] Show 2 - 05 [1080p]", "title": "Show 2", "type": "series", "absolute": [5]}
+{"name": "[Group] Show (2023) - 05 [1080p]", "title": "Show", "type": "series", "year": 2023, "absolute": [5]}
+{"name": "[Group] 86 - Eighty Six - 23 [1080p]", "title": "86 - Eighty Six", "type": "series", "absolute": [23]}
+{"name": "[Group] Show - E05 [1080p]", "title": "Show", "type": "series", "absolute": [5]}
+{"name": "[Group] Show - EP05 [1080p]", "title": "Show", "type": "series", "absolute": [5]}
+{"name": "[Group] Show - #05 [1080p]", "title": "Show", "type": "series", "absolute": [5]}
+{"name": "[Group] Show - 05 - The Episode Title [1080p]", "title": "Show", "type": "series", "absolute": [5]}
+{"name": "[Group] Show - 05 [BD 1080p HEVC FLAC]", "title": "Show", "type": "series", "audio": ["flac"], "codec": "h265"}
+{"name": "[Group] Show - 05 [WEB 1080p AAC]", "title": "Show", "type": "series", "quality": "WEBDL-1080p", "audio": ["aac"]}
+{"name": "[Group] Show - 05 [BDRip 1080p x264 FLAC]", "title": "Show", "type": "series", "quality": "Bluray-1080p"}
+{"name": "[Group] Show - 05 [Hi10P 1080p]", "title": "Show", "type": "series", "bit_depth": 10, "codec": "h264"}
+{"name": "[Group] Show - 05 [Dual Audio][1080p]", "title": "Show", "type": "series", "multi": true}
+{"name": "[Group] Show - 05 [Dual-Audio 1080p]", "title": "Show", "type": "series", "multi": true}
+{"name": "[Group] Show - 05 (Dubbed) [1080p]", "title": "Show", "type": "series", "dubbed": true}
+{"name": "[Group] Show - 05 [ENG SUB][1080p]", "title": "Show", "type": "series", "subs": ["en"], "languages": []}
+{"name": "[Group] Show S01 [1080p][Batch]", "title": "Show", "type": "series", "seasons": [1], "full_season": true}
+{"name": "[Group] Show Season 2 [1080p][Batch]", "title": "Show", "type": "series", "seasons": [2]}
+{"name": "[Group] Show [1080p]", "title": "Show", "type": "movie", "resolution": 1080}
+{"name": "[Group] Kimi no Na wa (2016) [BD 1080p]", "title": "Kimi no Na wa", "type": "movie", "year": 2016}
+{"name": "[Group] Spirited Away (2001) [BDRip 1080p HEVC]", "title": "Spirited Away", "type": "movie", "year": 2001, "quality": "Bluray-1080p"}
+{"name": "[Group] Show The Movie (2019) [1080p]", "title": "Show The Movie", "type": "movie", "year": 2019}
+{"name": "Jujutsu.Kaisen.S02E24.1080p.CR.WEB-DL.AAC2.0.H.264-VARYG", "title": "Jujutsu Kaisen", "type": "series", "seasons": [2], "episodes": [24], "service": "CR", "group": "VARYG"}
+{"name": "Frieren.Beyond.Journeys.End.S01E28.1080p.CR.WEB-DL.DUAL.AAC2.0.H.264-VARYG", "title": "Frieren Beyond Journeys End", "type": "series", "multi": true, "service": "CR"}
+{"name": "Demon.Slayer.S04E01.1080p.FUNI.WEB-DL.AAC2.0.H.264-GRP", "title": "Demon Slayer", "type": "series", "service": "FUNI"}
+{"name": "One.Piece.E1071.1080p.WEB.H264-GRP", "title": "One Piece", "type": "series", "absolute": [1071]}
+{"name": "Naruto.Shippuden.EP500.720p.WEB.x264-GRP", "title": "Naruto Shippuden", "type": "series", "absolute": [500]}
+{"name": "Dragon Ball Z - Episode 291", "title": "Dragon Ball Z", "type": "series", "absolute": [291]}
+{"name": "[DB] Hunter x Hunter (2011) - 148 [Dual Audio 10bit 720p][HEVC-x265]", "title": "Hunter x Hunter", "type": "series", "year": 2011, "absolute": [148], "multi": true, "group": "DB"}
+{"name": "[ASW] Solo Leveling - 12 [1080p HEVC][1A2B3C4D].mkv", "title": "Solo Leveling", "type": "series", "absolute": [12], "group": "ASW"}
+{"name": "[New-raws] Dandadan - 07 [1080p] [AMZN].mkv", "title": "Dandadan", "type": "series", "absolute": [7], "group": "New-raws"}
+{"name": "[EMBER] Bocchi the Rock! (2022) (Season 1) [BDRip] [1080p Dual Audio HEVC 10 bits DDP]", "title": "Bocchi the Rock!", "type": "series", "seasons": [1], "year": 2022, "multi": true, "bit_depth": 10}
+{"name": "[Anime Time] Naruto - 001 [1080p][HEVC 10bit x265][AAC][Eng Sub]", "title": "Naruto", "type": "series", "absolute": [1], "subs": ["en"]}
+{"name": "[Cleo] Cowboy Bebop - 01 [Dual Audio 10bit BD1080p][HEVC-x265]", "title": "Cowboy Bebop", "type": "series", "absolute": [1], "multi": true}
+{"name": "[Golumpa] Show - 05 [English Dub] [FuniDub 1080p x264 AAC]", "title": "Show", "type": "series", "absolute": [5], "languages": ["en"]}
+{"name": "[Some-Stuffs] Show - 05 (WEB 1080p HEVC Opus)", "title": "Show", "type": "series", "audio": ["opus"]}
+{"name": "【喵萌奶茶屋】Show - 05 [1080p]", "title": "Show", "type": "series", "absolute": [5], "group": "喵萌奶茶屋"}
+{"name": "[Group] Show - 05 [1080p] [HC]", "title": "Show", "type": "series", "hardsub": true}
+{"name": "[Group] Show - 05 [1080p] [Uncensored]", "title": "Show", "type": "series", "edition": "Uncensored"}

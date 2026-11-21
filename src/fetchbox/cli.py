@@ -32,7 +32,41 @@ def _parser() -> argparse.ArgumentParser:
     rp.add_argument("--username", help="also rename the admin user")
     rp.add_argument("--password-stdin", action="store_true", help="read the password from stdin")
 
+    pr = sub.add_parser("parse", help="show how release names are parsed (no server needed)")
+    pr.add_argument("names", nargs="*", help="release names (default: stdin, one per line)")
+    pr.add_argument("--all", action="store_true", help="include fields that are empty/default")
+
+    sub.add_parser("openapi", help="print the API's OpenAPI document (for client generation)")
+
     return p
+
+
+def _openapi() -> int:
+    import json
+    import tempfile
+
+    from fetchbox.app import create_app
+    from fetchbox.config import load_settings
+
+    with tempfile.TemporaryDirectory() as tmp:  # the schema needs no running app or data
+        doc = create_app(load_settings(tmp)).openapi()
+    print(json.dumps(doc, indent=1, sort_keys=True))
+    return 0
+
+
+def _parse_names(names: Sequence[str], *, show_all: bool) -> int:
+    import json
+
+    from fetchbox.modules.releases.parser import parse_release
+
+    for name in names or (line.rstrip("\r\n") for line in sys.stdin):
+        if not name.strip():
+            continue
+        result = parse_release(name)
+        data = result.model_dump(mode="json", exclude_defaults=not show_all)
+        data.update(quality=result.quality, media_type=result.media_type)
+        print(json.dumps(data, ensure_ascii=False))
+    return 0
 
 
 def _has_admin_password(settings: Any) -> bool:
@@ -95,6 +129,10 @@ def _reset_password(settings: Any, username: str | None, from_stdin: bool) -> in
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
+    if args.command == "parse":
+        return _parse_names(args.names, show_all=args.all)
+    if args.command == "openapi":
+        return _openapi()
     # Imports deferred so `fetchbox --version` stays fast.
     from fetchbox.config import load_settings
     from fetchbox.core.logging import configure_logging

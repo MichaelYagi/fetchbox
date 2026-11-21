@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import AsyncIterator, Callable, Sequence
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import structlog
 from fastapi import APIRouter, FastAPI
@@ -24,12 +25,34 @@ from fetchbox.core.state import AppState
 from fetchbox.modules.auth import router as auth_router
 from fetchbox.modules.auth.service import AuthService
 from fetchbox.modules.automation import router as automation_router
+from fetchbox.modules.automation.search import AutoSearch
+from fetchbox.modules.automation.unlock import UnlockService
+from fetchbox.modules.discovery import router as discovery_router
+from fetchbox.modules.discovery.service import DiscoveryService
+from fetchbox.modules.downloads import router as downloads_router
+from fetchbox.modules.downloads.service import DownloadsService
 from fetchbox.modules.events import router as events_router
+from fetchbox.modules.library import router as library_router
+from fetchbox.modules.library.service import LibraryService
+from fetchbox.modules.media import router as media_router
+from fetchbox.modules.media.service import MediaService
+from fetchbox.modules.profiles import router as profiles_router
+from fetchbox.modules.profiles.service import ProfilesService
+from fetchbox.modules.releases import router as releases_router
+from fetchbox.modules.releases.grabs import GrabsService
+from fetchbox.modules.releases.service import ReleasesService
+from fetchbox.modules.sources import router as sources_router
+from fetchbox.modules.sources.service import SourcesService
+from fetchbox.modules.storage import router as storage_router
+from fetchbox.modules.storage.service import StorageService
 from fetchbox.modules.system import activity_router, jobs_router
 from fetchbox.modules.system import jobs as system_jobs
 from fetchbox.modules.system import router as system_router
 from fetchbox.modules.system.activity import ActivityWriter
+from fetchbox.modules.system.config import ConfigService
 from fetchbox.modules.system.service import register_core_checks
+from fetchbox.providers import builtin as _builtin_providers  # noqa: F401 (registers them)
+from fetchbox.ui import STATIC_DIR, install_ui
 
 API_PREFIX = "/api/v1"
 log = structlog.get_logger("fetchbox.app")
@@ -44,6 +67,17 @@ API_ROUTERS: tuple[APIRouter, ...] = (
     events_router.router,
     activity_router.router,
     automation_router.router,
+    automation_router.search_router,
+    profiles_router.router,
+    discovery_router.router,
+    media_router.router,
+    sources_router.router,
+    sources_router.definitions_router,
+    releases_router.router,
+    releases_router.grabs_router,
+    downloads_router.router,
+    storage_router.router,
+    library_router.router,
 )
 
 
@@ -74,6 +108,7 @@ def create_app(
     *,
     job_handler_hooks: Sequence[Callable[[JobRunner], None]] = (),
     on_bootstrap_key: Callable[[str], None] = print_bootstrap_key,
+    static_dir: Path | None = None,
 ) -> FastAPI:
     """`job_handler_hooks` let modules (and tests) register job handlers before start."""
 
@@ -109,17 +144,92 @@ def create_app(
                 "(fetchbox reset-password), or bind to 127.0.0.1"
             )
 
+        profiles = ProfilesService(db, bus)
+        await profiles.seed_defaults()
+        app.state.profiles = profiles
+
+        env = {}
+        if settings.tmdb_api_key is not None:
+            env["tmdb.api_key"] = settings.tmdb_api_key.get_secret_value()
+        config = ConfigService(db, bus, box, env=env)
+        await config.load()
+        app.state.config = config
+        discovery = DiscoveryService(config)
+        app.state.discovery = discovery
+        state.health.register("metadata", discovery.health, fix_url="/settings/general#tmdb")
+        media = MediaService(db, bus, discovery, profiles)
+        media.register_jobs(jobs, state.scheduler)
+        app.state.media = media
+        sources = SourcesService(db, bus, box, provider_registry)
+        await sources.sync_definitions(seed=settings.seed_indexers)
+        app.state.sources = sources
+        state.health.register("indexers", sources.health, fix_url="/settings/indexers")
+        grabs = GrabsService(db, bus)
+        app.state.grabs = grabs
+        releases = ReleasesService(db, bus, grabs, media, profiles, config, sources)
+        app.state.releases = releases
+        autosearch = AutoSearch(
+            db,
+            bus,
+            jobs,
+            releases=releases,
+            grabs=grabs,
+            media=media,
+            sources=sources,
+            config=config,
+        )
+        autosearch.register_jobs()
+        app.state.autosearch = autosearch
+        downloads = DownloadsService(
+            db,
+            bus,
+            box,
+            provider_registry,
+            jobs,
+            sources,
+            downloads_root=settings.downloads_dir,
+            state_dir=settings.data_dir / "torrents",
+            isolated=settings.torrent_isolated,
+        )
+        downloads.register_jobs()
+        app.state.downloads = downloads
+        storage = StorageService(
+            db,
+            bus,
+            downloads_root=settings.downloads_dir,
+            torrents_dir=settings.downloads_dir / "Torrents",
+        )
+        app.state.storage = storage
+        library = LibraryService(db, bus, jobs, storage, downloads, profiles)
+        library.register_jobs()
+        app.state.library = library
+        app.state.unlock = UnlockService(
+            db, bus, library=library, grabs=grabs, autosearch=autosearch
+        )
+        await storage.seed(await library.seed())
+        await storage.recover()
+
         activity_writer = ActivityWriter(db, bus)
         activity_writer.start()  # before anything else emits, so startup is logged
         app.state.activity = activity_writer
 
         plugins = state.providers.load_entry_points()
         register_core_checks(state)
+        # Replaces the core "bindings import" check with the running engine's state.
+        state.health.register(
+            "torrent_engine", downloads.health, fix_url="/settings/download-clients"
+        )
+        state.health.register("storage", storage.health, fix_url="/settings/storage")
         app.state.fb = state
         system_jobs.register(state)
         for hook in job_handler_hooks:
             hook(state.jobs)
         await state.jobs.start()
+        # Engine and import before the scheduler: its run-at-start health check would
+        # otherwise see the torrent engine "not running".
+        await downloads.start()
+        await library.start()
+        await autosearch.start()
         await state.scheduler.start()
 
         log.info(
@@ -136,8 +246,13 @@ def create_app(
             await state.bus.emit("system.stopping")
             await state.scheduler.stop()
             await state.jobs.stop(timeout=30)
+            await autosearch.stop()
+            await library.stop()
+            await downloads.stop()  # saves the engine's resume data
             await activity_writer.stop()
             await auth.drain()
+            await discovery.aclose()
+            await sources.aclose()
             await state.db.dispose()
             log.info("stopped")
 
@@ -151,4 +266,5 @@ def create_app(
     )
     install_error_handlers(app)
     app.include_router(build_api_router())
+    install_ui(app, static_dir or STATIC_DIR)
     return app

@@ -128,6 +128,7 @@ async def test_in_progress_returns_409(server: Running) -> None:
 
     db = server.app.state.fb.db
     gate = asyncio.Event()
+    started = asyncio.Event()
 
     def req() -> Request:
         async def receive() -> dict[str, Any]:
@@ -139,11 +140,15 @@ async def test_in_progress_returns_409(server: Running) -> None:
         )
 
     async def slow() -> JSONResponse:
+        started.set()
         await gate.wait()
         return JSONResponse({"ok": 1}, status_code=201)
 
     first = asyncio.create_task(idempotent(db, req(), actor_id="a", key="k", run=slow))
-    await asyncio.sleep(0.05)
+    # Wait until the first request holds the key and is running. (A fixed sleep here let
+    # the second call win the claim on slow CI runners, and then it waited on the gate
+    # forever.)
+    await asyncio.wait_for(started.wait(), timeout=10)
     from fetchbox.core.errors import ProblemError
 
     try:

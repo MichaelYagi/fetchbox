@@ -67,18 +67,23 @@ def test_corrupt_key_file(tmp_path: Path) -> None:
         load_or_create(tmp_path)
 
 
+PW = "correct-horse-battery-staple"
+PK = "0123456789abcdef-passkey"
+
+
 def test_settings_seal_open_mask_merge() -> None:
     box = SecretBox.generate()
     s = IndexerSettings(
-        url="https://idx", username="me", password=SecretStr("pw"), passkey=SecretStr("pk")
+        url="https://idx", username="me", password=SecretStr(PW), passkey=SecretStr(PK)
     )
     stored = seal_settings(box, s, context="indexer:01J")
     assert stored["url"] == "https://idx" and stored["username"] == "me"
     assert is_encrypted(stored["password"]) and is_encrypted(stored["passkey"])
-    assert "pw" not in str(stored) and "pk" not in str(stored)
+    # Long, distinctive secrets: a 2-letter one can appear in random base64 by chance.
+    assert PW not in str(stored) and PK not in str(stored)
 
     opened = open_settings(box, IndexerSettings, stored, context="indexer:01J")
-    assert opened.password is not None and opened.password.get_secret_value() == "pw"
+    assert opened.password is not None and opened.password.get_secret_value() == PW
     with pytest.raises(SecretsError):
         open_settings(box, IndexerSettings, stored, context="indexer:OTHER")
 
@@ -89,7 +94,7 @@ def test_settings_seal_open_mask_merge() -> None:
     # Client sends the masked view back with one change: secrets are kept, not overwritten.
     merged = merge_update(IndexerSettings, stored, {**view, "username": "you"})
     again = open_settings(box, IndexerSettings, merged, context="indexer:01J")
-    assert again.username == "you" and again.passkey.get_secret_value() == "pk"
+    assert again.username == "you" and again.passkey.get_secret_value() == PK
     # A new value replaces the secret.
     merged = merge_update(IndexerSettings, stored, {"passkey": "new"})
     assert (

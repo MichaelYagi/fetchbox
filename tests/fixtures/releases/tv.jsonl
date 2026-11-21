@@ -1,0 +1,173 @@
+// TV: single episodes, multi-episode files, season packs, daily shows, specials.
+
+// ---- single episodes
+{"name": "Breaking.Bad.S01E01.720p.BluRay.x264-DEMAND", "title": "Breaking Bad", "type": "series", "seasons": [1], "episodes": [1], "quality": "Bluray-720p", "group": "DEMAND"}
+{"name": "The.Office.US.S02E03.720p.WEB-DL.DD5.1.H.264-NTb", "title": "The Office US", "type": "series", "seasons": [2], "episodes": [3], "quality": "WEBDL-720p", "group": "NTb"}
+{"name": "Game.of.Thrones.S08E06.1080p.WEB.H264-MEMENTO", "title": "Game of Thrones", "type": "series", "seasons": [8], "episodes": [6], "quality": "WEBDL-1080p", "group": "MEMENTO"}
+{"name": "The.Mandalorian.S03E08.2160p.DSNP.WEB-DL.DDP5.1.Atmos.DV.HDR.H.265-FLUX", "title": "The Mandalorian", "type": "series", "seasons": [3], "episodes": [8], "service": "DSNP", "hdr": ["DV", "HDR10"], "quality": "WEBDL-2160p"}
+{"name": "Stranger.Things.S04E09.1080p.NF.WEB-DL.DDP5.1.Atmos.H.264-SMURF", "title": "Stranger Things", "type": "series", "seasons": [4], "episodes": [9], "service": "NF", "atmos": true}
+{"name": "The.Last.of.Us.S01E03.Long.Long.Time.1080p.HMAX.WEB-DL.DDP5.1.Atmos.H.264-SMURF", "title": "The Last of Us", "type": "series", "seasons": [1], "episodes": [3], "service": "HMAX", "quality": "WEBDL-1080p"}
+{"name": "Severance.S02E01.Hello.Ms.Cobel.2160p.ATVP.WEB-DL.DDP5.1.Atmos.DV.H.265-FLUX", "title": "Severance", "type": "series", "seasons": [2], "episodes": [1], "service": "ATVP"}
+{"name": "The.Bear.S02E06.Fishes.1080p.HULU.WEB-DL.DDP5.1.H.264-NTb", "title": "The Bear", "type": "series", "seasons": [2], "episodes": [6], "service": "HULU"}
+{"name": "Reacher.S02E01.1080p.AMZN.WEB-DL.DDP5.1.H.264-NTb", "title": "Reacher", "type": "series", "seasons": [2], "episodes": [1], "service": "AMZN"}
+{"name": "Yellowstone.2018.S05E08.1080p.PMTP.WEB-DL.DDP5.1.H.264-NTb", "title": "Yellowstone", "type": "series", "year": 2018, "seasons": [5], "episodes": [8], "service": "PMTP"}
+{"name": "Poker.Face.S01E01.1080p.PCOK.WEB-DL.DDP5.1.H.264-NTb", "title": "Poker Face", "type": "series", "seasons": [1], "episodes": [1], "service": "PCOK"}
+{"name": "Doctor.Who.2005.S13E01.720p.HDTV.x264-SHIELD", "title": "Doctor Who", "type": "series", "year": 2005, "seasons": [13], "episodes": [1], "quality": "HDTV-720p"}
+{"name": "Doctor.Who.S01E01.An.Unearthly.Child.DVDRip.XviD-GRP", "title": "Doctor Who", "type": "series", "seasons": [1], "episodes": [1], "quality": "DVD"}
+{"name": "House.of.the.Dragon.S02E08.The.Queen.Who.Ever.Was.2160p.MAX.WEB-DL.DDP5.1.Atmos.DV.HDR.H.265-FLUX", "title": "House of the Dragon", "type": "series", "seasons": [2], "episodes": [8], "service": "MAX"}
+{"name": "Shogun.2024.S01E10.A.Dream.of.a.Dream.1080p.DSNP.WEB-DL.DDP5.1.H.264-FLUX", "title": "Shogun", "type": "series", "year": 2024, "seasons": [1], "episodes": [10]}
+{"name": "Fallout.S01E01.The.End.1080p.AMZN.WEB-DL.DDP5.1.Atmos.H.264-FLUX", "title": "Fallout", "type": "series", "seasons": [1], "episodes": [1]}
+{"name": "Arcane.S02E09.1080p.NF.WEB-DL.DDP5.1.Atmos.H.264-FLUX", "title": "Arcane", "type": "series", "seasons": [2], "episodes": [9]}
+{"name": "The.Boys.S04E08.Assassination.Run.1080p.AMZN.WEB-DL.DDP5.1.H.264-NTb", "title": "The Boys", "type": "series", "seasons": [4], "episodes": [8]}
+{"name": "Succession.S04E10.With.Open.Eyes.1080p.AMZN.WEB-DL.DDP5.1.H.264-NTb", "title": "Succession", "type": "series", "seasons": [4], "episodes": [10]}
+{"name": "Better.Call.Saul.S06E13.Saul.Gone.720p.AMZN.WEB-DL.DDP5.1.H.264-NTb", "title": "Better Call Saul", "type": "series", "seasons": [6], "episodes": [13]}
+{"name": "Lost.S01E01.Pilot.Part.1.720p.BluRay.x264-SiNNERS", "title": "Lost", "type": "series", "seasons": [1], "episodes": [1]}
+{"name": "Friends.S05E14.The.One.Where.Everybody.Finds.Out.1080p.BluRay.x265-RARBG", "title": "Friends", "type": "series", "seasons": [5], "episodes": [14], "codec": "h265"}
+{"name": "Seinfeld.S04E11.The.Contest.DVDRip.XviD-SAiNTS", "title": "Seinfeld", "type": "series", "seasons": [4], "episodes": [11], "quality": "DVD"}
+{"name": "The.Simpsons.S35E01.720p.HDTV.x264-SYNCOPY", "title": "The Simpsons", "type": "series", "seasons": [35], "episodes": [1], "quality": "HDTV-720p"}
+{"name": "The.Simpsons.S35E01.HDTV.x264-SYNCOPY", "title": "The Simpsons", "type": "series", "quality": "SDTV"}
+{"name": "Family.Guy.S22E05.PDTV.x264-GRP", "title": "Family Guy", "type": "series", "seasons": [22], "episodes": [5], "quality": "SDTV"}
+{"name": "Top.Gear.S10E01.DSR.XviD-ORENJi", "title": "Top Gear", "type": "series", "quality": "SDTV", "codec": "xvid"}
+{"name": "Eastenders.S40E120.480p.HDTV.x264-GRP", "title": "Eastenders", "type": "series", "seasons": [40], "episodes": [120], "quality": "SDTV"}
+{"name": "Grey's.Anatomy.S20E01.720p.HDTV.x264-SYNCOPY", "title": "Grey's Anatomy", "type": "series", "seasons": [20], "episodes": [1]}
+{"name": "Greys.Anatomy.S20E01.1080p.WEB.h264-ETHEL", "title": "Greys Anatomy", "type": "series", "seasons": [20], "episodes": [1], "quality": "WEBDL-1080p"}
+{"name": "Marvels.Agents.of.S.H.I.E.L.D.S07E13.720p.HDTV.x264-AVS", "title": "Marvels Agents of S.H.I.E.L.D.", "type": "series", "seasons": [7], "episodes": [13]}
+{"name": "S.W.A.T.2017.S07E01.720p.HDTV.x264-SYNCOPY", "title": "S.W.A.T.", "type": "series", "year": 2017, "seasons": [7], "episodes": [1]}
+{"name": "9-1-1.S07E01.720p.HDTV.x264-SYNCOPY", "title": "9-1-1", "type": "series", "seasons": [7], "episodes": [1]}
+{"name": "9-1-1.Lone.Star.S05E01.1080p.WEB.h264-ETHEL", "title": "9-1-1 Lone Star", "type": "series", "seasons": [5], "episodes": [1]}
+{"name": "The.4400.S01E01.720p.WEB.h264-GRP", "title": "The 4400", "type": "series", "seasons": [1], "episodes": [1]}
+{"name": "1923.S01E01.1080p.WEB.h264-ETHEL", "title": "1923", "type": "series", "seasons": [1], "episodes": [1]}
+{"name": "1883.S01E10.1080p.AMZN.WEB-DL.DDP5.1.H.264-NTb", "title": "1883", "type": "series", "seasons": [1], "episodes": [10]}
+{"name": "24.S08E24.720p.BluRay.x264-SiNNERS", "title": "24", "type": "series", "seasons": [8], "episodes": [24]}
+{"name": "30.Rock.S07E13.720p.WEB-DL.DD5.1.H.264-NTb", "title": "30 Rock", "type": "series", "seasons": [7], "episodes": [13]}
+{"name": "The.100.S07E16.1080p.AMZN.WEB-DL.DDP5.1.H.264-NTb", "title": "The 100", "type": "series", "seasons": [7], "episodes": [16]}
+{"name": "Mr.Robot.S04E13.1080p.AMZN.WEB-DL.DDP5.1.H.264-NTb", "title": "Mr Robot", "type": "series", "seasons": [4], "episodes": [13]}
+{"name": "Mr. Robot - S01E01 - eps1.0_hellofriend.mov (1080p BluRay x265 Silence)", "title": "Mr. Robot", "type": "series", "seasons": [1], "episodes": [1], "quality": "Bluray-1080p", "codec": "h265"}
+{"name": "Law.and.Order.SVU.S25E01.720p.HDTV.x264-SYNCOPY", "title": "Law and Order SVU", "type": "series", "seasons": [25], "episodes": [1]}
+{"name": "Law.&.Order.Special.Victims.Unit.S25E01.1080p.WEB.h264-ETHEL", "title": "Law & Order Special Victims Unit", "type": "series", "seasons": [25], "episodes": [1]}
+{"name": "Its.Always.Sunny.in.Philadelphia.S16E01.1080p.WEB.H264-GLHF", "title": "Its Always Sunny in Philadelphia", "type": "series", "seasons": [16], "episodes": [1]}
+{"name": "What.We.Do.in.the.Shadows.S05E01.1080p.HULU.WEB-DL.DDP5.1.H.264-NTb", "title": "What We Do in the Shadows", "type": "series", "seasons": [5], "episodes": [1]}
+{"name": "Star.Trek.Strange.New.Worlds.S02E01.1080p.PMTP.WEB-DL.DDP5.1.H.264-NTb", "title": "Star Trek Strange New Worlds", "type": "series", "seasons": [2], "episodes": [1]}
+{"name": "Star.Wars.Andor.S01E01.2160p.DSNP.WEB-DL.DDP5.1.Atmos.HDR.H.265-NTb", "title": "Star Wars Andor", "type": "series", "seasons": [1], "episodes": [1], "hdr": ["HDR10"]}
+{"name": "Only.Murders.in.the.Building.S03E01.1080p.HULU.WEB-DL.DDP5.1.H.264-NTb", "title": "Only Murders in the Building", "type": "series", "seasons": [3], "episodes": [1]}
+{"name": "Ted.Lasso.S03E12.So.Long.Farewell.2160p.ATVP.WEB-DL.DDP5.1.Atmos.HDR.H.265-NTb", "title": "Ted Lasso", "type": "series", "seasons": [3], "episodes": [12]}
+{"name": "Slow.Horses.S04E01.1080p.ATVP.WEB-DL.DDP5.1.Atmos.H.264-FLUX", "title": "Slow Horses", "type": "series", "seasons": [4], "episodes": [1]}
+{"name": "The.Crown.S06E10.Sleep.Dearie.Sleep.1080p.NF.WEB-DL.DDP5.1.Atmos.H.264-FLUX", "title": "The Crown", "type": "series", "seasons": [6], "episodes": [10]}
+{"name": "Bluey.2018.S03E01.1080p.DSNP.WEB-DL.AAC2.0.H.264-NTb", "title": "Bluey", "type": "series", "year": 2018, "audio": ["aac"], "channels": "2.0"}
+{"name": "Taskmaster.S16E01.1080p.WEB.h264-BREXiT", "title": "Taskmaster", "type": "series", "seasons": [16], "episodes": [1]}
+{"name": "Taskmaster.NZ.S04E01.1080p.TVNZ.WEB-DL.AAC2.0.H.264-NTb", "title": "Taskmaster NZ", "type": "series", "service": "TVNZ"}
+{"name": "Gogglebox.S22E01.1080p.ALL4.WEB-DL.AAC2.0.H.264-NTb", "title": "Gogglebox", "type": "series", "service": "ALL4"}
+{"name": "Bluey.S03E01.1080p.iP.WEB-DL.AAC2.0.H.264-NTb", "title": "Bluey", "type": "series", "service": "iP"}
+{"name": "Letterkenny.S11E01.1080p.CRAV.WEB-DL.DDP5.1.H.264-NTb", "title": "Letterkenny", "type": "series", "service": "CRAV"}
+{"name": "The.Walking.Dead.Daryl.Dixon.S01E01.1080p.AMCP.WEB-DL.DDP5.1.H.264-NTb", "title": "The Walking Dead Daryl Dixon", "type": "series", "service": "AMCP"}
+{"name": "Billions.S07E01.1080p.SHO.WEB-DL.DDP5.1.H.264-NTb", "title": "Billions", "type": "series", "service": "SHO"}
+{"name": "The.Rehearsal.S02E01.1080p.iT.WEB-DL.DDP5.1.H.264-NTb", "title": "The Rehearsal", "type": "series", "service": "iT"}
+{"name": "Outlander.S07E01.1080p.STZ.WEB-DL.DDP5.1.H.264-NTb", "title": "Outlander", "type": "series", "service": "STZ"}
+
+// ---- spacing and separator variants
+{"name": "Breaking Bad S01E01 720p BluRay x264-DEMAND", "title": "Breaking Bad", "type": "series", "seasons": [1], "episodes": [1], "group": "DEMAND"}
+{"name": "Breaking_Bad_S01E01_720p_BluRay_x264-DEMAND", "title": "Breaking Bad", "type": "series", "seasons": [1], "episodes": [1]}
+{"name": "Breaking Bad - S01E01 - Pilot", "title": "Breaking Bad", "type": "series", "seasons": [1], "episodes": [1]}
+{"name": "Breaking Bad (2008) - S01E01 - Pilot [Bluray-1080p]", "title": "Breaking Bad", "type": "series", "year": 2008, "seasons": [1], "episodes": [1], "quality": "Bluray-1080p"}
+{"name": "Breaking.Bad.s01e01.720p.bluray.x264-demand", "title": "Breaking Bad", "type": "series", "seasons": [1], "episodes": [1]}
+{"name": "Breaking.Bad.S01.E01.720p.BluRay.x264-DEMAND", "title": "Breaking Bad", "type": "series", "seasons": [1], "episodes": [1]}
+{"name": "Breaking Bad S01 E01 720p", "title": "Breaking Bad", "type": "series", "seasons": [1], "episodes": [1]}
+{"name": "Breaking.Bad.1x01.Pilot.720p.HDTV.x264-GRP", "title": "Breaking Bad", "type": "series", "seasons": [1], "episodes": [1]}
+{"name": "Breaking.Bad.5x16.Felina.720p.HDTV.x264-GRP", "title": "Breaking Bad", "type": "series", "seasons": [5], "episodes": [16]}
+{"name": "Breaking Bad Season 1 Episode 3", "title": "Breaking Bad", "type": "series", "seasons": [1], "episodes": [3]}
+{"name": "BREAKING.BAD.S01E01.720P.BLURAY.X264-DEMAND", "title": "BREAKING BAD", "type": "series", "seasons": [1], "episodes": [1], "quality": "Bluray-720p"}
+{"name": "Breaking.Bad.S001E001.720p.BluRay", "title": "Breaking Bad", "type": "series", "seasons": [1], "episodes": [1]}
+{"name": "The.Daily.Show.S29E100.720p.WEB.h264-EDITH", "title": "The Daily Show", "type": "series", "seasons": [29], "episodes": [100]}
+{"name": "One.Piece.S01E1071.1080p.WEB.H264-GRP", "title": "One Piece", "type": "series", "seasons": [1], "episodes": [1071]}
+{"name": "Jeopardy.S2024E15.720p.WEB.h264-GRP", "title": "Jeopardy", "type": "series", "seasons": [2024], "episodes": [15]}
+
+// ---- multi-episode
+{"name": "Friends.S01E01-E02.720p.BluRay.x264-GRP", "title": "Friends", "type": "series", "seasons": [1], "episodes": [1, 2]}
+{"name": "Friends.S01E01E02.720p.BluRay.x264-GRP", "title": "Friends", "type": "series", "seasons": [1], "episodes": [1, 2]}
+{"name": "Friends.S01E01-02.720p.BluRay.x264-GRP", "title": "Friends", "type": "series", "seasons": [1], "episodes": [1, 2]}
+{"name": "Friends.S01E01-E03.720p.BluRay.x264-GRP", "title": "Friends", "type": "series", "seasons": [1], "episodes": [1, 2, 3]}
+{"name": "Friends.S01E01E02E03.720p.BluRay.x264-GRP", "title": "Friends", "type": "series", "seasons": [1], "episodes": [1, 2, 3]}
+{"name": "Friends.S01E01.E02.720p.BluRay.x264-GRP", "title": "Friends", "type": "series", "seasons": [1], "episodes": [1, 2]}
+{"name": "Friends S01E01 E02 720p BluRay", "title": "Friends", "type": "series", "seasons": [1], "episodes": [1, 2]}
+{"name": "Friends.S01E01-S01E02.720p.BluRay.x264-GRP", "title": "Friends", "type": "series", "seasons": [1], "episodes": [1, 2]}
+{"name": "Friends.S01E23-24.720p.BluRay.x264-GRP", "title": "Friends", "type": "series", "seasons": [1], "episodes": [23, 24]}
+{"name": "Friends.1x01-1x02.720p.BluRay.x264-GRP", "title": "Friends", "type": "series", "seasons": [1], "episodes": [1, 2]}
+{"name": "Friends.1x01-02.720p.HDTV.x264-GRP", "title": "Friends", "type": "series", "seasons": [1], "episodes": [1, 2]}
+{"name": "Sherlock.S04E01-E03.1080p.BluRay.x264-GRP", "title": "Sherlock", "type": "series", "seasons": [4], "episodes": [1, 2, 3]}
+{"name": "Show.S02E05-06.720p.HDTV.x264-GRP", "title": "Show", "type": "series", "seasons": [2], "episodes": [5, 6]}
+{"name": "Show.S02E05-1080p.WEB.x264-GRP", "title": "Show", "type": "series", "seasons": [2], "episodes": [5], "resolution": 1080}
+{"name": "Show.S02E06-05.720p.HDTV.x264-GRP", "title": "Show", "type": "series", "seasons": [2], "episodes": [6]}
+
+// ---- season packs
+{"name": "Breaking.Bad.S01.1080p.BluRay.x264-ROVERS", "title": "Breaking Bad", "type": "series", "seasons": [1], "episodes": [], "full_season": true, "quality": "Bluray-1080p", "group": "ROVERS"}
+{"name": "Breaking.Bad.S05.COMPLETE.720p.BluRay.x264-GRP", "title": "Breaking Bad", "type": "series", "seasons": [5], "full_season": true}
+{"name": "The.Wire.S01-S05.COMPLETE.720p.BluRay.x264-GRP", "title": "The Wire", "type": "series", "seasons": [1, 2, 3, 4, 5], "full_season": true}
+{"name": "The.Wire.S01-05.1080p.BluRay.x264-GRP", "title": "The Wire", "type": "series", "seasons": [1, 2, 3, 4, 5]}
+{"name": "The Wire Season 1-5 Complete 1080p", "title": "The Wire", "type": "series", "seasons": [1, 2, 3, 4, 5]}
+{"name": "The Wire Seasons 1 to 3 720p", "title": "The Wire", "type": "series", "seasons": [1, 2, 3]}
+{"name": "Breaking Bad Season 2 Complete 720p BluRay", "title": "Breaking Bad", "type": "series", "seasons": [2], "full_season": true}
+{"name": "Breaking.Bad.Season.2.720p.BluRay.x264-GRP", "title": "Breaking Bad", "type": "series", "seasons": [2]}
+{"name": "Breaking Bad - Season 3 [1080p BluRay x265 10bit]", "title": "Breaking Bad", "type": "series", "seasons": [3], "bit_depth": 10}
+{"name": "Breaking Bad (2008) Season 4 S04 (1080p BluRay x265 HEVC 10bit AAC 5.1 Silence)", "title": "Breaking Bad", "type": "series", "year": 2008, "seasons": [4]}
+{"name": "Seinfeld.The.Complete.Series.DVDRip.XviD-GRP", "title": "Seinfeld", "type": "series", "complete": true, "seasons": []}
+{"name": "Firefly.Complete.Series.720p.BluRay.x264-GRP", "title": "Firefly", "type": "series", "complete": true}
+{"name": "Firefly (2002) Complete Series S01 1080p BluRay", "title": "Firefly", "type": "series", "seasons": [1], "complete": true}
+{"name": "The.Office.US.S01-S09.Complete.Series.1080p.WEB-DL-GRP", "title": "The Office US", "type": "series", "seasons": [1, 2, 3, 4, 5, 6, 7, 8, 9], "complete": true}
+{"name": "Friends.S01.S02.720p.BluRay.x264-GRP", "title": "Friends", "type": "series", "seasons": [1, 2], "xfail": "multi-season lists without a range are read as the first season only"}
+{"name": "Show.S10.1080p.AMZN.WEB-DL.DDP5.1.H.264-NTb", "title": "Show", "type": "series", "seasons": [10], "service": "AMZN"}
+{"name": "Shogun.2024.S01.2160p.DSNP.WEB-DL.DDP5.1.DV.HDR.H.265-FLUX", "title": "Shogun", "type": "series", "year": 2024, "seasons": [1], "hdr": ["DV", "HDR10"]}
+{"name": "Chernobyl.2019.S01.COMPLETE.1080p.BluRay.x264-GRP", "title": "Chernobyl", "type": "series", "year": 2019, "seasons": [1]}
+
+// ---- specials and season 0
+{"name": "Doctor.Who.2005.S00E150.A.Christmas.Carol.720p.HDTV.x264-FoV", "title": "Doctor Who", "type": "series", "seasons": [0], "episodes": [150]}
+{"name": "Sherlock.S00E01.Unaired.Pilot.720p.BluRay.x264-GRP", "title": "Sherlock", "type": "series", "seasons": [0], "episodes": [1]}
+{"name": "Top.Gear.S00E25.Patagonia.Special.720p.HDTV.x264-GRP", "title": "Top Gear", "type": "series", "seasons": [0], "episodes": [25]}
+
+// ---- daily shows
+{"name": "The.Daily.Show.2024.01.15.Guest.Name.720p.WEB.h264-EDITH", "title": "The Daily Show", "type": "series", "air_date": "2024-01-15", "year": null, "seasons": []}
+{"name": "Jimmy.Kimmel.Live.2023.11.20.Guest.1080p.WEB.h264-EDITH", "title": "Jimmy Kimmel Live", "type": "series", "air_date": "2023-11-20"}
+{"name": "The.Tonight.Show.Starring.Jimmy.Fallon.2024.02.29.720p.WEB.h264-JEBAITED", "title": "The Tonight Show Starring Jimmy Fallon", "type": "series", "air_date": "2024-02-29"}
+{"name": "Late.Night.with.Seth.Meyers.2024-03-05.1080p.WEB.h264-GRP", "title": "Late Night with Seth Meyers", "type": "series", "air_date": "2024-03-05"}
+{"name": "Jeopardy 2024 03 05 720p WEB h264", "title": "Jeopardy", "type": "series", "air_date": "2024-03-05"}
+{"name": "WWE.Monday.Night.Raw.2024.01.01.720p.WEB.h264-HEEL", "title": "WWE Monday Night Raw", "type": "series", "air_date": "2024-01-01"}
+{"name": "Coronation.Street.15.01.2024.720p.WEB.h264-GRP", "title": "Coronation Street", "type": "series", "air_date": "2024-01-15"}
+{"name": "Real.Time.with.Bill.Maher.2024.01.19.1080p.WEB.h264-GRP", "title": "Real Time with Bill Maher", "type": "series", "air_date": "2024-01-19"}
+{"name": "The.View.2024.02.30.720p.WEB.h264-GRP", "title": "The View", "type": "movie", "year": 2024, "air_date": null}
+{"name": "Show.Name.2024.13.01.720p.WEB.h264-GRP", "title": "Show Name", "type": "movie", "year": 2024}
+
+// ---- year-in-title shows
+{"name": "Battlestar.Galactica.2003.S01E01.720p.BluRay.x264-GRP", "title": "Battlestar Galactica", "type": "series", "year": 2003, "seasons": [1]}
+{"name": "Battlestar Galactica (2004) S02E05 720p", "title": "Battlestar Galactica", "type": "series", "year": 2004}
+{"name": "The.Flash.2014.S09E13.720p.HDTV.x264-SYNCOPY", "title": "The Flash", "type": "series", "year": 2014}
+{"name": "Utopia.US.S01E01.1080p.AMZN.WEB-DL.DDP5.1.H.264-NTb", "title": "Utopia US", "type": "series"}
+{"name": "Shameless.US.S11E12.1080p.WEB.H264-GLHF", "title": "Shameless US", "type": "series", "seasons": [11], "episodes": [12]}
+{"name": "Life.on.Mars.UK.S01E01.DVDRip.XviD-GRP", "title": "Life on Mars UK", "type": "series"}
+{"name": "Wonder.Woman.1975.S01E01.DVDRip.x264-GRP", "title": "Wonder Woman", "type": "series", "year": 1975}
+{"name": "2 Broke Girls S06E22 720p HDTV x264-AVS", "title": "2 Broke Girls", "type": "series", "seasons": [6], "episodes": [22]}
+{"name": "Two.and.a.Half.Men.S12E16.720p.HDTV.x264-LOL", "title": "Two and a Half Men", "type": "series"}
+{"name": "3rd.Rock.from.the.Sun.S01E01.DVDRip.XviD-GRP", "title": "3rd Rock from the Sun", "type": "series"}
+{"name": "60.Minutes.S56E10.720p.WEB.h264-GRP", "title": "60 Minutes", "type": "series", "seasons": [56], "episodes": [10]}
+{"name": "48.Hours.S36E01.720p.WEB.h264-GRP", "title": "48 Hours", "type": "series"}
+{"name": "American.Horror.Story.S12E01.1080p.WEB.H264-GLHF", "title": "American Horror Story", "type": "series"}
+{"name": "Black.Mirror.S06E01.Joan.Is.Awful.1080p.NF.WEB-DL.DDP5.1.Atmos.H.264-FLUX", "title": "Black Mirror", "type": "series"}
+
+// ---- episode titles that look like release words
+{"name": "Show.S01E05.The.Cam.Girl.720p.HDTV.x264-GRP", "title": "Show", "type": "series", "quality": "HDTV-720p"}
+{"name": "Show.S02E03.The.Web.1080p.WEB-DL.DD5.1.H.264-GRP", "title": "Show", "type": "series", "quality": "WEBDL-1080p"}
+{"name": "Show.S02E03.Extended.Family.720p.HDTV.x264-GRP", "title": "Show", "type": "series", "quality": "HDTV-720p"}
+{"name": "Show.S02E04.French.Kiss.720p.HDTV.x264-GRP", "title": "Show", "type": "series", "languages": [], "xfail": "mixed-case language words in episode titles are read as languages"}
+{"name": "Show.S03E01.The.Proper.Way.720p.HDTV.x264-GRP", "title": "Show", "type": "series", "proper": false, "xfail": "mixed-case PROPER in episode titles counts as a revision"}
+{"name": "Show.S01E02.Directors.Cut.Episode.720p.HDTV.x264-GRP", "title": "Show", "type": "series"}
+
+// ---- revisions in TV
+{"name": "Show.S01E01.PROPER.720p.HDTV.x264-GRP", "title": "Show", "type": "series", "proper": true, "version": 2}
+{"name": "Show.S01E01.REPACK.1080p.WEB.h264-GRP", "title": "Show", "type": "series", "repack": true, "version": 2}
+{"name": "Show.S01E01.REAL.REPACK.1080p.WEB.h264-GRP", "title": "Show", "type": "series", "repack": true, "real": 1}
+{"name": "Show.S01E01.iNTERNAL.720p.HDTV.x264-GRP", "title": "Show", "type": "series", "internal": true}
+{"name": "Show.S01E01.720p.HDTV.x264-GRP[rartv]", "title": "Show", "type": "series", "group": "GRP"}
+{"name": "Show.S01E01.720p.HDTV.x264-GRP[eztv.re]", "title": "Show", "type": "series", "group": "GRP"}
+{"name": "Show.S01E01.720p.HDTV.x264-GRP [eztv]", "title": "Show", "type": "series", "group": "GRP"}
+{"name": "Show.S01E01.720p.HDTV.x264-GRP[ettv].mkv", "title": "Show", "type": "series", "group": "GRP", "ext": "mkv"}
+{"name": "Show S01E01 720p HDTV x264-GalaxyTV", "title": "Show", "type": "series", "group": "GalaxyTV"}
+{"name": "Show.S01E01.720p.HDTV.x264-GRP-postbot", "title": "Show", "type": "series", "group": "GRP"}
+{"name": "Show.S01E01.1080p.WEB.H264-GRP-Scrambled", "title": "Show", "type": "series", "group": "GRP"}

@@ -1,0 +1,288 @@
+"""Storage nodes and destinations: seeding, health checks, CRUD.
+
+First run creates one ``local`` node for this computer and two default destinations
+under the downloads root (``Movies`` and ``TV``). Each destination is checked: the
+folder exists (created if it's a default one), a probe file can be written and
+deleted, hardlinks work from the torrent folder, and free space is above the floor
+(default: the larger of 5% and 20 GB, capped at half the disk). Transitions emit
+``storage.online`` / ``storage.offline`` / ``storage.low_space``.
+"""
+
+from __future__ import annotations
+
+import asyncio
+from collections.abc import Sequence
+from pathlib import Path
+from typing import Any
+
+import structlog
+from sqlalchemy import select, update
+from sqlalchemy.exc import IntegrityError
+
+from fetchbox.core.concurrency import check_if_match
+from fetchbox.core.db import Database, utcnow
+from fetchbox.core.errors import ConflictError, FieldError, NotFoundError, ProblemError
+from fetchbox.core.events import Actor, EventBus, Subject
+from fetchbox.core.providers import HealthStatus
+from fetchbox.modules.storage.models import LINK_MODES, Destination, StorageNode
+from fetchbox.providers.storage import StorageError
+from fetchbox.providers.storage.local import LocalStorage, cleanup_partials
+
+log = structlog.get_logger(__name__)
+
+LOCAL_NODE = "This computer"
+GB = 1_000_000_000
+FLOOR_MIN = 20 * GB
+FLOOR_SHARE = 0.05
+RECYCLE_DIR = ".fetchbox-recycle"
+
+
+def _invalid(field: str, message: str) -> ProblemError:
+    return ProblemError(
+        422,
+        "Validation Failed",
+        slug="validation",
+        errors=[FieldError(field=field, message=message)],
+    )
+
+
+def default_floor(total: int) -> int:
+    return min(max(int(total * FLOOR_SHARE), FLOOR_MIN), total // 2)
+
+
+class StorageService:
+    def __init__(
+        self, db: Database, bus: EventBus, *, downloads_root: Path, torrents_dir: Path
+    ) -> None:
+        self.db = db
+        self.bus = bus
+        self.downloads_root = downloads_root
+        self.torrents_dir = torrents_dir
+        self.local = LocalStorage(LocalStorage.Settings())
+
+    # ---- seed + startup ---------------------------------------------------------------------
+
+    async def seed(self, naming_template_id: str | None) -> None:
+        async with self.db.sessionmaker() as s:
+            node = await s.scalar(select(StorageNode).where(StorageNode.kind == "local"))
+            if node is None:
+                node = StorageNode(kind="local", name=LOCAL_NODE)
+                s.add(node)
+                await s.flush()
+            if not await s.scalar(select(Destination.id).limit(1)):
+                for kind, folder in (("movie", "Movies"), ("series", "TV")):
+                    s.add(
+                        Destination(
+                            node_id=node.id,
+                            name=folder,
+                            media_kind=kind,
+                            path=str(self.downloads_root / folder),
+                            is_default=True,
+                            naming_template_id=naming_template_id,
+                        )
+                    )
+            await s.commit()
+
+    async def recover(self) -> list[str]:
+        """Roll back file operations a crash interrupted (partial files)."""
+        removed: list[str] = []
+        for d in await self.destinations():
+            removed += cleanup_partials(d.path)
+        if removed:
+            log.warning("storage.partials_removed", files=removed)
+        return removed
+
+    # ---- queries ----------------------------------------------------------------------------
+
+    async def nodes(self) -> list[StorageNode]:
+        async with self.db.sessionmaker() as s:
+            return list((await s.execute(select(StorageNode).order_by(StorageNode.name))).scalars())
+
+    async def node(self, node_id: str) -> StorageNode:
+        async with self.db.sessionmaker() as s:
+            row = await s.get(StorageNode, node_id)
+        if row is None:
+            raise NotFoundError("storage node", node_id)
+        return row
+
+    async def destinations(self, media_kind: str | None = None) -> list[Destination]:
+        async with self.db.sessionmaker() as s:
+            q = select(Destination).order_by(Destination.is_default.desc(), Destination.name)
+            if media_kind:
+                q = q.where(Destination.media_kind == media_kind)
+            return list((await s.execute(q)).scalars())
+
+    async def destination(self, dest_id: str) -> Destination:
+        async with self.db.sessionmaker() as s:
+            row = await s.get(Destination, dest_id)
+        if row is None:
+            raise NotFoundError("destination", dest_id)
+        return row
+
+    async def default_destination(self, media_kind: str) -> Destination:
+        rows = await self.destinations(media_kind)
+        if not rows:
+            raise ConflictError(f"no destination for {media_kind}; add one first")
+        return rows[0]
+
+    # ---- CRUD -------------------------------------------------------------------------------
+
+    def _check_fields(self, changes: dict[str, Any]) -> None:
+        if "link_mode" in changes and changes["link_mode"] not in LINK_MODES:
+            raise _invalid("body.link_mode", f"one of {', '.join(LINK_MODES)}")
+        if "path" in changes:
+            p = Path(changes["path"]).expanduser()
+            if not p.is_absolute():
+                raise _invalid("body.path", "must be an absolute path")
+            changes["path"] = str(p)
+
+    async def create_destination(self, data: dict[str, Any], *, actor: Actor) -> Destination:
+        self._check_fields(data)
+        async with self.db.sessionmaker() as s:
+            node_id = data.get("node_id") or await s.scalar(
+                select(StorageNode.id).where(StorageNode.kind == "local")
+            )
+            if await s.get(StorageNode, node_id) is None:
+                raise _invalid("body.node_id", "no such storage node")
+            row = Destination(**{**data, "node_id": node_id})
+            if row.is_default:
+                await self._clear_default(s, row.media_kind)
+            s.add(row)
+            try:
+                await s.commit()
+            except IntegrityError:
+                raise ConflictError(f"a destination named {data.get('name')!r} exists") from None
+        await self.check(row.id)
+        await self._emit("storage.destination_added", row, actor)
+        return await self.destination(row.id)
+
+    async def _clear_default(self, s: Any, media_kind: str) -> None:
+        await s.execute(
+            update(Destination)
+            .where(Destination.media_kind == media_kind)
+            .values(is_default=False)
+            .execution_options(synchronize_session=False)
+        )
+
+    async def update_destination(
+        self, dest_id: str, changes: dict[str, Any], *, if_match: str | None, actor: Actor
+    ) -> Destination:
+        self._check_fields(changes)
+        async with self.db.sessionmaker() as s:
+            row = await s.get(Destination, dest_id)
+            if row is None:
+                raise NotFoundError("destination", dest_id)
+            check_if_match(row, if_match)
+            if changes.get("is_default"):
+                await self._clear_default(s, changes.get("media_kind", row.media_kind))
+            for k, v in changes.items():
+                setattr(row, k, v)
+            try:
+                await s.commit()
+            except IntegrityError:
+                raise ConflictError(f"a destination named {changes.get('name')!r} exists") from None
+        await self.check(dest_id)
+        await self._emit("storage.destination_updated", row, actor, fields=sorted(changes))
+        return await self.destination(dest_id)
+
+    async def delete_destination(self, dest_id: str, *, if_match: str | None, actor: Actor) -> None:
+        async with self.db.sessionmaker() as s:
+            row = await s.get(Destination, dest_id)
+            if row is None:
+                raise NotFoundError("destination", dest_id)
+            check_if_match(row, if_match)
+            await s.delete(row)
+            await s.commit()  # files there stay; media_file.destination_id becomes NULL
+        await self._emit("storage.destination_removed", row, actor)
+
+    # ---- health -----------------------------------------------------------------------------
+
+    def _prepare(self, path: Path, is_default: bool) -> Path:
+        """Create the zero-config default folder and the torrent folder if missing."""
+        if is_default and not path.exists():
+            path.mkdir(parents=True, exist_ok=True)
+        self.torrents_dir.mkdir(parents=True, exist_ok=True)
+        return self.torrents_dir
+
+    async def check(self, dest_id: str) -> Destination:
+        """Probe one destination and record its status. Returns the updated row."""
+        d = await self.destination(dest_id)
+        path = Path(d.path)
+        status, message = "online", "ok"
+        try:
+            link_from = await asyncio.to_thread(self._prepare, path, d.is_default)
+            r = await self.local.check_access(str(path), link_source=str(link_from))
+            if not r.exists:
+                status, message = "offline", "folder does not exist"
+            elif not r.is_dir or not r.writable or not r.deletable:
+                status, message = "offline", r.error or "folder is not writable"
+            else:
+                usage = await self.local.usage(str(path))
+                floor = (
+                    d.free_space_min if d.free_space_min is not None else default_floor(usage.total)
+                )
+                if usage.free < floor:
+                    status = "low_space"
+                    message = f"{usage.free / GB:.1f} GB free, below the {floor / GB:.1f} GB floor"
+                elif d.link_mode in ("hardlink_only",) and r.hardlink_with is False:
+                    status, message = (
+                        "degraded",
+                        "hardlinks from the torrent folder are not possible",
+                    )
+                else:
+                    message = f"{usage.free / GB:.1f} GB free" + (
+                        "" if r.hardlink_with else "; files will be copied (no hardlinks)"
+                    )
+        except (StorageError, OSError) as exc:
+            status, message = "offline", str(getattr(exc, "message", exc))
+        if status != d.status:
+            event = {"online": "storage.online", "low_space": "storage.low_space"}.get(
+                status, "storage.offline"
+            )
+            await self.bus.emit(
+                event,
+                subject=Subject(type="destination", id=d.id),
+                name=d.name,
+                path=d.path,
+                message=message,
+            )
+        async with self.db.sessionmaker() as s:
+            await s.execute(
+                update(Destination)
+                .where(Destination.id == d.id)
+                .values(
+                    status=status,
+                    status_message=message,
+                    checked_at=utcnow(),
+                )
+                .execution_options(synchronize_session=False)
+            )
+            await s.commit()
+        return await self.destination(d.id)
+
+    async def check_all(self) -> list[Destination]:
+        return [await self.check(d.id) for d in await self.destinations()]
+
+    async def health(self) -> HealthStatus:
+        rows: Sequence[Destination] = await self.check_all()
+        if not rows:
+            return HealthStatus(status="error", message="No destinations: add a library folder")
+        bad = [f"{d.name}: {d.status_message}" for d in rows if d.status == "offline"]
+        warn = [
+            f"{d.name}: {d.status_message}" for d in rows if d.status in ("low_space", "degraded")
+        ]
+        if bad:
+            return HealthStatus(status="error", message="; ".join(bad + warn))
+        if warn:
+            return HealthStatus(status="warning", message="; ".join(warn))
+        return HealthStatus(status="ok", message=f"{len(rows)} destination(s) online")
+
+    async def _emit(self, type_: str, d: Destination, actor: Actor, **data: Any) -> None:
+        await self.bus.emit(
+            type_,
+            subject=Subject(type="destination", id=d.id),
+            actor=actor,
+            name=d.name,
+            path=d.path,
+            **data,
+        )

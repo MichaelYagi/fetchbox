@@ -83,9 +83,7 @@ def install_error_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(StarletteHTTPException)
     async def _http(request: Request, exc: StarletteHTTPException) -> JSONResponse:
-        from http import HTTPStatus
-
-        title = HTTPStatus(exc.status_code).phrase
+        title = phrase(exc.status_code)
         detail = exc.detail if isinstance(exc.detail, str) and exc.detail != title else None
         headers: dict[str, str] | None = getattr(exc, "headers", None)
         return _render(
@@ -132,6 +130,17 @@ def install_error_handlers(app: FastAPI) -> None:
         return _render(Problem(title="Internal Server Error", status=500), request)
 
 
+def phrase(status: int) -> str:
+    """The status text, the same on every Python: 3.13 renamed 422 to RFC 9110's
+    "Unprocessable Content", which earlier versions call "Unprocessable Entity"."""
+    from http import HTTPStatus
+
+    return "Unprocessable Content" if status == 422 else HTTPStatus(status).phrase
+
+
 def problem_responses(*codes: int) -> dict[int | str, dict[str, Any]]:
     """OpenAPI `responses=` helper so routes document their problem bodies."""
-    return {c: {"model": Problem, "content": {PROBLEM_JSON: {}}} for c in codes}
+    return {
+        c: {"model": Problem, "description": phrase(c), "content": {PROBLEM_JSON: {}}}
+        for c in codes
+    }

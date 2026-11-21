@@ -1,0 +1,44 @@
+# Internet Archive: feature films marked public domain or Creative Commons by their
+# uploader (items without such a licence are left out). Item torrents often can't
+# complete over BitTorrent (archive.org regenerates some files after making the torrent),
+# so the movie file is fetched straight from the torrent's web seed over HTTPS instead.
+schema: 1
+slug: internet-archive
+name: Internet Archive
+version: "2"
+description: Public-domain and Creative Commons feature films from archive.org
+language: en
+links:
+  - https://archive.org
+capabilities: [search.imdb]
+rate_limit: 1.0
+download: webseed
+headers:
+  Accept: application/json
+test_term: night of the living dead
+search:
+  requests:
+    - when: [movie, imdb]
+      path: /advancedsearch.php
+      params:
+        q: 'external-identifier:"urn:imdb:{{ query.ids.imdb }}" AND mediatype:movies AND (licenseurl:*publicdomain* OR licenseurl:*creativecommons*)'
+        "fl[]": [identifier, title, year, item_size, publicdate]
+        rows: "100"
+        output: json
+    - when: [movie, term]
+      path: /advancedsearch.php
+      params:
+        q: 'title:({{ query.term | quote }}) AND mediatype:movies AND collection:feature_films AND (licenseurl:*publicdomain* OR licenseurl:*creativecommons*)'
+        "fl[]": [identifier, title, year, item_size, publicdate]
+        rows: "100"
+        output: json
+  response:
+    type: json
+    rows: response.docs
+    fields:
+      title: "{{ row.title }} {{ row.year }}"
+      guid: "https://archive.org/details/{{ row.identifier }}"
+      info_url: "https://archive.org/details/{{ row.identifier }}"
+      download_url: "https://archive.org/download/{{ row.identifier }}/{{ row.identifier }}_archive.torrent"
+      size: "{{ row.item_size | size }}"
+      published_at: "{{ row.publicdate | date }}"

@@ -14,11 +14,17 @@ from fetchbox.app import create_app
 from fetchbox.config import Settings, load_settings
 from fetchbox.core.jobs import JobRunner
 
+pytest_plugins = ["tests.pipeline"]
+
 
 @pytest.fixture
 def settings(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Settings:
     for var in ("FETCHBOX_DATA_DIR", "FETCHBOX_PORT", "FETCHBOX_DB_URL", "FETCHBOX_HOST"):
         monkeypatch.delenv(var, raising=False)
+    # Never touch the real Downloads folder or the public torrent network from tests.
+    monkeypatch.setenv("FETCHBOX_DOWNLOADS_ROOT", str(tmp_path / "Downloads" / "Fetchbox"))
+    monkeypatch.setenv("FETCHBOX_TORRENT_ISOLATED", "1")
+    monkeypatch.setenv("FETCHBOX_SEED_INDEXERS", "0")  # tests never reach real sites
     return load_settings(tmp_path / "data")
 
 
@@ -44,7 +50,8 @@ async def running(
 ) -> AsyncIterator[Running]:
     keys: list[str] = []
     app = create_app(settings, job_handler_hooks=hooks, on_bootstrap_key=keys.append)
-    async with LifespanManager(app):
+    # Generous: slow CI runners (Windows) need more than the 5 s default to start the engine.
+    async with LifespanManager(app, startup_timeout=60, shutdown_timeout=60):
         assert keys, "bootstrap key was not issued"
         yield Running(app, keys[0])
 

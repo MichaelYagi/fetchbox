@@ -1,0 +1,392 @@
+from __future__ import annotations
+
+from datetime import datetime, timedelta
+from typing import Annotated, Any, Literal, get_args
+
+from fastapi import APIRouter, Depends, Header, Query, Request, Response
+from pydantic import BaseModel, ConfigDict, Field, computed_field
+
+from fetchbox.core.concurrency import etag
+from fetchbox.core.db import utcnow
+from fetchbox.core.errors import FieldError, ProblemError
+from fetchbox.core.errors import problem_responses as pr
+from fetchbox.core.pagination import Page, Sort, paginate
+from fetchbox.modules.auth.deps import CurrentPrincipal, require
+from fetchbox.modules.media.models import HISTORY_TYPES, HistoryEvent, Title, WantedItem
+from fetchbox.modules.media.service import MediaService, WantedFilter
+
+router = APIRouter(tags=["media"])
+_read = [Depends(require("media:read"))]
+_write = [Depends(require("media:write"))]
+IfMatch = Annotated[str | None, Header(description="ETag from a previous read; 412 if stale")]
+
+
+def _svc(request: Request) -> MediaService:
+    svc: MediaService = request.app.state.media
+    return svc
+
+
+class _Versioned(BaseModel):
+    version: int = Field(exclude=True)
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def etag(self) -> str:
+        return etag(self.version)
+
+
+class WantedOut(_Versioned):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    title_id: str
+    episode_id: str | None
+    state: str
+    monitored: bool
+    lock: str | None
+    cutoff_met: bool
+    last_search_at: datetime | None
+    next_search_at: datetime | None
+
+
+class TitleOut(_Versioned):
+    id: str
+    kind: str
+    tmdb_id: int | None
+    imdb_id: str | None
+    tvdb_id: int | None
+    name: str
+    sort_name: str
+    year: int | None
+    status: str | None
+    profile_id: str
+    destination_id: str | None
+    monitor_mode: str
+    original_name: str | None = None
+    original_language: str | None = None
+    runtime: int | None = None
+    overview: str = ""
+    poster_url: str | None = None
+    genres: list[str] = []
+    alt_titles: list[str] = []
+    added_at: datetime
+    refreshed_at: datetime | None
+    wanted: list[WantedOut] = Field(default=[], description="For a movie, its one wanted item")
+
+
+def title_out(t: Title, wanted: list[WantedItem] | None = None) -> TitleOut:
+    meta = t.meta or {}
+    return TitleOut(
+        id=t.id,
+        version=t.version,
+        kind=t.kind,
+        tmdb_id=t.tmdb_id,
+        imdb_id=t.imdb_id,
+        tvdb_id=t.tvdb_id,
+        name=t.name,
+        sort_name=t.sort_name,
+        year=t.year,
+        status=t.status,
+        profile_id=t.profile_id,
+        destination_id=t.destination_id,
+        monitor_mode=t.monitor_mode,
+        original_name=meta.get("original_name"),
+        original_language=meta.get("original_language"),
+        runtime=meta.get("runtime"),
+        overview=meta.get("overview") or "",
+        poster_url=meta.get("poster_url"),
+        genres=meta.get("genres") or [],
+        alt_titles=meta.get("alt_titles") or [],
+        added_at=t.added_at,
+        refreshed_at=t.refreshed_at,
+        wanted=[WantedOut.model_validate(w) for w in wanted or []],
+    )
+
+
+async def _one(svc: MediaService, t: Title, response: Response | None = None) -> TitleOut:
+    out = title_out(t, (await svc.wanted_for([t.id])).get(t.id, []))
+    if response is not None:
+        response.headers["ETag"] = out.etag
+    return out
+
+
+# ---- titles -------------------------------------------------------------------------------
+
+
+class TitlePage(Page[TitleOut]):
+    pass
+
+
+TITLE_SORT = Sort(
+    {"sort_name": Title.sort_name, "added_at": Title.added_at, "year": Title.year, "id": Title.id},
+    id_col=Title.id,
+    default="sort_name",
+)
+
+
+class TitleIn(BaseModel):
+    kind: Literal["movie", "series"] = "movie"
+    tmdb_id: int = Field(gt=0)
+    profile_id: str
+    monitored: bool = True
+    search: bool = Field(
+        default=True,
+        description="Search for it now; otherwise at the regular missing-search interval",
+    )
+
+
+class TitlePatch(BaseModel):
+    profile_id: str | None = None
+    monitor_mode: str | None = Field(default=None, min_length=1, max_length=20)
+
+
+@router.get("/titles", response_model=TitlePage, dependencies=_read, responses=pr(422))
+async def list_titles(
+    request: Request,
+    kind: Literal["movie", "series"] | None = Query(None, alias="filter[kind]"),
+    sort: str | None = Query(None, description=f"One of {', '.join(TITLE_SORT.options)}"),
+    limit: int = Query(50, ge=1, le=500),
+    cursor: str | None = None,
+) -> TitlePage:
+    svc = _svc(request)
+    async with svc.db.sessionmaker() as s:
+        rows, nxt = await paginate(
+            s, svc.list_query(kind), TITLE_SORT, sort_param=sort, limit=limit, cursor=cursor
+        )
+    wanted = await svc.wanted_for([t.id for t in rows])
+    return TitlePage(items=[title_out(t, wanted.get(t.id, [])) for t in rows], next_cursor=nxt)
+
+
+@router.post(
+    "/titles",
+    response_model=TitleOut,
+    status_code=201,
+    dependencies=_write,
+    responses=pr(404, 409, 422, 502, 503),
+)
+async def add_title(
+    body: TitleIn, request: Request, response: Response, p: CurrentPrincipal
+) -> TitleOut:
+    """Add a movie by TMDB id with a quality profile; creates its wanted item."""
+    if body.kind == "series":
+        raise ProblemError(
+            422,
+            "Validation Failed",
+            "Adding series arrives with the TV pipeline (Phase 2)",
+            slug="validation",
+            errors=[FieldError(field="body.kind", message="series are not supported yet")],
+        )
+    svc = _svc(request)
+    hours = request.app.state.config.current.search.missing_every_hours
+    t = await svc.add_movie(
+        body.tmdb_id,
+        profile_id=body.profile_id,
+        monitored=body.monitored,
+        actor=p.actor(),
+        search_after=None if body.search else utcnow() + timedelta(hours=hours),
+    )
+    response.headers["Location"] = f"{request.url.path}/{t.id}"
+    return await _one(svc, t, response)
+
+
+@router.get("/titles/{title_id}", response_model=TitleOut, dependencies=_read, responses=pr(404))
+async def get_title(title_id: str, request: Request, response: Response) -> TitleOut:
+    svc = _svc(request)
+    return await _one(svc, await svc.get_title(title_id), response)
+
+
+@router.patch(
+    "/titles/{title_id}",
+    response_model=TitleOut,
+    dependencies=_write,
+    responses=pr(404, 412, 422),
+)
+async def update_title(
+    title_id: str,
+    body: TitlePatch,
+    request: Request,
+    response: Response,
+    p: CurrentPrincipal,
+    if_match: IfMatch = None,
+) -> TitleOut:
+    """Change the quality profile or monitor mode (movies: `all` or `none`)."""
+    svc = _svc(request)
+    changes: dict[str, Any] = body.model_dump(exclude_unset=True, exclude_none=True)
+    t = await svc.update_title(title_id, changes, if_match=if_match, actor=p.actor())
+    return await _one(svc, t, response)
+
+
+@router.post(
+    "/titles/{title_id}/refresh",
+    response_model=TitleOut,
+    dependencies=_write,
+    responses=pr(404, 409, 502, 503),
+)
+async def refresh_title(
+    title_id: str, request: Request, response: Response, p: CurrentPrincipal
+) -> TitleOut:
+    """Re-read metadata from TMDB now."""
+    svc = _svc(request)
+    return await _one(svc, await svc.refresh_title(title_id, actor=p.actor()), response)
+
+
+@router.delete("/titles/{title_id}", status_code=204, dependencies=_write, responses=pr(404, 412))
+async def delete_title(
+    title_id: str, request: Request, p: CurrentPrincipal, if_match: IfMatch = None
+) -> Response:
+    """Remove the title and its wanted items. Files on disk are not touched."""
+    await _svc(request).delete_title(title_id, if_match=if_match, actor=p.actor())
+    return Response(status_code=204)
+
+
+# ---- wanted -------------------------------------------------------------------------------
+
+
+class WantedRow(WantedOut):
+    title_name: str
+    title_year: int | None
+    title_kind: str
+
+
+class WantedPage(Page[WantedRow]):
+    pass
+
+
+WANTED_SORT = Sort(
+    {"id": WantedItem.id, "created_at": WantedItem.created_at},
+    id_col=WantedItem.id,
+    default="-id",
+)
+
+
+_STATE_HELP = "`missing`: not yet acquired; `cutoff_unmet`: acquired below the cutoff"
+
+
+class WantedPatch(BaseModel):
+    monitored: bool
+
+
+@router.get("/wanted", response_model=WantedPage, dependencies=_read, responses=pr(422))
+async def list_wanted(
+    request: Request,
+    state: Annotated[WantedFilter | None, Query(description=_STATE_HELP)] = None,
+    monitored: bool | None = None,
+    sort: str | None = Query(None, description=f"One of {', '.join(WANTED_SORT.options)}"),
+    limit: int = Query(50, ge=1, le=500),
+    cursor: str | None = None,
+) -> WantedPage:
+    svc = _svc(request)
+    async with svc.db.sessionmaker() as s:
+        rows, nxt = await paginate(
+            s,
+            svc.wanted_query(state, monitored),
+            WANTED_SORT,
+            sort_param=sort,
+            limit=limit,
+            cursor=cursor,
+        )
+    titles = await svc.titles_by_id({w.title_id for w in rows})
+    items = [
+        WantedRow(
+            **WantedOut.model_validate(w).model_dump(),
+            version=w.version,
+            title_name=titles[w.title_id].name,
+            title_year=titles[w.title_id].year,
+            title_kind=titles[w.title_id].kind,
+        )
+        for w in rows
+    ]
+    return WantedPage(items=items, next_cursor=nxt)
+
+
+@router.patch(
+    "/wanted/{wanted_id}",
+    response_model=WantedOut,
+    dependencies=_write,
+    responses=pr(404, 412, 422),
+)
+async def update_wanted(
+    wanted_id: str,
+    body: WantedPatch,
+    request: Request,
+    response: Response,
+    p: CurrentPrincipal,
+    if_match: IfMatch = None,
+) -> WantedOut:
+    """Monitor or unmonitor one wanted item."""
+    row = await _svc(request).update_wanted(
+        wanted_id, monitored=body.monitored, if_match=if_match, actor=p.actor()
+    )
+    out = WantedOut.model_validate(row)
+    response.headers["ETag"] = out.etag
+    return out
+
+
+# ---- history ------------------------------------------------------------------------------
+
+
+class HistoryOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    type: str
+    title_id: str | None
+    wanted_item_id: str | None
+    data: dict[str, Any]
+    created_at: datetime
+
+
+class HistoryPage(Page[HistoryOut]):
+    pass
+
+
+HISTORY_SORT = Sort({"id": HistoryEvent.id}, id_col=HistoryEvent.id, default="-id")
+HistoryType = Literal["grabbed", "imported", "failed", "deleted", "upgraded", "unlocked"]
+assert set(get_args(HistoryType)) == set(HISTORY_TYPES)
+
+
+async def _history_page(
+    svc: MediaService,
+    *,
+    title_id: str | None,
+    wanted_item_id: str | None,
+    type_: str | None,
+    limit: int,
+    cursor: str | None,
+) -> HistoryPage:
+    q = svc.history_query(title_id=title_id, wanted_item_id=wanted_item_id, type_=type_)
+    async with svc.db.sessionmaker() as s:
+        rows, nxt = await paginate(s, q, HISTORY_SORT, sort_param=None, limit=limit, cursor=cursor)
+    return HistoryPage(items=[HistoryOut.model_validate(r) for r in rows], next_cursor=nxt)
+
+
+@router.get("/history", response_model=HistoryPage, dependencies=_read, responses=pr(422))
+async def list_history(
+    request: Request,
+    type: HistoryType | None = None,
+    title_id: str | None = None,
+    wanted_item_id: str | None = None,
+    limit: int = Query(50, ge=1, le=500),
+    cursor: str | None = None,
+) -> HistoryPage:
+    """Newest first. History outlives the titles it describes."""
+    return await _history_page(_svc(request), title_id=title_id, wanted_item_id=wanted_item_id,
+                               type_=type, limit=limit, cursor=cursor)  # fmt: skip
+
+
+@router.get(
+    "/titles/{title_id}/history",
+    response_model=HistoryPage,
+    dependencies=_read,
+    responses=pr(404, 422),
+)
+async def title_history(
+    title_id: str,
+    request: Request,
+    limit: int = Query(50, ge=1, le=500),
+    cursor: str | None = None,
+) -> HistoryPage:
+    svc = _svc(request)
+    await svc.get_title(title_id)  # 404 for an unknown title
+    return await _history_page(svc, title_id=title_id, wanted_item_id=None, type_=None,
+                               limit=limit, cursor=cursor)  # fmt: skip

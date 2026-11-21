@@ -18,6 +18,8 @@ dependencies = [
     "libtorrent>=2.0.10,<2.2",
     "argon2-cffi>=23.1",
     "cryptography>=43",
+    "httpx>=0.27",
+    "pyyaml>=6.0",
 ]
 
 [project.optional-dependencies]
@@ -34,7 +36,6 @@ fetchbox = "fetchbox.cli:main"
 dev = [
     "pytest>=8",
     "pytest-asyncio>=0.24",
-    "httpx>=0.27",
     "ruff>=0.6",
     "mypy>=1.11",
     "import-linter>=2.1",
@@ -42,6 +43,7 @@ dev = [
     "asgi-lifespan>=2.1.0",
     "pytest-timeout>=2.3",
     "websockets>=13",
+    "types-pyyaml>=6.0.12.20261113",
 ]
 
 [build-system]
@@ -50,11 +52,15 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/fetchbox"]
+# The web UI build (web/ -> src/fetchbox/static) is gitignored but ships in the wheel.
+artifacts = ["src/fetchbox/static/**"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
+# A hung test fails with a traceback instead of stalling CI for hours.
+timeout = 120
 filterwarnings = [
     # Starlette nudges toward httpx2; harmless until we choose to migrate.
     "ignore:Using `httpx` with `starlette.testclient` is deprecated",
@@ -68,6 +74,10 @@ extend-exclude = ["*.md"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B", "SIM", "ASYNC", "RUF"]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests check files on disk directly; blocking the event loop briefly there is fine.
+"tests/**" = ["ASYNC240"]
 
 [tool.mypy]
 python_version = "3.12"

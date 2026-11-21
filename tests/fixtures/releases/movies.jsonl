@@ -1,0 +1,216 @@
+// Movies: scene, P2P and web-style names. One JSON object per line; "//" lines are comments.
+// Required: name, title, type. Everything else is asserted only when present.
+// Keys: see tests/test_release_parser.py FIELD_MAP.
+
+// ---- basic scene names
+{"name": "The.Matrix.1999.1080p.BluRay.x264-SPARKS", "title": "The Matrix", "type": "movie", "year": 1999, "quality": "Bluray-1080p", "codec": "h264", "group": "SPARKS"}
+{"name": "Inception.2010.720p.BluRay.x264.DTS-WiKi", "title": "Inception", "type": "movie", "year": 2010, "quality": "Bluray-720p", "audio": ["dts"], "group": "WiKi"}
+{"name": "Heat.1995.1080p.BluRay.x264-AMIABLE", "title": "Heat", "type": "movie", "year": 1995, "quality": "Bluray-1080p", "group": "AMIABLE"}
+{"name": "Gladiator.2000.EXTENDED.1080p.BluRay.x264-HDMaNiAcS", "title": "Gladiator", "type": "movie", "year": 2000, "edition": "Extended", "group": "HDMaNiAcS"}
+{"name": "Amelie.2001.FRENCH.1080p.BluRay.x264-HDEX", "title": "Amelie", "type": "movie", "year": 2001, "languages": ["fr"], "quality": "Bluray-1080p"}
+{"name": "Arrival.2016.1080p.WEB-DL.DD5.1.H264-FGT", "title": "Arrival", "type": "movie", "year": 2016, "quality": "WEBDL-1080p", "audio": ["ac3"], "channels": "5.1", "codec": "h264", "group": "FGT"}
+{"name": "Interstellar.2014.2160p.UHD.BluRay.x265.10bit.HDR.DTS-HD.MA.5.1-SWTYBLZ", "title": "Interstellar", "type": "movie", "year": 2014, "quality": "Bluray-2160p", "codec": "h265", "bit_depth": 10, "hdr": ["HDR10"], "audio": ["dts-hd ma"], "channels": "5.1", "group": "SWTYBLZ"}
+{"name": "Dune.Part.Two.2024.2160p.WEB-DL.DDP5.1.Atmos.DV.HDR.H.265-FLUX", "title": "Dune Part Two", "type": "movie", "year": 2024, "quality": "WEBDL-2160p", "audio": ["eac3"], "atmos": true, "hdr": ["DV", "HDR10"], "codec": "h265", "group": "FLUX"}
+{"name": "Oppenheimer.2023.2160p.UHD.BluRay.REMUX.DV.HDR.HEVC.TrueHD.Atmos.7.1-FGT", "title": "Oppenheimer", "type": "movie", "year": 2023, "quality": "Remux-2160p", "modifier": "remux", "hdr": ["DV", "HDR10"], "audio": ["truehd"], "atmos": true, "channels": "7.1", "group": "FGT"}
+{"name": "Barbie.2023.1080p.AMZN.WEB-DL.DDP5.1.H.264-FLUX", "title": "Barbie", "type": "movie", "year": 2023, "quality": "WEBDL-1080p", "service": "AMZN", "audio": ["eac3"], "channels": "5.1", "group": "FLUX"}
+{"name": "The.Irishman.2019.1080p.NF.WEBRip.DDP5.1.Atmos.x264-NTG", "title": "The Irishman", "type": "movie", "year": 2019, "quality": "WEBRip-1080p", "service": "NF", "atmos": true, "group": "NTG"}
+{"name": "Soul.2020.2160p.DSNP.WEB-DL.DDP5.1.Atmos.HDR.HEVC-CMRG", "title": "Soul", "type": "movie", "year": 2020, "quality": "WEBDL-2160p", "service": "DSNP", "hdr": ["HDR10"], "group": "CMRG"}
+{"name": "Greyhound.2020.1080p.ATVP.WEB-DL.DDP5.1.Atmos.H.264-EVO", "title": "Greyhound", "type": "movie", "year": 2020, "service": "ATVP", "quality": "WEBDL-1080p", "group": "EVO"}
+{"name": "Joker.2019.720p.HDRip.x264-GalaxyRG", "title": "Joker", "type": "movie", "year": 2019, "quality": "WEBRip-720p", "group": "GalaxyRG"}
+{"name": "Parasite.2019.KOREAN.1080p.BluRay.x264.DTS-FGT", "title": "Parasite", "type": "movie", "year": 2019, "languages": ["ko"], "quality": "Bluray-1080p"}
+{"name": "Alien.1979.Directors.Cut.1080p.BluRay.x264-CiNEFiLE", "title": "Alien", "type": "movie", "year": 1979, "edition": "Director's Cut", "group": "CiNEFiLE"}
+{"name": "Blade.Runner.1982.The.Final.Cut.1080p.BluRay.x264-DON", "title": "Blade Runner", "type": "movie", "year": 1982, "edition": "Final Cut"}
+{"name": "Apocalypse.Now.1979.Redux.720p.BluRay.x264-CtrlHD", "title": "Apocalypse Now", "type": "movie", "year": 1979, "edition": "Redux", "group": "CtrlHD"}
+{"name": "Aliens.1986.Special.Edition.1080p.BluRay.x264-DON", "title": "Aliens", "type": "movie", "year": 1986, "edition": "Special Edition"}
+{"name": "The.Lord.of.the.Rings.The.Fellowship.of.the.Ring.2001.EXTENDED.1080p.BluRay.x264-SPARKS", "title": "The Lord of the Rings The Fellowship of the Ring", "type": "movie", "year": 2001, "edition": "Extended"}
+{"name": "Mad.Max.Fury.Road.2015.Black.and.Chrome.1080p.BluRay.x264-SADPANDA", "title": "Mad Max Fury Road", "type": "movie", "year": 2015, "edition": "Black and Chrome"}
+{"name": "Zack.Snyders.Justice.League.2021.2160p.HMAX.WEB-DL.DDP5.1.Atmos.HDR.HEVC-EVO", "title": "Zack Snyders Justice League", "type": "movie", "year": 2021, "service": "HMAX", "quality": "WEBDL-2160p"}
+{"name": "Avatar.2009.Extended.Collectors.Edition.1080p.BluRay.x264-SPARKS", "title": "Avatar", "type": "movie", "year": 2009, "edition": "Extended Collector's Edition"}
+{"name": "Ghostbusters.1984.Remastered.1080p.BluRay.x264-AMIABLE", "title": "Ghostbusters", "type": "movie", "year": 1984, "edition": "Remastered"}
+{"name": "Jaws.1975.45th.Anniversary.Edition.2160p.UHD.BluRay.x265-TERMiNAL", "title": "Jaws", "type": "movie", "year": 1975, "edition": "45th Anniversary", "quality": "Bluray-2160p"}
+{"name": "Rogue.One.2016.IMAX.1080p.BluRay.x264-SPARKS", "title": "Rogue One", "type": "movie", "year": 2016, "edition": "IMAX"}
+{"name": "Avengers.Infinity.War.2018.IMAX.Enhanced.2160p.DSNP.WEB-DL.DDP5.1.Atmos.HDR.HEVC-PECULATE", "title": "Avengers Infinity War", "type": "movie", "year": 2018, "edition": "IMAX", "service": "DSNP"}
+{"name": "The.Shining.1980.UNCUT.1080p.BluRay.x264-PSYCHD", "title": "The Shining", "type": "movie", "year": 1980, "edition": "Uncut"}
+{"name": "Hellraiser.1987.UNRATED.720p.BluRay.x264-SADPANDA", "title": "Hellraiser", "type": "movie", "year": 1987, "edition": "Unrated"}
+{"name": "Seven.Samurai.1954.Criterion.Collection.1080p.BluRay.x264-CiNEFiLE", "title": "Seven Samurai", "type": "movie", "year": 1954, "edition": "Criterion"}
+{"name": "Watchmen.2009.Ultimate.Cut.1080p.BluRay.x264-DON", "title": "Watchmen", "type": "movie", "year": 2009, "edition": "Ultimate"}
+{"name": "X-Men.Days.of.Future.Past.2014.The.Rogue.Cut.1080p.BluRay.x264-SPARKS", "title": "X-Men Days of Future Past", "type": "movie", "year": 2014, "edition": "Rogue Cut"}
+{"name": "Star.Wars.1977.Despecialized.Edition.720p.x264-Harmy", "title": "Star Wars", "type": "movie", "year": 1977, "edition": "Despecialized", "group": "Harmy"}
+{"name": "Titanic.1997.Theatrical.Cut.1080p.BluRay.x264-PSYCHD", "title": "Titanic", "type": "movie", "year": 1997, "edition": "Theatrical"}
+{"name": "Jurassic.Park.1993.Open.Matte.1080p.WEB-DL.x264-GRP", "title": "Jurassic Park", "type": "movie", "year": 1993, "edition": "Open Matte"}
+
+// ---- titles with numbers and years
+{"name": "2001.A.Space.Odyssey.1968.1080p.BluRay.x264-AMIABLE", "title": "2001 A Space Odyssey", "type": "movie", "year": 1968}
+{"name": "Blade.Runner.2049.2017.1080p.BluRay.x264-SPARKS", "title": "Blade Runner 2049", "type": "movie", "year": 2017}
+{"name": "1917.2019.1080p.BluRay.x264-SPARKS", "title": "1917", "type": "movie", "year": 2019}
+{"name": "Wonder.Woman.1984.2020.1080p.HMAX.WEB-DL.DDP5.1.Atmos.H.264-EVO", "title": "Wonder Woman 1984", "type": "movie", "year": 2020}
+{"name": "2012.2009.720p.BluRay.x264-METiS", "title": "2012", "type": "movie", "year": 2009}
+{"name": "1984.1984.1080p.BluRay.x264-HDEX", "title": "1984", "type": "movie", "year": 1984}
+{"name": "Oceans.Eleven.2001.1080p.BluRay.x264-HDEX", "title": "Oceans Eleven", "type": "movie", "year": 2001}
+{"name": "Oceans.11.2001.720p.BluRay.x264-NODLABS", "title": "Oceans 11", "type": "movie", "year": 2001}
+{"name": "300.2006.1080p.BluRay.x264-HDEX", "title": "300", "type": "movie", "year": 2006}
+{"name": "21.Jump.Street.2012.1080p.BluRay.x264-SPARKS", "title": "21 Jump Street", "type": "movie", "year": 2012}
+{"name": "10.Cloverfield.Lane.2016.1080p.BluRay.x264-DRONES", "title": "10 Cloverfield Lane", "type": "movie", "year": 2016}
+{"name": "The.Hateful.Eight.2015.1080p.BluRay.x264-SPARKS", "title": "The Hateful Eight", "type": "movie", "year": 2015}
+{"name": "Apollo.13.1995.1080p.BluRay.x264-AMIABLE", "title": "Apollo 13", "type": "movie", "year": 1995}
+{"name": "District.9.2009.720p.BluRay.x264-METiS", "title": "District 9", "type": "movie", "year": 2009}
+{"name": "Super.8.2011.1080p.BluRay.x264-SPARKS", "title": "Super 8", "type": "movie", "year": 2011}
+{"name": "2046.2004.1080p.BluRay.x264-WiKi", "title": "2046", "type": "movie", "year": 2004}
+{"name": "Fahrenheit.451.1966.1080p.BluRay.x264-PSYCHD", "title": "Fahrenheit 451", "type": "movie", "year": 1966}
+{"name": "Apollo.10.and.a.Half.A.Space.Age.Childhood.2022.1080p.NF.WEB-DL.DDP5.1.Atmos.x264-SMURF", "title": "Apollo 10 and a Half A Space Age Childhood", "type": "movie", "year": 2022, "service": "NF"}
+{"name": "Mission.Impossible.Dead.Reckoning.Part.One.2023.1080p.WEB-DL.DDP5.1.H.264-FLUX", "title": "Mission Impossible Dead Reckoning Part One", "type": "movie", "year": 2023}
+{"name": "Thirteen.Lives.2022.1080p.AMZN.WEB-DL.DDP5.1.Atmos.H.264-FLUX", "title": "Thirteen Lives", "type": "movie", "year": 2022}
+{"name": "The.Number.23.2007.720p.BluRay.x264-SiNNERS", "title": "The Number 23", "type": "movie", "year": 2007}
+{"name": "Fantastic.Four.2015.1080p.BluRay.x264-SPARKS", "title": "Fantastic Four", "type": "movie", "year": 2015}
+{"name": "Halloween.2018.1080p.BluRay.x264-SPARKS", "title": "Halloween", "type": "movie", "year": 2018}
+{"name": "Halloween.1978.REMASTERED.1080p.BluRay.x264-SADPANDA", "title": "Halloween", "type": "movie", "year": 1978, "edition": "Remastered"}
+{"name": "Wall-E.2008.1080p.BluRay.x264-HDEX", "title": "Wall-E", "type": "movie", "year": 2008}
+{"name": "Spider-Man.No.Way.Home.2021.1080p.WEB-DL.DDP5.1.H.264-EVO", "title": "Spider-Man No Way Home", "type": "movie", "year": 2021, "group": "EVO"}
+{"name": "Spider-Man.Across.the.Spider-Verse.2023.2160p.WEB-DL.DDP5.1.Atmos.HDR10Plus.HEVC-FLUX", "title": "Spider-Man Across the Spider-Verse", "type": "movie", "year": 2023, "hdr": ["HDR10+"]}
+{"name": "X-Men.2000.1080p.BluRay.x264-SiNNERS", "title": "X-Men", "type": "movie", "year": 2000}
+{"name": "Ant-Man.and.the.Wasp.Quantumania.2023.1080p.WEB-DL.DDP5.1.Atmos.H.264-EVO", "title": "Ant-Man and the Wasp Quantumania", "type": "movie", "year": 2023}
+{"name": "The.Fast.and.the.Furious.Tokyo.Drift.2006.1080p.BluRay.x264-HDEX", "title": "The Fast and the Furious Tokyo Drift", "type": "movie", "year": 2006}
+{"name": "Fast.and.Furious.6.2013.EXTENDED.720p.BluRay.x264-SPARKS", "title": "Fast and Furious 6", "type": "movie", "year": 2013, "edition": "Extended"}
+{"name": "Kill.Bill.Vol.1.2003.1080p.BluRay.x264-HDEX", "title": "Kill Bill Vol 1", "type": "movie", "year": 2003}
+{"name": "Terminator.2.Judgment.Day.1991.REMASTERED.2160p.UHD.BluRay.x265.10bit.HDR.DTS-X.7.1-SWTYBLZ", "title": "Terminator 2 Judgment Day", "type": "movie", "year": 1991, "audio": ["dts-x"], "channels": "7.1", "edition": "Remastered"}
+{"name": "Rocky.IV.1985.1080p.BluRay.x264-AMIABLE", "title": "Rocky IV", "type": "movie", "year": 1985}
+{"name": "Se7en.1995.REMASTERED.1080p.BluRay.x264-SPARKS", "title": "Se7en", "type": "movie", "year": 1995}
+{"name": "M3GAN.2022.1080p.WEB-DL.DDP5.1.H.264-EVO", "title": "M3GAN", "type": "movie", "year": 2022}
+{"name": "Nope.2022.1080p.WEB-DL.DDP5.1.Atmos.H.264-EVO", "title": "Nope", "type": "movie", "year": 2022}
+{"name": "Up.2009.1080p.BluRay.x264-HDEX", "title": "Up", "type": "movie", "year": 2009}
+{"name": "Her.2013.720p.BluRay.x264-SPARKS", "title": "Her", "type": "movie", "year": 2013}
+{"name": "It.2017.1080p.BluRay.x264-SPARKS", "title": "It", "type": "movie", "year": 2017}
+{"name": "Us.2019.2160p.UHD.BluRay.x265-TERMiNAL", "title": "Us", "type": "movie", "year": 2019}
+{"name": "Tenet.2020.IMAX.2160p.UHD.BluRay.x265.10bit.HDR.DTS-HD.MA.5.1-SWTYBLZ", "title": "Tenet", "type": "movie", "year": 2020, "edition": "IMAX"}
+
+// ---- punctuation, acronyms, foreign titles
+{"name": "L.A.Confidential.1997.1080p.BluRay.x264-AMIABLE", "title": "L.A. Confidential", "type": "movie", "year": 1997}
+{"name": "A.I.Artificial.Intelligence.2001.1080p.BluRay.x264-HDEX", "title": "A.I. Artificial Intelligence", "type": "movie", "year": 2001}
+{"name": "S.W.A.T.2003.1080p.BluRay.x264-SPARKS", "title": "S.W.A.T.", "type": "movie", "year": 2003}
+{"name": "E.T.the.Extra-Terrestrial.1982.1080p.BluRay.x264-AMIABLE", "title": "E.T. the Extra-Terrestrial", "type": "movie", "year": 1982}
+{"name": "Mr.and.Mrs.Smith.2005.1080p.BluRay.x264-HDEX", "title": "Mr and Mrs Smith", "type": "movie", "year": 2005}
+{"name": "Dr.Strangelove.1964.1080p.BluRay.x264-CiNEFiLE", "title": "Dr Strangelove", "type": "movie", "year": 1964}
+{"name": "Monsters.Inc.2001.1080p.BluRay.x264-HDEX", "title": "Monsters Inc", "type": "movie", "year": 2001}
+{"name": "Schindlers.List.1993.1080p.BluRay.x264-AMIABLE", "title": "Schindlers List", "type": "movie", "year": 1993}
+{"name": "Schindler's List (1993) [1080p] [BluRay] [5.1] [YTS.MX]", "title": "Schindler's List", "type": "movie", "year": 1993, "quality": "Bluray-1080p", "channels": "5.1", "group": "YTS"}
+{"name": "Pan's.Labyrinth.2006.SPANISH.1080p.BluRay.x264-HDEX", "title": "Pan's Labyrinth", "type": "movie", "year": 2006, "languages": ["es"]}
+{"name": "Crouching.Tiger.Hidden.Dragon.2000.CHINESE.1080p.BluRay.x264-HDEX", "title": "Crouching Tiger Hidden Dragon", "type": "movie", "year": 2000, "languages": ["zh"]}
+{"name": "Léon.The.Professional.1994.Extended.1080p.BluRay.x264-AMIABLE", "title": "Leon The Professional", "type": "movie", "year": 1994, "edition": "Extended"}
+{"name": "Das.Boot.1981.Directors.Cut.GERMAN.1080p.BluRay.x264-DETAiLS", "title": "Das Boot", "type": "movie", "year": 1981, "edition": "Director's Cut", "languages": ["de"]}
+{"name": "Lock.Stock.and.Two.Smoking.Barrels.1998.1080p.BluRay.x264-HDEX", "title": "Lock Stock and Two Smoking Barrels", "type": "movie", "year": 1998}
+{"name": "Fast.&.Furious.Presents.Hobbs.&.Shaw.2019.1080p.BluRay.x264-SPARKS", "title": "Fast & Furious Presents Hobbs & Shaw", "type": "movie", "year": 2019}
+{"name": "Birdman.or.(The.Unexpected.Virtue.of.Ignorance).2014.1080p.BluRay.x264-SPARKS", "title": "Birdman or The Unexpected Virtue of Ignorance", "type": "movie", "year": 2014}
+{"name": "Borat.Subsequent.Moviefilm.2020.1080p.AMZN.WEB-DL.DDP5.1.H.264-NTG", "title": "Borat Subsequent Moviefilm", "type": "movie", "year": 2020}
+{"name": "Everything.Everywhere.All.at.Once.2022.1080p.WEB-DL.DDP5.1.H.264-EVO", "title": "Everything Everywhere All at Once", "type": "movie", "year": 2022}
+{"name": "WALL·E (2008) 1080p BluRay x264", "title": "WALL E", "type": "movie", "year": 2008}
+{"name": "Amélie (2001) 1080p BluRay x264 FRENCH", "title": "Amelie", "type": "movie", "year": 2001, "languages": ["fr"]}
+{"name": "Crouching Tiger, Hidden Dragon (2000) 1080p BluRay", "title": "Crouching Tiger Hidden Dragon", "type": "movie", "year": 2000}
+{"name": "The.Good.the.Bad.and.the.Ugly.1966.Extended.Remastered.1080p.BluRay.x264-AMIABLE", "title": "The Good the Bad and the Ugly", "type": "movie", "year": 1966, "edition": "Extended Remastered"}
+{"name": "Run.Lola.Run.AKA.Lola.Rennt.1998.1080p.BluRay.x264-HDEX", "title": "Run Lola Run", "type": "movie", "year": 1998, "alt_titles": ["Lola Rennt"]}
+{"name": "The Raid AKA Serbuan Maut (2011) 1080p BluRay", "title": "The Raid", "type": "movie", "year": 2011, "alt_titles": ["Serbuan Maut"]}
+{"name": "Sicario.Day.of.the.Soldado.2018.1080p.BluRay.x264-SPARKS", "title": "Sicario Day of the Soldado", "type": "movie", "year": 2018}
+
+// ---- P2P / bracketed styles
+{"name": "Dune (2021) [2160p] [4K] [WEB] [5.1] [YTS.MX]", "title": "Dune", "type": "movie", "year": 2021, "quality": "WEBDL-2160p", "group": "YTS"}
+{"name": "Arrival (2016) [1080p] [BluRay] [5.1] [YTS.MX]", "title": "Arrival", "type": "movie", "year": 2016, "quality": "Bluray-1080p"}
+{"name": "Heat (1995) [720p] [BluRay] [YTS.AM]", "title": "Heat", "type": "movie", "year": 1995, "quality": "Bluray-720p", "group": "YTS"}
+{"name": "The Batman (2022) (2160p WEB-DL H265 HDR10 DDP Atmos 5.1)", "title": "The Batman", "type": "movie", "year": 2022, "quality": "WEBDL-2160p", "hdr": ["HDR10"], "atmos": true, "codec": "h265"}
+{"name": "Top Gun Maverick (2022) 1080p BluRay x265 HEVC 10bit AAC 7.1-Tigole", "title": "Top Gun Maverick", "type": "movie", "year": 2022, "quality": "Bluray-1080p", "codec": "h265", "bit_depth": 10, "audio": ["aac"], "channels": "7.1", "group": "Tigole"}
+{"name": "Prey (2022) (1080p DSNP WEB-DL x265 SDR DDP Atmos 5.1 English - Tigole QxR)", "title": "Prey", "type": "movie", "year": 2022, "quality": "WEBDL-1080p", "service": "DSNP", "hdr": [], "languages": ["en"]}
+{"name": "Knives Out (2019) 1080p BrRip x264 - YIFY", "title": "Knives Out", "type": "movie", "year": 2019, "quality": "Bluray-1080p", "group": "YIFY"}
+{"name": "The Godfather (1972) [1080p]", "title": "The Godfather", "type": "movie", "year": 1972, "resolution": 1080}
+{"name": "Pulp Fiction 1994 1080p BluRay DTS x264-CtrlHD", "title": "Pulp Fiction", "type": "movie", "year": 1994, "quality": "Bluray-1080p", "group": "CtrlHD"}
+{"name": "Gravity 2013 3D HSBS 1080p BluRay x264", "title": "Gravity", "type": "movie", "year": 2013, "three_d": true}
+{"name": "Avatar.2009.3D.HOU.1080p.BluRay.x264-HDEX", "title": "Avatar", "type": "movie", "year": 2009, "three_d": true}
+{"name": "Puss in Boots The Last Wish 2022 1080p WEBRip x264 AAC5.1 [YTS.MX]", "title": "Puss in Boots The Last Wish", "type": "movie", "year": 2022, "quality": "WEBRip-1080p", "audio": ["aac"], "channels": "5.1"}
+{"name": "Asteroid City 2023 2160p WEB-DL DDP5 1 DV HDR H 265-FLUX", "title": "Asteroid City", "type": "movie", "year": 2023, "quality": "WEBDL-2160p", "hdr": ["DV", "HDR10"], "group": "FLUX"}
+{"name": "[ www.Torrenting.com ] - The.Creator.2023.1080p.WEB-DL.DDP5.1.H.264-FLUX", "title": "The Creator", "type": "movie", "year": 2023, "group": "FLUX"}
+{"name": "www.UIndex.org    -    The.Holdovers.2023.1080p.WEB.h264-ETHEL", "title": "The Holdovers", "type": "movie", "year": 2023, "group": "ETHEL", "quality": "WEBDL-1080p"}
+{"name": "[www.1TamilMV.cz] - Leo (2023) Tamil 1080p HQ HDRip x264 AAC 5.1", "title": "Leo", "type": "movie", "year": 2023, "languages": ["ta"], "quality": "WEBRip-1080p"}
+{"name": "Past.Lives.2023.1080p.WEBRip.x264.AAC5.1-[YTS.MX]", "title": "Past Lives", "type": "movie", "year": 2023, "quality": "WEBRip-1080p", "group": "YTS"}
+{"name": "Saltburn.2023.1080p.AMZN.WEB-DL.DDP5.1.H.264-FLUX[TGx]", "title": "Saltburn", "type": "movie", "year": 2023, "group": "FLUX", "service": "AMZN"}
+{"name": "Napoleon.2023.1080p.WEBRip.x265-RARBG", "title": "Napoleon", "type": "movie", "year": 2023, "group": "RARBG"}
+{"name": "Wonka.2023.1080p.WEB-DL.DDP5.1.Atmos.H.264-FLUX-Obfuscated", "title": "Wonka", "type": "movie", "year": 2023, "group": "FLUX"}
+{"name": "Poor.Things.2023.1080p.WEB.H264-SLOT-xpost", "title": "Poor Things", "type": "movie", "year": 2023, "group": "SLOT"}
+{"name": "Killers.of.the.Flower.Moon.2023.1080p.ATVP.WEB-DL.DDP5.1.Atmos.H.264-FLUX.mkv", "title": "Killers of the Flower Moon", "type": "movie", "year": 2023, "ext": "mkv", "group": "FLUX"}
+{"name": "Anatomy.of.a.Fall.2023.FRENCH.1080p.WEB.H264-SLOT.mp4", "title": "Anatomy of a Fall", "type": "movie", "year": 2023, "ext": "mp4", "languages": ["fr"]}
+
+// ---- low quality and pre-release sources
+{"name": "Aquaman.and.the.Lost.Kingdom.2023.HDCAM.x264-SUNSCREEN", "title": "Aquaman and the Lost Kingdom", "type": "movie", "year": 2023, "quality": "CAM"}
+{"name": "The.Marvels.2023.CAMRip.x264-COLLECTiVE", "title": "The Marvels", "type": "movie", "year": 2023, "quality": "CAM"}
+{"name": "Barbie.2023.CAM.x264-SUNSCREEN", "title": "Barbie", "type": "movie", "year": 2023, "quality": "CAM"}
+{"name": "Oppenheimer.2023.HDTS.c1nem4.x264-SUNSCREEN", "title": "Oppenheimer", "type": "movie", "year": 2023, "quality": "TELESYNC"}
+{"name": "Fast.X.2023.TS.x264-SUNSCREEN", "title": "Fast X", "type": "movie", "year": 2023, "quality": "TELESYNC"}
+{"name": "Dune.2021.TELESYNC.x264-SUNSCREEN", "title": "Dune", "type": "movie", "year": 2021, "quality": "TELESYNC"}
+{"name": "Avengers.Endgame.2019.HDTC.x264-SUNSCREEN", "title": "Avengers Endgame", "type": "movie", "year": 2019, "quality": "TELECINE"}
+{"name": "Joker.2019.TC.x264-SUNSCREEN", "title": "Joker", "type": "movie", "year": 2019, "quality": "TELECINE"}
+{"name": "The.Revenant.2015.DVDScr.XVID.AC3.HQ.Hive-CM8", "title": "The Revenant", "type": "movie", "year": 2015, "quality": "DVDSCR", "codec": "xvid", "audio": ["ac3"]}
+{"name": "The.Hateful.Eight.2015.DVDSCR.x264-NOGRP", "title": "The Hateful Eight", "type": "movie", "year": 2015, "quality": "DVDSCR"}
+{"name": "Inside.Out.2015.SCREENER.x264-GRP", "title": "Inside Out", "type": "movie", "year": 2015, "quality": "DVDSCR"}
+{"name": "Batman.Begins.2005.R5.XviD-LiNE", "title": "Batman Begins", "type": "movie", "year": 2005, "quality": "REGIONAL", "codec": "xvid"}
+{"name": "X-Men.Origins.Wolverine.2009.WORKPRINT.XviD-NOGRP", "title": "X-Men Origins Wolverine", "type": "movie", "year": 2009, "quality": "WORKPRINT"}
+{"name": "The.Departed.2006.DVDRip.XviD-DiAMOND", "title": "The Departed", "type": "movie", "year": 2006, "quality": "DVD", "codec": "xvid"}
+{"name": "Memento.2000.DVDRip.x264-HANDJOB", "title": "Memento", "type": "movie", "year": 2000, "quality": "DVD"}
+{"name": "Donnie.Darko.2001.Directors.Cut.NTSC.DVDR-NOGRP", "title": "Donnie Darko", "type": "movie", "year": 2001, "quality": "DVD", "edition": "Director's Cut"}
+{"name": "Amelie.2001.PAL.DVD9-NOGRP", "title": "Amelie", "type": "movie", "year": 2001, "quality": "DVD"}
+{"name": "Fight.Club.1999.BRRip.XviD.AC3-ViSiON", "title": "Fight Club", "type": "movie", "year": 1999, "quality": "Bluray-480p", "codec": "xvid"}
+{"name": "Snatch.2000.BDRip.x264-REWARD", "title": "Snatch", "type": "movie", "year": 2000, "quality": "Bluray-480p"}
+{"name": "Snatch.2000.720p.BDRip.x264-REWARD", "title": "Snatch", "type": "movie", "year": 2000, "quality": "Bluray-720p"}
+{"name": "Taxi.Driver.1976.576p.BluRay.x264-HANDJOB", "title": "Taxi Driver", "type": "movie", "year": 1976, "quality": "Bluray-576p"}
+{"name": "Psycho.1960.480p.BluRay.x264-mSD", "title": "Psycho", "type": "movie", "year": 1960, "quality": "Bluray-480p"}
+{"name": "Arrival.2016.WEBRip.x264-ION10", "title": "Arrival", "type": "movie", "year": 2016, "quality": "WEBRip-480p"}
+
+// ---- disc and remux
+{"name": "Blade.Runner.2049.2017.1080p.BluRay.REMUX.AVC.DTS-HD.MA.7.1-FGT", "title": "Blade Runner 2049", "type": "movie", "year": 2017, "quality": "Remux-1080p", "audio": ["dts-hd ma"], "channels": "7.1"}
+{"name": "Dunkirk.2017.2160p.UHD.BluRay.REMUX.HDR.HEVC.DTS-HD.MA.5.1-FGT", "title": "Dunkirk", "type": "movie", "year": 2017, "quality": "Remux-2160p"}
+{"name": "Heat.1995.BDRemux.1080p.AVC.DTS-HD.MA.5.1", "title": "Heat", "type": "movie", "year": 1995, "quality": "Remux-1080p"}
+{"name": "The.Thing.1982.Remux.1080p.AVC.FLAC.2.0-GRP", "title": "The Thing", "type": "movie", "year": 1982, "quality": "Remux-1080p", "audio": ["flac"], "channels": "2.0"}
+{"name": "Alien.1979.Directors.Cut.UHD.BluRay.2160p.TrueHD.Atmos.7.1.DV.HEVC.HYBRID.REMUX-FraMeSToR", "title": "Alien", "type": "movie", "year": 1979, "quality": "Remux-2160p", "hybrid": true, "group": "FraMeSToR", "edition": "Director's Cut"}
+{"name": "Inception.2010.COMPLETE.UHD.BLURAY-COASTER", "title": "Inception", "type": "movie", "year": 2010, "quality": "BR-DISK", "group": "COASTER"}
+{"name": "Heat.1995.COMPLETE.BLURAY-PCH", "title": "Heat", "type": "movie", "year": 1995, "quality": "BR-DISK"}
+{"name": "Gladiator.2000.1080p.BluRay.AVC.DTS-HD.MA.5.1-FGT", "title": "Gladiator", "type": "movie", "year": 2000, "quality": "BR-DISK"}
+{"name": "Arrival.2016.BD50.1080p.AVC.DTS-HD.MA.7.1-GRP", "title": "Arrival", "type": "movie", "year": 2016, "quality": "BR-DISK"}
+{"name": "Aliens.1986.BDMV.1080p-GRP", "title": "Aliens", "type": "movie", "year": 1986, "quality": "BR-DISK"}
+{"name": "Prometheus.2012.1080p.BluRay.VC-1.DTS-HD.MA.7.1-FGT", "title": "Prometheus", "type": "movie", "year": 2012, "quality": "BR-DISK", "codec": "vc1"}
+{"name": "Stalker.1979.DVD.Remux.NTSC-GRP", "title": "Stalker", "type": "movie", "year": 1979, "quality": "DVD-Remux"}
+
+// ---- revisions and flags
+{"name": "Joker.2019.PROPER.1080p.BluRay.x264-SPARKS", "title": "Joker", "type": "movie", "year": 2019, "proper": true, "version": 2}
+{"name": "Joker.2019.REPACK.1080p.BluRay.x264-SPARKS", "title": "Joker", "type": "movie", "year": 2019, "repack": true, "version": 2}
+{"name": "Joker.2019.REPACK2.1080p.BluRay.x264-SPARKS", "title": "Joker", "type": "movie", "year": 2019, "repack": true, "version": 3}
+{"name": "Joker.2019.REAL.PROPER.1080p.BluRay.x264-SPARKS", "title": "Joker", "type": "movie", "year": 2019, "proper": true, "real": 1, "version": 2}
+{"name": "Joker.2019.RERIP.720p.BluRay.x264-SPARKS", "title": "Joker", "type": "movie", "year": 2019, "repack": true, "version": 2}
+{"name": "Heat.1995.INTERNAL.1080p.BluRay.x264-CLASSiC", "title": "Heat", "type": "movie", "year": 1995, "internal": true}
+{"name": "Heat.1995.iNTERNAL.1080p.BluRay.x264-CLASSiC", "title": "Heat", "type": "movie", "year": 1995, "internal": true}
+{"name": "Heat.1995.LIMITED.1080p.BluRay.x264-CLASSiC", "title": "Heat", "type": "movie", "year": 1995, "limited": true}
+{"name": "Heat.1995.1080p.BluRay.x264-CLASSiC.sample.mkv", "title": "Heat", "type": "movie", "year": 1995, "sample": true}
+{"name": "Heat.1995.READNFO.1080p.BluRay.x264-CLASSiC", "title": "Heat", "type": "movie", "year": 1995}
+{"name": "Joker.2019.1080p.BluRay.x264.HC.HDRip-GRP", "title": "Joker", "type": "movie", "year": 2019, "hardsub": true}
+{"name": "Parasite.2019.KORSUB.HDRip.x264-GRP", "title": "Parasite", "type": "movie", "year": 2019, "hardsub": true, "subs": ["ko"]}
+
+// ---- no year
+{"name": "The.Matrix.1080p.BluRay.x264-SPARKS", "title": "The Matrix", "type": "movie", "year": null, "quality": "Bluray-1080p"}
+{"name": "Heat.720p.HDTV.x264-GRP", "title": "Heat", "type": "movie", "year": null, "quality": "HDTV-720p"}
+{"name": "Some.Movie.EXTENDED.1080p.BluRay.x264-GRP", "title": "Some Movie", "type": "movie", "year": null, "edition": "Extended"}
+{"name": "Some.Movie.FRENCH.DVDRip.XviD-GRP", "title": "Some Movie", "type": "movie", "languages": ["fr"], "quality": "DVD"}
+{"name": "Spider-Man", "title": "Spider-Man", "type": "movie", "group": null}
+{"name": "Inception", "title": "Inception", "type": "movie", "quality": "Unknown"}
+{"name": "Inception 2010", "title": "Inception", "type": "movie", "year": 2010}
+{"name": "Inception (2010)", "title": "Inception", "type": "movie", "year": 2010}
+{"name": "inception.2010.1080p.bluray.x264-sparks", "title": "inception", "type": "movie", "year": 2010, "quality": "Bluray-1080p", "group": "sparks"}
+{"name": "INCEPTION.2010.1080P.BLURAY.X264-SPARKS", "title": "INCEPTION", "type": "movie", "year": 2010, "quality": "Bluray-1080p"}
+{"name": "THE.LIMITED.EDITION.2010.1080P.BLURAY.X264-GRP", "title": "THE LIMITED EDITION", "type": "movie", "year": 2010}
+{"name": "Inception_2010_1080p_BluRay_x264-SPARKS", "title": "Inception", "type": "movie", "year": 2010, "quality": "Bluray-1080p", "group": "SPARKS"}
+{"name": "Inception 2010 1080p BluRay x264-SPARKS", "title": "Inception", "type": "movie", "year": 2010, "quality": "Bluray-1080p", "group": "SPARKS"}
+{"name": "Inception.2010.1080p.BluRay.x264", "title": "Inception", "type": "movie", "year": 2010, "group": null}
+{"name": "Inception.2010.1080p.WEB-DL", "title": "Inception", "type": "movie", "year": 2010, "group": null, "quality": "WEBDL-1080p"}
+{"name": "Inception.2010.1080p.BluRay.DTS-HD.MA.5.1", "title": "Inception", "type": "movie", "group": null, "audio": ["dts-hd ma"]}
+
+// ---- resolution variants
+{"name": "Heat.1995.1080i.HDTV.MPEG2-GRP", "title": "Heat", "type": "movie", "resolution": 1080, "codec": "mpeg2"}
+{"name": "Heat.1995.4K.WEB.x265-GRP", "title": "Heat", "type": "movie", "resolution": 2160, "quality": "WEBDL-2160p"}
+{"name": "Heat.1995.UHD.BluRay.x265-GRP", "title": "Heat", "type": "movie", "resolution": 2160, "quality": "Bluray-2160p"}
+{"name": "Heat 1995 1920x1080 BluRay x264", "title": "Heat", "type": "movie", "resolution": 1080}
+{"name": "Heat 1995 3840x2160 WEB-DL HEVC", "title": "Heat", "type": "movie", "resolution": 2160}
+{"name": "Heat.1995.360p.WEB.x264-GRP", "title": "Heat", "type": "movie", "resolution": 360}
+{"name": "Heat.1995.1080p.x264-GRP", "title": "Heat", "type": "movie", "quality": "Unknown-1080p", "source": null}
