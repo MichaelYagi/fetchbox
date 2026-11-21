@@ -177,7 +177,8 @@ built-in Internet Archive definition against a fake archive.org: add a movie (pr
 Dead (1968) {tmdb-10331}/Night of the Living Dead (1968).mp4`. Live, against the real
 archive.org, a licensed 34 MB film downloaded in 4 s and was read by the probe. With a
 Torznab indexer the same flow is `test_library_api.py::test_gate_add_movie_get_named_file`
-(real torrent, real engine). The only setup is a TMDB key.
+(real torrent, real engine). The only setup is a TMDB key; that covers Internet Archive
+films. Mainstream releases also need a Torznab indexer (Prowlarr / Jackett): see README.
 
 ### Phase 2 — TV + automation
 Series/seasons/episodes, six monitor modes; parser TV cases (packs, multi-ep, daily, anime
@@ -327,8 +328,9 @@ three OSes; a backup restores on a fresh machine.
 - `GET /titles/{id}/episodes` and `PATCH /titles/{id}/seasons/{n}` (the spec lists no
   episode endpoints). A series' `TitleOut.wanted` is empty; `episodes` carries counts.
   An episode with no air date counts as not aired.
-- A third default profile, "Any" (Unknown, SD, 720p, 1080p; cutoff 1080p), for releases
-  that don't state a quality; "Unknown" is left out of file names (the file's
+- Default profiles are named by resolution and take only that resolution: 1080p (the UI's
+  default), 2160p, 720p, 480p; plus "Any" (Unknown, SD, 720p, 1080p; cutoff 1080p) for
+  releases that don't state a quality; "Unknown" is left out of file names (the file's
   resolution is used when it can be read).
 - `GET /auth/status` (public): whether first-run setup is pending, for the UI's first
   screen. `fetchbox openapi` prints the API document for client generation.

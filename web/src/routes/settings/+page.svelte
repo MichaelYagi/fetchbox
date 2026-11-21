@@ -127,7 +127,7 @@
 		<form class="card stack" onsubmit={saveTmdb}>
 			<p class="muted small">
 				Searching for movies needs a free API key from
-				<a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noreferrer">themoviedb.org</a>
+				<a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noreferrer">themoviedb.org/settings/api</a>
 				(the v3 key or the v4 read access token).
 				{#if config?.config.tmdb.api_key}A key is set.{:else}<strong>No key is set yet.</strong>{/if}
 			</p>

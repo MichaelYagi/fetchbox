@@ -1,0 +1,10 @@
+{"event": "Started server process [1556535]", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T14:08:11.261758Z"}
+{"event": "Waiting for application startup.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T14:08:11.262663Z"}
+{"path": "/mnt/c/Users/Michael/Documents/development/fetchbox/web/data/secrets.key", "hint": "back this file up; secrets cannot be recovered without it", "event": "secrets_key_created", "level": "warning", "logger": "fetchbox.core.secrets", "timestamp": "2026-11-21T14:08:12.328901Z"}
+{"admin": "admin", "key_prefix": "5iy1slqw", "event": "auth_bootstrapped", "level": "info", "logger": "fetchbox.modules.auth.service", "timestamp": "2026-11-21T14:08:12.446001Z"}
+{"port": 6881, "torrents": 0, "event": "builtin.started", "level": "info", "logger": "fetchbox.providers.download_clients.builtin", "timestamp": "2026-11-21T14:08:12.865004Z"}
+{"version": "0.1.0.dev0", "data_dir": "/mnt/c/Users/Michael/Documents/development/fetchbox/web/data", "bind": "127.0.0.1:8787", "plugins": [], "event": "started", "level": "info", "logger": "fetchbox.app", "timestamp": "2026-11-21T14:08:13.286375Z"}
+{"event": "Application startup complete.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T14:08:13.290422Z"}
+{"event": "Uvicorn running on http://127.0.0.1:8787 (Press CTRL+C to quit)", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T14:08:13.297663Z"}
+{"wanted_item_id": "01M7Z78YNJXK0WZ30NHAQ4BQC3", "mode": "missing", "results": 6, "accepted": 0, "failed_indexers": [], "event": "search.automatic", "level": "info", "logger": "fetchbox.modules.automation.search", "timestamp": "2026-11-21T14:13:30.624659Z"}
+{"wanted_item_id": "01M7Z78YNJXK0WZ30NHAQ4BQC3", "mode": "missing", "results": 6, "accepted": 0, "failed_indexers": [], "event": "search.automatic", "level": "info", "logger": "fetchbox.modules.automation.search", "timestamp": "2026-11-21T14:13:40.690289Z"}

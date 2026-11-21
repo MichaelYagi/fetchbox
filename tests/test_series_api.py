@@ -64,7 +64,7 @@ def test_new_episodes() -> None:
 
 async def _hd(c: httpx.AsyncClient) -> str:
     profiles = (await c.get("/quality-profiles")).json()
-    return str(next(p["id"] for p in profiles if p["name"] == "Standard HD"))
+    return str(next(p["id"] for p in profiles if p["name"] == "1080p"))
 
 
 async def _add(c: httpx.AsyncClient, mode: str = "all") -> dict[str, Any]:

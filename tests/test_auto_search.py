@@ -25,7 +25,7 @@ from tests.torrents import make_torrent, until
 
 MB = 1024 * 1024
 BEST = "Dune.2021.1080p.WEB-DL.DDP5.1.Atmos.H.264-FLUX"
-NEXT = "Dune.2021.720p.BluRay.x264-SPARKS"
+NEXT = "Dune.2021.1080p.WEBRip.x264-SPARKS"
 
 
 @pytest.fixture(autouse=True)
@@ -167,7 +167,7 @@ async def test_unmonitored_items_are_left_alone_but_can_be_searched(
     c: httpx.AsyncClient, fakes: Fakes, items: list[Item], server: Running
 ) -> None:
     profiles = (await c.get("/quality-profiles")).json()
-    hd = next(p["id"] for p in profiles if p["name"] == "Standard HD")
+    hd = next(p["id"] for p in profiles if p["name"] == "1080p")
     movie = (
         await c.post("/titles", json={"tmdb_id": 438631, "profile_id": hd, "monitored": False})
     ).json()
@@ -185,7 +185,7 @@ async def test_automatic_off_still_searches_new_titles(
     assert r.status_code == 200, r.text
     await _indexer(c, fakes, "one", items)
     profiles = (await c.get("/quality-profiles")).json()
-    hd = next(p["id"] for p in profiles if p["name"] == "Standard HD")
+    hd = next(p["id"] for p in profiles if p["name"] == "1080p")
     old = (await c.post("/titles", json={"tmdb_id": 194, "profile_id": hd, "search": False})).json()
     async with server.app.state.fb.db.sessionmaker() as s:  # overdue
         await s.execute(update(WantedItem).values(next_search_at=utcnow() - timedelta(hours=1)))
