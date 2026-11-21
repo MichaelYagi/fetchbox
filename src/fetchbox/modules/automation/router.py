@@ -297,3 +297,36 @@ async def redownload_wanted(
 def _unlock_response(w: Any, job: str | None) -> Response:
     out = UnlockOut(wanted=WantedOut.model_validate(w), search_job_id=job)
     return JSONResponse(out.model_dump(mode="json"), headers={"ETag": out.wanted.etag})
+
+
+@search_router.post(
+    "/titles/{title_id}/seasons/{number}/search",
+    status_code=202,
+    response_model=JobOut,
+    dependencies=_search,
+    responses=pr(404, 409),
+)
+async def search_season(
+    title_id: str,
+    number: int,
+    request: Request,
+    state: State,
+    p: CurrentPrincipal,
+    idempotency_key: IdempotencyKey = None,
+) -> Response:
+    """Search a season now: season packs first, then single episodes for the gaps.
+    Covers its aired episodes that aren't downloaded yet (or upgradable)."""
+
+    async def run() -> Response:
+        svc = _auto(request)
+        title = await svc.media.get_title(title_id)
+        if title.kind != "series":
+            raise ConflictError("only series have seasons")
+        if not await svc.media.episode_items(title_id, season=number):
+            raise NotFoundError("season", f"{title_id}/{number}")
+        job = await svc.queue_season(title_id, number, reason="manual")
+        if job is None:
+            raise ConflictError(f"a search for season {number} is already queued")
+        return accepted(job)
+
+    return await idempotent(state.db, request, actor_id=p.id, key=idempotency_key, run=run)

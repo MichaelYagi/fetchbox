@@ -3227,6 +3227,18 @@
       "title": "Alt Titles",
       "type": "array"
      },
+     "digital_date": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Digital Date"
+     },
      "genres": {
       "default": [],
       "items": {
@@ -3286,6 +3298,18 @@
       "title": "Overview",
       "type": "string"
      },
+     "physical_date": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Physical Date"
+     },
      "poster_url": {
       "anyOf": [
        {
@@ -3330,6 +3354,18 @@
        }
       ],
       "title": "Status"
+     },
+     "theatrical_date": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Theatrical Date"
      },
      "tmdb_id": {
       "title": "Tmdb Id",
@@ -5530,6 +5566,17 @@
       "title": "Kind",
       "type": "string"
      },
+     "minimum_availability": {
+      "default": "released",
+      "description": "Movies: start searching once it is announced, in cinemas, or released (digital or physical)",
+      "enum": [
+       "announced",
+       "in_cinemas",
+       "released"
+      ],
+      "title": "Minimum Availability",
+      "type": "string"
+     },
      "monitor_mode": {
       "default": "all",
       "description": "Series: all, future, missing, first_season, latest_season or none",
@@ -5588,6 +5635,19 @@
       "title": "Alt Titles",
       "type": "array"
      },
+     "available_from": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Movies: when automatic search starts (null: now)",
+      "title": "Available From"
+     },
      "destination_id": {
       "anyOf": [
        {
@@ -5598,6 +5658,18 @@
        }
       ],
       "title": "Destination Id"
+     },
+     "digital_date": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Digital Date"
      },
      "episodes": {
       "anyOf": [
@@ -5642,6 +5714,10 @@
       "title": "Kind",
       "type": "string"
      },
+     "minimum_availability": {
+      "title": "Minimum Availability",
+      "type": "string"
+     },
      "monitor_mode": {
       "title": "Monitor Mode",
       "type": "string"
@@ -5676,6 +5752,18 @@
       "default": "",
       "title": "Overview",
       "type": "string"
+     },
+     "physical_date": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Physical Date"
      },
      "poster_url": {
       "anyOf": [
@@ -5729,6 +5817,18 @@
        }
       ],
       "title": "Status"
+     },
+     "theatrical_date": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Theatrical Date"
      },
      "tmdb_id": {
       "anyOf": [
@@ -5788,6 +5888,7 @@
      "monitor_mode",
      "added_at",
      "refreshed_at",
+     "minimum_availability",
      "etag"
     ],
     "title": "TitleOut",
@@ -5823,6 +5924,22 @@
    },
    "TitlePatch": {
     "properties": {
+     "minimum_availability": {
+      "anyOf": [
+       {
+        "enum": [
+         "announced",
+         "in_cinemas",
+         "released"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Minimum Availability"
+     },
      "monitor_mode": {
       "anyOf": [
        {
@@ -14411,6 +14528,111 @@
     "summary": "Update Season",
     "tags": [
      "media"
+    ]
+   }
+  },
+  "/api/v1/titles/{title_id}/seasons/{number}/search": {
+   "post": {
+    "description": "Search a season now: season packs first, then single episodes for the gaps.\nCovers its aired episodes that aren't downloaded yet (or upgradable).",
+    "operationId": "search_season_api_v1_titles__title_id__seasons__number__search_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "title_id",
+      "required": true,
+      "schema": {
+       "title": "Title Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "number",
+      "required": true,
+      "schema": {
+       "title": "Number",
+       "type": "integer"
+      }
+     },
+     {
+      "description": "Retry-safe key: repeats with the same body return the first response",
+      "in": "header",
+      "name": "Idempotency-Key",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "maxLength": 255,
+         "minLength": 1,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Retry-safe key: repeats with the same body return the first response",
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "responses": {
+     "202": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/JobOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Conflict"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Search Season",
+    "tags": [
+     "releases"
     ]
    }
   },

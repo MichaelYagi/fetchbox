@@ -41,6 +41,10 @@ class MovieDetail(TitleSummary):
     runtime: int | None = None  # minutes
     status: str | None = None  # Rumored, Planned, In Production, Post Production, Released
     release_date: date | None = None
+    # Earliest per kind across countries (TMDB release types 3, 4 and 5).
+    theatrical_date: date | None = None
+    digital_date: date | None = None
+    physical_date: date | None = None
     genres: list[str] = []
     alt_titles: list[str] = []
 

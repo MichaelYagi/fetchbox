@@ -60,6 +60,18 @@ def _poster(path: Any) -> str | None:
     return f"{IMAGE_URL}{path}" if isinstance(path, str) and path else None
 
 
+def _release_dates(block: Any) -> dict[int, date]:
+    """TMDB release type -> earliest date in any country (2 limited theatrical,
+    3 theatrical, 4 digital, 5 physical)."""
+    out: dict[int, date] = {}
+    for country in (block or {}).get("results") or []:
+        for r in country.get("release_dates") or []:
+            kind, when = r.get("type"), _date((r.get("release_date") or "")[:10])
+            if isinstance(kind, int) and when and (kind not in out or when < out[kind]):
+                out[kind] = when
+    return out
+
+
 def _alt_titles(block: Any, *exclude: str | None) -> list[str]:
     """``alternative_titles`` is {"titles": [...]} for movies, {"results": [...]} for TV."""
     if not isinstance(block, dict):
@@ -184,7 +196,10 @@ class TmdbProvider(MetadataProvider):
         return [self._summary(kind, r) for r in data.get("results", []) if r.get("id")]
 
     async def get_movie(self, ext_id: str) -> MovieDetail:
-        r = await self._get(f"/movie/{int(ext_id)}", append_to_response="alternative_titles")
+        r = await self._get(
+            f"/movie/{int(ext_id)}", append_to_response="alternative_titles,release_dates"
+        )
+        dates = _release_dates(r.get("release_dates"))
         base = self._summary("movie", r)
         return MovieDetail(
             **base.model_dump(),
@@ -192,6 +207,9 @@ class TmdbProvider(MetadataProvider):
             runtime=r.get("runtime") or None,
             status=r.get("status"),
             release_date=_date(r.get("release_date")),
+            theatrical_date=dates.get(3) or dates.get(2),
+            digital_date=dates.get(4),
+            physical_date=dates.get(5),
             genres=[g["name"] for g in r.get("genres", []) if g.get("name")],
             alt_titles=_alt_titles(r.get("alternative_titles"), base.name, base.original_name),
         )

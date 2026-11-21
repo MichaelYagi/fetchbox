@@ -46,6 +46,8 @@ class Title(IdMixin, VersionMixin, Base):
     # TODO(phase 1, storage): FK to destination once that table exists.
     destination_id: Mapped[str | None] = mapped_column(String(26), nullable=True)
     monitor_mode: Mapped[str] = mapped_column(String(20), default="all")
+    # Movies: when automatic search starts (announced, in_cinemas, released).
+    minimum_availability: Mapped[str] = mapped_column(String(20), default="released")
     # "metadata" is reserved by SQLAlchemy's declarative base, hence the attribute name.
     meta: Mapped[dict[str, Any]] = mapped_column("metadata", JSON, default=dict)
     added_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)

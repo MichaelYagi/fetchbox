@@ -13,8 +13,9 @@ from fetchbox.core.pagination import Page, Sort, paginate
 from fetchbox.modules.auth.deps import CurrentPrincipal, require
 from fetchbox.modules.media.models import HISTORY_TYPES, HistoryEvent, Title, WantedItem
 from fetchbox.modules.media.series import SeriesMode
-from fetchbox.modules.media.service import MediaService, WantedFilter
+from fetchbox.modules.media.service import MediaService, WantedFilter, available_from
 
+Availability = Literal["announced", "in_cinemas", "released"]
 router = APIRouter(tags=["media"])
 _read = [Depends(require("media:read"))]
 _write = [Depends(require("media:write"))]
@@ -79,6 +80,14 @@ class TitleOut(_Versioned):
     added_at: datetime
     refreshed_at: datetime | None
     wanted: list[WantedOut] = Field(default=[], description="For a movie, its one wanted item")
+    minimum_availability: str
+    available_from: date | None = Field(
+        default=None,
+        description="Movies: when automatic search starts (null: now)",
+    )
+    theatrical_date: date | None = None
+    digital_date: date | None = None
+    physical_date: date | None = None
     episodes: SeriesStats | None = Field(
         default=None, description="For a series: counts (see /titles/{id}/episodes for the list)"
     )
@@ -102,6 +111,11 @@ def title_out(
         profile_id=t.profile_id,
         destination_id=t.destination_id,
         monitor_mode=t.monitor_mode,
+        minimum_availability=t.minimum_availability,
+        available_from=available_from(t),
+        theatrical_date=meta.get("theatrical_date"),
+        digital_date=meta.get("digital_date"),
+        physical_date=meta.get("physical_date"),
         original_name=meta.get("original_name"),
         original_language=meta.get("original_language"),
         runtime=meta.get("runtime"),
@@ -153,6 +167,11 @@ class TitleIn(BaseModel):
         default="all",
         description="Series: all, future, missing, first_season, latest_season or none",
     )
+    minimum_availability: Availability = Field(
+        default="released",
+        description="Movies: start searching once it is announced, in cinemas, or released "
+        "(digital or physical)",
+    )
     search: bool = Field(
         default=True,
         description="Search for it now; otherwise at the regular missing-search interval",
@@ -162,6 +181,7 @@ class TitleIn(BaseModel):
 class TitlePatch(BaseModel):
     profile_id: str | None = None
     monitor_mode: str | None = Field(default=None, min_length=1, max_length=20)
+    minimum_availability: Availability | None = None
 
 
 @router.get("/titles", response_model=TitlePage, dependencies=_read, responses=pr(422))
@@ -210,6 +230,7 @@ async def add_title(
             monitored=body.monitored,
             actor=p.actor(),
             search_after=later,
+            minimum_availability=body.minimum_availability,
         )
     response.headers["Location"] = f"{request.url.path}/{t.id}"
     return await _one(svc, t, response)

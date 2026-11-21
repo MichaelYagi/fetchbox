@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any, Literal
 
 from sqlalchemy import Select, or_, select, update
@@ -55,7 +55,37 @@ def _movie_meta(m: MovieDetail) -> dict[str, Any]:
         "genres": m.genres,
         "alt_titles": m.alt_titles,
         "release_date": m.release_date.isoformat() if m.release_date else None,
+        "theatrical_date": m.theatrical_date.isoformat() if m.theatrical_date else None,
+        "digital_date": m.digital_date.isoformat() if m.digital_date else None,
+        "physical_date": m.physical_date.isoformat() if m.physical_date else None,
     }
+
+
+AVAILABILITY = ("announced", "in_cinemas", "released")
+RELEASE_FALLBACK = timedelta(days=90)  # no digital/physical date: cinema date + 90 days
+
+
+def available_from(title: Title) -> date | None:
+    """The first day a movie is worth searching for, by its minimum availability; None
+    when it can be searched already (or nothing is known about its dates)."""
+    if title.kind != "movie":
+        return None
+    meta = title.meta or {}
+
+    def day(key: str) -> date | None:
+        v = meta.get(key)
+        return date.fromisoformat(v) if v else None
+
+    cinema = day("theatrical_date") or day("release_date")
+    mode = title.minimum_availability
+    if mode == "announced":
+        return None
+    if mode == "in_cinemas":
+        return cinema
+    home = [d for d in (day("digital_date"), day("physical_date")) if d]
+    if home:
+        return min(home)
+    return cinema + RELEASE_FALLBACK if cinema else None
 
 
 def _series_meta(d: SeriesDetail) -> dict[str, Any]:
@@ -146,8 +176,12 @@ class MediaService:
         monitored: bool,
         actor: Actor,
         search_after: datetime | None = None,
+        minimum_availability: str = "released",
     ) -> Title:
-        """``search_after`` None means search now (automatic search picks it up)."""
+        """``search_after`` None means search now (automatic search picks it up), once
+        the movie is available per ``minimum_availability``."""
+        if minimum_availability not in AVAILABILITY:
+            raise _invalid("body.minimum_availability", f"one of {', '.join(AVAILABILITY)}")
         await self._check_profile(profile_id)
         async with self.db.sessionmaker() as s:
             if (dup := await self._existing(s, "movie", tmdb_id)) is not None:
@@ -158,6 +192,7 @@ class MediaService:
             tmdb_id=tmdb_id,
             profile_id=profile_id,
             monitor_mode="all" if monitored else "none",
+            minimum_availability=minimum_availability,
             refreshed_at=utcnow(),
         )
         _apply_movie(title, detail)
@@ -447,6 +482,13 @@ class MediaService:
                 row.monitor_mode = mode
             if "profile_id" in changes:
                 row.profile_id = changes["profile_id"]
+            if "minimum_availability" in changes:
+                if row.kind != "movie" or changes["minimum_availability"] not in AVAILABILITY:
+                    raise _invalid(
+                        "body.minimum_availability",
+                        f"movies only; one of {', '.join(AVAILABILITY)}",
+                    )
+                row.minimum_availability = changes["minimum_availability"]
             if mode is not None and row.kind == "movie":
                 items = await s.execute(select(WantedItem).where(WantedItem.title_id == row.id))
                 for w in items.scalars():

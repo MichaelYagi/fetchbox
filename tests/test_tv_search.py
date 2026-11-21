@@ -137,3 +137,18 @@ async def test_title_search_conflicts_when_nothing_to_get(
     assert r.status_code == 202  # aired missing episodes in both seasons
     r = await c.post(f"/titles/{t['id']}/search")
     assert r.status_code == 409  # both seasons' searches are already queued
+
+
+async def test_search_one_season_now(c: httpx.AsyncClient, fakes: Fakes, items: list[Item]) -> None:
+    await _indexer(c, fakes, "one", items)
+    t = await _series(c, search=False)
+    r = await c.post(f"/titles/{t['id']}/seasons/1/search")
+    assert r.status_code == 202, r.text
+    assert (await c.post(f"/titles/{t['id']}/seasons/1/search")).status_code in (202, 409)
+    assert (await c.post(f"/titles/{t['id']}/seasons/9/search")).status_code == 404
+
+    async def grabbed() -> bool:
+        eps = await _episodes(c, t["id"])
+        return eps[(1, 1)]["wanted"]["state"] in ("grabbed", "downloading")
+
+    await until(grabbed, within=20)

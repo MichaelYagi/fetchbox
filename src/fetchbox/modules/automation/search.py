@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-from datetime import timedelta
+from datetime import UTC, datetime, time, timedelta
 from typing import Any, Literal
 
 import structlog
@@ -36,7 +36,7 @@ from fetchbox.core.events import Actor, EventBus
 from fetchbox.core.jobs import Job, JobContext, JobRunner
 from fetchbox.modules.media.models import Episode, HistoryEvent, Season, Title, WantedItem
 from fetchbox.modules.media.series import aired
-from fetchbox.modules.media.service import MediaService
+from fetchbox.modules.media.service import MediaService, available_from
 from fetchbox.modules.profiles.models import QualityProfile
 from fetchbox.modules.releases.grabs import BUSY, GrabsService
 from fetchbox.modules.releases.grabs import Reason as GrabReason
@@ -321,6 +321,16 @@ class AutoSearch:
 
         def mode(w: WantedItem) -> str:
             return "upgrade" if w.state == "acquired" else "missing"
+
+        if reason == "automatic" and candidates:
+            title = await self.media.get_title(candidates[0].title_id)
+            start = available_from(title)
+            if start is not None and start > now.date():
+                # Not out yet (by its minimum availability): wait for that day.
+                when = datetime.combine(start, time.min, tzinfo=UTC)
+                for w in candidates:
+                    await self._set(w.id, next_search_at=when)
+                return {"skipped": f"not available until {start.isoformat()}"}
 
         eligible: list[WantedItem] = []
         skipped: list[str] = []

@@ -1576,6 +1576,27 @@ export interface paths {
         patch: operations["update_season_api_v1_titles__title_id__seasons__number__patch"];
         trace?: never;
     };
+    "/api/v1/titles/{title_id}/seasons/{number}/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Search Season
+         * @description Search a season now: season packs first, then single episodes for the gaps.
+         *     Covers its aired episodes that aren't downloaded yet (or upgradable).
+         */
+        post: operations["search_season_api_v1_titles__title_id__seasons__number__search_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/wanted": {
         parameters: {
             query?: never;
@@ -2777,6 +2798,8 @@ export interface components {
              * @default []
              */
             alt_titles: string[];
+            /** Digital Date */
+            digital_date?: string | null;
             /**
              * Genres
              * @default []
@@ -2801,6 +2824,8 @@ export interface components {
              * @default
              */
             overview: string;
+            /** Physical Date */
+            physical_date?: string | null;
             /** Poster Url */
             poster_url?: string | null;
             /** Release Date */
@@ -2809,6 +2834,8 @@ export interface components {
             runtime?: number | null;
             /** Status */
             status?: string | null;
+            /** Theatrical Date */
+            theatrical_date?: string | null;
             /** Tmdb Id */
             tmdb_id: number;
             /** Year */
@@ -3766,6 +3793,13 @@ export interface components {
              */
             kind: "movie" | "series";
             /**
+             * Minimum Availability
+             * @description Movies: start searching once it is announced, in cinemas, or released (digital or physical)
+             * @default released
+             * @enum {string}
+             */
+            minimum_availability: "announced" | "in_cinemas" | "released";
+            /**
              * Monitor Mode
              * @description Series: all, future, missing, first_season, latest_season or none
              * @default all
@@ -3801,8 +3835,15 @@ export interface components {
              * @default []
              */
             alt_titles: string[];
+            /**
+             * Available From
+             * @description Movies: when automatic search starts (null: now)
+             */
+            available_from?: string | null;
             /** Destination Id */
             destination_id: string | null;
+            /** Digital Date */
+            digital_date?: string | null;
             /** @description For a series: counts (see /titles/{id}/episodes for the list) */
             episodes?: components["schemas"]["SeriesStats"] | null;
             /** Etag */
@@ -3818,6 +3859,8 @@ export interface components {
             imdb_id: string | null;
             /** Kind */
             kind: string;
+            /** Minimum Availability */
+            minimum_availability: string;
             /** Monitor Mode */
             monitor_mode: string;
             /** Name */
@@ -3831,6 +3874,8 @@ export interface components {
              * @default
              */
             overview: string;
+            /** Physical Date */
+            physical_date?: string | null;
             /** Poster Url */
             poster_url?: string | null;
             /** Profile Id */
@@ -3843,6 +3888,8 @@ export interface components {
             sort_name: string;
             /** Status */
             status: string | null;
+            /** Theatrical Date */
+            theatrical_date?: string | null;
             /** Tmdb Id */
             tmdb_id: number | null;
             /** Tvdb Id */
@@ -3865,6 +3912,8 @@ export interface components {
         };
         /** TitlePatch */
         TitlePatch: {
+            /** Minimum Availability */
+            minimum_availability?: ("announced" | "in_cinemas" | "released") | null;
             /** Monitor Mode */
             monitor_mode?: string | null;
             /** Profile Id */
@@ -8754,6 +8803,61 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    search_season_api_v1_titles__title_id__seasons__number__search_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Retry-safe key: repeats with the same body return the first response */
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                title_id: string;
+                number: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
