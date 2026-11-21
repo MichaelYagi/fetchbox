@@ -77,3 +77,36 @@ jobs:
       - name: Run frozen binary
         shell: bash
         run: ./dist/lt_smoke* 
+
+  docker:
+    # The image builds and its container starts, answers and serves the web UI.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: fetchbox:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Run the container
+        run: |
+          mkdir -p /tmp/media && sudo chown 1000:1000 /tmp/media
+          docker run -d --name fb -p 8787:8787 -e FETCHBOX_ADMIN_PASSWORD=ci-password-123 \
+            -v /tmp/media:/data fetchbox:ci
+          for i in $(seq 1 60); do
+            curl -sf http://127.0.0.1:8787/api/v1/system/ping && break; sleep 2
+          done
+          curl -sf http://127.0.0.1:8787/ | grep -qi "<html"
+          # the server runs as PUID 1000, not root (tini, PID 1, stays root to reap)
+          docker exec fb sh -c 'for p in /proc/[0-9]*; do grep -qa "fetchbox" $p/cmdline 2>/dev/null && grep "^Uid:" $p/status; done' | tee /dev/stderr | grep -qE "Uid:\s+1000\b"
+          test "$(stat -c %u /tmp/media/Movies)" = 1000            # what it creates is the user's
+          curl -sf -X POST http://127.0.0.1:8787/api/v1/auth/login \
+            -H 'Content-Type: application/json' \
+            -d '{"username":"admin","password":"ci-password-123"}' -o /dev/null
+          ls -la /tmp/media                                         # Movies/, TV/, Torrents/
+          test -d /tmp/media/Movies && test -d /tmp/media/Torrents
+      - if: failure()
+        run: docker logs fb

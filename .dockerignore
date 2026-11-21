@@ -1,0 +1,11 @@
+.git
+.venv
+.venv-build
+build
+dist
+data
+web/node_modules
+web/.svelte-kit
+src/fetchbox/static
+**/__pycache__
+*.log

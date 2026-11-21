@@ -6,7 +6,8 @@ name: Release
 # pyproject.toml (and web/package.json); the tag must match it.
 #
 # Published here (public): the wheel and sdist (pip install, then `fetchbox serve`)
-# and a source zip, all with the web interface already built. The desktop apps are
+# and a source zip, all with the web interface already built; and the Docker image
+# ghcr.io/michaelyagi/fetchbox (linux/amd64 + arm64; tags X.Y.Z, X.Y, latest). The desktop apps are
 # built and released in the private fetchbox-artifacts repo (see notify-desktop.yml).
 on:
   push:
@@ -15,6 +16,7 @@ on:
 
 permissions:
   contents: write
+  packages: write
 
 jobs:
   version:
@@ -68,3 +70,33 @@ jobs:
         with:
           files: release/*
           generate_release_notes: true
+
+  docker:
+    needs: [version, tests]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: tags
+        run: |
+          V="${GITHUB_REF_NAME#v}"
+          IMG="ghcr.io/${GITHUB_REPOSITORY,,}"
+          echo "list=$IMG:$V,$IMG:${V%.*},$IMG:latest" >> "$GITHUB_OUTPUT"
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.tags.outputs.list }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.version=${{ github.ref_name }}
+            org.opencontainers.image.licenses=MIT
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from collections.abc import Sequence
+from pathlib import Path
 from typing import Any
 
 from fetchbox import __version__
@@ -98,6 +100,45 @@ def _has_admin_password(settings: Any) -> bool:
     return asyncio.run(check())
 
 
+def _initial_password() -> str | None:
+    """FETCHBOX_ADMIN_PASSWORD, or the contents of FETCHBOX_ADMIN_PASSWORD_FILE (Docker
+    secrets); used only while no password is set."""
+    path = os.environ.get("FETCHBOX_ADMIN_PASSWORD_FILE")
+    if path:
+        try:
+            return Path(path).read_text(encoding="utf-8").rstrip("\r\n") or None
+        except OSError as exc:
+            print(f"error: can't read FETCHBOX_ADMIN_PASSWORD_FILE: {exc}", file=sys.stderr)
+            return None
+    return os.environ.get("FETCHBOX_ADMIN_PASSWORD") or None
+
+
+def _set_password(settings: Any, password: str) -> int:
+    import asyncio
+
+    from fetchbox import migrations
+    from fetchbox.core.db import Database
+    from fetchbox.core.errors import ProblemError
+    from fetchbox.core.events import EventBus
+    from fetchbox.modules.auth.service import AuthService
+
+    async def run() -> None:
+        db = Database(settings.database_url)
+        try:
+            await AuthService(db, EventBus()).set_password(password)
+        finally:
+            await db.dispose()
+
+    settings.data_dir.mkdir(parents=True, exist_ok=True)
+    migrations.upgrade(settings.database_url)
+    try:
+        asyncio.run(run())
+    except ProblemError as exc:
+        print(f"error: FETCHBOX_ADMIN_PASSWORD: {exc.problem.detail}", file=sys.stderr)
+        return 2
+    return 0
+
+
 def _reset_password(settings: Any, username: str | None, from_stdin: bool) -> int:
     import asyncio
     import getpass
@@ -161,6 +202,14 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         from fetchbox.app import create_app
 
+        initial = _initial_password()
+        if initial and not _has_admin_password(settings):
+            # First start with FETCHBOX_ADMIN_PASSWORD(_FILE): Docker and other headless
+            # installs get a password before they listen beyond localhost.
+            code = _set_password(settings, initial)
+            if code:
+                return code
+            print("admin password set from FETCHBOX_ADMIN_PASSWORD", file=sys.stderr)
         if not settings.is_loopback and not _has_admin_password(settings):
             print(
                 f"error: refusing to bind {settings.host}: set an admin password first "

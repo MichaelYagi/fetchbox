@@ -1,0 +1,22 @@
+# docker compose -f docker/compose.yaml up -d   (then open http://<host>:8787)
+services:
+  fetchbox:
+    image: ghcr.io/michaelyagi/fetchbox:latest
+    container_name: fetchbox
+    restart: unless-stopped
+    environment:
+      PUID: "1000"   # owner of your media folder: `id -u` / `id -g`
+      PGID: "1000"
+      FETCHBOX_ADMIN_PASSWORD: change-me   # used on first start only; change it in the UI
+      TZ: Etc/UTC
+    ports:
+      - "8787:8787"        # web UI and API
+      - "6881:6881"        # torrent traffic (built-in engine)
+      - "6881:6881/udp"
+    volumes:
+      - fetchbox-config:/config
+      # One folder for downloads AND library, so imports are instant hardlinks:
+      # Fetchbox uses /data/Torrents, /data/Movies and /data/TV.
+      - /srv/media:/data
+volumes:
+  fetchbox-config:

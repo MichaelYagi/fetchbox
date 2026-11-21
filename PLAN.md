@@ -300,6 +300,12 @@ Progress:
       quick hash) across all folders (reported, never deleted), video files no record
       points to; fills missing quick hashes. "Search for them again" forgets missing
       files' records so their items are wanted again
+- [x] Docker image (pulled from Phase 4): `Dockerfile` (web build, uv-synced venv, slim
+      runtime, tini, runs as PUID/PGID, `/config` + single `/data` volume for hardlinks,
+      healthcheck), `docker/compose.yaml`; `FETCHBOX_ADMIN_PASSWORD(_FILE)` sets the first
+      password so it can listen on the LAN; CI builds and runs it on every push (answers,
+      serves the UI, login works, not root); release.yml publishes
+      ghcr.io/michaelyagi/fetchbox for linux/amd64 + arm64
 - [x] Rename preview (Phase 2, library settings)
 - [x] qBittorrent / Transmission / Deluge, path mappings (Phase 1-2 feedback)
 
