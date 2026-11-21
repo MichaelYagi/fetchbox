@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { ApiError, del, get, patch, post, type S } from '#lib/api.ts';
 	import LibraryCard from '#lib/LibraryCard.svelte';
+	import LibraryCheckCard from '#lib/LibraryCheckCard.svelte';
 	import MediaServersCard from '#lib/MediaServersCard.svelte';
 	import NotificationsCard from '#lib/NotificationsCard.svelte';
 	import Path from '#lib/Path.svelte';
@@ -562,6 +563,7 @@
 				{#each ['movie', 'series'] as const as kind (kind)}
 					<LibraryCard {kind} dest={destinations.find((d) => d.media_kind === kind && d.is_default) ?? destinations.find((d) => d.media_kind === kind)} options={namingOptions} onChanged={load} />
 				{/each}
+				<LibraryCheckCard />
 			</div>
 		{/if}
 	</section>

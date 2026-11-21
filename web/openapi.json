@@ -2124,6 +2124,37 @@
     "title": "FolderOut",
     "type": "object"
    },
+   "ForgetIn": {
+    "properties": {
+     "file_ids": {
+      "items": {
+       "type": "string"
+      },
+      "minItems": 1,
+      "title": "File Ids",
+      "type": "array"
+     }
+    },
+    "required": [
+     "file_ids"
+    ],
+    "title": "ForgetIn",
+    "type": "object"
+   },
+   "ForgetOut": {
+    "properties": {
+     "forgotten": {
+      "description": "Records dropped; their items are wanted again",
+      "title": "Forgotten",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "forgotten"
+    ],
+    "title": "ForgetOut",
+    "type": "object"
+   },
    "FormatIn": {
     "properties": {
      "conditions": {
@@ -13454,6 +13485,103 @@
     "summary": "Retry Job",
     "tags": [
      "jobs"
+    ]
+   }
+  },
+  "/api/v1/library/check": {
+   "post": {
+    "description": "Look for missing files, duplicates (same size and quick hash) and video files no\nrecord points to. Changes nothing; the job's result is the report.",
+    "operationId": "check_library_api_v1_library_check_post",
+    "responses": {
+     "202": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/JobOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Conflict"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Check Library",
+    "tags": [
+     "library"
+    ]
+   }
+  },
+  "/api/v1/library/check/forget": {
+   "post": {
+    "description": "Drop records of files that are missing from disk; their movies and episodes are\nsearched for again. Files still on disk are left alone.",
+    "operationId": "forget_missing_api_v1_library_check_forget_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ForgetIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ForgetOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Forget Missing",
+    "tags": [
+     "library"
     ]
    }
   },

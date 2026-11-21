@@ -1128,6 +1128,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/library/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Check Library
+         * @description Look for missing files, duplicates (same size and quick hash) and video files no
+         *     record points to. Changes nothing; the job's result is the report.
+         */
+        post: operations["check_library_api_v1_library_check_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/library/check/forget": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Forget Missing
+         * @description Drop records of files that are missing from disk; their movies and episodes are
+         *     searched for again. Files still on disk are left alone.
+         */
+        post: operations["forget_missing_api_v1_library_check_forget_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/library/import": {
         parameters: {
             query?: never;
@@ -2787,6 +2829,19 @@ export interface components {
             status: string;
             /** Status Message */
             status_message: string | null;
+        };
+        /** ForgetIn */
+        ForgetIn: {
+            /** File Ids */
+            file_ids: string[];
+        };
+        /** ForgetOut */
+        ForgetOut: {
+            /**
+             * Forgotten
+             * @description Records dropped; their items are wanted again
+             */
+            forgotten: number;
         };
         /** FormatIn */
         FormatIn: {
@@ -8350,6 +8405,69 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Problem"];
                     "application/problem+json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    check_library_api_v1_library_check_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    forget_missing_api_v1_library_check_forget_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ForgetIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForgetOut"];
                 };
             };
             /** @description Validation Error */

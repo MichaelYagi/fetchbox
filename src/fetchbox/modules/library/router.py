@@ -11,6 +11,7 @@ from fetchbox.core.errors import problem_responses as pr
 from fetchbox.modules.auth.deps import CurrentPrincipal, require
 from fetchbox.modules.downloads.models import Download
 from fetchbox.modules.library.existing import ExistingLibrary
+from fetchbox.modules.library.maintenance import LibraryCheck
 from fetchbox.modules.library.models import MediaFile, NamingTemplate
 from fetchbox.modules.library.naming import (
     KIND_KEYS,
@@ -487,3 +488,33 @@ async def import_existing(body: ImportIn, request: Request, p: CurrentPrincipal)
         body.destination_id, [i.model_dump() for i in body.items], actor=p.actor()
     )
     return accepted(job)
+
+
+# ---- library check: missing files, duplicates, unknown files ------------------------------
+
+
+class ForgetIn(BaseModel):
+    file_ids: list[str] = Field(min_length=1)
+
+
+class ForgetOut(BaseModel):
+    forgotten: int = Field(description="Records dropped; their items are wanted again")
+
+
+@router.post(
+    "/library/check", status_code=202, response_model=JobOut, dependencies=_read,
+    responses=pr(409),
+)  # fmt: skip
+async def check_library(request: Request) -> Response:
+    """Look for missing files, duplicates (same size and quick hash) and video files no
+    record points to. Changes nothing; the job's result is the report."""
+    checker: LibraryCheck = request.app.state.library_check
+    return accepted(await checker.start())
+
+
+@router.post("/library/check/forget", response_model=ForgetOut, dependencies=_write)
+async def forget_missing(body: ForgetIn, request: Request, p: CurrentPrincipal) -> ForgetOut:
+    """Drop records of files that are missing from disk; their movies and episodes are
+    searched for again. Files still on disk are left alone."""
+    checker: LibraryCheck = request.app.state.library_check
+    return ForgetOut(forgotten=await checker.forget(body.file_ids, actor=p.actor()))

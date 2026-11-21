@@ -295,6 +295,11 @@ Progress:
 - [x] HTML responses for indexer definitions: `response.type: html`, rows and fields
       by CSS selector (`{{ row.td.name a }}`, `{{ row.a.dl@href }}`), parsed with lxml
       via BeautifulSoup so unclosed tags recover like in a browser
+- [x] Duplicate detection and maintenance: Settings > Library > Check library (a job,
+      read-only): files missing from disk (online folders only), duplicates by (size,
+      quick hash) across all folders (reported, never deleted), video files no record
+      points to; fills missing quick hashes. "Search for them again" forgets missing
+      files' records so their items are wanted again
 - [x] Rename preview (Phase 2, library settings)
 - [x] qBittorrent / Transmission / Deluge, path mappings (Phase 1-2 feedback)
 
