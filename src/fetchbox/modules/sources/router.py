@@ -10,8 +10,9 @@ from fetchbox.core.concurrency import etag
 from fetchbox.core.errors import problem_responses as pr
 from fetchbox.core.providers import TestResult
 from fetchbox.modules.auth.deps import CurrentPrincipal, require
-from fetchbox.modules.sources.models import Indexer
+from fetchbox.modules.sources.models import Indexer, IndexerDefinition
 from fetchbox.modules.sources.service import SourcesService
+from fetchbox.providers.indexers.definition import Definition
 
 router = APIRouter(prefix="/indexers", tags=["sources"])
 _read = [Depends(require("sources:read"))]
@@ -183,3 +184,80 @@ async def delete_indexer(
 async def test_indexer(indexer_id: str, request: Request) -> TestResult:
     """Ask the indexer for its capabilities and one result. Clears backoff on success."""
     return await _svc(request).test(indexer_id)
+
+
+# ---- definitions ------------------------------------------------------------------------------
+
+definitions_router = APIRouter(prefix="/indexer-definitions", tags=["sources"])
+
+
+class DefinitionOut(BaseModel):
+    slug: str
+    name: str
+    version: str
+    source: str = Field(description="builtin or user")
+    description: str
+    language: str
+    links: list[str] = Field(description="The only hosts it may contact")
+    capabilities: list[str]
+    settings: list[dict[str, Any]] = Field(description="Settings the user fills in")
+    options: list[dict[str, Any]]
+    yaml: str | None = Field(default=None, description="Only on single reads")
+
+
+class DefinitionIn(BaseModel):
+    yaml: str = Field(min_length=1, description="The definition, in Fetchbox's YAML format")
+
+
+def _def_out(row: IndexerDefinition, d: Definition, *, full: bool = False) -> DefinitionOut:
+    return DefinitionOut(
+        slug=d.slug,
+        name=d.name,
+        version=d.version,
+        source=row.source,
+        description=d.description,
+        language=d.language,
+        links=d.links,
+        capabilities=d.capabilities,
+        settings=[x.model_dump() for x in d.settings],
+        options=[x.model_dump() for x in d.options],
+        yaml=row.yaml if full else None,
+    )
+
+
+@definitions_router.get("", response_model=list[DefinitionOut], dependencies=_read)
+async def list_definitions(request: Request) -> list[DefinitionOut]:
+    """Built-in and user definitions. Add an indexer from one with
+    `POST /indexers {"kind": "definition", "settings": {"definition": slug, ...}}`."""
+    return [_def_out(r, d) for r, d in await _svc(request).definitions()]
+
+
+@definitions_router.post(
+    "",
+    response_model=DefinitionOut,
+    status_code=201,
+    dependencies=_write,
+    responses=pr(409, 422),
+)
+async def add_definition(
+    body: DefinitionIn, request: Request, response: Response, p: CurrentPrincipal
+) -> DefinitionOut:
+    """Add your own definition (format: see the docs). 422 lists every problem found."""
+    row, d = await _svc(request).add_definition(body.yaml, actor=p.actor())
+    response.headers["Location"] = f"{request.url.path}/{d.slug}"
+    return _def_out(row, d, full=True)
+
+
+@definitions_router.get(
+    "/{slug}", response_model=DefinitionOut, dependencies=_read, responses=pr(404)
+)
+async def get_definition(slug: str, request: Request) -> DefinitionOut:
+    row, d = await _svc(request).definition(slug)
+    return _def_out(row, d, full=True)
+
+
+@definitions_router.delete("/{slug}", status_code=204, dependencies=_write, responses=pr(404, 409))
+async def delete_definition(slug: str, request: Request, p: CurrentPrincipal) -> Response:
+    """User definitions only, and only while no indexer uses them."""
+    await _svc(request).delete_definition(slug, actor=p.actor())
+    return Response(status_code=204)

@@ -20,7 +20,7 @@ async def test_indexer_crud_masks_the_key(
     c: httpx.AsyncClient, fakes: Fakes, server: Running
 ) -> None:
     kinds = (await c.get("/indexers/kinds")).json()
-    assert [k["kind"] for k in kinds] == ["torznab"]
+    assert [k["kind"] for k in kinds] == ["definition", "torznab"]
     assert "api_key" in kinds[0]["settings_schema"]["properties"]
 
     ix = await _indexer(c, fakes, "one", [])

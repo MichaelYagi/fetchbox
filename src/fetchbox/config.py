@@ -66,6 +66,10 @@ class Settings(BaseSettings):
         default=None,
         description="Where torrents and the default library go; default ~/Downloads/Fetchbox",
     )
+    seed_indexers: bool = Field(
+        default=True,
+        description="On first run, add an indexer for each built-in definition needing no account",
+    )
     torrent_isolated: bool = Field(
         default=False,
         description="Built-in engine on loopback only, no DHT/LSD/UPnP (tests, development)",

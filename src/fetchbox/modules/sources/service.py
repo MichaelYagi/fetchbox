@@ -8,6 +8,7 @@ exactly that long. Testing an indexer clears its backoff when the test passes.
 
 from __future__ import annotations
 
+import contextlib
 from collections.abc import Sequence
 from datetime import datetime, timedelta
 from typing import Any
@@ -24,16 +25,24 @@ from fetchbox.core.events import Actor, EventBus, Subject
 from fetchbox.core.ids import new_id
 from fetchbox.core.providers import HealthStatus, ProviderRegistry, TestResult
 from fetchbox.core.secrets import MASK, SecretBox, mask_settings, open_settings, seal_settings
-from fetchbox.modules.sources.models import Indexer
+from fetchbox.modules.sources.models import Indexer, IndexerDefinition
 from fetchbox.providers.indexers import (
     IndexerError,
     IndexerProvider,
     ReleaseCandidate,
     SearchQuery,
 )
+from fetchbox.providers.indexers.definition import (
+    Definition,
+    DefinitionError,
+    builtin_definitions,
+    catalog,
+    parse_definition,
+)
 
 log = structlog.get_logger(__name__)
 
+SYSTEM = Actor(type="system", id="setup", name="first run")
 BACKOFF_START = timedelta(minutes=5)
 BACKOFF_MAX = timedelta(hours=24)
 
@@ -176,6 +185,10 @@ class SourcesService:
                       tags=tags)  # fmt: skip
         row.settings = seal_settings(self.box, model, context=f"indexer:{row.id}")
         async with self.db.sessionmaker() as s:
+            if kind == "definition":
+                slug = str(getattr(model, "definition", ""))
+                q = select(IndexerDefinition.id).where(IndexerDefinition.slug == slug)
+                row.definition_id = await s.scalar(q)
             s.add(row)
             try:
                 await s.commit()
@@ -245,6 +258,109 @@ class SourcesService:
             await s.commit()
         await self.bus.emit("source.reordered", actor=actor, ids=list(ids))
         return await self.all()
+
+    # ---- definitions --------------------------------------------------------------------------
+
+    async def sync_definitions(self, *, seed: bool = True) -> None:
+        """Install or update the built-in definitions and load every definition into the
+        provider's catalog. On the very first install (no definitions yet) with ``seed``,
+        add an enabled indexer for each built-in, so search works with no setup."""
+        builtins = builtin_definitions()
+        async with self.db.sessionmaker() as s:
+            rows = {r.slug: r for r in (await s.execute(select(IndexerDefinition))).scalars()}
+            first_install = not rows
+            for d, text in builtins:
+                row = rows.get(d.slug)
+                if row is None:
+                    row = IndexerDefinition(slug=d.slug, source="builtin", yaml=text)
+                    s.add(row)
+                    rows[d.slug] = row
+                if row.source == "builtin":  # shipped with this version: always current
+                    row.yaml, row.version, row.name = text, d.version, d.name
+            await s.commit()
+            for row in rows.values():
+                try:
+                    catalog.put(parse_definition(row.yaml), row.yaml)
+                except DefinitionError as exc:  # a user definition this version can't read
+                    log.warning("sources.definition_unreadable", slug=row.slug, error=str(exc))
+        if first_install and seed:
+            for d, _ in builtins:
+                if d.settings and any(x.required for x in d.settings):
+                    continue  # needs an account: the user adds it
+                with contextlib.suppress(ConflictError):
+                    await self.create(
+                        kind="definition",
+                        name=d.name,
+                        settings={"definition": d.slug},
+                        enabled=True,
+                        priority=50,
+                        tags=[],
+                        actor=SYSTEM,
+                    )
+
+    async def definitions(self) -> list[tuple[IndexerDefinition, Definition]]:
+        async with self.db.sessionmaker() as s:
+            rows = (
+                await s.execute(select(IndexerDefinition).order_by(IndexerDefinition.name))
+            ).scalars()
+            return [(r, d) for r in rows if (d := catalog.get(r.slug)) is not None]
+
+    async def definition(self, slug: str) -> tuple[IndexerDefinition, Definition]:
+        async with self.db.sessionmaker() as s:
+            row = await s.scalar(select(IndexerDefinition).where(IndexerDefinition.slug == slug))
+        d = catalog.get(slug)
+        if row is None or d is None:
+            raise NotFoundError("indexer definition", slug)
+        return row, d
+
+    async def add_definition(
+        self, text: str, *, actor: Actor
+    ) -> tuple[IndexerDefinition, Definition]:
+        try:
+            d = parse_definition(text)
+        except DefinitionError as exc:
+            raise ProblemError(
+                422,
+                "Validation Failed",
+                "the definition is not valid",
+                slug="validation",
+                errors=[FieldError(field="body.yaml", message=m) for m in exc.errors],
+            ) from None
+        row = IndexerDefinition(slug=d.slug, name=d.name, version=d.version, source="user",
+                                yaml=text)  # fmt: skip
+        async with self.db.sessionmaker() as s:
+            s.add(row)
+            try:
+                await s.commit()
+            except IntegrityError:
+                raise ConflictError(f"a definition with slug {d.slug!r} exists") from None
+        catalog.put(d, text)
+        await self.bus.emit(
+            "source.definition_added",
+            subject=Subject(type="indexer_definition", id=row.id),
+            actor=actor,
+            name=d.name,
+            slug=d.slug,
+        )
+        return row, d
+
+    async def delete_definition(self, slug: str, *, actor: Actor) -> None:
+        row, d = await self.definition(slug)
+        if row.source == "builtin":
+            raise ConflictError(f"{d.name} is built in; disable its indexer instead")
+        async with self.db.sessionmaker() as s:
+            if await s.scalar(select(Indexer.id).where(Indexer.definition_id == row.id)):
+                raise ConflictError(f"indexers use {d.name}; remove them first")
+            await s.delete(await s.get(IndexerDefinition, row.id))
+            await s.commit()
+        catalog.drop(slug)
+        await self.bus.emit(
+            "source.definition_removed",
+            subject=Subject(type="indexer_definition", id=row.id),
+            actor=actor,
+            name=d.name,
+            slug=slug,
+        )
 
     # ---- runtime ------------------------------------------------------------------------------
 

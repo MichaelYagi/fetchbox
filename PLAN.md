@@ -97,7 +97,13 @@ Remaining unchecked items above are Phase 0 hardening, not gate blockers.
 - [x] Interactive search `GET /releases?wanted_item_id=` (movies): all enabled indexers,
       ranked decisions with reasons, `picks`, per-indexer failures, `release_id`s cached
       in memory for 1 h
-- [ ] YAML definition engine + first built-in definitions
+- [x] YAML definition engine (`providers/indexers/definition.py`, own format documented
+      in its docstring): declared hosts only (redirects too), rate limit, form login or
+      cookie, ordered requests with `when` conditions, JSON / XML responses, templates
+      with filters; `indexer_definition` table, `GET/POST/DELETE /indexer-definitions`.
+      Built-in: Internet Archive (public-domain films, web-seeded torrents), added as an
+      enabled indexer on first run (`FETCHBOX_SEED_INDEXERS`)
+- [ ] HTML (CSS selector) responses for definitions: needs a parser dependency
 - [x] Built-in libtorrent engine (`providers/download_clients/builtin.py`): magnet and
       .torrent, added paused (no libtorrent auto-management), resume data on metadata /
       finish / every 5 min / shutdown, pad files hidden, isolated mode for tests
@@ -269,6 +275,13 @@ three OSes; a backup restores on a fresh machine.
   seeding, its completed download is reused (rechecked, imported again).
 - A failed upgrade download returns its item to `acquired` (it still has its file),
   not `missing`. Removing a download by hand doesn't trigger a new search.
+
+- Definitions use fixed setting slots (`base_url`, `api_key`, `username`, `password`,
+  `cookie`) plus declared non-secret `options`, so secrets are always encrypted at rest.
+  `DELETE /indexer-definitions/{slug}` (user definitions not in use) is an addition.
+- Built-in definitions are limited to sources that distribute content legally (Internet
+  Archive so far). Definitions for other sites are the user's choice, added through
+  `POST /indexer-definitions`.
 
 ## Decisions taken here
 

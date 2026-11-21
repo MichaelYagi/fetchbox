@@ -24,6 +24,7 @@ def settings(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Settings:
     # Never touch the real Downloads folder or the public torrent network from tests.
     monkeypatch.setenv("FETCHBOX_DOWNLOADS_ROOT", str(tmp_path / "Downloads" / "Fetchbox"))
     monkeypatch.setenv("FETCHBOX_TORRENT_ISOLATED", "1")
+    monkeypatch.setenv("FETCHBOX_SEED_INDEXERS", "0")  # tests never reach real sites
     return load_settings(tmp_path / "data")
 
 

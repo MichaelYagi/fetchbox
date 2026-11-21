@@ -1,0 +1,41 @@
+# Internet Archive: public-domain and openly licensed feature films. Every item has a
+# torrent with HTTP web seeds, so downloads work even with no peers.
+schema: 1
+slug: internet-archive
+name: Internet Archive
+version: "1"
+description: Public-domain and openly licensed feature films from archive.org
+language: en
+links:
+  - https://archive.org
+capabilities: [search.imdb]
+rate_limit: 1.0
+headers:
+  Accept: application/json
+test_term: night of the living dead
+search:
+  requests:
+    - when: [movie, imdb]
+      path: /advancedsearch.php
+      params:
+        q: 'external-identifier:"urn:imdb:{{ query.ids.imdb }}" AND mediatype:movies'
+        "fl[]": [identifier, title, year, item_size, publicdate]
+        rows: "100"
+        output: json
+    - when: [movie, term]
+      path: /advancedsearch.php
+      params:
+        q: 'title:({{ query.term | quote }}) AND mediatype:movies AND collection:feature_films'
+        "fl[]": [identifier, title, year, item_size, publicdate]
+        rows: "100"
+        output: json
+  response:
+    type: json
+    rows: response.docs
+    fields:
+      title: "{{ row.title }} {{ row.year }}"
+      guid: "https://archive.org/details/{{ row.identifier }}"
+      info_url: "https://archive.org/details/{{ row.identifier }}"
+      download_url: "https://archive.org/download/{{ row.identifier }}/{{ row.identifier }}_archive.torrent"
+      size: "{{ row.item_size | size }}"
+      published_at: "{{ row.publicdate | date }}"

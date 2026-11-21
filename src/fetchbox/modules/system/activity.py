@@ -92,6 +92,8 @@ MESSAGES: dict[str, str] = {
     "wanted.unlocked": "Unlocked {name}: automatic search may grab it again",
     "wanted.redownload": "Redownloading {name}",
     "download.seeded": "Finished seeding {name} (ratio {ratio}, {hours} h): {action}d",
+    "source.definition_added": "Indexer definition {name} added",
+    "source.definition_removed": "Indexer definition {name} removed",
     "search.completed": "Searched for {name}: {results} results, {accepted} acceptable",
 }
 

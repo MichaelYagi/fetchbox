@@ -70,6 +70,7 @@ API_ROUTERS: tuple[APIRouter, ...] = (
     discovery_router.router,
     media_router.router,
     sources_router.router,
+    sources_router.definitions_router,
     releases_router.router,
     releases_router.grabs_router,
     downloads_router.router,
@@ -157,6 +158,7 @@ def create_app(
         media.register_jobs(jobs, state.scheduler)
         app.state.media = media
         sources = SourcesService(db, bus, box, provider_registry)
+        await sources.sync_definitions(seed=settings.seed_indexers)
         app.state.sources = sources
         state.health.register("indexers", sources.health, fix_url="/settings/indexers")
         grabs = GrabsService(db, bus)
