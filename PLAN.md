@@ -279,6 +279,12 @@ Progress:
 - [x] Link mode per library folder in the UI (hardlink-or-copy, hardlink only, copy,
       move, symlink); recycle-folder retention (`storage.recycle_days`, default 7, daily
       `recycle_cleanup` schedule)
+- [x] Notifications: Settings > Notifications, Discord (channel webhook) and generic
+      webhook (JSON POST, optional X-Fetchbox-Secret); per target, which events
+      (downloaded, upgraded, download failed, import needs attention, folder offline /
+      low space by default; grabbed, indexer failing, media server rescan failed, health
+      changed on request); sent in the background, last error shown; "Send a test".
+      Webhook checked against a real local HTTP receiver; Discord payload per its docs
 - [x] Rename preview (Phase 2, library settings)
 - [x] qBittorrent / Transmission / Deluge, path mappings (Phase 1-2 feedback)
 

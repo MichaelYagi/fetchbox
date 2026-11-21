@@ -2,6 +2,7 @@
 	import { ApiError, del, get, patch, post, type S } from '#lib/api.ts';
 	import LibraryCard from '#lib/LibraryCard.svelte';
 	import MediaServersCard from '#lib/MediaServersCard.svelte';
+	import NotificationsCard from '#lib/NotificationsCard.svelte';
 	import Path from '#lib/Path.svelte';
 	import { session } from '#lib/session.svelte.ts';
 
@@ -523,6 +524,11 @@
 	<section id="media-servers">
 		<h2>Media servers</h2>
 		<MediaServersCard {destinations} />
+	</section>
+
+	<section id="notifications">
+		<h2>Notifications</h2>
+		<NotificationsCard />
 	</section>
 </main>
 

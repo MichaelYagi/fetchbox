@@ -40,6 +40,8 @@ from fetchbox.modules.library.existing import ExistingLibrary
 from fetchbox.modules.library.service import LibraryService
 from fetchbox.modules.media import router as media_router
 from fetchbox.modules.media.service import MediaService
+from fetchbox.modules.notifications import router as notifications_router
+from fetchbox.modules.notifications.service import NotificationsService
 from fetchbox.modules.profiles import router as profiles_router
 from fetchbox.modules.profiles.service import ProfilesService
 from fetchbox.modules.releases import router as releases_router
@@ -83,6 +85,7 @@ API_ROUTERS: tuple[APIRouter, ...] = (
     storage_router.router,
     library_router.router,
     integrations_router.router,
+    notifications_router.router,
 )
 
 
@@ -208,6 +211,8 @@ def create_app(
         library = LibraryService(db, bus, jobs, storage, downloads, profiles, media)
         storage.register_jobs(jobs, state.scheduler, lambda: config.current.storage.recycle_days)
         integrations = IntegrationsService(db, bus, box, provider_registry)
+        notifications = NotificationsService(db, bus, box, provider_registry)
+        app.state.notifications = notifications
         app.state.integrations = integrations
         existing = ExistingLibrary(
             db, jobs, storage=storage, media=media, discovery=discovery, library=library
@@ -264,6 +269,7 @@ def create_app(
             if (stop := getattr(app.state, "watchdog_stop", None)) is not None:
                 stop.set()
             await app.state.integrations.stop()
+            await app.state.notifications.stop()
             await state.scheduler.stop()
             await state.jobs.stop(timeout=30)
             await autosearch.stop()
