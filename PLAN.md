@@ -245,9 +245,10 @@ three OSes; a backup restores on a fresh machine.
 5. Windows/NTFS: hardlinks, UNC paths, illegal characters, WSL path mappings. (Resolved)
    On Windows, libtorrent reports a torrent finished before its memory-mapped writes
    reach the file: reading it then gave short/wrong bytes (and pytest's diff of the
-   failed 2 MB assert looked like a hang). The engine now reports `seeding` only after
-   a `flush_disk_cache` resume save completes. Reproduced and verified on native
-   Windows. Import should still verify size before linking.
+   failed 2 MB assert looked like a hang). A `flush_disk_cache` resume save fixed it 7/8 times
+   and `always_pwrite` never; pausing (closes files after pending writes) 8/8. The
+   engine now pauses a torrent on finish and reports `seeding` once paused, then
+   resumes it. Full suite passes on native Windows. Import should still verify size before linking.
 6. Custom-format regexes are user-supplied (`profiles:write` only) and run on every
    search result; Python `re` has no timeout, so a pathological pattern can stall a
    search. Length is capped at 500; consider the `regex` module's timeout if needed.
