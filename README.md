@@ -9,7 +9,7 @@ Status: early development — see [PLAN.md](PLAN.md) and the engineering specifi
 
 ```sh
 uv sync                     # Python 3.12 or 3.13
-uv run fetchbox serve --data ./data
+uv run fetchbox serve --data ./data   # run from the repo root
 # API docs: http://127.0.0.1:8787/api/docs
 uv run pytest
 uv run ruff check . && uv run mypy && uv run lint-imports

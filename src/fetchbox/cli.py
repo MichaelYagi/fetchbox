@@ -38,6 +38,11 @@ def _parser() -> argparse.ArgumentParser:
 
     sub.add_parser("openapi", help="print the API's OpenAPI document (for client generation)")
 
+    # `--data` also works after the command (`fetchbox serve --data ./data`).
+    for cmd in (serve, mig, rp):
+        cmd.add_argument(
+            "--data", dest="data_dir", default=argparse.SUPPRESS, help="data directory"
+        )
     return p
 
 
