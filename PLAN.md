@@ -311,6 +311,10 @@ Progress:
       writes new release names with today's parse, for review into
       tests/fixtures/releases. Checked against real Prowlarr 3.0.2. Growing the corpus
       itself is ongoing: run it against real indexers and review the output
+- [x] Optional TVDB (v4): with a key (+ PIN for personal keys) in Settings, adding or
+      refreshing a show fills each episode's absolute number from TVDB's default order
+      (TMDB has none), so absolute-numbered anime matches; fetched before any DB session;
+      failures logged, never fatal. Not checked against the real TVDB (needs a key)
 - [x] Rename preview (Phase 2, library settings)
 - [x] qBittorrent / Transmission / Deluge, path mappings (Phase 1-2 feedback)
 

@@ -7,7 +7,11 @@
 	import Path from '#lib/Path.svelte';
 	import { session } from '#lib/session.svelte.ts';
 
-	type Cfg = { tmdb: { api_key: string | null; language: string }; search: Record<string, unknown> };
+	type Cfg = {
+		tmdb: { api_key: string | null; language: string };
+		tvdb?: { api_key: string | null; pin: string | null };
+		search: Record<string, unknown>;
+	};
 	let config = $state<{ config: Cfg; overridden: string[] } | null>(null);
 	let indexers = $state<S['IndexerOut'][]>([]);
 	let definitions = $state<S['DefinitionOut'][]>([]);
@@ -21,6 +25,8 @@
 	let busy = $state('');
 
 	let tmdbKey = $state('');
+	let tvdbKey = $state('');
+	let tvdbPin = $state('');
 	let newIndexer = $state({ kind: 'prowlarr', name: '', url: '', api_key: '', definition: '' });
 	let newClient = $state({ kind: 'qbittorrent', name: '', url: '', username: '', password: '' });
 	// Inline editing: one row at a time. Secrets left blank keep what is stored.
@@ -185,6 +191,16 @@
 		);
 	};
 
+	const saveTvdb = (e: SubmitEvent) => {
+		e.preventDefault();
+		const tvdb: Record<string, string | null> = { api_key: tvdbKey.trim() || null };
+		if (tvdbPin.trim()) tvdb.pin = tvdbPin.trim();
+		act('tvdb', () => patch('/system/config', { tvdb }), tvdb.api_key ? 'TVDB key saved.' : 'TVDB key removed.').then(() => {
+			tvdbKey = '';
+			tvdbPin = '';
+		});
+	};
+
 	const test = (kind: 'indexers' | 'download-clients', id: string) =>
 		act(`test-${id}`, async () => {
 			tests[id] = await post<S['TestResult']>(`/${kind}/${id}/test`);
@@ -281,7 +297,7 @@
 	</section>
 
 	<section id="tmdb">
-		<h2>Movie information (TMDB)</h2>
+		<h2>Movie and show information (TMDB)</h2>
 		<form class="card stack" onsubmit={saveTmdb}>
 			<p class="muted small">
 				Searching for movies needs a free API key from
@@ -297,6 +313,20 @@
 					<button class="primary" disabled={!tmdbKey.trim() || busy === 'tmdb'}>Save</button>
 				</div>
 			{/if}
+		</form>
+		<form class="card stack tvdb" onsubmit={saveTvdb}>
+			<p class="muted small">
+				<strong>Anime, optional:</strong> releases numbered by absolute episode (“Show - 1071”) need TheTVDB's numbering,
+				which TMDB doesn't have. Get an API key at
+				<a href="https://thetvdb.com/api-information" target="_blank" rel="noreferrer">thetvdb.com/api-information</a>
+				(a personal key also needs your subscriber PIN). Shows are updated at their next refresh.
+				{#if config?.config.tvdb?.api_key}A key is set.{/if}
+			</p>
+			<div class="row">
+				<input class="grow" type="password" placeholder={config?.config.tvdb?.api_key ? '••••••••  (replace)' : 'TVDB API key'} bind:value={tvdbKey} autocomplete="off" />
+				<input type="password" placeholder="PIN (if needed)" bind:value={tvdbPin} autocomplete="off" />
+				<button class="primary" disabled={!tvdbKey.trim() || busy === 'tvdb'}>Save</button>
+			</div>
 		</form>
 	</section>
 

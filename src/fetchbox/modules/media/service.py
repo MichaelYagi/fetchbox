@@ -234,6 +234,8 @@ class MediaService:
             refreshed_at=utcnow(),
         )
         _apply_series(title, detail)
+        # Absolute numbers (anime) from TVDB when a key is set; TMDB has none.
+        absolute = await self.discovery.absolute_numbers(detail.tvdb_id)
         eps = [Ep(e.season, e.number, e.air_date) for x in detail.seasons for e in x.episodes]
         flags = monitor_initial(monitor_mode, eps, utcnow().date())
         season_flags = seasons_monitored(monitor_mode, flags)
@@ -250,7 +252,11 @@ class MediaService:
                 await s.flush()
                 for ed in sd.episodes:
                     ep = Episode(
-                        season_id=season.id, number=ed.number, air_date=ed.air_date, name=ed.name
+                        season_id=season.id,
+                        number=ed.number,
+                        air_date=ed.air_date,
+                        name=ed.name,
+                        absolute_number=absolute.get((sd.number, ed.number)),
                     )
                     s.add(ep)
                     await s.flush()
@@ -270,7 +276,13 @@ class MediaService:
         await self._emit("title.added", title, actor, episodes=len(eps))
         return title
 
-    async def _sync_episodes(self, s: AsyncSession, title: Title, detail: SeriesDetail) -> int:
+    async def _sync_episodes(
+        self,
+        s: AsyncSession,
+        title: Title,
+        detail: SeriesDetail,
+        absolute: dict[tuple[int, int], int] | None = None,
+    ) -> int:
         """Bring seasons and episodes up to date with TMDB; new episodes get wanted items
         monitored per the series' mode. Returns how many episodes were added."""
         mode: SeriesMode = title.monitor_mode  # type: ignore[assignment]
@@ -315,8 +327,6 @@ class MediaService:
                     )
                 )
                 added += 1
-        # Absolute numbers (anime) come from TVDB when a TVDB key is set; TMDB has none.
-        absolute = await self.discovery.absolute_numbers(title.tvdb_id)
         if absolute:
             rows = (
                 await s.execute(
@@ -581,11 +591,13 @@ class MediaService:
                 await s.commit()
         else:
             series = await self.discovery.series(tmdb_id, fresh=True)
+            # Fetched before the session: no network call while holding a write lock.
+            absolute = await self.discovery.absolute_numbers(series.tvdb_id)
             async with self.db.sessionmaker() as s:
                 row = await self._title(s, title_id)
                 _apply_series(row, series)
                 row.refreshed_at = utcnow()
-                added = await self._sync_episodes(s, row, series)
+                added = await self._sync_episodes(s, row, series, absolute)
                 await s.commit()
         if emit:
             await self._emit("title.refreshed", row, actor, new_episodes=added)

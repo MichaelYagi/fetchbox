@@ -13,9 +13,7 @@ def test_known_names_come_from_the_fixtures() -> None:
     assert len(known) > 500 and "[SubsPlease] Jujutsu Kaisen - 24 (1080p) [ABCD1234].mkv" in known
 
 
-def test_capture_without_indexers_writes_an_empty_file(
-    settings: Settings, tmp_path: Path
-) -> None:
+def test_capture_without_indexers_writes_an_empty_file(settings: Settings, tmp_path: Path) -> None:
     import asyncio
 
     from fetchbox import migrations
