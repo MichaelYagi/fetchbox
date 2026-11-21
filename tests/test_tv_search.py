@@ -133,8 +133,14 @@ async def test_automatic_search_packs_first_then_episodes(
 
 
 async def test_title_search_conflicts_when_nothing_to_get(
-    c: httpx.AsyncClient, fakes: Fakes
+    c: httpx.AsyncClient, fakes: Fakes, server: Running, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    # Hold the job workers: a queued search that already ran may be queued again, so a
+    # fast runner made the 409 below a race.
+    async def nothing(queue: str) -> None:
+        return None
+
+    monkeypatch.setattr(server.app.state.fb.jobs, "_claim", nothing)
     t = await _series(c, search=False)
     r = await c.post(f"/titles/{t['id']}/search")
     assert r.status_code == 202  # aired missing episodes in both seasons
