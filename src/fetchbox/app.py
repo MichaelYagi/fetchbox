@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from collections.abc import AsyncIterator, Callable, Sequence
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -231,6 +232,10 @@ def create_app(
         await library.start()
         await autosearch.start()
         await state.scheduler.start()
+        if os.environ.get("FETCHBOX_DB_GUARD"):  # debug: report what blocks the loop
+            from fetchbox.core import watchdog
+
+            app.state.watchdog_stop = watchdog.start(asyncio.get_running_loop())
 
         log.info(
             "started",
@@ -244,6 +249,8 @@ def create_app(
             yield
         finally:
             await state.bus.emit("system.stopping")
+            if (stop := getattr(app.state, "watchdog_stop", None)) is not None:
+                stop.set()
             await state.scheduler.stop()
             await state.jobs.stop(timeout=30)
             await autosearch.stop()

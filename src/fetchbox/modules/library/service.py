@@ -983,8 +983,7 @@ class LibraryService:
                 tpl = NamingTemplate(name=f"{row.name} naming ({row.id[-6:]})", patterns=merged)
                 s.add(tpl)
                 await s.flush()
-                row.naming_template_id = tpl.id
-                row.version += 1
+                row.naming_template_id = tpl.id  # the version moves on by itself
             else:
                 tpl.patterns = merged
             await s.commit()

@@ -177,3 +177,20 @@ async def test_scopes(server: Running, fakes: Fakes) -> None:
         r = await c.post("/indexers", json={"name": "x", "settings": {"url": "http://x"}})
         assert r.status_code == 403
         assert (await c.get("/releases", params={"wanted_item_id": "x"})).status_code == 403
+
+
+async def test_failures_at_once_all_count(
+    c: httpx.AsyncClient, fakes: Fakes, server: Running
+) -> None:
+    """Searches failing together on one indexer each count (no lost increments)."""
+    import asyncio
+
+    from fetchbox.providers.indexers import IndexerError
+
+    ix = await _indexer(c, fakes, "one", ITEMS)
+    svc = server.app.state.sources
+    await asyncio.gather(
+        *(svc.record_failure(ix["id"], IndexerError("unavailable", "down")) for _ in range(6))
+    )
+    row = (await c.get(f"/indexers/{ix['id']}")).json()
+    assert row["failure_count"] == 6 and row["etag"] == ix["etag"]  # user ETag unchanged

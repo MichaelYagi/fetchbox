@@ -45,6 +45,13 @@ releases that don't state a quality. Profiles can be edited through the API
 Files go to `~/Downloads/Fetchbox/Movies` and `.../TV` (Linux: your XDG Downloads folder).
 Set `FETCHBOX_DOWNLOADS_ROOT` to change that.
 
+### Troubleshooting: "database is locked" or stalls
+
+Start Fetchbox with `FETCHBOX_DB_GUARD=1` (and optionally `FETCHBOX_DB_GUARD_OUT=guard.txt`)
+to record what holds the database: write transactions held over a second, a task waiting on
+its own write, and any moment the server's event loop is blocked for over half a second,
+each with the code responsible. Attach that file to a bug report.
+
 ## Development
 
 ```sh

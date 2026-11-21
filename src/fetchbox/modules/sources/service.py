@@ -386,13 +386,22 @@ class SourcesService:
             row = await s.get(Indexer, indexer_id)
             if row is None:
                 return
-            # Raw UPDATE: runtime state must not bump the version (the user's ETag).
-            failures = row.failure_count + 1
+            # Raw UPDATE: runtime state must not bump the version (the user's ETag). The
+            # count is incremented in SQL: searches failing at once each count.
+            failures = (
+                await s.execute(
+                    update(Indexer)
+                    .where(Indexer.id == indexer_id)
+                    .values(failure_count=Indexer.failure_count + 1, last_error=exc.message)
+                    .returning(Indexer.failure_count)
+                    .execution_options(synchronize_session=False)
+                )
+            ).scalar_one()
             until = utcnow() + backoff(failures, exc.retry_after)
             await s.execute(
                 update(Indexer)
                 .where(Indexer.id == indexer_id)
-                .values(failure_count=failures, disabled_until=until, last_error=exc.message)
+                .values(disabled_until=until)
                 .execution_options(synchronize_session=False)
             )
             await s.commit()
