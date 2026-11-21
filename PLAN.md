@@ -326,6 +326,8 @@ Release pipeline (pulled forward from Phase 4, same flow as roast-telemetry):
       macOS Silicon + Intel .app and Linux binary (PyInstaller onefile, `packaging/`),
       smoke-tests each (scratch data dir: answers, right version, serves the UI), adds
       README / LICENSE / generated THIRD-PARTY-NOTICES, and releases them privately
+- [x] All four desktop builds pass in fetchbox-artifacts (test run from `phase3`, publish
+      off): Windows 41 MB, macOS Silicon / Intel 40 MB, Linux 62 MB, each smoke-tested
 - [x] Tray launcher (`fetchbox tray`, default when the desktop build is double-clicked):
       supervises the server process, status line, open UI, start/stop/restart, data and
       logs folders, quit; graceful stop via `POST /system/shutdown` (system:write, or the
