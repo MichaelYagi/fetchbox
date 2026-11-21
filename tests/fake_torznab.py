@@ -77,6 +77,14 @@ def feed(items: list[Item]) -> str:
     )
 
 
+def _accepts(accept: str, ctype: str) -> bool:
+    for part in accept.split(","):
+        media = part.split(";")[0].strip()
+        if media in ("*/*", ctype, ctype.split("/")[0] + "/*"):
+            return True
+    return False
+
+
 class FakeTorznab:
     def __init__(self, items: list[Item] | None = None, *, key: str = API_KEY) -> None:
         self.items = items or []
@@ -104,6 +112,10 @@ class FakeTorznab:
             code, desc = self.error_doc or ("100", "Incorrect user credentials")
             return httpx.Response(200, text=f'<error code="{code}" description="{desc}"/>')
         t = q.get("t")
+        # Like Prowlarr: 406 unless the Accept header allows the type it serves.
+        ctype = "application/xml" if t == "caps" else "application/rss+xml"
+        if not _accepts(req.headers.get("accept", "*/*"), ctype):
+            return httpx.Response(406)
         if t == "caps":
             return httpx.Response(200, text=CAPS)
         if t == "movie" and "imdbid" in q and self.by_id_finds_nothing:

@@ -30,6 +30,7 @@ from fetchbox.providers.indexers import (
 )
 
 TORZNAB_NS = "{http://torznab.com/schemas/2015/feed}"
+ACCEPT = "application/rss+xml, application/xml, text/xml, */*;q=0.1"
 TIMEOUT = httpx.Timeout(30.0, connect=10.0)
 MAX_BODY = 20 * 1024 * 1024
 MAX_TORRENT = 10 * 1024 * 1024
@@ -241,7 +242,9 @@ class TorznabProvider(IndexerProvider):
         self._http = httpx.AsyncClient(
             timeout=TIMEOUT,
             transport=transport,
-            headers={"User-Agent": "Fetchbox", "Accept": "application/rss+xml, text/xml"},
+            # Caps come back as application/xml, results as application/rss+xml; Prowlarr
+            # answers 406 to an Accept header that rules out what it sends.
+            headers={"User-Agent": "Fetchbox", "Accept": ACCEPT},
         )
         self._caps: tuple[float, Caps] | None = None
 
