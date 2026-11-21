@@ -178,7 +178,7 @@ def create_app(
             sources=sources,
             config=config,
         )
-        autosearch.register_jobs()
+        autosearch.register_jobs(state.scheduler)
         app.state.autosearch = autosearch
         downloads = DownloadsService(
             db,

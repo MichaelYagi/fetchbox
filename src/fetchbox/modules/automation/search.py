@@ -34,10 +34,13 @@ from fetchbox.core.db import Database, utcnow
 from fetchbox.core.errors import ConflictError, NotFoundError, ProblemError
 from fetchbox.core.events import Actor, EventBus
 from fetchbox.core.jobs import Job, JobContext, JobRunner
+from fetchbox.core.schedules import ScheduleDef, Scheduler
+from fetchbox.modules.automation.rss import RSS_JOB, rss_sync
 from fetchbox.modules.media.models import Episode, HistoryEvent, Season, Title, WantedItem
 from fetchbox.modules.media.series import aired
 from fetchbox.modules.media.service import MediaService, available_from
 from fetchbox.modules.profiles.models import QualityProfile
+from fetchbox.modules.releases.decision import Candidate
 from fetchbox.modules.releases.grabs import BUSY, GrabsService
 from fetchbox.modules.releases.grabs import Reason as GrabReason
 from fetchbox.modules.releases.service import ReleasesService
@@ -82,7 +85,21 @@ class AutoSearch:
 
     # ---- lifecycle ----------------------------------------------------------------------------
 
-    def register_jobs(self) -> None:
+    def register_jobs(self, scheduler: Scheduler | None = None) -> None:
+        @self.jobs.handler(RSS_JOB, queue="net", max_attempts=1)
+        async def run_rss(ctx: JobContext) -> dict[str, Any]:
+            return await rss_sync(self)
+
+        if scheduler is not None:
+            scheduler.define(
+                ScheduleDef(
+                    "rss_sync",
+                    RSS_JOB,
+                    timedelta(minutes=15),
+                    description="Read every indexer's newest releases and grab wanted ones",
+                )
+            )
+
         @self.jobs.handler(SEARCH_JOB, queue="net", max_attempts=1)
         async def run(ctx: JobContext) -> dict[str, Any]:
             return await self.search(
@@ -310,8 +327,15 @@ class AutoSearch:
         return await self._search(items, reason=reason, season_query=True)
 
     async def _search(
-        self, candidates: list[WantedItem], *, reason: Reason, season_query: bool
+        self,
+        candidates: list[WantedItem],
+        *,
+        reason: Reason,
+        season_query: bool,
+        feed: list[Candidate] | None = None,
     ) -> dict[str, Any]:
+        """Search for ``candidates`` and grab the best, or (``feed``) decide on releases
+        already found (RSS): then the items' search schedule is left alone."""
         cfg = self.config.current.search
         now = utcnow()
         later = {
@@ -390,22 +414,29 @@ class AutoSearch:
         taken: set[str] = set()
         scheduled = False
         try:
-            _, outcome, plan = await self.releases.run(
-                eligible, mode="automatic", actor=SYSTEM, season_query=season_query
-            )
-            # Before grabbing: a download that fails right away sets next_search_at back
-            # to "now" (search for an alternative), which must not be overwritten here.
-            for w in eligible:
-                await self._set(w.id, next_search_at=later[mode(w)])
-            scheduled = True
+            if feed is not None:
+                outcome, plan = await self.releases.evaluate(eligible, feed)
+                scheduled = True  # RSS doesn't move the next search
+            else:
+                _, outcome, plan = await self.releases.run(
+                    eligible, mode="automatic", actor=SYSTEM, season_query=season_query
+                )
+                # Before grabbing: a download that fails right away sets next_search_at
+                # back to "now" (search for an alternative), which mustn't be overwritten.
+                for w in eligible:
+                    await self._set(w.id, next_search_at=later[mode(w)])
+                scheduled = True
             result |= {
                 "results": len(outcome.decisions),
                 "accepted": sum(d.accepted for d in outcome.decisions),
                 "failed_indexers": [f.source_name for f in outcome.failures],
             }
             for pick in outcome.picks:
-                await self._grab(pick, plan.covered(pick), ids, taken, grabs, result)
-            if season_query:  # episodes the season search didn't cover, one by one
+                await self._grab(
+                    pick, plan.covered(pick), ids, taken, grabs, result,
+                    via="rss" if feed is not None else "search",
+                )  # fmt: skip
+            if season_query and feed is None:  # episodes the season search didn't cover, one by one
                 left = [w for w in eligible if w.id not in taken][:EPISODE_FALLBACK]
                 for w in left:
                     _, more, eplan = await self.releases.run([w], mode="automatic", actor=SYSTEM)
@@ -428,7 +459,8 @@ class AutoSearch:
             result["grabbed"], result["release_title"] = grabs[0]
             if len(grabs) > 1:
                 result["grabs"] = [{"grab": g, "release_title": t} for g, t in grabs]
-        log.info("search.automatic", **result)
+        if feed is None:
+            log.info("search.automatic", **result)
         return result
 
     async def _grab(
@@ -439,6 +471,8 @@ class AutoSearch:
         taken: set[str],
         grabs: list[tuple[str, str]],
         result: dict[str, Any],
+        *,
+        via: GrabReason = "search",
     ) -> None:
         """Grab ``pick`` for the eligible items it covers that nothing else took yet."""
         mine = [i for i in covered if i in ids and i not in taken]
@@ -448,7 +482,7 @@ class AutoSearch:
             states = set(
                 (await s.execute(select(WantedItem.state).where(WantedItem.id.in_(mine)))).scalars()
             )
-        reason: GrabReason = "upgrade" if states == {"acquired"} else "search"
+        reason: GrabReason = "upgrade" if states == {"acquired"} else via
         try:
             grab, _ = await self.grabs.grab(pick, mine, reason=reason, actor=SYSTEM)
         except ProblemError as exc:  # e.g. a manual grab got there first

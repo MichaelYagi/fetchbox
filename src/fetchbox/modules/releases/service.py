@@ -29,16 +29,19 @@ from fetchbox.modules.media.models import Title, WantedItem
 from fetchbox.modules.media.service import MediaService
 from fetchbox.modules.profiles.service import ProfilesService, to_spec
 from fetchbox.modules.releases.decision import (
+    Candidate,
     Decision,
     DecisionContext,
     EpisodeKey,
     Existing,
     Target,
     WantedEpisode,
+    decide_all,
 )
+from fetchbox.modules.releases.decision import select as pick_releases
 from fetchbox.modules.releases.grabs import GrabsService, Reason, blocklist_keys, grabbed_keys
 from fetchbox.modules.releases.models import Grab
-from fetchbox.modules.releases.search import SearchOutcome, search
+from fetchbox.modules.releases.search import SearchOutcome, dedupe, search
 from fetchbox.modules.releases.targets import movie_target, series_target
 from fetchbox.modules.sources.service import SourcesService
 from fetchbox.modules.system.config import ConfigService
@@ -256,6 +259,14 @@ class ReleasesService:
             failed_indexers=[f.source_name for f in outcome.failures],
         )
         return len(sources), outcome, plan
+
+    async def evaluate(
+        self, items: list[WantedItem], candidates: list[Candidate]
+    ) -> tuple[SearchOutcome, Plan]:
+        """Decide on releases found some other way (an RSS feed) as a search would."""
+        plan = await self.plan(items, season_query=True)
+        decisions = decide_all(dedupe(candidates), plan.target, plan.ctx)
+        return SearchOutcome(decisions, pick_releases(decisions, plan.target), []), plan
 
     def _cache(self, plan: Plan, outcome: SearchOutcome) -> list[str]:
         return [self.cache.put(plan.covered(d), d) for d in outcome.decisions]

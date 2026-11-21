@@ -49,7 +49,7 @@ class SearchOutcome:
     failures: list[SourceFailure]
 
 
-def _dedupe(candidates: Sequence[Candidate]) -> list[Candidate]:
+def dedupe(candidates: Sequence[Candidate]) -> list[Candidate]:
     """The same torrent from several indexers is listed once, from the best indexer."""
     best: dict[str, Candidate] = {}
     out: list[Candidate] = []
@@ -89,5 +89,5 @@ async def search(
     results = await asyncio.gather(*(one(s) for s in sources))
     candidates = [c for r in results if isinstance(r, list) for c in r]
     failures = [r for r in results if isinstance(r, SourceFailure)]
-    decisions = decide_all(_dedupe(candidates), target, ctx)
+    decisions = decide_all(dedupe(candidates), target, ctx)
     return SearchOutcome(decisions, select(decisions, target), failures)

@@ -445,6 +445,10 @@ class MediaService:
             raise NotFoundError("title", title_id)
         return row
 
+    async def all_titles(self) -> list[Title]:
+        async with self.db.sessionmaker() as s:
+            return list((await s.execute(select(Title))).scalars())
+
     async def wanted_for(self, title_ids: list[str]) -> dict[str, list[WantedItem]]:
         if not title_ids:
             return {}

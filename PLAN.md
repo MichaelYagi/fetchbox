@@ -212,7 +212,11 @@ season-pack rule; RSS sync, missing search, upgrades
       searched together through their Torznab feeds; one failing doesn't fail the search.
       Checked against a real Prowlarr 3.0.2. Pasted API keys are trimmed; a Torznab URL that
       is an app's own API (Prowlarr's main address) gets an error saying so
-- [ ] RSS sync (every 15 min): each indexer's feed, matched against all wanted items
+- [x] RSS sync (every 15 min, schedule `rss_sync`): every indexer's feed (Prowlarr: each
+      of its indexers; checked against real Prowlarr 3.0.2), releases matched to library
+      titles by name (year for movies), the wanted items they'd cover (monitored, aired /
+      available, not busy) decided and grabbed exactly as a search would (grab reason
+      `rss`); an item's next search is left alone; one broken feed doesn't stop the rest
 - [x] **Library settings UI:** Settings > Library has a Movies card and a TV card: the
       folder (status, free space, change), naming style presets (Plex / Jellyfin / Emby,
       Kodi, Simple, Custom), TV season folders (Season 01 / Season 1 / S01 / none), custom
