@@ -192,8 +192,13 @@ season-pack rule; RSS sync, missing search, upgrades
       refresh (manual and the 12 h schedule) adds new episodes per the mode, and a new
       season takes over under latest_season; `GET /titles/{id}/episodes`,
       `PATCH /titles/{id}/seasons/{n}`; series counts on titles; episode fields on /wanted
-- [ ] TV search: episode and season queries; aired episodes only; season search (pack
-      first, then gap filling); automatic search per season, interactive per episode/season
+- [x] TV search: episode and season queries (tvsearch season/ep, TVDB/IMDb ids, daily shows
+      by air date); interactive `GET /releases?wanted_item_id=` (episode) and
+      `?title_id=&season=` (season: packs and singles; a grabbed pack claims every episode
+      it covers); automatic search sweeps due aired episodes into one job per season
+      (season search, packs first then gap filling, then up to 5 episode searches for
+      what's left); `POST /titles/{id}/search` queues every season with aired episodes to
+      get; unaired episodes are never searched
 - [ ] TV import: map each file to its episodes (multi-episode files, season packs);
       episode naming; upgrades replace only after the new import succeeds
 - [x] Prowlarr indexer kind (`providers/indexers/prowlarr.py`): Prowlarr's address + API
@@ -394,3 +399,10 @@ three OSes; a backup restores on a fresh machine.
 8. Anime fansub names often state only a resolution (`[SubsPlease] ... (1080p)`), which
    parses to `Unknown-1080p` and no default profile allows it. Decide in Phase 2 whether
    to treat it as WEB-DL (Sonarr's choice) or ship an anime profile.
+9. SQLite "database is locked" under load (writers waiting > busy_timeout 5 s): seen in
+   Phase 1 and reproducible in `tests/test_tv_search.py::test_automatic_search_packs_first_then_episodes`
+   (job claims, poll updates, API-key touches, activity inserts time out). Instrumenting
+   showed no SQLAlchemy connection inside a transaction at the moment of the error, so
+   it is not a transaction left open. Effects are retried or best-effort (claims, polls,
+   key touches), but up to 5 s stalls are possible. Next: try `BEGIN IMMEDIATE` for
+   writing sessions / a dedicated writer connection, and check WAL checkpointing.

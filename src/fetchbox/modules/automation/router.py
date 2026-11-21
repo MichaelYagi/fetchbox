@@ -195,15 +195,11 @@ async def search_title(
     p: CurrentPrincipal,
     idempotency_key: IdempotencyKey = None,
 ) -> Response:
-    """Movies: the same as searching the title's wanted item."""
+    """A movie: its wanted item. A series: every season with aired episodes still to
+    get, one search per season (season packs first). Returns the first season's job."""
 
     async def run() -> Response:
-        svc = _auto(request)
-        await svc.media.get_title(title_id)
-        items = (await svc.media.wanted_for([title_id])).get(title_id, [])
-        if not items:
-            raise ConflictError(f"title {title_id} has no wanted items")
-        return accepted(await svc.request(items[0].id))
+        return accepted(await _auto(request).request_title(title_id))
 
     return await idempotent(state.db, request, actor_id=p.id, key=idempotency_key, run=run)
 

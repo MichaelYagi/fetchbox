@@ -310,6 +310,33 @@ class MediaService:
             by_season[season.id].append((ep, w))
         return [(x, by_season[x.id]) for x in seasons]
 
+    async def episode_items(
+        self, title_id: str, *, season: int | None = None, item_ids: list[str] | None = None
+    ) -> list[tuple[int, Episode, WantedItem]]:
+        """(season number, episode, wanted item) of a series, by season or by item."""
+        q = (
+            select(Season.number, Episode, WantedItem)
+            .join(Episode, Episode.season_id == Season.id)
+            .join(WantedItem, WantedItem.episode_id == Episode.id)
+            .where(Season.title_id == title_id)
+            .order_by(Season.number, Episode.number)
+        )
+        if season is not None:
+            q = q.where(Season.number == season)
+        if item_ids is not None:
+            q = q.where(WantedItem.id.in_(item_ids))
+        async with self.db.sessionmaker() as s:
+            return [(n, ep, w) for n, ep, w in (await s.execute(q)).all()]
+
+    async def season_info(self, title_id: str) -> dict[int, tuple[int, bool]]:
+        """season -> (episode count, finished airing: every episode has aired)."""
+        today = utcnow().date()
+        out: dict[int, tuple[int, bool]] = {}
+        for n, ep, _ in await self.episode_items(title_id):
+            count, done = out.get(n, (0, True))
+            out[n] = (count + 1, done and ep.air_date is not None and ep.air_date <= today)
+        return out
+
     async def set_season_monitored(
         self, title_id: str, number: int, monitored: bool, *, actor: Actor
     ) -> Season:

@@ -2782,9 +2782,34 @@
       "title": "Releases",
       "type": "array"
      },
-     "wanted_item_id": {
-      "title": "Wanted Item Id",
+     "season": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Set for a season search",
+      "title": "Season"
+     },
+     "title_id": {
+      "default": "",
+      "title": "Title Id",
       "type": "string"
+     },
+     "wanted_item_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "The movie or episode searched",
+      "title": "Wanted Item Id"
      }
     },
     "required": [
@@ -12869,17 +12894,62 @@
   },
   "/api/v1/releases": {
    "get": {
-    "description": "Search every enabled indexer now and return every result, scored and ranked.",
+    "description": "Search every enabled indexer now and return every result, scored and ranked: for\none movie or episode (`wanted_item_id`), or a whole season (`title_id` + `season`,\nwhich also finds season packs; grabbing one covers every episode it contains).",
     "operationId": "interactive_search_api_v1_releases_get",
     "parameters": [
      {
+      "description": "A movie or an episode",
       "in": "query",
       "name": "wanted_item_id",
-      "required": true,
+      "required": false,
       "schema": {
-       "minLength": 1,
-       "title": "Wanted Item Id",
-       "type": "string"
+       "anyOf": [
+        {
+         "minLength": 1,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "A movie or an episode",
+       "title": "Wanted Item Id"
+      }
+     },
+     {
+      "description": "With season: a season search",
+      "in": "query",
+      "name": "title_id",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "minLength": 1,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "With season: a season search",
+       "title": "Title Id"
+      }
+     },
+     {
+      "in": "query",
+      "name": "season",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "minimum": 0,
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Season"
       }
      }
     ],
@@ -12904,6 +12974,17 @@
        "application/problem+json": {}
       },
       "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Conflict"
      },
      "422": {
       "content": {
@@ -14155,7 +14236,7 @@
   },
   "/api/v1/titles/{title_id}/search": {
    "post": {
-    "description": "Movies: the same as searching the title's wanted item.",
+    "description": "A movie: its wanted item. A series: every season with aired episodes still to\nget, one search per season (season packs first). Returns the first season's job.",
     "operationId": "search_title_api_v1_titles__title_id__search_post",
     "parameters": [
      {

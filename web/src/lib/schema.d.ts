@@ -1249,7 +1249,9 @@ export interface paths {
         };
         /**
          * Interactive Search
-         * @description Search every enabled indexer now and return every result, scored and ranked.
+         * @description Search every enabled indexer now and return every result, scored and ranked: for
+         *     one movie or episode (`wanted_item_id`), or a whole season (`title_id` + `season`,
+         *     which also finds season packs; grabbing one covers every episode it contains).
          */
         get: operations["interactive_search_api_v1_releases_get"];
         put?: never;
@@ -1544,7 +1546,8 @@ export interface paths {
         put?: never;
         /**
          * Search Title
-         * @description Movies: the same as searching the title's wanted item.
+         * @description A movie: its wanted item. A series: every season with aired episodes still to
+         *     get, one search per season (season packs first). Returns the first season's job.
          */
         post: operations["search_title_api_v1_titles__title_id__search_post"];
         delete?: never;
@@ -2613,8 +2616,21 @@ export interface components {
              * @description Best first; rejected ones last, with reasons
              */
             releases: components["schemas"]["ReleaseOut"][];
-            /** Wanted Item Id */
-            wanted_item_id: string;
+            /**
+             * Season
+             * @description Set for a season search
+             */
+            season?: number | null;
+            /**
+             * Title Id
+             * @default
+             */
+            title_id: string;
+            /**
+             * Wanted Item Id
+             * @description The movie or episode searched
+             */
+            wanted_item_id: string | null;
         };
         /** JobOut */
         JobOut: {
@@ -7888,8 +7904,12 @@ export interface operations {
     };
     interactive_search_api_v1_releases_get: {
         parameters: {
-            query: {
-                wanted_item_id: string;
+            query?: {
+                /** @description A movie or an episode */
+                wanted_item_id?: string | null;
+                /** @description With season: a season search */
+                title_id?: string | null;
+                season?: number | null;
             };
             header?: never;
             path?: never;
@@ -7908,6 +7928,16 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
