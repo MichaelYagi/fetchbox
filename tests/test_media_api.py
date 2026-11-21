@@ -185,9 +185,9 @@ async def test_add_validation(c: httpx.AsyncClient) -> None:
     assert r.status_code == 422 and r.json()["errors"][0]["field"] == "body.profile_id"
     r = await c.post("/titles", json={"tmdb_id": 1, "profile_id": await _hd(c)})
     assert r.status_code == 404
-    r = await c.post("/titles", json={"kind": "series", "tmdb_id": 95396,
-                                      "profile_id": await _hd(c)})  # fmt: skip
-    assert r.status_code == 422 and r.json()["errors"][0]["field"] == "body.kind"
+    bad = {"kind": "series", "tmdb_id": 95396, "profile_id": await _hd(c), "monitor_mode": "x"}
+    r = await c.post("/titles", json=bad)
+    assert r.status_code == 422 and r.json()["errors"][0]["field"].endswith("monitor_mode")
     assert (await c.get("/titles")).json()["items"] == []
 
 

@@ -1421,7 +1421,8 @@ export interface paths {
         put?: never;
         /**
          * Add Title
-         * @description Add a movie by TMDB id with a quality profile; creates its wanted item.
+         * @description Add a movie or series by TMDB id with a quality profile. A movie gets one wanted
+         *     item; a series one per episode, monitored per `monitor_mode` (specials never).
          */
         post: operations["add_title_api_v1_titles_post"];
         delete?: never;
@@ -1453,6 +1454,26 @@ export interface paths {
          * @description Change the quality profile or monitor mode (movies: `all` or `none`).
          */
         patch: operations["update_title_api_v1_titles__title_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/titles/{title_id}/episodes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Episodes
+         * @description A series' seasons and episodes, each with its wanted item (state, monitored...).
+         */
+        get: operations["list_episodes_api_v1_titles__title_id__episodes_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/titles/{title_id}/files": {
@@ -1527,6 +1548,26 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/titles/{title_id}/seasons/{number}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update Season
+         * @description Monitor or unmonitor a whole season (specials included: season 0).
+         */
+        patch: operations["update_season_api_v1_titles__title_id__seasons__number__patch"];
         trace?: never;
     };
     "/api/v1/wanted": {
@@ -2157,6 +2198,20 @@ export interface components {
             runtime?: number | null;
             /** Season */
             season: number;
+        };
+        /** EpisodeOut */
+        EpisodeOut: {
+            /** Absolute Number */
+            absolute_number: number | null;
+            /** Air Date */
+            air_date: string | null;
+            /** Id */
+            id: string;
+            /** Name */
+            name: string | null;
+            /** Number */
+            number: number;
+            wanted: components["schemas"]["WantedOut"];
         };
         /** EvaluateIn */
         EvaluateIn: {
@@ -3414,6 +3469,20 @@ export interface components {
             /** Number */
             number: number;
         };
+        /** SeasonOut */
+        SeasonOut: {
+            /** Episodes */
+            episodes: components["schemas"]["EpisodeOut"][];
+            /** Monitored */
+            monitored: boolean;
+            /** Number */
+            number: number;
+        };
+        /** SeasonPatch */
+        SeasonPatch: {
+            /** Monitored */
+            monitored: boolean;
+        };
         /** SelftestIn */
         SelftestIn: {
             /**
@@ -3475,6 +3544,23 @@ export interface components {
             tvdb_id?: number | null;
             /** Year */
             year?: number | null;
+        };
+        /** SeriesStats */
+        SeriesStats: {
+            /** Acquired */
+            acquired: number;
+            /**
+             * Episodes
+             * @description Excluding unmonitored specials
+             */
+            episodes: number;
+            /**
+             * Missing
+             * @description Monitored, aired, no file yet
+             */
+            missing: number;
+            /** Monitored */
+            monitored: number;
         };
         /** SessionOut */
         SessionOut: {
@@ -3630,7 +3716,15 @@ export interface components {
              */
             kind: "movie" | "series";
             /**
+             * Monitor Mode
+             * @description Series: all, future, missing, first_season, latest_season or none
+             * @default all
+             * @enum {string}
+             */
+            monitor_mode: "all" | "future" | "missing" | "first_season" | "latest_season" | "none";
+            /**
              * Monitored
+             * @description Movies: monitored or not
              * @default true
              */
             monitored: boolean;
@@ -3659,6 +3753,8 @@ export interface components {
             alt_titles: string[];
             /** Destination Id */
             destination_id: string | null;
+            /** @description For a series: counts (see /titles/{id}/episodes for the list) */
+            episodes?: components["schemas"]["SeriesStats"] | null;
             /** Etag */
             readonly etag: string;
             /**
@@ -3856,10 +3952,16 @@ export interface components {
         };
         /** WantedRow */
         WantedRow: {
+            /** Air Date */
+            air_date?: string | null;
             /** Cutoff Met */
             cutoff_met: boolean;
             /** Episode Id */
             episode_id: string | null;
+            /** Episode Name */
+            episode_name?: string | null;
+            /** Episode Number */
+            episode_number?: number | null;
             /** Etag */
             readonly etag: string;
             /** Id */
@@ -3872,6 +3974,8 @@ export interface components {
             monitored: boolean;
             /** Next Search At */
             next_search_at: string | null;
+            /** Season Number */
+            season_number?: number | null;
             /** State */
             state: string;
             /** Title Id */
@@ -8307,6 +8411,57 @@ export interface operations {
             };
         };
     };
+    list_episodes_api_v1_titles__title_id__episodes_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                title_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeasonOut"][];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     title_files_api_v1_titles__title_id__files_get: {
         parameters: {
             query?: never;
@@ -8489,6 +8644,52 @@ export interface operations {
             };
             /** @description Conflict */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_season_api_v1_titles__title_id__seasons__number__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                title_id: string;
+                number: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SeasonPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TitleOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

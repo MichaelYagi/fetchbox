@@ -59,6 +59,15 @@ class FakeTmdb:
         self.key = key
         self.requests: list[httpx.Request] = []
         self.movies = {DUNE["id"]: dict(DUNE), AMELIE["id"]: dict(AMELIE)}
+        self.series = {SEVERANCE["id"]: dict(SEVERANCE)}
+        # (series id, season) -> episodes; tests add specials, future episodes, seasons
+        self.seasons: dict[tuple[int, int], list[dict[str, Any]]] = {
+            (95396, n): [
+                {"episode_number": e, "name": f"Ep {e}", "air_date": f"2022-0{n}-1{e % 10}"}
+                for e in range(1, (9 if n == 1 else 10) + 1)
+            ]
+            for n in (1, 2)
+        }
         self.fail_next: list[int] = []  # status codes to return before succeeding
 
     @property
@@ -94,15 +103,20 @@ class FakeTmdb:
         if path.startswith("/movie/"):
             m = self.movies.get(int(path.split("/")[2]))
             return httpx.Response(200, json=m) if m else httpx.Response(404, json={})
-        if path == "/tv/95396":
-            return httpx.Response(200, json=SEVERANCE)
-        if path.startswith("/tv/95396/season/"):
-            n = int(path.rsplit("/", 1)[1])
-            eps = [
-                {"episode_number": e, "name": f"Ep {e}", "air_date": f"2022-0{n}-1{e % 10}"}
-                for e in range(1, (9 if n == 1 else 10) + 1)
-            ]
-            return httpx.Response(200, json={"name": f"Season {n}", "episodes": eps})
+        if path.startswith("/tv/"):
+            parts = path.split("/")  # ["", "tv", id] or ["", "tv", id, "season", n]
+            tv = self.series.get(int(parts[2]))
+            if tv is None:
+                return httpx.Response(404, json={})
+            if len(parts) == 3:
+                numbers = sorted(n for (sid, n) in self.seasons if sid == tv["id"])
+                return httpx.Response(
+                    200, json={**tv, "seasons": [{"season_number": n} for n in numbers]}
+                )
+            eps = self.seasons.get((tv["id"], int(parts[4])))
+            if eps is None:
+                return httpx.Response(404, json={})
+            return httpx.Response(200, json={"name": f"Season {parts[4]}", "episodes": eps})
         if path.startswith("/find/"):
             if path == "/find/tt1160419":
                 return httpx.Response(200, json={"movie_results": [DUNE], "tv_results": []})

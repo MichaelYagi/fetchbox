@@ -1574,6 +1574,65 @@
     "title": "EpisodeDetail",
     "type": "object"
    },
+   "EpisodeOut": {
+    "properties": {
+     "absolute_number": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Absolute Number"
+     },
+     "air_date": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Air Date"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Name"
+     },
+     "number": {
+      "title": "Number",
+      "type": "integer"
+     },
+     "wanted": {
+      "$ref": "#/components/schemas/WantedOut"
+     }
+    },
+    "required": [
+     "id",
+     "number",
+     "absolute_number",
+     "name",
+     "air_date",
+     "wanted"
+    ],
+    "title": "EpisodeOut",
+    "type": "object"
+   },
    "EvaluateIn": {
     "properties": {
      "original_language": {
@@ -4778,6 +4837,45 @@
     "title": "SeasonDetail",
     "type": "object"
    },
+   "SeasonOut": {
+    "properties": {
+     "episodes": {
+      "items": {
+       "$ref": "#/components/schemas/EpisodeOut"
+      },
+      "title": "Episodes",
+      "type": "array"
+     },
+     "monitored": {
+      "title": "Monitored",
+      "type": "boolean"
+     },
+     "number": {
+      "title": "Number",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "number",
+     "monitored",
+     "episodes"
+    ],
+    "title": "SeasonOut",
+    "type": "object"
+   },
+   "SeasonPatch": {
+    "properties": {
+     "monitored": {
+      "title": "Monitored",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "monitored"
+    ],
+    "title": "SeasonPatch",
+    "type": "object"
+   },
    "SelftestIn": {
     "properties": {
      "seconds": {
@@ -4938,6 +5036,36 @@
      "name"
     ],
     "title": "SeriesDetail",
+    "type": "object"
+   },
+   "SeriesStats": {
+    "properties": {
+     "acquired": {
+      "title": "Acquired",
+      "type": "integer"
+     },
+     "episodes": {
+      "description": "Excluding unmonitored specials",
+      "title": "Episodes",
+      "type": "integer"
+     },
+     "missing": {
+      "description": "Monitored, aired, no file yet",
+      "title": "Missing",
+      "type": "integer"
+     },
+     "monitored": {
+      "title": "Monitored",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "episodes",
+     "monitored",
+     "acquired",
+     "missing"
+    ],
+    "title": "SeriesStats",
     "type": "object"
    },
    "SessionOut": {
@@ -5311,8 +5439,23 @@
       "title": "Kind",
       "type": "string"
      },
+     "monitor_mode": {
+      "default": "all",
+      "description": "Series: all, future, missing, first_season, latest_season or none",
+      "enum": [
+       "all",
+       "future",
+       "missing",
+       "first_season",
+       "latest_season",
+       "none"
+      ],
+      "title": "Monitor Mode",
+      "type": "string"
+     },
      "monitored": {
       "default": true,
+      "description": "Movies: monitored or not",
       "title": "Monitored",
       "type": "boolean"
      },
@@ -5364,6 +5507,17 @@
        }
       ],
       "title": "Destination Id"
+     },
+     "episodes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/SeriesStats"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "For a series: counts (see /titles/{id}/episodes for the list)"
      },
      "etag": {
       "readOnly": true,
@@ -5994,6 +6148,18 @@
    },
    "WantedRow": {
     "properties": {
+     "air_date": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Air Date"
+     },
      "cutoff_met": {
       "title": "Cutoff Met",
       "type": "boolean"
@@ -6008,6 +6174,28 @@
        }
       ],
       "title": "Episode Id"
+     },
+     "episode_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Episode Name"
+     },
+     "episode_number": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Episode Number"
      },
      "etag": {
       "readOnly": true,
@@ -6056,6 +6244,17 @@
        }
       ],
       "title": "Next Search At"
+     },
+     "season_number": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Season Number"
      },
      "state": {
       "title": "State",
@@ -13211,7 +13410,7 @@
     ]
    },
    "post": {
-    "description": "Add a movie by TMDB id with a quality profile; creates its wanted item.",
+    "description": "Add a movie or series by TMDB id with a quality profile. A movie gets one wanted\nitem; a series one per episode, monitored per `monitor_mode` (specials never).",
     "operationId": "add_title_api_v1_titles_post",
     "requestBody": {
      "content": {
@@ -13559,6 +13758,86 @@
     ]
    }
   },
+  "/api/v1/titles/{title_id}/episodes": {
+   "get": {
+    "description": "A series' seasons and episodes, each with its wanted item (state, monitored...).",
+    "operationId": "list_episodes_api_v1_titles__title_id__episodes_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "title_id",
+      "required": true,
+      "schema": {
+       "title": "Title Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/SeasonOut"
+         },
+         "title": "Response List Episodes Api V1 Titles  Title Id  Episodes Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Conflict"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "List Episodes",
+    "tags": [
+     "media"
+    ]
+   }
+  },
   "/api/v1/titles/{title_id}/files": {
    "get": {
     "operationId": "title_files_api_v1_titles__title_id__files_get",
@@ -13900,6 +14179,90 @@
     "summary": "Search Title",
     "tags": [
      "releases"
+    ]
+   }
+  },
+  "/api/v1/titles/{title_id}/seasons/{number}": {
+   "patch": {
+    "description": "Monitor or unmonitor a whole season (specials included: season 0).",
+    "operationId": "update_season_api_v1_titles__title_id__seasons__number__patch",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "title_id",
+      "required": true,
+      "schema": {
+       "title": "Title Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "number",
+      "required": true,
+      "schema": {
+       "title": "Number",
+       "type": "integer"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/SeasonPatch"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TitleOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Update Season",
+    "tags": [
+     "media"
     ]
    }
   },

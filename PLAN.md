@@ -185,6 +185,21 @@ absolute, specials; grow the parser corpus from real indexer results); optional 
 season-pack rule; RSS sync, missing search, upgrades
 (replace only after new import succeeds); calendar.
 
+- [x] Series: add from TMDB with seasons + episodes, one wanted item per episode; six
+      monitor modes (`modules/media/series.py`: all, future, missing, first_season,
+      latest_season, none; specials never by mode); changing the mode re-applies it;
+      refresh (manual and the 12 h schedule) adds new episodes per the mode, and a new
+      season takes over under latest_season; `GET /titles/{id}/episodes`,
+      `PATCH /titles/{id}/seasons/{n}`; series counts on titles; episode fields on /wanted
+- [ ] TV search: episode and season queries; aired episodes only; season search (pack
+      first, then gap filling); automatic search per season, interactive per episode/season
+- [ ] TV import: map each file to its episodes (multi-episode files, season packs);
+      episode naming; upgrades replace only after the new import succeeds
+- [ ] RSS sync (every 15 min): each indexer's feed, matched against all wanted items
+- [ ] Calendar (`GET /calendar?start=&end=`) + UI: series add, series page, calendar
+- [ ] Optional TVDB (scene / absolute numbering)
+- [ ] Grow the parser corpus from real indexer results
+
 **Gate:** a "future only" series grabs a new episode via RSS; season-pack selection correct;
 an upgrade replaces the file safely.
 
@@ -309,6 +324,9 @@ three OSes; a backup restores on a fresh machine.
 - Definitions use fixed setting slots (`base_url`, `api_key`, `username`, `password`,
   `cookie`) plus declared non-secret `options`, so secrets are always encrypted at rest.
   `DELETE /indexer-definitions/{slug}` (user definitions not in use) is an addition.
+- `GET /titles/{id}/episodes` and `PATCH /titles/{id}/seasons/{n}` (the spec lists no
+  episode endpoints). A series' `TitleOut.wanted` is empty; `episodes` carries counts.
+  An episode with no air date counts as not aired.
 - A third default profile, "Any" (Unknown, SD, 720p, 1080p; cutoff 1080p), for releases
   that don't state a quality; "Unknown" is left out of file names (the file's
   resolution is used when it can be read).
