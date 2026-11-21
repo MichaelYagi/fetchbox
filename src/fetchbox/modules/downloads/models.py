@@ -73,6 +73,8 @@ class Download(IdMixin, VersionMixin, Base):
     import_attempts: Mapped[int] = mapped_column(Integer, default=0)
     import_retry_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
     imported_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
+    # Seeding goal met (policy seed_ratio / seed_minutes): the torrent was stopped.
+    seeded_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
 
     __table_args__ = (
         CheckConstraint(

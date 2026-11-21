@@ -507,8 +507,8 @@ class LibraryService:
         mode = dest.link_mode
         try:
             if mode in ("hardlink_or_copy", "hardlink_only", "move"):
-                # TODO(seeding goals): "move" should move once seeding finishes; until then
-                # it behaves like hardlink_or_copy so seeding keeps working.
+                # "move": link (or copy) now so seeding keeps working; the torrent's own
+                # copy goes when the client's seeding goal removes it with its data.
                 try:
                     await local.hardlink(str(src), str(dst))
                     return "hardlink"

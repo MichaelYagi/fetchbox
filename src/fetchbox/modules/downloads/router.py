@@ -67,6 +67,9 @@ class DownloadOut(_Versioned):
     started_at: datetime | None
     completed_at: datetime | None
     removed_at: datetime | None
+    seeded_at: datetime | None = Field(
+        description="When the seeding goal was met and the torrent was stopped"
+    )
     live: LiveOut | None = Field(description="From the client's last poll (active downloads)")
 
 
@@ -93,6 +96,7 @@ def _out(svc: DownloadsService, d: Download, response: Response | None = None) -
         started_at=d.started_at,
         completed_at=d.completed_at,
         removed_at=d.removed_at,
+        seeded_at=d.seeded_at,
         live=LiveOut(**t.model_dump(include=set(LiveOut.model_fields)))
         if t is not None and d.status in ("queued", "downloading", "paused", "completed")
         else None,

@@ -112,7 +112,10 @@ Remaining unchecked items above are Phase 0 hardening, not gate blockers.
       grabs the next-best release (the failed one is blocklisted); after
       `search.retry_alternatives` (3) failures in a row the item waits for its interval
 - [ ] External clients (qBittorrent, Transmission, Deluge) + `POST/DELETE /download-clients`
-- [ ] Seeding goals (ratio / time) once import exists
+- [x] Seeding goals: client policy `seed_ratio` / `seed_minutes` (whichever first; none
+      by default = seed forever) and `seed_action` (`remove` with data, or `pause`); only
+      after the import succeeded, never deleting data a symlink import points at;
+      `download.seeded_at`, `download.seeded` event
 - [x] Local node + default `~/Downloads/Fetchbox/Movies` and `TV` destinations; two-phase
       file ops (`*.fetchbox-partial`, verify size / quick hash, atomic rename; partials
       rolled back at startup); link modes; recycle folder; destination checks (exists,
@@ -241,8 +244,8 @@ three OSes; a backup restores on a fresh machine.
 - Naming: `[ ]` marks an optional segment and is not printed (per the spec's episode
   example), so the default movie file is `Title (Year) - Quality HDR Codec-Group`;
   `[[ ]]` gives literal brackets. Names are made Windows-safe on every OS.
-- Link mode `move` behaves like `hardlink_or_copy` until seeding goals exist (moving a
-  seeding torrent's file would break seeding).
+- Link mode `move` links or copies at import (so seeding keeps working); the torrent's
+  own copy goes when a seeding goal removes it with its data.
 - Deleting a file (`DELETE /files/{id}`) keeps the item locked; getting it again is an
   explicit redownload.
 - Titles compare without spaces after normalising (`d'Amélie` = `d.Amelie`).

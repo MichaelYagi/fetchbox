@@ -91,6 +91,7 @@ MESSAGES: dict[str, str] = {
     "library.template_updated": "Naming template '{name}' updated",
     "wanted.unlocked": "Unlocked {name}: automatic search may grab it again",
     "wanted.redownload": "Redownloading {name}",
+    "download.seeded": "Finished seeding {name} (ratio {ratio}, {hours} h): {action}d",
     "search.completed": "Searched for {name}: {results} results, {accepted} acceptable",
 }
 

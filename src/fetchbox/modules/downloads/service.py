@@ -22,7 +22,7 @@ import contextlib
 from collections.abc import Sequence
 from datetime import timedelta
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import structlog
 from pydantic import BaseModel, Field, ValidationError
@@ -67,8 +67,22 @@ class Policy(BaseModel):
     save_path: str | None = Field(
         default=None, description="Where torrents download; default <downloads root>/Torrents"
     )
-    seed_ratio: float | None = Field(default=None, ge=0)
-    seed_minutes: int | None = Field(default=None, ge=0)
+    seed_ratio: float | None = Field(
+        default=None, ge=0, description="Stop seeding at this upload ratio; null: no limit"
+    )
+    seed_minutes: int | None = Field(
+        default=None, ge=0, description="Stop seeding after this long; null: no limit"
+    )
+    seed_action: Literal["remove", "pause"] = Field(
+        default="remove",
+        description="When a goal is met (whichever first, after import): remove the torrent "
+        "and its downloaded data (library files are separate links or copies), or pause it",
+    )
+
+    def seeding_done(self, ratio: float | None, seed_seconds: int | None) -> bool:
+        if self.seed_ratio is not None and (ratio or 0.0) >= self.seed_ratio:
+            return True
+        return self.seed_minutes is not None and (seed_seconds or 0) >= self.seed_minutes * 60
 
 
 def _invalid(exc: ValidationError, prefix: str) -> ProblemError:
@@ -399,8 +413,13 @@ class DownloadsService:
     async def poll(self) -> None:
         async with self._lock:
             async with self.db.sessionmaker() as s:
+                seeding = (Download.status == "completed") & Download.seeded_at.is_(None)
                 rows = list(
-                    (await s.execute(select(Download).where(Download.status.in_(ACTIVE)))).scalars()
+                    (
+                        await s.execute(
+                            select(Download).where(Download.status.in_(ACTIVE) | seeding)
+                        )
+                    ).scalars()
                 )
                 clients = {c.id: c for c in (await s.execute(select(DownloadClient))).scalars()}
             by_client: dict[str, list[Download]] = {}
@@ -419,7 +438,11 @@ class DownloadsService:
                     log.warning("downloads.client_unavailable", client=row.name, error=exc.message)
                     continue
                 for d in downloads:
-                    await self._observe(d, statuses.get(d.client_ref), row, client)
+                    t = statuses.get(d.client_ref)
+                    if d.status == "completed":
+                        await self._seed(d, t, row, client)
+                    else:
+                        await self._observe(d, t, row, client)
                 await self._schedule(row, client)
 
     async def _observe(
@@ -466,6 +489,64 @@ class DownloadsService:
             self._progress_pct[d.id] = pct
             await self._emit(
                 "download.progress", d, progress=t.progress, rate=t.download_rate, eta=t.eta_seconds
+            )
+
+    async def _seed(
+        self,
+        d: Download,
+        t: ClientTorrent | None,
+        row: DownloadClient,
+        client: DownloadClientProvider,
+    ) -> None:
+        """A completed torrent: keep ratio / seed time current and stop it once the
+        policy's seeding goal is met, but never before its import has succeeded."""
+        if t is None:  # removed from the client by hand: nothing left to stop
+            await self._update(d.id, {"seeded_at": utcnow()})
+            self.live.pop(d.id, None)
+            return
+        self.live[d.id] = t
+        if (t.ratio, t.seed_seconds) != (d.ratio, d.seed_seconds):
+            await self._update(d.id, {"ratio": t.ratio, "seed_seconds": t.seed_seconds})
+        policy = self.policy(row)
+        if d.import_status != "imported" or not policy.seeding_done(t.ratio, t.seed_seconds):
+            return
+        delete_data = policy.seed_action == "remove" and not await self._symlinked(d)
+        try:
+            if policy.seed_action == "remove":
+                await client.remove(d.client_ref, delete_data)
+            else:
+                await client.pause(d.client_ref)
+        except DownloadClientError as exc:
+            log.warning("downloads.seed_stop_failed", download=d.id, error=exc.message)
+            return
+        await self._update(d.id, {"seeded_at": utcnow()})
+        if policy.seed_action == "remove":
+            self.live.pop(d.id, None)
+        await self._emit(
+            "download.seeded",
+            d,
+            name=d.name,
+            ratio=round(t.ratio or 0.0, 2),
+            hours=round((t.seed_seconds or 0) / 3600, 1),
+            action=policy.seed_action,
+            deleted_data=delete_data,
+        )
+
+    async def _symlinked(self, d: Download) -> bool:
+        """Was this download imported as a symlink? Then its data is the library file."""
+        async with self.db.sessionmaker() as s:
+            ids = [w.id for w in await self._items(s, d.grab_id)]
+            rows = (
+                await s.execute(
+                    select(HistoryEvent.data).where(
+                        HistoryEvent.wanted_item_id.in_(ids),
+                        HistoryEvent.type.in_(("imported", "upgraded")),
+                    )
+                )
+            ).scalars()
+            return any(
+                (r or {}).get("download_id") == d.id and (r or {}).get("link_mode") == "symlink"
+                for r in rows
             )
 
     async def _update(self, download_id: str, values: dict[str, Any]) -> None:

@@ -7,6 +7,7 @@ appear under Downloads/Fetchbox/Movies.
 
 from __future__ import annotations
 
+import asyncio
 import os
 from collections.abc import AsyncIterator
 from pathlib import Path
@@ -434,3 +435,44 @@ async def test_unlock_a_busy_or_fileless_item(
     r = await c.post(f"/wanted/{wid}/unlock")
     assert r.status_code == 409, r.text
     assert (await c.post(f"/wanted/{wid}/redownload")).status_code == 409
+
+
+@pytest.mark.parametrize("action", ["remove", "pause"])
+async def test_seeding_goal_stops_the_torrent_after_import(
+    c: httpx.AsyncClient,
+    fakes: Fakes,
+    server: Running,
+    made: Made,
+    seed: BuiltinClient,
+    settings: Any,
+    action: str,
+) -> None:
+    await _acquire(c, fakes, server, made, seed)
+    client = (await c.get("/download-clients")).json()[0]
+    sub = server.app.state.fb.bus.subscribe("download.seeded")
+    r = await c.patch(
+        f"/download-clients/{client['id']}",
+        json={"policy": {"seed_minutes": 0, "seed_action": action}},
+    )
+    assert r.status_code == 200, r.text
+    ev = await asyncio.wait_for(sub.queue.get(), 20)
+    assert ev.data["action"] == action and ev.data["deleted_data"] is (action == "remove")
+
+    [d] = (await c.get("/downloads")).json()
+    assert d["status"] == "completed" and d["seeded_at"]
+    torrent_copy = settings.downloads_dir / "Torrents" / "fetchbox-movies" / NAME / f"{NAME}.mkv"
+    library_file = settings.downloads_dir / "Movies" / EXPECTED
+    assert library_file.is_file()  # the library's own link survives
+    engine = _engine(server)
+    if action == "remove":
+        assert not torrent_copy.exists() and await engine.status() == []
+    else:
+        assert torrent_copy.exists()
+        [t] = await engine.status()
+        assert t.state == "paused"
+
+    async def logged() -> bool:
+        acts = (await c.get("/activity", params={"limit": 50})).json()["items"]
+        return any(a["message"].startswith(f"Finished seeding {NAME}") for a in acts)
+
+    await until(logged, within=10)
