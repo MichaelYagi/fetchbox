@@ -39,8 +39,9 @@ async def get_health(state: State) -> HealthReport:
 
 
 @router.get("/status", response_model=StatusInfo, dependencies=_read)
-async def get_status(state: State) -> StatusInfo:
-    return await service.status_info(state)
+async def get_status(state: State, request: Request) -> StatusInfo:
+    """Includes `host`: the machine Fetchbox runs on; every path it shows is there."""
+    return await service.status_info(state, request.app.state.downloads.downloads_root)
 
 
 @router.get("/version", response_model=VersionInfo, dependencies=_read)

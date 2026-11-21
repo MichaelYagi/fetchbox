@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import Badge from '#lib/Badge.svelte';
+	import Path from '#lib/Path.svelte';
 	import { ago, ApiError, bytes, del, duration, get, patch, post, type S, type Title } from '#lib/api.ts';
 
 	const id = $derived(page.params.id ?? '');
@@ -208,7 +209,7 @@
 		{:else}
 			{#each files as f (f.id)}
 				<div class="card stack file">
-					<code title="Full path">{fullPath(f)}</code>
+					<div><Path path={fullPath(f)} /></div>
 					<div class="row small muted">
 						<span class="badge">{f.quality.name}</span>
 						<span>{bytes(f.size)}</span>
@@ -293,8 +294,5 @@
 	.file {
 		gap: 0.4rem;
 		margin-bottom: 0.5rem;
-	}
-	code {
-		word-break: break-all;
 	}
 </style>

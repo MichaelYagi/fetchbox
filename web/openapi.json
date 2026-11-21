@@ -2382,6 +2382,49 @@
     "title": "HistoryPage",
     "type": "object"
    },
+   "HostInfo": {
+    "description": "Where Fetchbox runs: every path it shows is on this machine.",
+    "properties": {
+     "data_dir": {
+      "title": "Data Dir",
+      "type": "string"
+     },
+     "downloads_root": {
+      "title": "Downloads Root",
+      "type": "string"
+     },
+     "name": {
+      "description": "Host name",
+      "title": "Name",
+      "type": "string"
+     },
+     "os": {
+      "description": "e.g. Linux, Windows, macOS",
+      "title": "Os",
+      "type": "string"
+     },
+     "wsl_distro": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Set when running in WSL: paths are inside that distro",
+      "title": "Wsl Distro"
+     }
+    },
+    "required": [
+     "name",
+     "os",
+     "data_dir",
+     "downloads_root"
+    ],
+    "title": "HostInfo",
+    "type": "object"
+   },
    "ImportOut": {
     "properties": {
      "attempts": {
@@ -5237,6 +5280,16 @@
      "event_subscribers": {
       "title": "Event Subscribers",
       "type": "integer"
+     },
+     "host": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/HostInfo"
+       },
+       {
+        "type": "null"
+       }
+      ]
      },
      "schema_head": {
       "anyOf": [
@@ -13250,6 +13303,7 @@
   },
   "/api/v1/system/status": {
    "get": {
+    "description": "Includes `host`: the machine Fetchbox runs on; every path it shows is there.",
     "operationId": "get_status_api_v1_system_status_get",
     "responses": {
      "200": {

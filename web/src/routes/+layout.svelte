@@ -28,6 +28,14 @@
 		}
 	}
 
+	async function loadHost() {
+		try {
+			session.host = (await get<S['StatusInfo']>('/system/status')).host ?? null;
+		} catch {
+			session.host = null;
+		}
+	}
+
 	async function loadHealth() {
 		if (!session.me) return;
 		try {
@@ -92,6 +100,7 @@
 	$effect(() => {
 		void page.url.pathname; // fresh on every page change, and once a minute
 		if (!session.me) return;
+		if (!session.host) loadHost();
 		loadHealth();
 		const t = setInterval(loadHealth, 60_000);
 		return () => clearInterval(t);
@@ -144,6 +153,14 @@
 		</div>
 	</header>
 	{@render children()}
+	{#if session.host}
+		<footer>
+			Fetchbox is running on <strong>{session.host.name}</strong>
+			({session.host.wsl_distro ? `Linux, ${session.host.wsl_distro} in WSL` : session.host.os}): every
+			folder shown here is on that machine.
+			<a href="/settings#computer">Details</a>
+		</footer>
+	{/if}
 {:else if open.includes(page.url.pathname)}
 	{@render children()}
 {:else if session.checked}
@@ -196,6 +213,14 @@
 		color: var(--text);
 		background: var(--surface-2);
 		font-weight: 600;
+	}
+	footer {
+		max-width: 1200px;
+		margin: 0 auto;
+		padding: 1rem 1rem 2rem;
+		font-size: 0.8rem;
+		color: var(--muted);
+		border-top: 1px solid var(--border);
 	}
 	.dl {
 		display: inline-flex;

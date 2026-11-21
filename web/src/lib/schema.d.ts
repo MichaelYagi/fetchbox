@@ -1382,7 +1382,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get Status */
+        /**
+         * Get Status
+         * @description Includes `host`: the machine Fetchbox runs on; every path it shows is there.
+         */
         get: operations["get_status_api_v1_system_status_get"];
         put?: never;
         post?: never;
@@ -2446,6 +2449,31 @@ export interface components {
             items: components["schemas"]["HistoryOut"][];
             /** Next Cursor */
             next_cursor: string | null;
+        };
+        /**
+         * HostInfo
+         * @description Where Fetchbox runs: every path it shows is on this machine.
+         */
+        HostInfo: {
+            /** Data Dir */
+            data_dir: string;
+            /** Downloads Root */
+            downloads_root: string;
+            /**
+             * Name
+             * @description Host name
+             */
+            name: string;
+            /**
+             * Os
+             * @description e.g. Linux, Windows, macOS
+             */
+            os: string;
+            /**
+             * Wsl Distro
+             * @description Set when running in WSL: paths are inside that distro
+             */
+            wsl_distro?: string | null;
         };
         /** ImportOut */
         ImportOut: {
@@ -3632,6 +3660,7 @@ export interface components {
             database: string;
             /** Event Subscribers */
             event_subscribers: number;
+            host?: components["schemas"]["HostInfo"] | null;
             /** Schema Head */
             schema_head: string | null;
             /** Schema Revision */

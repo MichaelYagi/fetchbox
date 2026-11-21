@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Path from '#lib/Path.svelte';
 	import { ago, ApiError, bytes, del, duration, get, post, rate, type Download, type S } from '#lib/api.ts';
 
 	let downloads = $state<Download[] | null>(null);
@@ -113,7 +114,7 @@
 						{#if d.stalls}<span>· stalled {d.stalls}×</span>{/if}
 					</div>
 					<div class="small muted">
-						Saving to {#if d.save_path}<code>{d.save_path}</code>{:else}the client's own folder{/if}
+						Saving to {#if d.save_path}<Path path={d.save_path} />{:else}the client's own folder{/if}
 					</div>
 				</div>
 			{/each}
@@ -134,7 +135,7 @@
 						<tr>
 							<td class="name">
 								{d.name}
-								{#if d.save_path}<div class="small muted"><code>{d.save_path}</code></div>{/if}
+								{#if d.save_path}<div class="small muted"><Path path={d.save_path} /></div>{/if}
 								{#if d.error}<div class="small err">{d.error}</div>{/if}
 							</td>
 							<td><span class="badge {tone(d)}">{label(d)}</span></td>
@@ -163,9 +164,6 @@
 	}
 	.err {
 		color: var(--error);
-	}
-	code {
-		word-break: break-all;
 	}
 	.link {
 		border: 0;

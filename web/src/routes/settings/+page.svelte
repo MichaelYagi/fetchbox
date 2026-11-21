@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { ApiError, del, get, patch, post, type S } from '#lib/api.ts';
+	import Path from '#lib/Path.svelte';
 	import { session } from '#lib/session.svelte.ts';
 
 	type Cfg = { tmdb: { api_key: string | null; language: string }; search: Record<string, unknown> };
@@ -83,6 +84,15 @@
 				}
 			}
 		});
+	}
+
+	function saveFolder(e: SubmitEvent, d: S['DestinationOut']) {
+		e.preventDefault();
+		act(`folder-${d.id}`, () => patch(`/destinations/${d.id}`, { path: draft.folder.trim() }, d.etag), `${d.name} folder saved.`).then(
+			() => {
+				if (!error) editing = null;
+			}
+		);
 	}
 
 	function saveIndexer(e: SubmitEvent, i: S['IndexerOut']) {
@@ -210,6 +220,34 @@
 	<h1>Settings</h1>
 	{#if error}<p class="notice error">{error}</p>{/if}
 	{#if saved}<p class="notice">{saved}</p>{/if}
+
+	{#if session.host}
+		<section id="computer">
+			<h2>This computer</h2>
+			<div class="card">
+				<table>
+					<tbody>
+						<tr>
+							<td class="w muted">Running on</td>
+							<td>
+								<strong>{session.host.name}</strong>
+								{session.host.wsl_distro
+									? `· Linux (${session.host.wsl_distro}) in WSL on Windows`
+									: `· ${session.host.os}`}
+								<div class="muted small">
+									Every folder in these settings is a folder on this machine{session.host.wsl_distro
+										? '; under each one is where Windows finds it'
+										: ''}.
+								</div>
+							</td>
+						</tr>
+						<tr><td class="w muted">Downloads</td><td><Path path={session.host.downloads_root} /></td></tr>
+						<tr><td class="w muted">Fetchbox data</td><td><Path path={session.host.data_dir} /></td></tr>
+					</tbody>
+				</table>
+			</div>
+		</section>
+	{/if}
 
 	<section id="health">
 		<h2>Health</h2>
@@ -358,7 +396,7 @@
 									{#if c.id === inUse}<span class="badge info">Used for torrents</span>{/if}
 								</div>
 								<div class="muted small where">
-									Saves to {#if c.saves_to}<code>{c.saves_to}</code>{:else}{c.name}'s own download folder{/if}
+									Saves to {#if c.saves_to}<Path path={c.saves_to} />{:else}{c.name}'s own download folder{/if}
 								</div>
 							</td>
 							<td class="muted">{c.kind}</td>
@@ -418,7 +456,7 @@
 						<tr class="direct">
 							<td><div class="row"><span class="order"></span><strong>{c.name}</strong>
 								{#if c.enabled && c.running}<span class="badge">Used for direct files</span>{/if}</div>
-								<div class="muted small where">Saves to <code>{c.saves_to}</code></div></td>
+								<div class="muted small where">Saves to <Path path={c.saves_to} /></div></td>
 							<td class="muted">{c.kind}</td>
 							<td class="small">
 								<span class="badge {c.enabled ? (c.running ? 'ok' : 'warn') : ''}">{c.enabled ? (c.running ? 'Running' : 'Not running') : 'Disabled'}</span>
@@ -479,14 +517,34 @@
 		<h2>Library folders</h2>
 		<div class="card table-wrap">
 			<table>
-				<thead><tr><th>Name</th><th>Folder</th><th>Status</th></tr></thead>
+				<thead><tr><th>Name</th><th>Folder</th><th>Status</th><th></th></tr></thead>
 				<tbody>
 					{#each destinations as d (d.id)}
 						<tr>
 							<td><strong>{d.name}</strong> <span class="muted small">{d.media_kind === 'movie' ? 'Movies' : 'TV'}</span></td>
-							<td><code>{d.path}</code></td>
+							<td><Path path={d.path} /></td>
 							<td class="small"><span class="badge {tone(d.status)}">{d.status}</span> {d.status_message ?? ''}</td>
+							<td><div class="row end">
+								<button class="small" onclick={() => (editing === d.id ? (editing = null) : ((draft.folder = d.path), (editing = d.id)))} disabled={!!busy}>
+									{editing === d.id ? 'Cancel' : 'Edit'}
+								</button>
+							</div></td>
 						</tr>
+						{#if editing === d.id}
+							<tr class="editrow">
+								<td colspan="4">
+									<form class="row" onsubmit={(e) => saveFolder(e, d)}>
+										<label class="grow">Folder <input bind:value={draft.folder} required placeholder="/home/me/Media/Movies" /></label>
+										<button class="primary" disabled={!!busy}>Save</button>
+									</form>
+									<p class="muted small hint">
+										New {d.media_kind === 'movie' ? 'movies' : 'episodes'} go here; files already in the
+										old folder stay there. The folder is checked when you save (it must be writable,
+										with enough free space).
+									</p>
+								</td>
+							</tr>
+						{/if}
 					{/each}
 				</tbody>
 			</table>
@@ -553,8 +611,5 @@
 	}
 	.errt {
 		color: var(--error);
-	}
-	code {
-		word-break: break-all;
 	}
 </style>
