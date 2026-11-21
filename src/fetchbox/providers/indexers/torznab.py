@@ -30,7 +30,8 @@ from fetchbox.providers.indexers import (
 )
 
 TORZNAB_NS = "{http://torznab.com/schemas/2015/feed}"
-ACCEPT = "application/rss+xml, application/xml, text/xml, */*;q=0.1"
+# No wildcard: some servers ignore q-values and answer */* with JSON.
+ACCEPT = "application/rss+xml, application/xml, text/xml"
 TIMEOUT = httpx.Timeout(30.0, connect=10.0)
 MAX_BODY = 20 * 1024 * 1024
 MAX_TORRENT = 10 * 1024 * 1024
@@ -200,13 +201,32 @@ def parse_item(item: ET.Element) -> ReleaseCandidate | None:
     )
 
 
-def _parse_xml(body: bytes) -> ET.Element:
+def _snippet(body: bytes, content_type: str | None) -> str:
+    """What came back, for the error message: type and the first bytes, keys redacted."""
+    text = body[:160].decode("utf-8", "replace").strip()
+    text = re.sub(r"(?i)(api_?key[\"'=:\s]+)[\w-]+", r"\1***", text)
+    text = " ".join(text.split())
+    return f"{content_type or 'no content type'}, starting {text!r}" if text else "an empty body"
+
+
+def _parse_xml(body: bytes, content_type: str | None = None) -> ET.Element:
+    head = body[:4096].lstrip()
+    if head.startswith((b"<!DOCTYPE html", b"<!doctype html", b"<html")):
+        raise IndexerError(
+            "invalid_response",
+            "the URL answered with a web page, not a Torznab feed: use the indexer's "
+            "Torznab URL (Prowlarr: Indexers > the indexer > Copy Torznab URL)",
+        )
     if b"<!ENTITY" in body[:4096] or b"<!DOCTYPE" in body[:4096]:
         raise IndexerError("invalid_response", "indexer returned XML with a DTD; refused")
     try:
         root = ET.fromstring(body)
     except ET.ParseError as exc:
-        raise IndexerError("invalid_response", f"indexer returned invalid XML: {exc}") from None
+        raise IndexerError(
+            "invalid_response",
+            f"indexer returned something other than Torznab XML ({exc}): "
+            f"{_snippet(body, content_type)}",
+        ) from None
     if root.tag == "error":
         code = root.get("code", "")
         desc = root.get("description") or "unknown error"
@@ -289,9 +309,9 @@ class TorznabProvider(IndexerProvider):
         if r.status >= 400:
             # Torznab servers often put an <error> document in a 4xx/5xx body.
             if r.body.lstrip().startswith(b"<"):
-                _parse_xml(r.body)
+                _parse_xml(r.body, r.headers.get("content-type"))
             raise IndexerError("unavailable", f"indexer returned HTTP {r.status}")
-        return _parse_xml(r.body)
+        return _parse_xml(r.body, r.headers.get("content-type"))
 
     async def caps(self, *, fresh: bool = False) -> Caps:
         if not fresh and self._caps and self._caps[0] > time.monotonic():

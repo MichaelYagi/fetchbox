@@ -139,3 +139,18 @@ def test_pasted_api_suffix_is_dropped() -> None:
     assert TorznabSettings(
         url="http://localhost:9117/api/v2.0/indexers/all/results/torznab"
     ).url.endswith("/torznab")
+
+
+def test_non_xml_replies_say_what_came_back() -> None:
+    from fetchbox.providers.indexers import IndexerError
+    from fetchbox.providers.indexers.torznab import ACCEPT, _parse_xml
+
+    assert "*/*" not in ACCEPT and "application/xml" in ACCEPT
+    with pytest.raises(IndexerError, match="application/json, starting") as e:
+        _parse_xml(b'{"apiKey": "s3cret", "error": "x"}', "application/json")
+    assert "s3cret" not in e.value.message
+    with pytest.raises(IndexerError, match="web page, not a Torznab feed"):
+        _parse_xml(b"<!DOCTYPE html><html><body>Prowlarr</body></html>", "text/html")
+    with pytest.raises(IndexerError, match="an empty body"):
+        _parse_xml(b"", None)
+    assert _parse_xml(b"\xef\xbb\xbf<rss/>").tag == "rss"  # a UTF-8 BOM is fine
