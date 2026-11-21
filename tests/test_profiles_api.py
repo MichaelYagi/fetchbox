@@ -192,3 +192,30 @@ async def test_scopes(server: Running) -> None:
         )
         assert r.status_code == 403
         assert (await c.delete(f"/quality-profiles/{pid}")).status_code == 403
+
+
+async def test_old_defaults_get_the_new_ones_once(server: Running) -> None:
+    """A database from before the resolution-named defaults (Standard HD, 4K, Any) gets
+    1080p / 2160p / 720p / 480p added next to its own, once."""
+    from sqlalchemy import delete, update
+
+    from fetchbox.modules.profiles.models import QualityProfile
+
+    db = server.app.state.fb.db
+    async with db.sessionmaker() as s:
+        await s.execute(update(QualityProfile).where(QualityProfile.name == "1080p")
+                        .values(name="Standard HD"))  # fmt: skip
+        await s.execute(update(QualityProfile).where(QualityProfile.name == "2160p")
+                        .values(name="4K"))  # fmt: skip
+        await s.execute(delete(QualityProfile).where(QualityProfile.name.in_(["720p", "480p"])))
+        await s.commit()
+    svc = server.app.state.profiles
+    await svc.seed_defaults()
+    names = sorted(p.name for p in await svc.list_profiles())
+    assert names == ["1080p", "2160p", "480p", "4K", "720p", "Any", "Standard HD"]
+    # once: deleting a new one afterwards sticks
+    async with db.sessionmaker() as s:
+        await s.execute(delete(QualityProfile).where(QualityProfile.name == "480p"))
+        await s.commit()
+    await svc.seed_defaults()
+    assert "480p" not in {p.name for p in await svc.list_profiles()}
