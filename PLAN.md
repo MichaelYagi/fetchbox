@@ -262,6 +262,39 @@ restrictions, filesystem-boundary tests).
 **Gate:** migrate a real Sonarr+Radarr install and run side by side; installers work on all
 three OSes; a backup restores on a fresh machine.
 
+### Phase 5 — Music (after v1.0)
+Artists, albums and tracks next to movies and TV: a Lidarr replacement in the same app.
+
+- **Metadata:** MusicBrainz (artists, release groups, releases/editions, tracks), cover
+  art from the Cover Art Archive; respect its 1 request/s limit and send a proper
+  User-Agent. Artist refresh adds new albums.
+- **Model:** a `music` media kind: artist (the title) → release group → chosen release
+  (edition) → tracks. The wanted item is an album; monitor modes per artist (all, future
+  albums, latest, none) and per album type (album / EP / single / live / compilation).
+- **Quality:** a format ladder (MP3 VBR / 320, AAC, FLAC 16-bit, FLAC 24-bit) with
+  presets (Lossless, High-quality lossy, Any); upgrades as for video.
+- **Search and RSS:** Newznab/Torznab category 3000, artist + album queries; release names
+  parsed ("Artist - Album (Year) [FLAC]"), then checked against MusicBrainz: track
+  count and total length within tolerance, edition chosen by the closest match.
+- **Import:** match every file to a track (tags, then file names, then durations),
+  multi-disc albums, write tags (ID3v2.4 / Vorbis comments / MP4) and embedded cover
+  art, naming presets (`Artist/Album (Year)/01 - Title.flac`, with disc folders).
+- **Library import:** scan an existing music folder by tags, match to MusicBrainz,
+  read-only until applied (the Phase 3 importer, extended).
+- **UI:** add artist, artist page (albums by type, monitor, search, choose a release),
+  album page (tracks, files), calendar shows album release dates.
+- **Media servers:** Plex / Jellyfin music library refresh.
+
+Shared with video and reused unchanged: indexers and Prowlarr, download clients, queue,
+library folders and naming UI, RSS, jobs and schedules, calendar, history.
+
+**Until then:** keep Phases 3-4 generic about media kind where it is cheap (library
+import, naming, destinations, the kind check constraints), so music adds a kind rather
+than reworking these.
+
+**Gate:** add an artist, an album downloads as FLAC, every track is matched, tagged and
+named; a better edition or format upgrades it; an existing tagged music folder imports.
+
 ## Spike results (2026-11-20)
 
 - **libtorrent 2.1.1** has PyPI wheels for CPython 3.9–3.13 on Windows (win32/amd64),
