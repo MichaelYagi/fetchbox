@@ -25,6 +25,12 @@ def settings(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Settings:
     monkeypatch.setenv("FETCHBOX_DOWNLOADS_ROOT", str(tmp_path / "Downloads" / "Fetchbox"))
     monkeypatch.setenv("FETCHBOX_TORRENT_ISOLATED", "1")
     monkeypatch.setenv("FETCHBOX_SEED_INDEXERS", "0")  # tests never reach real sites
+    # The free-space floor (5%, at least 20 GB) is about real libraries; CI runners can
+    # have less free disk than that, which would hold every import back as low_space.
+    from fetchbox.modules.storage import service as storage_service
+
+    monkeypatch.setattr(storage_service, "FLOOR_MIN", 64 * 1024 * 1024)
+    monkeypatch.setattr(storage_service, "FLOOR_SHARE", 0.0)
     return load_settings(tmp_path / "data")
 
 
