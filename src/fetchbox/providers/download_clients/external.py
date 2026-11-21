@@ -184,20 +184,20 @@ class QbittorrentClient(_External):
         ref = torrent_ref(src)
         if opts.category:
             try:
-                await self._api(
-                    "POST",
-                    "torrents/createCategory",
-                    data={"category": opts.category, "savePath": opts.save_path},
-                )
+                cat = {"category": opts.category}
+                if opts.save_path:
+                    cat["savePath"] = opts.save_path
+                await self._api("POST", "torrents/createCategory", data=cat)
             except DownloadClientError as exc:
                 if exc.kind != "rejected":  # 409: the category exists
                     raise
         data = {
-            "savepath": opts.save_path,
             "paused": str(opts.paused).lower(),
             "stopped": str(opts.paused).lower(),
             "autoTMM": "false",
         }
+        if opts.save_path:  # else qBittorrent's default save path
+            data["savepath"] = opts.save_path
         if opts.category:
             data["category"] = opts.category
         if opts.download_limit:
@@ -352,7 +352,9 @@ class TransmissionClient(_External):
 
     async def add(self, src: TorrentSource, opts: AddOptions) -> ClientRef:
         ref = torrent_ref(src)
-        args: dict[str, Any] = {"download-dir": opts.save_path, "paused": opts.paused}
+        args: dict[str, Any] = {"paused": opts.paused}
+        if opts.save_path:  # else Transmission's default download folder
+            args["download-dir"] = opts.save_path
         if src.torrent is not None:
             args["metainfo"] = base64.b64encode(src.torrent).decode()
         else:
@@ -518,7 +520,9 @@ class DelugeClient(_External):
 
     async def add(self, src: TorrentSource, opts: AddOptions) -> ClientRef:
         ref = torrent_ref(src)
-        options: dict[str, Any] = {"download_location": opts.save_path, "add_paused": opts.paused}
+        options: dict[str, Any] = {"add_paused": opts.paused}
+        if opts.save_path:  # else Deluge's default download folder
+            options["download_location"] = opts.save_path
         if opts.download_limit:
             options["max_download_speed"] = _kib(opts.download_limit)
         if opts.upload_limit:

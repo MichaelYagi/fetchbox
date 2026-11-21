@@ -369,9 +369,18 @@ class LibraryService:
         video = pick_video(await self._files(d))
         if video is None:
             raise ImportProblem("no video file in the download (samples are ignored)", retry=False)
-        src = Path(d.save_path or "") / video.path
+        if not d.save_path:
+            raise ImportProblem("the download client hasn't said where it saved the files yet")
+        src = Path(d.save_path) / video.path
         on_disk = await asyncio.to_thread(_size, src)
         if on_disk is None:
+            folder_seen = await asyncio.to_thread(Path(d.save_path).is_dir)
+            if not folder_seen:  # typically a client on another machine or in Docker
+                raise ImportProblem(
+                    f"Fetchbox can't see {d.save_path}, where the client saved this. If the "
+                    "client runs on another machine or in Docker, share that folder with this "
+                    "computer and add a path mapping (Settings > Download clients > Edit)"
+                )
             raise ImportProblem(f"{video.path} is missing from {d.save_path}")
         if on_disk != video.size:
             raise ImportProblem(

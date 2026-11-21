@@ -1935,6 +1935,11 @@ export interface components {
             priority: number;
             /** Running */
             running: boolean;
+            /**
+             * Saves To
+             * @description Where downloads go, as Fetchbox sees it; null: the client's own folder
+             */
+            saves_to: string | null;
             /** Settings */
             settings: {
                 [key: string]: unknown;

@@ -152,7 +152,11 @@ async def test_add_client_and_download_through_it(
     server.app.state.downloads.poll_interval = 0.1
     server.app.state.library.sweep_interval = 0.2
     torrents_local = settings.downloads_dir / "Torrents"
-    store = Store(local_root=torrents_local, client_root="/data/torrents")
+    # qBittorrent saves into its own folder (Fetchbox doesn't tell it where); that folder
+    # is shared, and the mapping says where Fetchbox sees it.
+    store = Store(
+        local_root=torrents_local, client_root="/data/torrents", default_dir="/data/torrents"
+    )
     fake = FakeQbit(store)
     server.app.state.downloads.provider_kwargs = {"transport": httpx.MockTransport(fake.handle)}
 
@@ -193,9 +197,13 @@ async def test_add_client_and_download_through_it(
     await until(in_client, within=20)
     await until(recorded, within=10)
     t = store.torrents[made.info_hash]
-    assert t.save_path == "/data/torrents/fetchbox-movies" and t.category == "fetchbox-movies"
+    assert t.save_path == "/data/torrents" and t.category == "fetchbox-movies"
     [d] = (await c.get("/downloads")).json()
     assert d["client_id"] == qb["id"]
+    assert d["save_path"] == str(torrents_local)  # qBittorrent's folder, as Fetchbox sees it
+    clients = {x["id"]: x for x in (await c.get("/download-clients")).json()}
+    assert clients[qb["id"]]["saves_to"] is None  # the client decides
+    assert clients[builtin["id"]]["saves_to"].endswith("Torrents")
 
     async def running() -> bool:
         return not store.torrents[made.info_hash].paused

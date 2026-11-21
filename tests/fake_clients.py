@@ -42,6 +42,7 @@ class Store:
     limits: dict[str, Any] = field(default_factory=dict)
     local_root: Path | None = None  # client path prefix -> this local folder
     client_root: str = ""
+    default_dir: str = "/downloads"  # where the client saves when not told
 
     def add(self, src: TorrentSource, save_path: str, paused: bool, category: str | None) -> str:
         ref = torrent_ref(src)
@@ -117,7 +118,12 @@ class FakeQbit:
                 if "torrents" in f
                 else TorrentSource(magnet=f["urls"])
             )
-            self.s.add(src, f["savepath"], f.get("paused") == "true", f.get("category"))
+            self.s.add(
+                src,
+                f.get("savepath", self.s.default_dir),
+                f.get("paused") == "true",
+                f.get("category"),
+            )
             return httpx.Response(200, text="Ok.")
         if path == "torrents/info":
             hashes = q.get("hashes", "").split("|") if q.get("hashes") else None
@@ -198,7 +204,12 @@ class FakeTransmission:
                 else TorrentSource(magnet=a["filename"])
             )
             dup = torrent_ref(src) in self.s.torrents
-            ref = self.s.add(src, a["download-dir"], a["paused"], (a.get("labels") or [None])[0])
+            ref = self.s.add(
+                src,
+                a.get("download-dir", self.s.default_dir),
+                a["paused"],
+                (a.get("labels") or [None])[0],
+            )
             out = {"torrent-duplicate" if dup else "torrent-added": {"hashString": ref}}
         elif m == "torrent-get":
             ids = a.get("ids")
@@ -276,7 +287,11 @@ class FakeDeluge:
                 else TorrentSource(torrent=base64.b64decode(p[1]))
             )
             opts = p[-1]
-            return ok(self.s.add(src, opts["download_location"], opts["add_paused"], None))
+            return ok(
+                self.s.add(
+                    src, opts.get("download_location", self.s.default_dir), opts["add_paused"], None
+                )
+            )
         if m == "core.get_torrents_status":
             ids = p[0].get("id")
             return ok({t.ref: self._t(t) for t in self.s.torrents.values()

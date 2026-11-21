@@ -29,7 +29,7 @@ class DownloadClientError(Exception):
 
 @dataclass(frozen=True)
 class AddOptions:
-    save_path: str
+    save_path: str | None  # None: the client's own default folder (external clients)
     category: str | None = None
     paused: bool = True
     download_limit: int | None = None  # bytes/s

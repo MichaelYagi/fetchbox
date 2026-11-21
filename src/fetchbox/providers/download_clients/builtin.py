@@ -277,6 +277,8 @@ class BuiltinClient(DownloadClientProvider):
             raise DownloadClientError("invalid_torrent", f"unreadable torrent: {exc}") from None
         if (existing := self._handles.get(ref)) is not None and existing.is_valid():
             return ref  # already here: adding again is a no-op
+        if not opts.save_path:
+            raise DownloadClientError("rejected", "the built-in engine needs a save path")
         await asyncio.to_thread(Path(opts.save_path).mkdir, parents=True, exist_ok=True)
         params.save_path = opts.save_path
         flags = params.flags & ~lt.torrent_flags.auto_managed

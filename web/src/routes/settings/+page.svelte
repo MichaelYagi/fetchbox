@@ -19,7 +19,16 @@
 	let newClient = $state({ kind: 'qbittorrent', name: '', url: '', username: '', password: '' });
 	// Inline editing: one row at a time. Secrets left blank keep what is stored.
 	let editing = $state<string | null>(null);
-	let draft = $state({ name: '', url: '', api_key: '', username: '', password: '', priority: 25 });
+	let draft = $state({
+		name: '',
+		url: '',
+		api_key: '',
+		username: '',
+		password: '',
+		priority: 25,
+		local: '',
+		remote: ''
+	});
 
 	function editIndexer(i: S['IndexerOut']) {
 		const st = i.settings as Record<string, unknown>;
@@ -29,22 +38,48 @@
 			api_key: '',
 			username: '',
 			password: '',
-			priority: i.priority
+			priority: i.priority,
+			local: '',
+			remote: ''
 		};
 		editing = i.id;
 	}
 
 	function editClient(c: S['ClientOut']) {
 		const st = c.settings as Record<string, unknown>;
+		const map = (c.policy.path_mappings ?? [])[0];
 		draft = {
 			name: c.name,
 			url: (st.url as string) ?? '',
 			api_key: '',
 			username: (st.username as string) ?? '',
 			password: '',
-			priority: c.priority
+			priority: c.priority,
+			local: map?.local ?? '',
+			remote: map?.client ?? ''
 		};
 		editing = c.id;
+	}
+
+	// Torrent clients in the order they're tried; the first enabled, running one is used.
+	const torrentClients = $derived(clients.filter((c) => c.kind !== 'direct'));
+	const directClients = $derived(clients.filter((c) => c.kind === 'direct'));
+	const inUse = $derived(torrentClients.find((c) => c.enabled && c.running)?.id);
+
+	function move(c: S['ClientOut'], by: -1 | 1) {
+		const order = [...torrentClients];
+		const at = order.findIndex((x) => x.id === c.id);
+		const to = at + by;
+		if (to < 0 || to >= order.length) return;
+		[order[at], order[to]] = [order[to], order[at]];
+		// Store the visible order as priorities 1, 2, 3... (only those that change).
+		act(`move-${c.id}`, async () => {
+			for (const [n, x] of order.entries()) {
+				if (x.priority !== n + 1) {
+					await patch(`/download-clients/${x.id}`, { priority: n + 1 }, x.etag);
+				}
+			}
+		});
 	}
 
 	function saveIndexer(e: SubmitEvent, i: S['IndexerOut']) {
@@ -69,7 +104,13 @@
 		const settings: Record<string, unknown> = { url: draft.url };
 		if (c.kind !== 'deluge') settings.username = draft.username || null;
 		if (draft.password) settings.password = draft.password;
-		const body = builtIn ? { priority: draft.priority } : { priority: draft.priority, settings };
+		const mappings =
+			draft.local.trim() && draft.remote.trim()
+				? [{ local: draft.local.trim(), client: draft.remote.trim() }]
+				: [];
+		const body = builtIn
+			? {}
+			: { settings, policy: { path_mappings: mappings } };
 		act(`save-${c.id}`, () => patch(`/download-clients/${c.id}`, body, c.etag), `${c.name} saved.`).then(
 			() => {
 				if (!error) editing = null;
@@ -301,18 +342,32 @@
 			<table>
 				<thead><tr><th>Name</th><th>Kind</th><th>Status</th><th></th></tr></thead>
 				<tbody>
-					{#each clients as c (c.id)}
+					{#each torrentClients as c, n (c.id)}
 						<tr>
-							<td><strong>{c.name}</strong></td>
-							<td class="muted">{c.kind} <span class="small">· priority {c.priority}</span></td>
+							<td>
+								<div class="row">
+									<div class="order">
+										<button class="tiny" title="Move up" aria-label="Move {c.name} up" onclick={() => move(c, -1)} disabled={!!busy || n === 0}>▲</button>
+										<button class="tiny" title="Move down" aria-label="Move {c.name} down" onclick={() => move(c, 1)} disabled={!!busy || n === torrentClients.length - 1}>▼</button>
+									</div>
+									<strong>{c.name}</strong>
+									{#if c.id === inUse}<span class="badge info">Used for torrents</span>{/if}
+								</div>
+								<div class="muted small where">
+									Saves to {#if c.saves_to}<code>{c.saves_to}</code>{:else}{c.name}'s own download folder{/if}
+								</div>
+							</td>
+							<td class="muted">{c.kind}</td>
 							<td class="small">
 								<span class="badge {c.enabled ? (c.running ? 'ok' : 'warn') : ''}">{c.enabled ? (c.running ? 'Running' : 'Not running') : 'Disabled'}</span>
 								{#if tests[c.id]}<div class={tests[c.id].ok ? 'okt' : 'errt'}>{tests[c.id].message}</div>{/if}
 							</td>
 							<td><div class="row end">
-								<button class="small" onclick={() => (editing === c.id ? (editing = null) : editClient(c))} disabled={!!busy}>
-									{editing === c.id ? 'Cancel' : 'Edit'}
-								</button>
+								{#if c.kind !== 'builtin'}
+									<button class="small" onclick={() => (editing === c.id ? (editing = null) : editClient(c))} disabled={!!busy}>
+										{editing === c.id ? 'Cancel' : 'Edit'}
+									</button>
+								{/if}
 								<button class="small" onclick={() => test('download-clients', c.id)} disabled={!!busy}>Test</button>
 								<button class="small" onclick={() => act(c.id, () => patch(`/download-clients/${c.id}`, { enabled: !c.enabled }, c.etag))} disabled={!!busy}>
 									{c.enabled ? 'Disable' : 'Enable'}
@@ -331,20 +386,47 @@
 											{#if c.kind !== 'deluge'}<label>Username <input bind:value={draft.username} autocomplete="off" /></label>{/if}
 											<label>Password <input type="password" bind:value={draft.password} placeholder="unchanged" autocomplete="off" /></label>
 										{/if}
-										<label class="narrow">Priority <input type="number" min="1" max="50" bind:value={draft.priority} /></label>
 										<button class="primary" disabled={!!busy}>Save</button>
 									</form>
-									<p class="muted small hint">
-										Torrents go to the enabled client with the lowest priority number (a tie goes by
-										name). Direct downloads only ever take direct files.
-									</p>
+									<div class="mapping">
+										<p class="muted small hint">
+											<strong>Path mapping</strong>, only if this client runs on another machine or in
+											Docker: the same folder as Fetchbox sees it and as the client sees it.
+										</p>
+										<div class="row">
+											<label class="grow">Fetchbox path <input bind:value={draft.local} placeholder="/mnt/t/Torrents" /></label>
+											<label class="grow">Client path <input bind:value={draft.remote} placeholder="/Users/me/Torrents" /></label>
+										</div>
+									</div>
 								</td>
 							</tr>
 						{/if}
 					{/each}
+					{#each directClients as c (c.id)}
+						<tr class="direct">
+							<td><div class="row"><span class="order"></span><strong>{c.name}</strong>
+								{#if c.enabled && c.running}<span class="badge">Used for direct files</span>{/if}</div></td>
+							<td class="muted">{c.kind}</td>
+							<td class="small">
+								<span class="badge {c.enabled ? (c.running ? 'ok' : 'warn') : ''}">{c.enabled ? (c.running ? 'Running' : 'Not running') : 'Disabled'}</span>
+								{#if tests[c.id]}<div class={tests[c.id].ok ? 'okt' : 'errt'}>{tests[c.id].message}</div>{/if}
+							</td>
+							<td><div class="row end">
+								<button class="small" onclick={() => test('download-clients', c.id)} disabled={!!busy}>Test</button>
+								<button class="small" onclick={() => act(c.id, () => patch(`/download-clients/${c.id}`, { enabled: !c.enabled }, c.etag))} disabled={!!busy}>
+									{c.enabled ? 'Disable' : 'Enable'}
+								</button>
+							</div></td>
+						</tr>
+					{/each}
 				</tbody>
 			</table>
 		</div>
+		<p class="muted small hint">
+			Torrents go to the first client in this list that is enabled and running; use ▲ ▼ to
+			change the order. Direct downloads (web-seeded files, e.g. Internet Archive films) always
+			use the direct client.
+		</p>
 		<form class="card stack add" onsubmit={addClient}>
 			<strong>Add a download client</strong>
 			<p class="muted small">Optional: the built-in engine works on its own.</p>
@@ -403,6 +485,26 @@
 	}
 	.end {
 		justify-content: flex-end;
+	}
+	.order {
+		display: inline-flex;
+		flex-direction: column;
+		gap: 2px;
+		width: 1.6rem;
+	}
+	.tiny {
+		padding: 0 0.3rem;
+		font-size: 0.6rem;
+		line-height: 1.3;
+	}
+	.where {
+		margin: 0.2rem 0 0 2.1rem;
+	}
+	.mapping {
+		margin-top: 0.6rem;
+	}
+	tr.direct td {
+		color: var(--muted);
 	}
 	.editrow td {
 		background: var(--surface-2);

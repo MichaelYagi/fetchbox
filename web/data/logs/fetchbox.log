@@ -92,3 +92,27 @@
 {"version": "0.1.0.dev0", "data_dir": "/mnt/c/Users/Michael/Documents/development/fetchbox/web/data", "bind": "127.0.0.1:8787", "plugins": [], "event": "started", "level": "info", "logger": "fetchbox.app", "timestamp": "2026-11-21T16:49:22.106956Z"}
 {"event": "Application startup complete.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:49:22.111768Z"}
 {"event": "Uvicorn running on http://127.0.0.1:8787 (Press CTRL+C to quit)", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:49:22.119176Z"}
+{"event": "Shutting down", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:54:10.504613Z"}
+{"event": "Waiting for application shutdown.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:54:10.606145Z"}
+{"event": "builtin.stopped", "level": "info", "logger": "fetchbox.providers.download_clients.builtin", "timestamp": "2026-11-21T16:54:10.625523Z"}
+{"event": "stopped", "level": "info", "logger": "fetchbox.app", "timestamp": "2026-11-21T16:54:10.669389Z"}
+{"event": "Application shutdown complete.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:54:10.670366Z"}
+{"event": "Finished server process [1659660]", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:54:10.671050Z"}
+{"event": "Started server process [1660400]", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:54:20.390770Z"}
+{"event": "Waiting for application startup.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:54:20.391434Z"}
+{"port": 6881, "torrents": 0, "event": "builtin.started", "level": "info", "logger": "fetchbox.providers.download_clients.builtin", "timestamp": "2026-11-21T16:54:21.317182Z"}
+{"version": "0.1.0.dev0", "data_dir": "/mnt/c/Users/Michael/Documents/development/fetchbox/web/data", "bind": "127.0.0.1:8787", "plugins": [], "event": "started", "level": "info", "logger": "fetchbox.app", "timestamp": "2026-11-21T16:54:21.788914Z"}
+{"event": "Application startup complete.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:54:21.793970Z"}
+{"event": "Uvicorn running on http://127.0.0.1:8787 (Press CTRL+C to quit)", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T16:54:21.800605Z"}
+{"event": "Shutting down", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:01:26.571105Z"}
+{"event": "Waiting for application shutdown.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:01:26.672397Z"}
+{"event": "builtin.stopped", "level": "info", "logger": "fetchbox.providers.download_clients.builtin", "timestamp": "2026-11-21T17:01:26.689724Z"}
+{"event": "stopped", "level": "info", "logger": "fetchbox.app", "timestamp": "2026-11-21T17:01:26.739638Z"}
+{"event": "Application shutdown complete.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:01:26.740657Z"}
+{"event": "Finished server process [1660400]", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:01:26.741341Z"}
+{"event": "Started server process [1663685]", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:05:13.676697Z"}
+{"event": "Waiting for application startup.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:05:13.677502Z"}
+{"port": 6881, "torrents": 0, "event": "builtin.started", "level": "info", "logger": "fetchbox.providers.download_clients.builtin", "timestamp": "2026-11-21T17:05:14.594562Z"}
+{"version": "0.1.0.dev0", "data_dir": "/mnt/c/Users/Michael/Documents/development/fetchbox/web/data", "bind": "127.0.0.1:8787", "plugins": [], "event": "started", "level": "info", "logger": "fetchbox.app", "timestamp": "2026-11-21T17:05:15.022725Z"}
+{"event": "Application startup complete.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:05:15.027136Z"}
+{"event": "Uvicorn running on http://127.0.0.1:8787 (Press CTRL+C to quit)", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:05:15.034156Z"}

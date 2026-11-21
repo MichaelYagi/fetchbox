@@ -235,6 +235,8 @@ class DirectClient(DownloadClientProvider):
         return job
 
     async def add(self, src: TorrentSource, opts: AddOptions) -> ClientRef:
+        if not opts.save_path:
+            raise DownloadClientError("rejected", "the direct client needs a save path")
         if not src.url or urlsplit(src.url).scheme not in ("http", "https"):
             raise DownloadClientError("invalid_torrent", "the direct client takes HTTP(S) files")
         ref = hashlib.sha1(src.url.encode(), usedforsecurity=False).hexdigest()

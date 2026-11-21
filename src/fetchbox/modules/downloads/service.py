@@ -118,6 +118,15 @@ class Policy(BaseModel):
                 return m.client.rstrip("/\\") + norm[len(local) :]
         return path
 
+    def to_local(self, path: str) -> str:
+        """The client's path as Fetchbox sees it (the reverse of ``to_client``)."""
+        norm = path.replace("\\", "/")
+        for m in sorted(self.path_mappings, key=lambda m: len(m.client), reverse=True):
+            remote = m.client.replace("\\", "/").rstrip("/")
+            if norm == remote or norm.startswith(remote + "/"):
+                return m.local.rstrip("/\\") + norm[len(remote) :]
+        return path
+
     def seeding_done(self, ratio: float | None, seed_seconds: int | None) -> bool:
         if self.seed_ratio is not None and (ratio or 0.0) >= self.seed_ratio:
             return True
@@ -258,6 +267,12 @@ class DownloadsService:
     def policy(self, row: DownloadClient) -> Policy:
         return Policy.model_validate(row.policy or {})
 
+    def saves_to(self, row: DownloadClient) -> str | None:
+        """Where this client's downloads go (Fetchbox's view); None: the client decides."""
+        if row.kind in ("builtin", "direct") or self.policy(row).save_path:
+            return str(self.save_root(row))
+        return None
+
     def save_root(self, row: DownloadClient) -> Path:
         p = self.policy(row).save_path
         return Path(p).expanduser() if p else self.downloads_root / "Torrents"
@@ -339,15 +354,26 @@ class DownloadsService:
         try:
             src = await self._source(grab)
             row, client = await self._pick_client(media_kind, src)
-            save = self.save_root(row) / CATEGORY[media_kind]
+            policy = self.policy(row)
+            built_in = row.kind in ("builtin", "direct")
+            # Built-in clients save under the downloads root; an external client keeps its
+            # own folder unless the client's policy names one.
+            save: Path | None = (
+                self.save_root(row) / CATEGORY[media_kind] if built_in or policy.save_path else None
+            )
             ref = await client.add(
                 src,
                 AddOptions(
-                    save_path=self.policy(row).to_client(str(save)),
+                    save_path=policy.to_client(str(save)) if save else None,
                     category=CATEGORY[media_kind],
                     paused=True,
                 ),
             )
+            if save is None:  # where did the client put it? (as Fetchbox sees that path)
+                with contextlib.suppress(DownloadClientError):
+                    for t in await client.status([ref]):
+                        if t.save_path:
+                            save = Path(policy.to_local(t.save_path))
         except Exception as exc:
             kind = exc.kind if isinstance(exc, IndexerError | DownloadClientError) else None
             permanent = kind in ("invalid_torrent", "invalid_response", "auth", "config")
@@ -370,7 +396,7 @@ class DownloadsService:
             d = existing or Download(client_id=row.id, client_ref=ref)
             d.grab_id, d.name, d.media_kind = grab.id, grab.release_title, media_kind
             d.status, d.progress, d.error, d.attempts = "queued", 0.0, None, 0
-            d.save_path, d.last_progress_at, d.created_at = str(save), now, now
+            d.save_path, d.last_progress_at, d.created_at = (str(save) if save else None), now, now
             d.started_at = d.completed_at = d.removed_at = None
             d.import_status = d.import_error = d.import_retry_at = d.imported_at = None
             d.import_attempts = 0
@@ -528,6 +554,10 @@ class DownloadsService:
             return
         self.live[d.id] = t
         changes: dict[str, Any] = {}
+        if t.save_path and row.kind not in ("builtin", "direct"):
+            local = self.policy(row).to_local(t.save_path)  # the client may have moved it
+            if local != d.save_path:
+                changes["save_path"] = local
         if t.progress > d.progress + 1e-6:
             changes["last_progress_at"] = now
         changes.update(progress=t.progress, size=t.size, ratio=t.ratio, seed_seconds=t.seed_seconds)

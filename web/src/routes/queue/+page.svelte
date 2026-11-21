@@ -110,6 +110,9 @@
 						{/if}
 						{#if d.stalls}<span>· stalled {d.stalls}×</span>{/if}
 					</div>
+					<div class="small muted">
+						Saving to {#if d.save_path}<code>{d.save_path}</code>{:else}the client's own folder{/if}
+					</div>
 				</div>
 			{/each}
 		</div>
@@ -127,7 +130,11 @@
 				<tbody>
 					{#each done as d (d.id)}
 						<tr>
-							<td class="name">{d.name}{#if d.error}<div class="small err">{d.error}</div>{/if}</td>
+							<td class="name">
+								{d.name}
+								{#if d.save_path}<div class="small muted"><code>{d.save_path}</code></div>{/if}
+								{#if d.error}<div class="small err">{d.error}</div>{/if}
+							</td>
 							<td><span class="badge {tone(d)}">{label(d)}</span></td>
 							<td>{bytes(d.size)}</td>
 							<td>{d.ratio?.toFixed(2) ?? '—'}</td>
@@ -154,6 +161,9 @@
 	}
 	.err {
 		color: var(--error);
+	}
+	code {
+		word-break: break-all;
 	}
 	.link {
 		border: 0;

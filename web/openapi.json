@@ -753,6 +753,18 @@
       "title": "Running",
       "type": "boolean"
      },
+     "saves_to": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Where downloads go, as Fetchbox sees it; null: the client's own folder",
+      "title": "Saves To"
+     },
      "settings": {
       "additionalProperties": true,
       "title": "Settings",
@@ -777,6 +789,7 @@
      "media_kinds",
      "tags",
      "running",
+     "saves_to",
      "etag"
     ],
     "title": "ClientOut",

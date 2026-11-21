@@ -9,6 +9,7 @@
 	let files = $state<S['FileOut'][]>([]);
 	let history = $state<S['HistoryOut'][]>([]);
 	let profiles = $state<S['ProfileOut'][]>([]);
+	let destinations = $state<S['DestinationOut'][]>([]);
 	let releases = $state<S['InteractiveOut'] | null>(null);
 	let error = $state('');
 	let message = $state('');
@@ -36,6 +37,7 @@
 		void id;
 		load();
 		get<S['ProfileOut'][]>('/quality-profiles').then((p) => (profiles = p));
+		get<S['DestinationOut'][]>('/destinations').then((d) => (destinations = d));
 		const t = setInterval(load, 5000);
 		return () => clearInterval(t);
 	});
@@ -87,6 +89,13 @@
 			await goto('/');
 		});
 	};
+
+	function fullPath(f: S['FileOut']): string {
+		const dest = destinations.find((d) => d.id === f.destination_id);
+		if (!dest) return f.relative_path;
+		const sep = dest.path.includes('\\') && !dest.path.includes('/') ? '\\' : '/';
+		return dest.path.replace(/[\\/]+$/, '') + sep + f.relative_path;
+	}
 
 	const EVENTS: Record<string, string> = {
 		grabbed: 'Grabbed',
@@ -199,7 +208,7 @@
 		{:else}
 			{#each files as f (f.id)}
 				<div class="card stack file">
-					<code>{f.relative_path}</code>
+					<code title="Full path">{fullPath(f)}</code>
 					<div class="row small muted">
 						<span class="badge">{f.quality.name}</span>
 						<span>{bytes(f.size)}</span>
