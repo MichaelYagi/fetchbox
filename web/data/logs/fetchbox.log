@@ -158,3 +158,15 @@
 {"event": "stopped", "level": "info", "logger": "fetchbox.app", "timestamp": "2026-11-21T17:42:20.254343Z"}
 {"event": "Application shutdown complete.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:42:20.255371Z"}
 {"event": "Finished server process [1678984]", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:42:20.256178Z"}
+{"event": "Started server process [1682005]", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:49:28.659211Z"}
+{"event": "Waiting for application startup.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:49:28.659936Z"}
+{"port": 6881, "torrents": 0, "event": "builtin.started", "level": "info", "logger": "fetchbox.providers.download_clients.builtin", "timestamp": "2026-11-21T17:49:29.605316Z"}
+{"version": "0.1.0.dev0", "data_dir": "/mnt/c/Users/Michael/Documents/development/fetchbox/web/data", "bind": "127.0.0.1:8787", "plugins": [], "event": "started", "level": "info", "logger": "fetchbox.app", "timestamp": "2026-11-21T17:49:30.032955Z"}
+{"event": "Application startup complete.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:49:30.038175Z"}
+{"event": "Uvicorn running on http://127.0.0.1:8787 (Press CTRL+C to quit)", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:49:30.045021Z"}
+{"event": "Shutting down", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:50:32.325773Z"}
+{"event": "Waiting for application shutdown.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:50:32.426233Z"}
+{"event": "builtin.stopped", "level": "info", "logger": "fetchbox.providers.download_clients.builtin", "timestamp": "2026-11-21T17:50:32.442435Z"}
+{"event": "stopped", "level": "info", "logger": "fetchbox.app", "timestamp": "2026-11-21T17:50:32.486169Z"}
+{"event": "Application shutdown complete.", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:50:32.487140Z"}
+{"event": "Finished server process [1682005]", "level": "info", "logger": "uvicorn.error", "timestamp": "2026-11-21T17:50:32.487870Z"}
