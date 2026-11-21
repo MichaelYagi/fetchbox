@@ -26,6 +26,8 @@ from fetchbox.modules.auth.service import AuthService
 from fetchbox.modules.automation import router as automation_router
 from fetchbox.modules.discovery import router as discovery_router
 from fetchbox.modules.discovery.service import DiscoveryService
+from fetchbox.modules.downloads import router as downloads_router
+from fetchbox.modules.downloads.service import DownloadsService
 from fetchbox.modules.events import router as events_router
 from fetchbox.modules.media import router as media_router
 from fetchbox.modules.media.service import MediaService
@@ -63,6 +65,7 @@ API_ROUTERS: tuple[APIRouter, ...] = (
     sources_router.router,
     releases_router.router,
     releases_router.grabs_router,
+    downloads_router.router,
 )
 
 
@@ -149,6 +152,19 @@ def create_app(
         grabs = GrabsService(db, bus)
         app.state.grabs = grabs
         app.state.releases = ReleasesService(db, bus, grabs, media, profiles, config, sources)
+        downloads = DownloadsService(
+            db,
+            bus,
+            box,
+            provider_registry,
+            jobs,
+            sources,
+            downloads_root=settings.downloads_dir,
+            state_dir=settings.data_dir / "torrents",
+            isolated=settings.torrent_isolated,
+        )
+        downloads.register_jobs()
+        app.state.downloads = downloads
 
         activity_writer = ActivityWriter(db, bus)
         activity_writer.start()  # before anything else emits, so startup is logged
@@ -156,12 +172,17 @@ def create_app(
 
         plugins = state.providers.load_entry_points()
         register_core_checks(state)
+        # Replaces the core "bindings import" check with the running engine's state.
+        state.health.register(
+            "torrent_engine", downloads.health, fix_url="/settings/download-clients"
+        )
         app.state.fb = state
         system_jobs.register(state)
         for hook in job_handler_hooks:
             hook(state.jobs)
         await state.jobs.start()
         await state.scheduler.start()
+        await downloads.start()
 
         log.info(
             "started",
@@ -177,6 +198,7 @@ def create_app(
             await state.bus.emit("system.stopping")
             await state.scheduler.stop()
             await state.jobs.stop(timeout=30)
+            await downloads.stop()  # saves the engine's resume data
             await activity_writer.stop()
             await auth.drain()
             await discovery.aclose()

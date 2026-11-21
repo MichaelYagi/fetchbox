@@ -37,6 +37,16 @@ def default_data_dir() -> Path:
     return Path(xdg) / "fetchbox"
 
 
+def default_downloads_root() -> Path:
+    """The OS Downloads folder plus "Fetchbox" (spec: zero-config default)."""
+    home = Path.home()
+    if sys.platform != "win32" and sys.platform != "darwin":
+        xdg = os.environ.get("XDG_DOWNLOAD_DIR")
+        if xdg:
+            return Path(xdg).expanduser() / "Fetchbox"
+    return home / "Downloads" / "Fetchbox"
+
+
 def resolve_data_dir(cli_value: str | os.PathLike[str] | None = None) -> Path:
     raw = cli_value or os.environ.get("FETCHBOX_DATA_DIR")
     return Path(raw).expanduser().resolve() if raw else default_data_dir()
@@ -52,6 +62,14 @@ class Settings(BaseSettings):
     log_level: Literal["debug", "info", "warning", "error"] = "info"
     log_format: Literal["auto", "json", "console"] = "auto"
     run_migrations: bool = True
+    downloads_root: Path | None = Field(
+        default=None,
+        description="Where torrents and the default library go; default ~/Downloads/Fetchbox",
+    )
+    torrent_isolated: bool = Field(
+        default=False,
+        description="Built-in engine on loopback only, no DHT/LSD/UPnP (tests, development)",
+    )
     tmdb_api_key: SecretStr | None = Field(
         default=None, description="Overrides the TMDB key stored in /system/config"
     )
@@ -76,6 +94,10 @@ class Settings(BaseSettings):
         if self.db_url:
             return self.db_url
         return f"sqlite+aiosqlite:///{(self.data_dir / 'fetchbox.db').as_posix()}"
+
+    @property
+    def downloads_dir(self) -> Path:
+        return self.downloads_root or default_downloads_root()
 
     @property
     def logs_dir(self) -> Path:

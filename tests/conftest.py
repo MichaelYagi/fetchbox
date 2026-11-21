@@ -21,6 +21,9 @@ pytest_plugins = ["tests.pipeline"]
 def settings(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Settings:
     for var in ("FETCHBOX_DATA_DIR", "FETCHBOX_PORT", "FETCHBOX_DB_URL", "FETCHBOX_HOST"):
         monkeypatch.delenv(var, raising=False)
+    # Never touch the real Downloads folder or the public torrent network from tests.
+    monkeypatch.setenv("FETCHBOX_DOWNLOADS_ROOT", str(tmp_path / "Downloads" / "Fetchbox"))
+    monkeypatch.setenv("FETCHBOX_TORRENT_ISOLATED", "1")
     return load_settings(tmp_path / "data")
 
 

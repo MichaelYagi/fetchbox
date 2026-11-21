@@ -97,7 +97,19 @@ Remaining unchecked items above are Phase 0 hardening, not gate blockers.
       ranked decisions with reasons, `picks`, per-indexer failures, `release_id`s cached
       in memory for 1 h
 - [ ] YAML definition engine + first built-in definitions
-- [ ] Built-in libtorrent client, queue manager, limits, stall detection
+- [x] Built-in libtorrent engine (`providers/download_clients/builtin.py`): magnet and
+      .torrent, added paused (no libtorrent auto-management), resume data on metadata /
+      finish / every 5 min / shutdown, pad files hidden, isolated mode for tests
+- [x] Downloads module: grab -> `downloads.add` job (sweep + wake on `release.grabbed`,
+      so no grab is lost), client pick, save under `<downloads root>/Torrents/<category>`;
+      poller (2 s) with queue manager (`policy.max_active`, priority then age), stall
+      detection (no progress + no peers for `stall_minutes`, fail after `stall_limit`);
+      failure removes data, blocklists, returns items to `missing`; `/downloads` (+
+      pause/resume/recheck/reorder/pause-all/resume-all/limits), `/download-clients`
+      (GET/PATCH/test). Built-in client row seeded on first start.
+- [ ] Failure retry: search for an alternative release (up to 3)
+- [ ] External clients (qBittorrent, Transmission, Deluge) + `POST/DELETE /download-clients`
+- [ ] Seeding goals (ratio / time) once import exists
 - [ ] Local node + default `~/Downloads/Fetchbox/Movies`; two-phase file ops;
       `hardlink_or_copy`; naming templates
 - [ ] Import, lock, blocklist, failure retry, redownload
@@ -194,6 +206,14 @@ three OSes; a backup restores on a fresh machine.
 - Grabbing a rejected release needs `allow_rejected: true` (422 `release-rejected`
   otherwise); an expired `release_id` is 410 `release-expired`. `GET /grabs?wanted_item_id=`
   lists an item's grabs. `POST /blocklist` accepts a `release_id` from a search.
+- `FETCHBOX_DOWNLOADS_ROOT` (default `~/Downloads/Fetchbox`, `XDG_DOWNLOAD_DIR` on
+  Linux) and `FETCHBOX_TORRENT_ISOLATED` (loopback, no DHT/LSD/UPnP; tests use it).
+- Download statuses: queued, downloading, paused, completed, failed, removed. A stall
+  goes back to `queued` (counted in `stalls`) rather than a separate `stalled` status.
+  Download runtime state (progress, ratio) is written without bumping the ETag;
+  `live` in the API is the client's last poll (rates, peers, ETA).
+- A torrent that can't be added for a permanent reason (bad .torrent, key refused)
+  fails at once; transient errors retry 3 times.
 - Titles compare without spaces after normalising (`d'Amélie` = `d.Amelie`).
 - Decision engine details the spec leaves open: a PROPER/REPACK of the same tier ranks
   above format score (and counts as an upgrade); seeders rank by order of magnitude so

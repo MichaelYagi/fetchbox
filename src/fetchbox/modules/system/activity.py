@@ -21,7 +21,14 @@ from fetchbox.core.events import Event, EventBus, Subscription, matches
 
 log = structlog.get_logger(__name__)
 
-SKIP = ("*.progress", "job.queued", "job.started", "job.succeeded", "search.started")
+SKIP = (
+    "*.progress",
+    "job.queued",
+    "job.started",
+    "job.succeeded",
+    "search.started",
+    "download.started",
+)
 BATCH = 200
 DEFAULT_RETENTION = timedelta(days=90)
 
@@ -61,6 +68,14 @@ MESSAGES: dict[str, str] = {
     "release.grabbed": "Grabbed {release_title} for {name} ({quality}, {reason})",
     "release.blocklisted": "Blocklisted {release_title}",
     "release.unblocklisted": "Removed {release_title} from the blocklist",
+    "download.queued": "Queued download of {name}",
+    "download.completed": "Downloaded {name}",
+    "download.failed": "Download of {name} failed: {error}",
+    "download.stalled": "Download of {name} stalled (no peers); back in the queue",
+    "download.removed": "Removed download {name}",
+    "download.paused": "Paused download {name}",
+    "download.resumed": "Resumed download {name}",
+    "download_client.updated": "Download client '{name}' updated",
     "search.completed": "Searched for {name}: {results} results, {accepted} acceptable",
 }
 
