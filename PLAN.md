@@ -247,7 +247,7 @@ qBittorrent/Transmission/Deluge; path mappings + client path probe; mount nodes,
 checks, all link modes, recycle folder, duplicate detection; existing-library import
 (read-only until apply), match correction, rename preview, maintenance; Plex/Jellyfin/Emby;
 webhook + Discord; interface bind + kill switch; HTML (CSS selector) responses for
-indexer definitions. From Phase 2: optional TVDB (scene / absolute numbering); grow the
+indexer definitions (done). From Phase 2: optional TVDB (scene / absolute numbering); grow the
 parser corpus from real indexer results.
 
 **Gate:** Docker + remote qBittorrent + NAS mount + Plex: import an existing library, apply,
@@ -292,6 +292,9 @@ Progress:
       health error) and resumes when it's back. `GET /system/network-interfaces`; set
       in Settings > Download clients > Built-in > Edit. Tested with a real download
       bound to loopback
+- [x] HTML responses for indexer definitions: `response.type: html`, rows and fields
+      by CSS selector (`{{ row.td.name a }}`, `{{ row.a.dl@href }}`), parsed with lxml
+      via BeautifulSoup so unclosed tags recover like in a browser
 - [x] Rename preview (Phase 2, library settings)
 - [x] qBittorrent / Transmission / Deluge, path mappings (Phase 1-2 feedback)
 
