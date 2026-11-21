@@ -231,7 +231,10 @@ season-pack rule; RSS sync, missing search, upgrades
       episodes (monitor, choose a release); library tiles show episodes downloaded
 - [x] Movies: minimum availability (announced / in cinemas / released) from TMDB release
       dates; automatic search waits until then
-- [ ] Calendar (`GET /calendar?start=&end=`) + calendar page
+- [x] Calendar (`GET /calendar?start=&end=`, at most 100 days) + Calendar page: month
+      grid (Monday first) of episodes airing and movie cinema / digital / disc dates,
+      coloured by state (downloaded, downloading, out but missing, coming up, not
+      monitored), `?month=YYYY-MM` links; on phones a list of the days with something
 - [ ] Optional TVDB (scene / absolute numbering)
 - [ ] Grow the parser corpus from real indexer results
 

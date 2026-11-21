@@ -682,3 +682,71 @@ class MediaService:
         if type_:
             q = q.where(HistoryEvent.type == type_)
         return q
+
+
+CALENDAR_MAX_DAYS = 100
+MOVIE_DATES = (
+    ("theatrical_date", "cinema"),
+    ("digital_date", "digital"),
+    ("physical_date", "disc"),
+)
+
+
+async def calendar(db: Database, start: date, end: date) -> list[dict[str, Any]]:
+    """Episodes airing and movie release dates (cinema, digital, disc) from ``start`` to
+    ``end`` inclusive, by date then title."""
+    out: list[dict[str, Any]] = []
+    q = (
+        select(Episode, Season.number, Title, WantedItem)
+        .join(Season, Season.id == Episode.season_id)
+        .join(Title, Title.id == Season.title_id)
+        .join(WantedItem, WantedItem.episode_id == Episode.id)
+        .where(Episode.air_date >= start, Episode.air_date <= end)
+    )
+    async with db.sessionmaker() as s:
+        for ep, season, title, w in (await s.execute(q)).all():
+            out.append(
+                {
+                    "date": ep.air_date,
+                    "kind": "episode",
+                    "title_id": title.id,
+                    "name": title.name,
+                    "poster_url": (title.meta or {}).get("poster_url"),
+                    "season": season,
+                    "episode": ep.number,
+                    "episode_name": ep.name,
+                    "release": None,
+                    "state": w.state,
+                    "monitored": w.monitored,
+                }
+            )
+        mq = (
+            select(Title, WantedItem)
+            .join(WantedItem, WantedItem.title_id == Title.id)
+            .where(Title.kind == "movie")
+        )
+        movies = (await s.execute(mq)).all()
+    for title, w in movies:
+        meta = title.meta or {}
+        for key, label in MOVIE_DATES:
+            v = meta.get(key) or (meta.get("release_date") if key == "theatrical_date" else None)
+            when = date.fromisoformat(v) if v else None
+            if when is None or not start <= when <= end:
+                continue
+            out.append(
+                {
+                    "date": when,
+                    "kind": "movie",
+                    "title_id": title.id,
+                    "name": title.name,
+                    "poster_url": (title.meta or {}).get("poster_url"),
+                    "season": None,
+                    "episode": None,
+                    "episode_name": None,
+                    "release": label,
+                    "state": w.state,
+                    "monitored": w.monitored,
+                }
+            )
+    out.sort(key=lambda e: (e["date"], e["name"].lower(), e["season"] or 0, e["episode"] or 0))
+    return out

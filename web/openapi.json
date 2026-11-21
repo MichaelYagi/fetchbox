@@ -586,6 +586,115 @@
     "title": "BlockOut",
     "type": "object"
    },
+   "CalendarEntry": {
+    "properties": {
+     "date": {
+      "format": "date",
+      "title": "Date",
+      "type": "string"
+     },
+     "episode": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Episode"
+     },
+     "episode_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Episode Name"
+     },
+     "kind": {
+      "enum": [
+       "episode",
+       "movie"
+      ],
+      "title": "Kind",
+      "type": "string"
+     },
+     "monitored": {
+      "title": "Monitored",
+      "type": "boolean"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "poster_url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Poster Url"
+     },
+     "release": {
+      "anyOf": [
+       {
+        "enum": [
+         "cinema",
+         "digital",
+         "disc"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Movies: which release this date is",
+      "title": "Release"
+     },
+     "season": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Season"
+     },
+     "state": {
+      "title": "State",
+      "type": "string"
+     },
+     "title_id": {
+      "title": "Title Id",
+      "type": "string"
+     }
+    },
+    "required": [
+     "date",
+     "kind",
+     "title_id",
+     "name",
+     "poster_url",
+     "season",
+     "episode",
+     "episode_name",
+     "release",
+     "state",
+     "monitored"
+    ],
+    "title": "CalendarEntry",
+    "type": "object"
+   },
    "CheckResult": {
     "properties": {
      "fix_url": {
@@ -8315,6 +8424,80 @@
     "summary": "Delete Blocklist",
     "tags": [
      "releases"
+    ]
+   }
+  },
+  "/api/v1/calendar": {
+   "get": {
+    "description": "Episodes airing and movie release dates between two days (at most 100 days).",
+    "operationId": "get_calendar_api_v1_calendar_get",
+    "parameters": [
+     {
+      "description": "First day (inclusive)",
+      "in": "query",
+      "name": "start",
+      "required": true,
+      "schema": {
+       "description": "First day (inclusive)",
+       "format": "date",
+       "title": "Start",
+       "type": "string"
+      }
+     },
+     {
+      "description": "Last day (inclusive)",
+      "in": "query",
+      "name": "end",
+      "required": true,
+      "schema": {
+       "description": "Last day (inclusive)",
+       "format": "date",
+       "title": "End",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/CalendarEntry"
+         },
+         "title": "Response Get Calendar Api V1 Calendar Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Unprocessable Content"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Get Calendar",
+    "tags": [
+     "media"
     ]
    }
   },

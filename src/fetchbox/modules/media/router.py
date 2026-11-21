@@ -8,12 +8,19 @@ from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 from fetchbox.core.concurrency import etag
 from fetchbox.core.db import utcnow
+from fetchbox.core.errors import FieldError, ProblemError
 from fetchbox.core.errors import problem_responses as pr
 from fetchbox.core.pagination import Page, Sort, paginate
 from fetchbox.modules.auth.deps import CurrentPrincipal, require
 from fetchbox.modules.media.models import HISTORY_TYPES, HistoryEvent, Title, WantedItem
 from fetchbox.modules.media.series import SeriesMode
-from fetchbox.modules.media.service import MediaService, WantedFilter, available_from
+from fetchbox.modules.media.service import (
+    CALENDAR_MAX_DAYS,
+    MediaService,
+    WantedFilter,
+    available_from,
+    calendar,
+)
 
 Availability = Literal["announced", "in_cinemas", "released"]
 router = APIRouter(tags=["media"])
@@ -514,3 +521,36 @@ async def title_history(
     await svc.get_title(title_id)  # 404 for an unknown title
     return await _history_page(svc, title_id=title_id, wanted_item_id=None, type_=None,
                                limit=limit, cursor=cursor)  # fmt: skip
+
+
+class CalendarEntry(BaseModel):
+    date: date
+    kind: Literal["episode", "movie"]
+    title_id: str
+    name: str
+    poster_url: str | None
+    season: int | None
+    episode: int | None
+    episode_name: str | None
+    release: Literal["cinema", "digital", "disc"] | None = Field(
+        description="Movies: which release this date is"
+    )
+    state: str
+    monitored: bool
+
+
+@router.get("/calendar", response_model=list[CalendarEntry], dependencies=_read, responses=pr(422))
+async def get_calendar(
+    request: Request,
+    start: Annotated[date, Query(description="First day (inclusive)")],
+    end: Annotated[date, Query(description="Last day (inclusive)")],
+) -> list[CalendarEntry]:
+    """Episodes airing and movie release dates between two days (at most 100 days)."""
+    if end < start or (end - start).days > CALENDAR_MAX_DAYS:
+        raise ProblemError(
+            422,
+            "Validation Failed",
+            slug="validation",
+            errors=[FieldError(field="query.end", message="end must be 0-100 days after start")],
+        )
+    return [CalendarEntry(**e) for e in await calendar(_svc(request).db, start, end)]

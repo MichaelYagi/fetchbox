@@ -296,6 +296,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/calendar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Calendar
+         * @description Episodes airing and movie release dates between two days (at most 100 days).
+         */
+        get: operations["get_calendar_api_v1_calendar_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/custom-formats": {
         parameters: {
             query?: never;
@@ -1956,6 +1976,40 @@ export interface components {
             release_title: string | null;
             /** Title Id */
             title_id: string | null;
+        };
+        /** CalendarEntry */
+        CalendarEntry: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Episode */
+            episode: number | null;
+            /** Episode Name */
+            episode_name: string | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "episode" | "movie";
+            /** Monitored */
+            monitored: boolean;
+            /** Name */
+            name: string;
+            /** Poster Url */
+            poster_url: string | null;
+            /**
+             * Release
+             * @description Movies: which release this date is
+             */
+            release: ("cinema" | "digital" | "disc") | null;
+            /** Season */
+            season: number | null;
+            /** State */
+            state: string;
+            /** Title Id */
+            title_id: string;
         };
         /** CheckResult */
         CheckResult: {
@@ -5171,6 +5225,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_calendar_api_v1_calendar_get: {
+        parameters: {
+            query: {
+                /** @description First day (inclusive) */
+                start: string;
+                /** @description Last day (inclusive) */
+                end: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarEntry"][];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
                 };
             };
         };

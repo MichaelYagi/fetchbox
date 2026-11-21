@@ -10,6 +10,7 @@
 	const nav = [
 		{ href: '/', label: 'Library' },
 		{ href: '/add', label: 'Add' },
+		{ href: '/calendar', label: 'Calendar' },
 		{ href: '/queue', label: 'Queue' },
 		{ href: '/settings', label: 'Settings' }
 	];
