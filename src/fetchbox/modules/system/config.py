@@ -36,6 +36,18 @@ class TmdbConfig(BaseModel):
     include_adult: bool = False
 
 
+class TvdbConfig(BaseModel):
+    """Optional: only for absolute episode numbers (anime)."""
+
+    @field_validator("api_key", "pin", mode="before")
+    @classmethod
+    def _strip_key(cls, v: object) -> object:
+        return strip_key(v)
+
+    api_key: SecretStr | None = Field(default=None, description="TheTVDB v4 API key")
+    pin: SecretStr | None = Field(default=None, description="Subscriber PIN, for user keys")
+
+
 class SearchConfig(BaseModel):
     min_seeders: int = Field(default=1, ge=0, description="Reject torrents with fewer seeders")
     season_pack_share: float = Field(
@@ -69,11 +81,12 @@ class StorageConfig(BaseModel):
 
 class SystemConfig(BaseModel):
     tmdb: TmdbConfig = TmdbConfig()
+    tvdb: TvdbConfig = TvdbConfig()
     search: SearchConfig = SearchConfig()
     storage: StorageConfig = StorageConfig()
 
 
-SECRETS: tuple[tuple[str, str], ...] = (("tmdb", "api_key"),)
+SECRETS: tuple[tuple[str, str], ...] = (("tmdb", "api_key"), ("tvdb", "api_key"), ("tvdb", "pin"))
 
 
 Listener = Callable[[SystemConfig], Awaitable[None]]

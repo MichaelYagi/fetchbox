@@ -7,6 +7,7 @@ from collections import OrderedDict
 from typing import Any
 
 import httpx
+import structlog
 
 from fetchbox.core.errors import ProblemError
 from fetchbox.core.providers import HealthStatus
@@ -20,8 +21,10 @@ from fetchbox.providers.metadata import (
     TitleSummary,
 )
 from fetchbox.providers.metadata.tmdb import TmdbProvider, TmdbSettings
+from fetchbox.providers.metadata.tvdb import TvdbClient, TvdbError
 
 DETAIL_TTL = 3600.0
+log = structlog.get_logger(__name__)
 SEARCH_TTL = 300.0
 CACHE_SIZE = 512
 FIX_URL = "/settings/general#tmdb"
@@ -71,6 +74,7 @@ class DiscoveryService:
         self.config = config
         self.transport: httpx.AsyncBaseTransport | None = None  # tests inject a mock
         self._provider: MetadataProvider | None = None
+        self._tvdb: TvdbClient | None = None
         self._cache = _TTLCache(CACHE_SIZE)
         config.on_change(self._reset)
 
@@ -82,6 +86,39 @@ class DiscoveryService:
         if self._provider is not None:
             await self._provider.aclose()
             self._provider = None
+        if self._tvdb is not None:
+            await self._tvdb.aclose()
+            self._tvdb = None
+
+    def tvdb(self) -> TvdbClient | None:
+        """The TVDB client when a TVDB key is set (optional), else None."""
+        cfg = self.config.current.tvdb
+        if cfg.api_key is None:
+            return None
+        if self._tvdb is None:
+            self._tvdb = TvdbClient(
+                cfg.api_key.get_secret_value(),
+                cfg.pin.get_secret_value() if cfg.pin else None,
+                transport=self.transport,
+            )
+        return self._tvdb
+
+    async def absolute_numbers(self, tvdb_id: int | None) -> dict[tuple[int, int], int]:
+        """Absolute episode numbers from TVDB; empty without a key, an id, or on errors
+        (logged: a refresh never fails over this)."""
+        client = self.tvdb()
+        if client is None or not tvdb_id:
+            return {}
+        key = ("absolute", tvdb_id)
+        if (hit := self._cache.get(key)) is not None:
+            return dict(hit)
+        try:
+            out = await client.absolute_numbers(tvdb_id)
+        except TvdbError as exc:
+            log.warning("tvdb.failed", tvdb_id=tvdb_id, error=exc.message)
+            return {}
+        self._cache.put(key, out, DETAIL_TTL)
+        return out
 
     @property
     def configured(self) -> bool:

@@ -315,6 +315,18 @@ class MediaService:
                     )
                 )
                 added += 1
+        # Absolute numbers (anime) come from TVDB when a TVDB key is set; TMDB has none.
+        absolute = await self.discovery.absolute_numbers(title.tvdb_id)
+        if absolute:
+            rows = (
+                await s.execute(
+                    select(Season.number, Episode)
+                    .join(Episode, Episode.season_id == Season.id)
+                    .where(Season.title_id == title.id)
+                )
+            ).all()
+            for number, ep in rows:
+                ep.absolute_number = absolute.get((number, ep.number), ep.absolute_number)
         return added
 
     async def episodes(
