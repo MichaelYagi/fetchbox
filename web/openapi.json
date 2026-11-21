@@ -2569,6 +2569,82 @@
     "title": "HostInfo",
     "type": "object"
    },
+   "ImportIn": {
+    "properties": {
+     "destination_id": {
+      "title": "Destination Id",
+      "type": "string"
+     },
+     "items": {
+      "items": {
+       "$ref": "#/components/schemas/ImportItemIn"
+      },
+      "minItems": 1,
+      "title": "Items",
+      "type": "array"
+     }
+    },
+    "required": [
+     "destination_id",
+     "items"
+    ],
+    "title": "ImportIn",
+    "type": "object"
+   },
+   "ImportItemIn": {
+    "properties": {
+     "files": {
+      "description": "Paths relative to the library folder",
+      "items": {
+       "type": "string"
+      },
+      "minItems": 1,
+      "title": "Files",
+      "type": "array"
+     },
+     "folder": {
+      "description": "As the scan listed it",
+      "title": "Folder",
+      "type": "string"
+     },
+     "monitor_mode": {
+      "default": "all",
+      "description": "Series",
+      "enum": [
+       "all",
+       "future",
+       "missing",
+       "first_season",
+       "latest_season",
+       "none"
+      ],
+      "title": "Monitor Mode",
+      "type": "string"
+     },
+     "monitored": {
+      "default": true,
+      "description": "Movies",
+      "title": "Monitored",
+      "type": "boolean"
+     },
+     "profile_id": {
+      "title": "Profile Id",
+      "type": "string"
+     },
+     "tmdb_id": {
+      "title": "Tmdb Id",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "folder",
+     "files",
+     "tmdb_id",
+     "profile_id"
+    ],
+    "title": "ImportItemIn",
+    "type": "object"
+   },
    "ImportOut": {
     "properties": {
      "attempts": {
@@ -5155,6 +5231,19 @@
      "path"
     ],
     "title": "SampleOut",
+    "type": "object"
+   },
+   "ScanIn": {
+    "properties": {
+     "destination_id": {
+      "title": "Destination Id",
+      "type": "string"
+     }
+    },
+    "required": [
+     "destination_id"
+    ],
+    "title": "ScanIn",
     "type": "object"
    },
    "ScheduleOut": {
@@ -12755,6 +12844,82 @@
     ]
    }
   },
+  "/api/v1/library/import": {
+   "post": {
+    "description": "Add the chosen titles (no search yet) and record their files where they are.",
+    "operationId": "import_existing_api_v1_library_import_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ImportIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "202": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/JobOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Conflict"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Unprocessable Content"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Import Existing",
+    "tags": [
+     "library"
+    ]
+   }
+  },
   "/api/v1/library/naming-options": {
    "get": {
     "description": "Naming presets, season folder choices and the tokens patterns can use.",
@@ -13138,6 +13303,81 @@
      }
     ],
     "summary": "Rename Files",
+    "tags": [
+     "library"
+    ]
+   }
+  },
+  "/api/v1/library/scan": {
+   "post": {
+    "description": "Read a library folder and match what's in it on TMDB. Changes nothing: the job's\nresult lists every movie or show found, with its files, match and status.",
+    "operationId": "scan_library_api_v1_library_scan_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ScanIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "202": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/JobOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Conflict"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Scan Library",
     "tags": [
      "library"
     ]

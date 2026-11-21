@@ -1128,6 +1128,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/library/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import Existing
+         * @description Add the chosen titles (no search yet) and record their files where they are.
+         */
+        post: operations["import_existing_api_v1_library_import_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/library/naming-options": {
         parameters: {
             query?: never;
@@ -1211,6 +1231,27 @@ export interface paths {
          * @description Rename files to the current naming (on the same disk: nothing is copied).
          */
         post: operations["rename_files_api_v1_library_rename__kind__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/library/scan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Scan Library
+         * @description Read a library folder and match what's in it on TMDB. Changes nothing: the job's
+         *     result lists every movie or show found, with its files, match and status.
+         */
+        post: operations["scan_library_api_v1_library_scan_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2653,6 +2694,43 @@ export interface components {
              */
             wsl_distro?: string | null;
         };
+        /** ImportIn */
+        ImportIn: {
+            /** Destination Id */
+            destination_id: string;
+            /** Items */
+            items: components["schemas"]["ImportItemIn"][];
+        };
+        /** ImportItemIn */
+        ImportItemIn: {
+            /**
+             * Files
+             * @description Paths relative to the library folder
+             */
+            files: string[];
+            /**
+             * Folder
+             * @description As the scan listed it
+             */
+            folder: string;
+            /**
+             * Monitor Mode
+             * @description Series
+             * @default all
+             * @enum {string}
+             */
+            monitor_mode: "all" | "future" | "missing" | "first_season" | "latest_season" | "none";
+            /**
+             * Monitored
+             * @description Movies
+             * @default true
+             */
+            monitored: boolean;
+            /** Profile Id */
+            profile_id: string;
+            /** Tmdb Id */
+            tmdb_id: number;
+        };
         /** ImportOut */
         ImportOut: {
             /** Attempts */
@@ -3724,6 +3802,11 @@ export interface components {
             label: string;
             /** Path */
             path: string;
+        };
+        /** ScanIn */
+        ScanIn: {
+            /** Destination Id */
+            destination_id: string;
         };
         /** ScheduleOut */
         ScheduleOut: {
@@ -7796,6 +7879,60 @@ export interface operations {
             };
         };
     };
+    import_existing_api_v1_library_import_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
     naming_options_api_v1_library_naming_options_get: {
         parameters: {
             query?: never;
@@ -8002,6 +8139,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RenameOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    scan_library_api_v1_library_scan_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScanIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
                 };
             };
             /** @description Validation Error */

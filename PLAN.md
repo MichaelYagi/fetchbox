@@ -253,6 +253,19 @@ parser corpus from real indexer results.
 **Gate:** Docker + remote qBittorrent + NAS mount + Plex: import an existing library, apply,
 Plex refreshes.
 
+Progress:
+- [x] Existing-library import: Settings > Library > "Import what's already here" scans a
+      library folder (a job; read-only): one movie or show per folder (loose movie files
+      too), matched on TMDB by an id in the name (`{tmdb-…}`, `[tmdbid-…]`, `{tvdb-…}`)
+      or title and year, with a confidence (sure / good / check / none) and status (new,
+      already in Fetchbox, already imported). Review: filter, correct a match by search,
+      untick. Import (a job) adds titles without an immediate search (first search after
+      an hour) and records files in place (`link_mode: existing`): a movie's biggest
+      file, a show's files matched to episodes (multi-episode files too); cutoff judged
+      from the file's quality. Re-scanning and re-importing are idempotent.
+- [x] Rename preview (Phase 2, library settings)
+- [x] qBittorrent / Transmission / Deluge, path mappings (Phase 1-2 feedback)
+
 ### Phase 4 — Operability + release (v1.0)
 Backups/restore, config export/import, pre-migration backups, diagnostics zip, updates;
 Sonarr/Radarr migration wizard; tray (keyring-stored key); packaging (multi-arch Docker,

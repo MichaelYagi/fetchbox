@@ -185,6 +185,7 @@
 			<div class="row">
 				<Path path={dest.path} />
 				<button class="small" onclick={() => ((folder = dest.path), (editingFolder = true))}>Change</button>
+				<a class="button small" href="/library/import?dest={dest.id}">Import what's already here</a>
 			</div>
 			{#if dest.status_message && dest.status_message !== 'ok'}<div class="muted small">{dest.status_message}</div>{/if}
 		{:else if dest}

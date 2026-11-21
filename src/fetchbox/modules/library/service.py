@@ -1093,6 +1093,95 @@ class LibraryService:
             )
         return {"renamed": renamed, "failed": failed}
 
+    async def adopt(
+        self, title: Title, dest: Destination, rel: str, items: list[WantedItem]
+    ) -> bool:
+        """Record a file already in the library folder (``rel``, relative to it) for
+        ``items``: they become acquired, cutoff judged by the file's quality. Items that
+        already have a file, or a file already recorded, are left alone. Returns whether
+        anything was recorded."""
+        path = Path(dest.path) / rel
+        if not items or not await asyncio.to_thread(path.is_file):
+            return False
+        parsed = parse_release(PurePosixPath(rel).name)
+        info = await asyncio.to_thread(probe, path)
+        quality = parsed.quality
+        if quality.startswith("Unknown") and info and info.resolution:
+            quality = f"Unknown-{info.resolution}p"  # the profile may not allow it: an upgrade
+        profile = to_spec(await self.profiles.get_profile(title.profile_id))
+        tier = profile.tier_index(quality)
+        cutoff_met = tier is not None and tier >= profile.cutoff_index
+        st = await asyncio.to_thread(path.stat)
+        async with self.db.sessionmaker() as s:
+            taken = set(
+                (
+                    await s.execute(
+                        select(MediaFileItem.wanted_item_id).where(
+                            MediaFileItem.wanted_item_id.in_([w.id for w in items])
+                        )
+                    )
+                ).scalars()
+            )
+            free = [w for w in items if w.id not in taken]
+            existing = (
+                await s.execute(
+                    select(MediaFile).where(
+                        MediaFile.destination_id == dest.id, MediaFile.relative_path == rel
+                    )
+                )
+            ).scalar_one_or_none()
+            if not free:
+                return False
+            mf = existing or MediaFile(
+                storage_node_id=dest.node_id,
+                destination_id=dest.id,
+                relative_path=rel,
+                size=st.st_size,
+                mtime=utcnow(),
+                quick_hash=None,
+                quality=_quality_json(parsed, quality, info),
+                custom_format_score=0,
+                mediainfo=info.to_json() if info else None,
+                release_group=parsed.group,
+                original_name=PurePosixPath(rel).name,
+                link_mode="existing",
+                imported_at=utcnow(),
+            )
+            if existing is None:
+                s.add(mf)
+                await s.flush()
+            s.add_all([MediaFileItem(media_file_id=mf.id, wanted_item_id=w.id) for w in free])
+            await s.execute(
+                update(WantedItem)
+                .where(WantedItem.id.in_([w.id for w in free]))
+                .values(
+                    state="acquired",
+                    lock="acquired",
+                    cutoff_met=cutoff_met,
+                    version=WantedItem.version + 1,
+                )
+                .execution_options(synchronize_session=False)
+            )
+            s.add_all(
+                [
+                    HistoryEvent(
+                        wanted_item_id=w.id,
+                        title_id=title.id,
+                        type="imported",
+                        data={
+                            "path": rel,
+                            "destination": dest.name,
+                            "quality": quality,
+                            "link_mode": "existing",
+                            "existing": True,
+                        },
+                    )
+                    for w in free
+                ]
+            )
+            await s.commit()
+        return True
+
 
 def _info(data: dict[str, Any] | None) -> MediaInfo | None:
     if not data:

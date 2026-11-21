@@ -34,6 +34,7 @@ from fetchbox.modules.downloads import router as downloads_router
 from fetchbox.modules.downloads.service import DownloadsService
 from fetchbox.modules.events import router as events_router
 from fetchbox.modules.library import router as library_router
+from fetchbox.modules.library.existing import ExistingLibrary
 from fetchbox.modules.library.service import LibraryService
 from fetchbox.modules.media import router as media_router
 from fetchbox.modules.media.service import MediaService
@@ -202,6 +203,11 @@ def create_app(
         )
         app.state.storage = storage
         library = LibraryService(db, bus, jobs, storage, downloads, profiles, media)
+        existing = ExistingLibrary(
+            db, jobs, storage=storage, media=media, discovery=discovery, library=library
+        )
+        existing.register_jobs()
+        app.state.existing = existing
         library.register_jobs()
         app.state.library = library
         app.state.unlock = UnlockService(

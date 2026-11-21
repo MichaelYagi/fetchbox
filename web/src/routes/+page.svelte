@@ -67,6 +67,9 @@
 		<div class="empty card">
 			<p>Nothing here yet.</p>
 			<p><a class="button primary" href="/add">Add your first movie or show</a></p>
+			<p class="muted small">
+				Already have movies or shows on disk? <a href="/settings#library">Import them</a> from your library folders.
+			</p>
 		</div>
 	{:else if shown.length === 0}
 		<p class="empty">No titles match.</p>
