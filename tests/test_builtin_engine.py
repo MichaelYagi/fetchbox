@@ -40,7 +40,7 @@ async def test_download_from_a_local_seeder(tmp_path: Path, magnet: bool) -> Non
         assert st.progress == 1.0 and st.size == 2 * MB + 100 and st.name == "Movie.2021.1080p"
         assert st.downloaded >= 2 * MB and st.error is None
         got = (tmp_path / "dl" / "Movie.2021.1080p" / "movie.mkv").read_bytes()
-        assert got == (made.root / "Movie.2021.1080p" / "movie.mkv").read_bytes()
+        assert got == made.payload["movie.mkv"]
         files = {f.path.replace("\\", "/"): f for f in await leech.files(ref)}
         assert set(files) == {"Movie.2021.1080p/movie.mkv", "Movie.2021.1080p/a.nfo"}
         assert all(f.progress == 1.0 for f in files.values())

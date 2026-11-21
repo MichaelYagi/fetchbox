@@ -89,7 +89,7 @@ async def test_grab_downloads_to_completion(
     root = settings.downloads_dir / "Torrents" / "fetchbox-movies"
     assert d["save_path"] == str(root)
     got = (root / NAME / f"{NAME}.mkv").read_bytes()
-    assert got == (made.root / NAME / f"{NAME}.mkv").read_bytes()
+    assert got == made.payload[f"{NAME}.mkv"]
 
     types = []
     while not sub.queue.empty():

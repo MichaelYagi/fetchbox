@@ -22,6 +22,9 @@ class Made:
     info_hash: str
     root: Path  # the directory holding the torrent's top folder
     name: str
+    # Original bytes by relative path. Compare against these: on Windows CI, reading the
+    # seeder's file while libtorrent seeds it has hung (antivirus + memory-mapped I/O).
+    payload: dict[str, bytes]
 
     @property
     def magnet(self) -> str:
@@ -34,10 +37,12 @@ class Made:
 def make_torrent(root: Path, name: str, files: dict[str, int]) -> Made:
     """Write ``files`` (relative path -> size in bytes) under root/name and hash them."""
     top = root / name
+    payload: dict[str, bytes] = {}
     for rel, size in files.items():
         p = top / rel
         p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_bytes(os.urandom(size))
+        payload[rel] = os.urandom(size)
+        p.write_bytes(payload[rel])
     fs = lt.file_storage()
     for rel, size in sorted(files.items()):
         fs.add_file(f"{name}/{rel}", size)
@@ -45,7 +50,7 @@ def make_torrent(root: Path, name: str, files: dict[str, int]) -> Made:
     lt.set_piece_hashes(ct, str(root))
     data = lt.bencode(ct.generate())
     ti = lt.torrent_info(lt.bdecode(data))
-    return Made(data, str(ti.info_hashes().v1), root, name)
+    return Made(data, str(ti.info_hashes().v1), root, name, payload)
 
 
 def engine(state_dir: Path | None = None) -> BuiltinClient:
