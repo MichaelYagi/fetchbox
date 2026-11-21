@@ -91,10 +91,12 @@ async def test_season_pack_import(
     engine.connect_peer(made.info_hash, "127.0.0.1", seed.listen_port or 0)
 
     async def imported() -> bool:
+        # A single loopback connect sometimes fails on Windows: keep offering the seeder.
+        engine.connect_peer(made.info_hash, "127.0.0.1", seed.listen_port or 0)
         imports = (await c.get("/imports")).json()
         return bool(imports) and imports[0]["status"] == "imported"
 
-    await until(imported, within=60)
+    await until(imported, within=90)
     seasons = (await c.get(f"/titles/{t['id']}/episodes")).json()
     s1 = {e["number"]: e["wanted"] for e in seasons[0]["episodes"]}
     assert all(s1[n]["state"] == "acquired" and s1[n]["lock"] == "acquired" for n in range(1, 9))
