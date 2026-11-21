@@ -105,3 +105,23 @@ class WantedItem(IdMixin, VersionMixin, Base):
         Index("ix_wanted_search", "monitored", "lock", "state", "next_search_at"),
         Index("ix_wanted_item_title_id", "title_id"),
     )
+
+
+HISTORY_TYPES = ("grabbed", "imported", "failed", "deleted", "upgraded", "unlocked")
+
+
+class HistoryEvent(IdMixin, Base):
+    """Immutable record per wanted item (and its title, kept after the item is gone)."""
+
+    __tablename__ = "history_event"
+
+    wanted_item_id: Mapped[str | None] = mapped_column(String(26), nullable=True)
+    title_id: Mapped[str | None] = mapped_column(String(26), nullable=True)
+    type: Mapped[str] = mapped_column(String(20))
+    data: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+
+    __table_args__ = (
+        Index("ix_history_event_title_id", "title_id", "created_at"),
+        Index("ix_history_event_wanted_item_id", "wanted_item_id"),
+    )

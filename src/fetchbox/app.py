@@ -32,6 +32,7 @@ from fetchbox.modules.media.service import MediaService
 from fetchbox.modules.profiles import router as profiles_router
 from fetchbox.modules.profiles.service import ProfilesService
 from fetchbox.modules.releases import router as releases_router
+from fetchbox.modules.releases.grabs import GrabsService
 from fetchbox.modules.releases.service import ReleasesService
 from fetchbox.modules.sources import router as sources_router
 from fetchbox.modules.sources.service import SourcesService
@@ -61,6 +62,7 @@ API_ROUTERS: tuple[APIRouter, ...] = (
     media_router.router,
     sources_router.router,
     releases_router.router,
+    releases_router.grabs_router,
 )
 
 
@@ -144,7 +146,9 @@ def create_app(
         sources = SourcesService(db, bus, box, provider_registry)
         app.state.sources = sources
         state.health.register("indexers", sources.health, fix_url="/settings/indexers")
-        app.state.releases = ReleasesService(bus, media, profiles, config, sources)
+        grabs = GrabsService(db, bus)
+        app.state.grabs = grabs
+        app.state.releases = ReleasesService(db, bus, grabs, media, profiles, config, sources)
 
         activity_writer = ActivityWriter(db, bus)
         activity_writer.start()  # before anything else emits, so startup is logged

@@ -85,8 +85,10 @@ Remaining unchecked items above are Phase 0 hardening, not gate blockers.
       reason recorded in spec order; ranking; season-pack-wins selection with gap filling;
       upgrade rule; fan-out over release sources with per-source timeout and failures
       reported, not raised. Pure: blocklist, grab history and rules are passed in.
-- [ ] `POST /grabs` (idempotent, from a `release_id`), blocklist table; feed blocklist and
-      grab history into decisions
+- [x] `POST /grabs` (Idempotency-Key; same release + item returns the existing grab;
+      items claimed with a conditional UPDATE so concurrent grabs can't both win),
+      `GET /grabs[/{id}]`, `GET/POST/DELETE /blocklist`; blocklist and grab history feed
+      the decision engine; `history_event` + `GET /history`, `GET /titles/{id}/history`
 - [x] Torznab indexer (`providers/indexers/torznab.py`): caps, id-first movie/TV search
       with text fallback, extended attrs (seeders, hash, freeleech...), resolve to magnet
       or .torrent; `/indexers` CRUD + kinds + test + reorder; failure backoff (5 min
@@ -189,6 +191,9 @@ three OSes; a backup restores on a fresh machine.
   Indexer runtime state (failures, backoff) is written without bumping the ETag.
 - Interactive search returns `picks` (what automatic search would grab) and keeps
   results in memory for an hour so a grab can name a `release_id`.
+- Grabbing a rejected release needs `allow_rejected: true` (422 `release-rejected`
+  otherwise); an expired `release_id` is 410 `release-expired`. `GET /grabs?wanted_item_id=`
+  lists an item's grabs. `POST /blocklist` accepts a `release_id` from a search.
 - Titles compare without spaces after normalising (`d'Amélie` = `d.Amelie`).
 - Decision engine details the spec leaves open: a PROPER/REPACK of the same tier ranks
   above format score (and counts as an upgrade); seeders rank by order of magnitude so

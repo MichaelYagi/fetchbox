@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any, Literal, get_args
 
 from fastapi import APIRouter, Depends, Header, Query, Request, Response
 from pydantic import BaseModel, ConfigDict, Field, computed_field
@@ -11,7 +11,7 @@ from fetchbox.core.errors import FieldError, ProblemError
 from fetchbox.core.errors import problem_responses as pr
 from fetchbox.core.pagination import Page, Sort, paginate
 from fetchbox.modules.auth.deps import CurrentPrincipal, require
-from fetchbox.modules.media.models import Title, WantedItem
+from fetchbox.modules.media.models import HISTORY_TYPES, HistoryEvent, Title, WantedItem
 from fetchbox.modules.media.service import MediaService, WantedFilter
 
 router = APIRouter(tags=["media"])
@@ -310,3 +310,73 @@ async def update_wanted(
     out = WantedOut.model_validate(row)
     response.headers["ETag"] = out.etag
     return out
+
+
+# ---- history ------------------------------------------------------------------------------
+
+
+class HistoryOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    type: str
+    title_id: str | None
+    wanted_item_id: str | None
+    data: dict[str, Any]
+    created_at: datetime
+
+
+class HistoryPage(Page[HistoryOut]):
+    pass
+
+
+HISTORY_SORT = Sort({"id": HistoryEvent.id}, id_col=HistoryEvent.id, default="-id")
+HistoryType = Literal["grabbed", "imported", "failed", "deleted", "upgraded", "unlocked"]
+assert set(get_args(HistoryType)) == set(HISTORY_TYPES)
+
+
+async def _history_page(
+    svc: MediaService,
+    *,
+    title_id: str | None,
+    wanted_item_id: str | None,
+    type_: str | None,
+    limit: int,
+    cursor: str | None,
+) -> HistoryPage:
+    q = svc.history_query(title_id=title_id, wanted_item_id=wanted_item_id, type_=type_)
+    async with svc.db.sessionmaker() as s:
+        rows, nxt = await paginate(s, q, HISTORY_SORT, sort_param=None, limit=limit, cursor=cursor)
+    return HistoryPage(items=[HistoryOut.model_validate(r) for r in rows], next_cursor=nxt)
+
+
+@router.get("/history", response_model=HistoryPage, dependencies=_read, responses=pr(422))
+async def list_history(
+    request: Request,
+    type: HistoryType | None = None,
+    title_id: str | None = None,
+    wanted_item_id: str | None = None,
+    limit: int = Query(50, ge=1, le=500),
+    cursor: str | None = None,
+) -> HistoryPage:
+    """Newest first. History outlives the titles it describes."""
+    return await _history_page(_svc(request), title_id=title_id, wanted_item_id=wanted_item_id,
+                               type_=type, limit=limit, cursor=cursor)  # fmt: skip
+
+
+@router.get(
+    "/titles/{title_id}/history",
+    response_model=HistoryPage,
+    dependencies=_read,
+    responses=pr(404, 422),
+)
+async def title_history(
+    title_id: str,
+    request: Request,
+    limit: int = Query(50, ge=1, le=500),
+    cursor: str | None = None,
+) -> HistoryPage:
+    svc = _svc(request)
+    await svc.get_title(title_id)  # 404 for an unknown title
+    return await _history_page(svc, title_id=title_id, wanted_item_id=None, type_=None,
+                               limit=limit, cursor=cursor)  # fmt: skip

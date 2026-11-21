@@ -14,6 +14,8 @@ from fetchbox.app import create_app
 from fetchbox.config import Settings, load_settings
 from fetchbox.core.jobs import JobRunner
 
+pytest_plugins = ["tests.pipeline"]
+
 
 @pytest.fixture
 def settings(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Settings:

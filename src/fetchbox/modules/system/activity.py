@@ -58,6 +58,9 @@ MESSAGES: dict[str, str] = {
     "source.reordered": "Indexer priorities changed",
     "source.failed": "Indexer '{name}' failed: {error} (retrying after {disabled_until})",
     "source.recovered": "Indexer '{name}' is working again",
+    "release.grabbed": "Grabbed {release_title} for {name} ({quality}, {reason})",
+    "release.blocklisted": "Blocklisted {release_title}",
+    "release.unblocklisted": "Removed {release_title} from the blocklist",
     "search.completed": "Searched for {name}: {results} results, {accepted} acceptable",
 }
 

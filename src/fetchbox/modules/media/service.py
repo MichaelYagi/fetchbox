@@ -15,7 +15,7 @@ from fetchbox.core.db import Database, utcnow
 from fetchbox.core.errors import ConflictError, FieldError, NotFoundError, ProblemError
 from fetchbox.core.events import Actor, EventBus, Subject
 from fetchbox.modules.discovery.service import DiscoveryService
-from fetchbox.modules.media.models import Title, WantedItem
+from fetchbox.modules.media.models import HistoryEvent, Title, WantedItem
 from fetchbox.modules.profiles.service import ProfilesService
 from fetchbox.providers.metadata import MovieDetail
 
@@ -259,3 +259,15 @@ class MediaService:
                 .execution_options(synchronize_session=False)
             )
             await s.commit()
+
+    def history_query(
+        self, *, title_id: str | None, wanted_item_id: str | None, type_: str | None
+    ) -> Select[Any]:
+        q = select(HistoryEvent)
+        if title_id:
+            q = q.where(HistoryEvent.title_id == title_id)
+        if wanted_item_id:
+            q = q.where(HistoryEvent.wanted_item_id == wanted_item_id)
+        if type_:
+            q = q.where(HistoryEvent.type == type_)
+        return q
