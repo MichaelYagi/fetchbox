@@ -9,6 +9,7 @@ import sys
 import tempfile
 import time
 import urllib.request
+from pathlib import Path
 
 exe, want = sys.argv[1], sys.argv[2].lstrip("v")
 with socket.socket() as s:
@@ -19,10 +20,20 @@ env = {**os.environ, "FETCHBOX_DOWNLOADS_ROOT": os.path.join(data, "Downloads"),
        "FETCHBOX_SEED_INDEXERS": "0"}  # fmt: skip
 proc = subprocess.Popen([exe, "--data", data, "serve", "--port", str(port)], env=env)
 base = f"http://127.0.0.1:{port}"
+
+
+def show_logs() -> None:
+    """What the server wrote (a windowed build has no console to show it)."""
+    for f in sorted(Path(data, "logs").glob("*.log")):
+        print(f"---- {f.name} (last 60 lines) ----")
+        print("\n".join(f.read_text(encoding="utf-8", errors="replace").splitlines()[-60:]))
+
+
 try:
     deadline = time.monotonic() + 120
     while True:
         if proc.poll() is not None:
+            show_logs()
             sys.exit(f"the server exited with code {proc.returncode}")
         try:
             with urllib.request.urlopen(f"{base}/api/v1/system/ping", timeout=2) as r:
@@ -31,6 +42,7 @@ try:
         except OSError:
             pass
         if time.monotonic() > deadline:
+            show_logs()
             sys.exit("the server didn't answer within 120 s")
         time.sleep(1)
     with urllib.request.urlopen(f"{base}/api/v1/openapi.json", timeout=5) as r:

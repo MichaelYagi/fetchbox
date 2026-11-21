@@ -75,7 +75,9 @@ def configure_logging(
     backups: int = 10,
 ) -> None:
     lvl = getattr(logging, level.upper())
-    console_human = fmt == "console" or (fmt == "auto" and sys.stderr.isatty())
+    # No console at all (a windowed desktop build) means no terminal to colour for.
+    tty = sys.stderr is not None and sys.stderr.isatty()
+    console_human = fmt == "console" or (fmt == "auto" and tty)
 
     shared: list[Any] = [
         structlog.contextvars.merge_contextvars,
