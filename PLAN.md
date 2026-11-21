@@ -202,6 +202,13 @@ season-pack rule; RSS sync, missing search, upgrades
       Checked against a real Prowlarr 3.0.2. Pasted API keys are trimmed; a Torznab URL that
       is an app's own API (Prowlarr's main address) gets an error saying so
 - [ ] RSS sync (every 15 min): each indexer's feed, matched against all wanted items
+- [ ] **Library settings UI (high priority, after TV import):** Settings > Library with a
+      Movies card and a TV card: folder (checked: exists, writable, free space, hardlinks),
+      style presets (Plex/Jellyfin, Kodi, Simple, Custom), TV season folders (Season 01 /
+      S01 / none), custom patterns edited by clicking tokens, a live preview tree with real
+      edge cases (multi-episode, specials, no year, illegal characters), and "rename
+      existing files" with a preview before anything moves. Must be intuitive enough that
+      most users only pick a folder and a preset
 - [ ] Calendar (`GET /calendar?start=&end=`) + UI: series add, series page, calendar
 - [ ] Optional TVDB (scene / absolute numbering)
 - [ ] Grow the parser corpus from real indexer results
