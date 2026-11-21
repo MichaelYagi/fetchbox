@@ -149,7 +149,11 @@ Remaining unchecked items above are Phase 0 hardening, not gate blockers.
       file kept only a real upgrade is grabbed) and `POST /wanted/{id}/redownload`
       (blocklist the file's release and recycle the file, both default on; the item is
       `missing`, so any acceptable release is grabbed and replaces a kept file)
-- [ ] mediainfo (real resolution/codec/HDR from the file)
+- [x] mediainfo (`modules/library/probe.py`): pure-Python Matroska/WebM and MP4/MOV
+      header reader (no ffprobe/MediaInfo to install): size, resolution class, video
+      codec, HDR10 / HLG / Dolby Vision, duration, audio codecs, channels, languages.
+      Stored on `media_file.mediainfo`, shown on `/files`; fills naming tokens the release
+      name leaves out (the name wins when both say something)
 - [ ] Minimal UI (search, add, queue, library)
 
 **Gate:** on a clean machine with no external tools, adding a movie results in a correctly

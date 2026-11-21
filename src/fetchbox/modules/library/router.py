@@ -40,6 +40,10 @@ class FileOut(BaseModel):
     release_group: str | None
     original_name: str | None
     link_mode: str | None
+    mediainfo: dict[str, Any] | None = Field(
+        description="Read from the file: width, height, resolution, codecs, HDR, duration, "
+        "languages; null for containers Fetchbox can't read"
+    )
     wanted_item_ids: list[str]
     imported_at: datetime
 
@@ -52,6 +56,7 @@ def _file(f: MediaFile, items: list[str]) -> FileOut:
         size=f.size,
         quality=f.quality,
         custom_format_score=f.custom_format_score,
+        mediainfo=f.mediainfo,
         release_group=f.release_group,
         original_name=f.original_name,
         link_mode=f.link_mode,

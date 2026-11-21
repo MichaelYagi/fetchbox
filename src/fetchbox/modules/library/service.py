@@ -45,6 +45,7 @@ from fetchbox.modules.library.naming import (
     movie_path,
     validate_patterns,
 )
+from fetchbox.modules.library.probe import MediaInfo, probe
 from fetchbox.modules.media.models import HistoryEvent, Title, WantedItem
 from fetchbox.modules.profiles.service import ProfilesService, to_spec
 from fetchbox.modules.releases.models import Grab, GrabItem
@@ -140,19 +141,27 @@ def pick_video(files: list[ClientFile], *, kind: str = "movie") -> ClientFile | 
     return max(videos, key=lambda f: f.size)
 
 
-def movie_context(title: Title, parsed: ParsedRelease, quality: str) -> dict[str, Any]:
+def movie_context(
+    title: Title, parsed: ParsedRelease, quality: str, info: MediaInfo | None = None
+) -> dict[str, Any]:
+    """Naming tokens. The release name wins; what the file itself says (``info``) fills
+    what the name leaves out (resolution, codec, HDR, audio)."""
     tags = [
         t for t in ("PROPER" if parsed.proper else None, "REPACK" if parsed.repack else None) if t
     ]
+    codecs = parsed.audio_codecs or (info.audio_codecs if info else [])
     audio = " ".join(
         x
         for x in (
-            parsed.audio_codecs[0].upper() if parsed.audio_codecs else None,
-            parsed.audio_channels,
+            codecs[0].upper() if codecs else None,
+            parsed.audio_channels or (info.audio_channels if info else None),
             "Atmos" if parsed.atmos else None,
         )
         if x
     )
+    resolution = parsed.resolution or (info.resolution if info else None)
+    codec = parsed.video_codec or (info.video_codec if info else None)
+    hdr = parsed.hdr or (info.hdr if info else [])
     return {
         "Title": title.name,
         "Year": title.year,
@@ -160,10 +169,10 @@ def movie_context(title: Title, parsed: ParsedRelease, quality: str) -> dict[str
         "ImdbId": title.imdb_id,
         "Edition": parsed.edition,
         "Quality": quality,
-        "Resolution": f"{parsed.resolution}p" if parsed.resolution else None,
+        "Resolution": f"{resolution}p" if resolution else None,
         "Source": SOURCE_NAMES.get(parsed.source or "", parsed.source),
-        "HDR": parsed.hdr,
-        "Codec": CODEC_NAMES.get(parsed.video_codec or "", parsed.video_codec),
+        "HDR": hdr,
+        "Codec": CODEC_NAMES.get(codec or "", codec),
         "Audio": audio or None,
         "Group": parsed.group,
         "Proper": " ".join(tags) or None,
@@ -171,16 +180,18 @@ def movie_context(title: Title, parsed: ParsedRelease, quality: str) -> dict[str
     }
 
 
-def _quality_json(parsed: ParsedRelease, quality: str) -> dict[str, Any]:
+def _quality_json(
+    parsed: ParsedRelease, quality: str, info: MediaInfo | None = None
+) -> dict[str, Any]:
     return {
         "name": quality,
         "source": parsed.source,
-        "resolution": parsed.resolution,
+        "resolution": parsed.resolution or (info.resolution if info else None),
         "modifier": parsed.modifier,
         "revision": parsed.revision.version,
-        "video_codec": parsed.video_codec,
-        "hdr": parsed.hdr,
-        "audio_codecs": parsed.audio_codecs,
+        "video_codec": parsed.video_codec or (info.video_codec if info else None),
+        "hdr": parsed.hdr or (info.hdr if info else []),
+        "audio_codecs": parsed.audio_codecs or (info.audio_codecs if info else []),
     }
 
 
@@ -383,7 +394,8 @@ class LibraryService:
         )
         quality = release.get("quality") or parsed.quality
         patterns = await self._patterns(dest)
-        rel = movie_path(patterns, movie_context(title, parsed, quality), src.suffix)
+        info = await asyncio.to_thread(probe, src)
+        rel = movie_path(patterns, movie_context(title, parsed, quality, info), src.suffix)
         dst = Path(dest.path) / rel
         mode = await self._place(src, dst, dest)
 
@@ -415,7 +427,8 @@ class LibraryService:
                 storage_node_id=dest.node_id, destination_id=dest.id, relative_path=rel
             )
             mf.size, mf.mtime, mf.quick_hash = st.st_size, utcnow(), qh
-            mf.quality, mf.custom_format_score = _quality_json(parsed, quality), score
+            mf.quality, mf.custom_format_score = _quality_json(parsed, quality, info), score
+            mf.mediainfo = info.to_json() if info else None
             mf.release_group, mf.original_name, mf.link_mode = parsed.group, video.path, mode
             mf.imported_at = utcnow()
             if same is None:
