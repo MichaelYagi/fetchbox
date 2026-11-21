@@ -2,7 +2,7 @@
 	import '#lib/app.css';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { get, post, SignedOut, type S } from '#lib/api.ts';
+	import { get, post, rate, SignedOut, type Download, type S } from '#lib/api.ts';
 	import { session } from '#lib/session.svelte.ts';
 
 	let { children } = $props();
@@ -36,6 +36,47 @@
 			session.health = null;
 		}
 	}
+
+	// Downloads at a glance: running / queued counts, overall progress, speed.
+	let downloads = $state<Download[]>([]);
+	let attention = $state(0);
+	async function loadDownloads() {
+		if (!session.me) return;
+		try {
+			const [d, imports] = await Promise.all([
+				get<Download[]>('/downloads'),
+				get<S['ImportOut'][]>('/imports')
+			]);
+			downloads = d;
+			attention = imports.filter((i) => i.status === 'needs_attention').length;
+		} catch {
+			/* the queue page shows errors; the bar just keeps its last state */
+		}
+	}
+	$effect(() => {
+		if (!session.me) return;
+		loadDownloads();
+		const t = setInterval(loadDownloads, 3000);
+		return () => clearInterval(t);
+	});
+	const inFlight = $derived(downloads.filter((d) => ['queued', 'downloading', 'paused'].includes(d.status)));
+	const running = $derived(inFlight.filter((d) => d.status === 'downloading'));
+	const speed = $derived(inFlight.reduce((n, d) => n + (d.live?.download_rate ?? 0), 0));
+	const overall = $derived.by(() => {
+		const sized = inFlight.filter((d) => d.size);
+		const total = sized.reduce((n, d) => n + (d.size ?? 0), 0);
+		return total ? sized.reduce((n, d) => n + (d.size ?? 0) * d.progress, 0) / total : 0;
+	});
+	const summary = $derived(
+		inFlight.length === 0
+			? 'No downloads'
+			: [
+					running.length ? `${running.length} downloading` : null,
+					inFlight.length - running.length ? `${inFlight.length - running.length} waiting` : null
+				]
+					.filter(Boolean)
+					.join(', ')
+	);
 
 	async function signOut() {
 		await post('/auth/logout');
@@ -75,6 +116,20 @@
 				{/each}
 			</nav>
 			<div class="row right">
+				<a
+					class="dl"
+					class:idle={inFlight.length === 0}
+					href="/queue"
+					title={inFlight.map((d) => `${d.name}: ${Math.floor(d.progress * 100)}%`).join('\n') || 'Nothing downloading'}
+				>
+					<span class="arrow" aria-hidden="true">↓</span>
+					<span>{summary}</span>
+					{#if inFlight.length}
+						<span class="dlbar" aria-label="Overall progress"><span style="width: {Math.round(overall * 100)}%"></span></span>
+						<span class="muted">{Math.floor(overall * 100)}%{speed ? ` · ${rate(speed)}` : ''}</span>
+					{/if}
+					{#if attention}<span class="badge warn">{attention} to import</span>{/if}
+				</a>
 				{#if health}
 					<a
 						class="badge {health.status === 'ok' ? 'ok' : health.status === 'warning' ? 'warn' : 'error'}"
@@ -141,6 +196,51 @@
 		color: var(--text);
 		background: var(--surface-2);
 		font-weight: 600;
+	}
+	.dl {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.45rem;
+		font-size: 0.85rem;
+		color: var(--text);
+		padding: 0.25rem 0.6rem;
+		border: 1px solid var(--border);
+		border-radius: 999px;
+		white-space: nowrap;
+	}
+	.dl:hover {
+		text-decoration: none;
+		border-color: var(--accent);
+	}
+	.dl.idle {
+		color: var(--muted);
+	}
+	.arrow {
+		color: var(--accent);
+		font-weight: 700;
+	}
+	.dl.idle .arrow {
+		color: var(--muted);
+	}
+	.dlbar {
+		width: 56px;
+		height: 5px;
+		border-radius: 999px;
+		background: var(--surface-2);
+		overflow: hidden;
+		display: inline-block;
+	}
+	.dlbar > span {
+		display: block;
+		height: 100%;
+		background: var(--accent);
+		transition: width 0.4s;
+	}
+	@media (max-width: 640px) {
+		.dlbar,
+		.dl .muted {
+			display: none;
+		}
 	}
 	.right {
 		margin-left: auto;
