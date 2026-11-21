@@ -29,6 +29,7 @@ from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy import case, exists, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from fetchbox.core.concurrency import check_if_match
 from fetchbox.core.db import Database, utcnow
@@ -60,6 +61,20 @@ POLL_INTERVAL = 2.0
 SWEEP_EVERY = 15  # polls between sweeps when nothing wakes us
 CATEGORY = {"movie": "fetchbox-movies", "series": "fetchbox-tv"}
 BUILTIN_NAME = "Built-in"
+
+
+def _superseded(item_id: Any, created_at: Any) -> Any:
+    """EXISTS a later grab for the same wanted item. A grab that failed before reaching
+    a client has no download row; once a newer grab claims its items, it must not be
+    picked up again."""
+    later = aliased(Grab)
+    later_item = aliased(GrabItem)
+    return (
+        exists()
+        .where(later_item.grab_id == later.id)
+        .where(later_item.wanted_item_id == item_id)
+        .where(later.created_at > created_at)
+    )
 
 
 class PathMapping(BaseModel):
@@ -250,6 +265,7 @@ class DownloadsService:
                 .join(WantedItem, WantedItem.id == GrabItem.wanted_item_id)
                 .where(WantedItem.state == "grabbed")
                 .where(~exists().where(Download.grab_id == Grab.id))
+                .where(~_superseded(GrabItem.wanted_item_id, Grab.created_at))
                 .distinct()
             )
             ids = list((await s.execute(waiting)).scalars())
@@ -294,6 +310,15 @@ class DownloadsService:
             items = await self._items(s, grab_id)
             if not items or all(w.state != "grabbed" for w in items):
                 return {"skipped": "items no longer waiting"}
+            newer = await s.scalar(
+                select(
+                    _superseded(GrabItem.wanted_item_id, grab.created_at).where(
+                        GrabItem.wanted_item_id.in_([w.id for w in items])
+                    )
+                )
+            )
+            if newer:  # a later grab (say, the alternative to this failed one) owns them
+                return {"skipped": "superseded by a newer grab"}
             title = await s.get(Title, items[0].title_id)
         media_kind = title.kind if title else "movie"
         try:

@@ -6,6 +6,7 @@ instead of failing to add and setting off a retry search.
 
 from __future__ import annotations
 
+import asyncio
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -292,3 +293,26 @@ async def test_crash_mid_search_is_recovered(c: httpx.AsyncClient, server: Runni
     assert await server.app.state.autosearch.recover() == 1
     w = await _wanted(c, wid)
     assert w["state"] == "missing" and w["next_search_at"] is None
+
+
+async def test_a_grab_that_never_started_is_not_retried_after_its_alternative(
+    c: httpx.AsyncClient, fakes: Fakes, items: list[Item], server: Running
+) -> None:
+    """The best release can't even be added (a broken magnet); the alternative is grabbed.
+    The failed grab has no download row, but it must not be picked up again once the
+    alternative's grab puts the item back in "grabbed"."""
+    broken = Item(BEST, size=4 * GB, magnet="magnet:?xt=urn:btih:not-a-hash")  # unusable
+    await _indexer(c, fakes, "one", [broken, items[1]])
+    movie = await _movie(c, search=True)
+    wid = movie["wanted"][0]["id"]
+
+    async def alternative_downloading() -> bool:
+        return any(d["name"] == NEXT for d in (await c.get("/downloads")).json())
+
+    await until(alternative_downloading, within=30)
+    assert await server.app.state.downloads.sweep() == 0  # the stale grab stays put
+    await asyncio.sleep(1)
+    hist = (await c.get(f"/titles/{movie['id']}/history")).json()["items"]
+    assert [h["type"] for h in hist] == ["grabbed", "failed", "grabbed"]
+    w = await _wanted(c, wid)
+    assert w["state"] == "downloading"
