@@ -29,7 +29,10 @@ async def test_health_ok_and_emits_change(client: httpx.AsyncClient, server: Run
     assert {n for n, c in checks.items() if c["status"] != "ok"} == {"metadata", "indexers"}
     assert {"database", "torrent_engine"} <= set(checks)
     assert body["status"] == "warning"
-    assert sub.queue.get_nowait().data["status"] == "warning"
+    events = []
+    while not sub.queue.empty():
+        events.append(sub.queue.get_nowait())
+    assert events and events[-1].data["status"] == "warning"  # (startup's check may come first)
     await client.get("/system/health")
     assert sub.queue.empty()  # unchanged status -> no new event
 

@@ -49,7 +49,8 @@ async def running(
 ) -> AsyncIterator[Running]:
     keys: list[str] = []
     app = create_app(settings, job_handler_hooks=hooks, on_bootstrap_key=keys.append)
-    async with LifespanManager(app):
+    # Generous: slow CI runners (Windows) need more than the 5 s default to start the engine.
+    async with LifespanManager(app, startup_timeout=60, shutdown_timeout=60):
         assert keys, "bootstrap key was not issued"
         yield Running(app, keys[0])
 

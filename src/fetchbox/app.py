@@ -200,9 +200,11 @@ def create_app(
         for hook in job_handler_hooks:
             hook(state.jobs)
         await state.jobs.start()
-        await state.scheduler.start()
+        # Engine and import before the scheduler: its run-at-start health check would
+        # otherwise see the torrent engine "not running".
         await downloads.start()
         await library.start()
+        await state.scheduler.start()
 
         log.info(
             "started",

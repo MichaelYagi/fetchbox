@@ -54,7 +54,10 @@ async def test_seed_does_not_overwrite_edits(settings: Any) -> None:
         assert (await c.delete(f"/quality-profiles/{four_k['id']}")).status_code == 204
 
     app = create_app(settings, on_bootstrap_key=lambda _k: None)  # restart: no new key
-    async with LifespanManager(app), Running(app, key).client() as c:
+    async with (
+        LifespanManager(app, startup_timeout=60, shutdown_timeout=60),
+        Running(app, key).client() as c,
+    ):
         names = {p["name"]: p for p in (await c.get("/quality-profiles")).json()}
     assert set(names) == {"Standard HD"}  # a deleted default stays deleted
     assert names["Standard HD"]["cutoff"] == "Bluray-1080p"
