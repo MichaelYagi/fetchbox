@@ -63,10 +63,13 @@
 
 	function saveClient(e: SubmitEvent, c: S['ClientOut']) {
 		e.preventDefault();
+		// The built-in clients have nothing to connect to: only their priority is edited
+		// (sending settings would restart the torrent engine for nothing).
+		const builtIn = c.kind === 'builtin' || c.kind === 'direct';
 		const settings: Record<string, unknown> = { url: draft.url };
 		if (c.kind !== 'deluge') settings.username = draft.username || null;
 		if (draft.password) settings.password = draft.password;
-		const body = { priority: draft.priority, settings };
+		const body = builtIn ? { priority: draft.priority } : { priority: draft.priority, settings };
 		act(`save-${c.id}`, () => patch(`/download-clients/${c.id}`, body, c.etag), `${c.name} saved.`).then(
 			() => {
 				if (!error) editing = null;
@@ -214,7 +217,10 @@
 						{#each indexers as i (i.id)}
 							<tr>
 								<td><strong>{i.name}</strong></td>
-								<td class="muted">{i.kind === 'definition' ? (i.settings.definition as string) : i.kind}</td>
+								<td class="muted">
+									{i.kind === 'definition' ? (i.settings.definition as string) : i.kind}
+									<span class="small">· priority {i.priority}</span>
+								</td>
 								<td class="small">
 									{#if !i.enabled}<span class="badge">Disabled</span>
 									{:else if i.disabled_until}<span class="badge warn" title={i.last_error ?? ''}>Backing off</span>
@@ -298,17 +304,15 @@
 					{#each clients as c (c.id)}
 						<tr>
 							<td><strong>{c.name}</strong></td>
-							<td class="muted">{c.kind}</td>
+							<td class="muted">{c.kind} <span class="small">· priority {c.priority}</span></td>
 							<td class="small">
 								<span class="badge {c.enabled ? (c.running ? 'ok' : 'warn') : ''}">{c.enabled ? (c.running ? 'Running' : 'Not running') : 'Disabled'}</span>
 								{#if tests[c.id]}<div class={tests[c.id].ok ? 'okt' : 'errt'}>{tests[c.id].message}</div>{/if}
 							</td>
 							<td><div class="row end">
-								{#if c.kind !== 'builtin' && c.kind !== 'direct'}
-									<button class="small" onclick={() => (editing === c.id ? (editing = null) : editClient(c))} disabled={!!busy}>
-										{editing === c.id ? 'Cancel' : 'Edit'}
-									</button>
-								{/if}
+								<button class="small" onclick={() => (editing === c.id ? (editing = null) : editClient(c))} disabled={!!busy}>
+									{editing === c.id ? 'Cancel' : 'Edit'}
+								</button>
 								<button class="small" onclick={() => test('download-clients', c.id)} disabled={!!busy}>Test</button>
 								<button class="small" onclick={() => act(c.id, () => patch(`/download-clients/${c.id}`, { enabled: !c.enabled }, c.etag))} disabled={!!busy}>
 									{c.enabled ? 'Disable' : 'Enable'}
@@ -322,12 +326,18 @@
 							<tr class="editrow">
 								<td colspan="4">
 									<form class="row" onsubmit={(e) => saveClient(e, c)}>
-										<label class="grow">URL <input bind:value={draft.url} required /></label>
-										{#if c.kind !== 'deluge'}<label>Username <input bind:value={draft.username} autocomplete="off" /></label>{/if}
-										<label>Password <input type="password" bind:value={draft.password} placeholder="unchanged" autocomplete="off" /></label>
+										{#if c.kind !== 'builtin' && c.kind !== 'direct'}
+											<label class="grow">URL <input bind:value={draft.url} required /></label>
+											{#if c.kind !== 'deluge'}<label>Username <input bind:value={draft.username} autocomplete="off" /></label>{/if}
+											<label>Password <input type="password" bind:value={draft.password} placeholder="unchanged" autocomplete="off" /></label>
+										{/if}
 										<label class="narrow">Priority <input type="number" min="1" max="50" bind:value={draft.priority} /></label>
 										<button class="primary" disabled={!!busy}>Save</button>
 									</form>
+									<p class="muted small hint">
+										Torrents go to the enabled client with the lowest priority number (a tie goes by
+										name). Direct downloads only ever take direct files.
+									</p>
 								</td>
 							</tr>
 						{/if}
