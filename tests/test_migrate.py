@@ -21,7 +21,11 @@ KEY = "arr-api-key-123"
 
 def fake_arr(root: Path) -> Any:
     data = {
-        port: json.loads((FIXTURES / f"{kind}.json").read_text().replace("{ROOT}", root.as_posix()))
+        port: json.loads(
+            (FIXTURES / f"{kind}.json")
+            .read_text(encoding="utf-8")
+            .replace("{ROOT}", root.as_posix())
+        )
         for kind, port in (("radarr", 7878), ("sonarr", 8989))
     }
 
@@ -109,7 +113,7 @@ async def test_move_from_radarr_and_sonarr(
            if e["wanted"]["state"] == "acquired"}  # fmt: skip
     assert got == {(1, 1), (1, 2)}
     folders = {d["name"]: d["path"] for d in (await c.get("/destinations")).json()}
-    assert folders["Radarr movies"] == str(media / "movies")
+    assert Path(folders["Radarr movies"]) == media / "movies"
 
     # running it again changes nothing
     res = (await _job(c, (await c.post("/library/migrate/apply", json=radarr)).json()["id"]))[
