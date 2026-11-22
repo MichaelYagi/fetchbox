@@ -453,7 +453,7 @@ Progress (branch `phase5`, PR #7):
       removed: by hand or at its seeding goal; a paused one may seed again)
 - [ ] Import an existing music folder (by tags)
 - [ ] Music naming presets in Settings
-- [ ] Album release dates on the calendar
+- [x] Album release dates on the calendar (wanted albums)
 
 **Until then:** keep Phases 3-4 generic about media kind where it is cheap (library
 import, naming, destinations, the kind check constraints), so music adds a kind rather
