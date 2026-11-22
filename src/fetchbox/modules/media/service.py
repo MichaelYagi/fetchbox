@@ -158,11 +158,14 @@ class MediaService:
 
     # ---- titles -----------------------------------------------------------------------------
 
-    async def _check_profile(self, profile_id: str) -> None:
+    async def _check_profile(self, profile_id: str, media: str = "video") -> None:
         try:
-            await self.profiles.get_profile(profile_id)
+            p = await self.profiles.get_profile(profile_id)
         except NotFoundError:
             raise _invalid("body.profile_id", f"no quality profile {profile_id!r}") from None
+        if p.media != media:
+            what = "an artist" if media == "music" else "a movie or series"
+            raise _invalid("body.profile_id", f"{p.name!r} is a {p.media} profile, not for {what}")
 
     async def _existing(self, s: AsyncSession, kind: str, tmdb_id: int) -> Title | None:
         q = select(Title).where(Title.kind == kind, Title.tmdb_id == tmdb_id)
@@ -512,8 +515,12 @@ class MediaService:
     async def update_title(
         self, title_id: str, changes: dict[str, Any], *, if_match: str | None, actor: Actor
     ) -> Title:
+        async with self.db.sessionmaker() as s:
+            kind = (await self._title(s, title_id)).kind
         if "profile_id" in changes:
-            await self._check_profile(changes["profile_id"])
+            await self._check_profile(
+                changes["profile_id"], "music" if kind == "music" else "video"
+            )
         async with self.db.sessionmaker() as s:
             row = await self._title(s, title_id)
             check_if_match(row, if_match)

@@ -4645,6 +4645,13 @@ export interface components {
              */
             languages?: string[];
             /**
+             * Media
+             * @description video: movies and TV; music: artists
+             * @default video
+             * @enum {string}
+             */
+            media: "video" | "music";
+            /**
              * Min Format Score
              * @description Releases scoring below are rejected
              * @default 0
@@ -4738,6 +4745,13 @@ export interface components {
              * @description Allowed audio languages (ISO 639-1 or "original"); empty = any
              */
             languages?: string[];
+            /**
+             * Media
+             * @description video: movies and TV; music: artists
+             * @default video
+             * @enum {string}
+             */
+            media: "video" | "music";
             /**
              * Min Format Score
              * @description Releases scoring below are rejected
@@ -11055,7 +11069,10 @@ export interface operations {
     };
     list_profiles_api_v1_quality_profiles_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Only profiles for movies and TV (video) or for music */
+                media?: ("video" | "music") | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -11069,6 +11086,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProfileOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

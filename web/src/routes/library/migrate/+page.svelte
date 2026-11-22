@@ -27,7 +27,7 @@
 	const label = $derived(kind === 'radarr' ? 'Radarr' : 'Sonarr');
 	const port = $derived(kind === 'radarr' ? '7878' : '8989');
 	$effect(() => {
-		get<S['ProfileOut'][]>('/quality-profiles').then((p) => (profiles = p));
+		get<S['ProfileOut'][]>('/quality-profiles', { media: 'video' }).then((p) => (profiles = p));
 	});
 
 	async function waitFor(id: string): Promise<Record<string, unknown>> {

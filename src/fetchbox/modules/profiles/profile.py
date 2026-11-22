@@ -11,11 +11,12 @@ from __future__ import annotations
 import re
 from collections.abc import Iterable
 from dataclasses import dataclass
+from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
 from fetchbox.modules.profiles.formats import FormatScore, FormatSpec, ReleaseInfo, score_release
-from fetchbox.modules.profiles.qualities import BY_NAME, SizeLimit, default_size
+from fetchbox.modules.profiles.qualities import BY_NAME, SizeLimit, default_size, media_of
 from fetchbox.modules.releases.parser import ParsedRelease
 
 ORIGINAL = "original"  # pseudo-language: the title's original language
@@ -30,6 +31,9 @@ class ProfileSpec(BaseModel):
     """The editable content of a profile, validated as a whole."""
 
     name: str = Field(min_length=1, max_length=100)
+    media: Literal["video", "music"] = Field(
+        default="video", description="video: movies and TV; music: artists"
+    )
     ladder: list[Tier] = Field(min_length=1, description="Tiers, worst first")
     cutoff: str = Field(description="Name of the tier at which upgrades stop")
     upgrade_allowed: bool = True
@@ -63,6 +67,8 @@ class ProfileSpec(BaseModel):
             for q in tier.qualities:
                 if q not in BY_NAME:
                     raise ValueError(f"unknown quality {q!r} (see GET /qualities)")
+                if media_of(q) != self.media:
+                    raise ValueError(f"{q!r} isn't a {self.media} quality")
                 if q in seen:
                     raise ValueError(f"quality {q!r} appears in more than one tier")
                 seen.add(q)

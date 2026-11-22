@@ -51,7 +51,11 @@ async def test_add_an_artist(c: httpx.AsyncClient, server: Running) -> None:
     [hit] = (await c.get("/music/search", params={"q": "portishead"})).json()
     assert hit["mbid"] == ARTIST and hit["in_library"] is None
 
-    profile = (await c.get("/quality-profiles")).json()[0]["id"]
+    video = (await c.get("/quality-profiles", params={"media": "video"})).json()[0]["id"]
+    r = await c.post("/music/artists", json={"mbid": ARTIST, "profile_id": video})
+    assert r.status_code == 422 and "video profile" in r.text
+    profile = next(p["id"] for p in (await c.get("/quality-profiles")).json()
+                   if p["name"] == "Lossless")  # fmt: skip
     r = await c.post("/music/artists", json={"mbid": ARTIST, "profile_id": profile})
     assert r.status_code == 201, r.text
     artist = r.json()

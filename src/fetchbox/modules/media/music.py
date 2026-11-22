@@ -161,7 +161,7 @@ class MusicService:
         kinds = list(album_kinds or DEFAULT_KINDS)
         if bad := [k for k in kinds if k not in ALBUM_KINDS]:
             raise _invalid("body.album_kinds", f"unknown: {', '.join(bad)}")
-        await self.media._check_profile(profile_id)
+        await self.media._check_profile(profile_id, "music")
         async with self.db.sessionmaker() as s:
             dup = (
                 await s.execute(select(Title).where(Title.kind == "music", Title.mbid == mbid))

@@ -73,6 +73,11 @@ def upgrade() -> None:
         batch_op.add_column(sa.Column("mbid", sa.String(length=36), nullable=True))
         batch_op.create_index(batch_op.f("ix_title_mbid"), ["mbid"], unique=False)
 
+    with op.batch_alter_table("quality_profile", schema=None) as batch_op:
+        batch_op.add_column(
+            sa.Column("media", sa.String(length=10), server_default="video", nullable=False)
+        )
+
     with op.batch_alter_table("destination", schema=None) as batch_op:
         batch_op.drop_constraint(op.f("ck_destination_media_kind"), type_="check")
         batch_op.create_check_constraint(
@@ -103,6 +108,9 @@ def downgrade() -> None:
         batch_op.drop_column("album_id")
 
     op.execute("DELETE FROM title WHERE kind = 'music'")
+    op.execute("DELETE FROM quality_profile WHERE media = 'music'")
+    with op.batch_alter_table("quality_profile", schema=None) as batch_op:
+        batch_op.drop_column("media")
     op.execute("DELETE FROM destination WHERE media_kind = 'music'")
     with op.batch_alter_table("destination", schema=None) as batch_op:
         batch_op.drop_constraint(op.f("ck_destination_media_kind"), type_="check")

@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
-from fastapi import APIRouter, Depends, Header, Request, Response
+from fastapi import APIRouter, Depends, Header, Query, Request, Response
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 from fetchbox.core.concurrency import etag
@@ -96,8 +96,14 @@ def _profile_out(row: QualityProfile, response: Response | None = None) -> Profi
 
 
 @router.get("/quality-profiles", response_model=list[ProfileOut], dependencies=_read)
-async def list_profiles(request: Request) -> list[ProfileOut]:
-    return [_profile_out(r) for r in await _svc(request).list_profiles()]
+async def list_profiles(
+    request: Request,
+    media: Literal["video", "music"] | None = Query(
+        None, description="Only profiles for movies and TV (video) or for music"
+    ),
+) -> list[ProfileOut]:
+    rows = await _svc(request).list_profiles()
+    return [_profile_out(r) for r in rows if media is None or r.media == media]
 
 
 @router.post(

@@ -5614,6 +5614,16 @@
       "title": "Languages",
       "type": "array"
      },
+     "media": {
+      "default": "video",
+      "description": "video: movies and TV; music: artists",
+      "enum": [
+       "video",
+       "music"
+      ],
+      "title": "Media",
+      "type": "string"
+     },
      "min_format_score": {
       "default": 0,
       "description": "Releases scoring below are rejected",
@@ -5840,6 +5850,16 @@
       },
       "title": "Languages",
       "type": "array"
+     },
+     "media": {
+      "default": "video",
+      "description": "video: movies and TV; music: artists",
+      "enum": [
+       "video",
+       "music"
+      ],
+      "title": "Media",
+      "type": "string"
      },
      "min_format_score": {
       "default": 0,
@@ -17425,6 +17445,30 @@
   "/api/v1/quality-profiles": {
    "get": {
     "operationId": "list_profiles_api_v1_quality_profiles_get",
+    "parameters": [
+     {
+      "description": "Only profiles for movies and TV (video) or for music",
+      "in": "query",
+      "name": "media",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "enum": [
+          "video",
+          "music"
+         ],
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Only profiles for movies and TV (video) or for music",
+       "title": "Media"
+      }
+     }
+    ],
     "responses": {
      "200": {
       "content": {
@@ -17439,6 +17483,16 @@
        }
       },
       "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
      }
     },
     "security": [

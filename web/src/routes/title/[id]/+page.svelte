@@ -228,7 +228,7 @@
 						<label class="inline">
 							Quality
 							<select value={title.profile_id} onchange={(e) => setProfile(e.currentTarget.value)} disabled={!!busy}>
-								{#each profiles as p (p.id)}<option value={p.id}>{p.name}</option>{/each}
+								{#each profiles.filter((x) => x.media === (title?.kind === 'music' ? 'music' : 'video')) as p (p.id)}<option value={p.id}>{p.name}</option>{/each}
 							</select>
 						</label>
 						<label class="inline">
@@ -275,7 +275,7 @@
 						<label class="inline">
 							Quality
 							<select value={title.profile_id} onchange={(e) => setProfile(e.currentTarget.value)} disabled={!!busy}>
-								{#each profiles as p (p.id)}<option value={p.id}>{p.name}</option>{/each}
+								{#each profiles.filter((x) => x.media === (title?.kind === 'music' ? 'music' : 'video')) as p (p.id)}<option value={p.id}>{p.name}</option>{/each}
 							</select>
 						</label>
 						<label class="inline">

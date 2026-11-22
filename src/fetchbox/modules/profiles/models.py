@@ -14,6 +14,7 @@ class QualityProfile(IdMixin, VersionMixin, Base):
     __tablename__ = "quality_profile"
 
     name: Mapped[str] = mapped_column(String(100), unique=True)
+    media: Mapped[str] = mapped_column(String(10), default="video", server_default="video")
     ladder: Mapped[list[dict[str, Any]]] = mapped_column(JSON)
     cutoff: Mapped[str] = mapped_column(String(100))
     upgrade_allowed: Mapped[bool] = mapped_column(Boolean, default=True)

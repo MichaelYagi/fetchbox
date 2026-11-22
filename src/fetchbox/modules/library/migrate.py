@@ -191,7 +191,7 @@ class Migrator:
             raise ProblemError(422, "Validation Failed", exc.message, slug="validation") from None
         finally:
             await client.aclose()
-        ours = {p.name: p.id for p in await self.profiles.list_profiles()}
+        ours = {p.name: p.id for p in await self.profiles.list_profiles() if p.media == "video"}
         known = {
             t.tmdb_id
             for t in await self.media.all_titles()
@@ -287,7 +287,7 @@ class Migrator:
             titles = await client.titles()
             roots = await client.root_folders()
             dests = await self._destinations(kind, media_kind, [r["path"] for r in roots], mappings)
-            ours = {p.name: p.id for p in await self.profiles.list_profiles()}
+            ours = {p.name: p.id for p in await self.profiles.list_profiles() if p.media == "video"}
             theirs = {p["id"]: p["name"] for p in await client.quality_profiles()}
             later = utcnow() + FIRST_SEARCH_AFTER
             todo = [t for t in titles if only is None or t["id"] in only]

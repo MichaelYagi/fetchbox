@@ -30,7 +30,7 @@
 	let owned = $state(new Map<number, string>());
 
 	$effect(() => {
-		get<S['ProfileOut'][]>('/quality-profiles').then((p) => {
+		get<S['ProfileOut'][]>('/quality-profiles', { media: 'video' }).then((p) => {
 			profiles = p;
 			profile = (p.find((x) => x.name === '1080p') ?? p[0])?.id ?? '';
 		});

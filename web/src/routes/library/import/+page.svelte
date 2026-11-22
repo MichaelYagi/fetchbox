@@ -45,7 +45,7 @@
 	$effect(() => {
 		if (!destId) return;
 		get<S['DestinationOut'][]>('/destinations').then((d) => (dest = d.find((x) => x.id === destId) ?? null));
-		get<S['ProfileOut'][]>('/quality-profiles').then((p) => {
+		get<S['ProfileOut'][]>('/quality-profiles', { media: 'video' }).then((p) => {
 			profiles = p;
 			profile = (p.find((x) => x.name === '1080p') ?? p[0])?.id ?? '';
 		});
