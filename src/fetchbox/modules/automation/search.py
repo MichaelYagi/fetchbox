@@ -466,14 +466,15 @@ class AutoSearch:
             for pick in outcome.picks:
                 await self._grab(
                     pick, plan.covered(pick), ids, taken, grabs, result,
-                    via="rss" if feed is not None else "search",
+                    via="rss" if feed is not None else "search", manual=reason == "manual",
                 )  # fmt: skip
             if season_query and feed is None:  # episodes the season search didn't cover, one by one
                 left = [w for w in eligible if w.id not in taken][:EPISODE_FALLBACK]
                 for w in left:
                     _, more, eplan = await self.releases.run([w], mode="automatic", actor=SYSTEM)
                     for pick in more.picks[:1]:
-                        await self._grab(pick, eplan.covered(pick), ids, taken, grabs, result)
+                        await self._grab(pick, eplan.covered(pick), ids, taken, grabs, result,
+                                         manual=reason == "manual")  # fmt: skip
         finally:
             async with self.db.sessionmaker() as s:
                 # Not grabbed: back to missing (a grab already moved them on).
@@ -505,15 +506,31 @@ class AutoSearch:
         result: dict[str, Any],
         *,
         via: GrabReason = "search",
+        manual: bool = False,
     ) -> None:
         """Grab ``pick`` for the eligible items it covers that nothing else took yet."""
         mine = [i for i in covered if i in ids and i not in taken]
         if not mine:
             return
         async with self.db.sessionmaker() as s:
-            states = set(
-                (await s.execute(select(WantedItem.state).where(WantedItem.id.in_(mine)))).scalars()
-            )
+            rows = (
+                await s.execute(
+                    select(WantedItem.id, WantedItem.state, WantedItem.monitored).where(
+                        WantedItem.id.in_(mine)
+                    )
+                )
+            ).all()
+        if not manual:
+            # Looked at again now, not just before the search: unticking "monitored" while
+            # the indexers were being searched must stop the grab (it can take seconds).
+            dropped = {i for i, _, monitored in rows if not monitored}
+            if dropped:
+                result["skipped"] = "no longer monitored"
+                mine = [i for i in mine if i not in dropped]
+                rows = [r for r in rows if r[0] not in dropped]
+                if not mine:
+                    return
+        states = {state for _, state, _ in rows}
         reason: GrabReason = "upgrade" if states == {"acquired"} else via
         try:
             grab, _ = await self.grabs.grab(pick, mine, reason=reason, actor=SYSTEM)
