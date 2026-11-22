@@ -301,6 +301,14 @@ class DownloadsService:
             return str(self.save_root(row))
         return None
 
+    async def link_sources(self) -> list[tuple[str, str]]:
+        """(client name, folder) where enabled clients' downloads land, when known."""
+        out = []
+        for row in await self.client_rows():
+            if row.enabled and (where := self.saves_to(row)):
+                out.append((row.name, where))
+        return out
+
     def save_root(self, row: DownloadClient) -> Path:
         p = self.policy(row).save_path
         return Path(p).expanduser() if p else self.downloads_root / "Torrents"
@@ -659,6 +667,33 @@ class DownloadsService:
             action=policy.seed_action,
             deleted_data=delete_data,
         )
+
+    async def imported_to(self, download_ids: list[str]) -> dict[str, tuple[str, str]]:
+        """download id -> (where its file is in the library, how: hardlink / copy / ...),
+        from the import history; the newest import wins."""
+        if not download_ids:
+            return {}
+        from fetchbox.modules.storage.models import Destination
+
+        async with self.db.sessionmaker() as s:
+            folders = {d.name: d.path for d in (await s.execute(select(Destination))).scalars()}
+            rows = (
+                await s.execute(
+                    select(HistoryEvent.data)
+                    .where(HistoryEvent.type.in_(("imported", "upgraded")))
+                    .order_by(HistoryEvent.created_at)
+                )
+            ).scalars()
+            wanted = set(download_ids)
+            out: dict[str, tuple[str, str]] = {}
+            for data in rows:
+                data = data or {}
+                did, rel = data.get("download_id"), data.get("path")
+                if did in wanted and rel:
+                    root = folders.get(data.get("destination") or "")
+                    full = str(Path(root) / rel) if root else rel
+                    out[did] = (full, str(data.get("link_mode") or ""))
+            return out
 
     async def _symlinked(self, d: Download) -> bool:
         """Was this download imported as a symlink? Then its data is the library file."""

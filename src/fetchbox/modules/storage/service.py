@@ -14,7 +14,7 @@ import asyncio
 import os
 import re
 import shutil
-from collections.abc import Callable, Sequence
+from collections.abc import Awaitable, Callable, Sequence
 from datetime import timedelta
 from pathlib import Path
 from typing import Any
@@ -122,6 +122,9 @@ class StorageService:
         self.downloads_root = downloads_root
         self.torrents_dir = torrents_dir
         self.local = LocalStorage(LocalStorage.Settings())
+        # Where downloads really land: (client name, folder) for each enabled client
+        # whose folder Fetchbox knows. Set by the app; the hardlink check uses them all.
+        self.link_sources: Callable[[], Awaitable[list[tuple[str, str]]]] | None = None
 
     # ---- seed + startup ---------------------------------------------------------------------
 
@@ -286,6 +289,17 @@ class StorageService:
                     learned = current
             link_from = await asyncio.to_thread(self._prepare, path, d.is_default)
             r = await self.local.check_access(str(path), link_source=str(link_from))
+            # Hardlinks from every folder downloads actually land in, not only the default
+            # torrent folder: a client saving to another drive means a copy per import.
+            no_links: list[str] = []
+            if r.exists and r.is_dir and r.writable:
+                sources = await self.link_sources() if self.link_sources else []
+                for client, folder in sources:
+                    if not await asyncio.to_thread(Path(folder).is_dir):
+                        continue
+                    rr = await self.local.check_access(str(path), link_source=folder)
+                    if rr.hardlink_with is False:
+                        no_links.append(f"{client} ({folder})")
             if not r.exists:
                 status, message = "offline", "folder does not exist"
             elif not r.is_dir or not r.writable or not r.deletable:
@@ -302,6 +316,15 @@ class StorageService:
                     status, message = (
                         "degraded",
                         "hardlinks from the torrent folder are not possible",
+                    )
+                elif no_links and d.link_mode in ("hardlink_or_copy", "hardlink_only"):
+                    # A second full copy of every download: say so, and how to avoid it.
+                    status = "degraded"
+                    verb = "can't be imported" if d.link_mode == "hardlink_only" else "are copied"
+                    message = (
+                        f"downloads from {', '.join(no_links)} {verb} here: not the same drive, "
+                        "so no hardlinks. Put this folder on the same drive as the downloads "
+                        "(or the client's folder on this one) to keep one copy of each file"
                     )
                 else:
                     message = f"{usage.free / GB:.1f} GB free" + (

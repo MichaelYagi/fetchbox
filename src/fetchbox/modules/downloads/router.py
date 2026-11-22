@@ -71,10 +71,22 @@ class DownloadOut(_Versioned):
         description="When the seeding goal was met and the torrent was stopped"
     )
     live: LiveOut | None = Field(description="From the client's last poll (active downloads)")
+    imported_to: str | None = Field(
+        default=None, description="Where the imported file is in the library"
+    )
+    imported_as: str | None = Field(
+        default=None, description="How: hardlink (one file, no extra space), copy, move..."
+    )
 
 
-def _out(svc: DownloadsService, d: Download, response: Response | None = None) -> DownloadOut:
+def _out(
+    svc: DownloadsService,
+    d: Download,
+    response: Response | None = None,
+    imported: dict[str, tuple[str, str]] | None = None,
+) -> DownloadOut:
     t = svc.live.get(d.id)
+    where, how = (imported or {}).get(d.id, (None, None))
     out = DownloadOut(
         id=d.id,
         version=d.version,
@@ -100,6 +112,8 @@ def _out(svc: DownloadsService, d: Download, response: Response | None = None) -
         live=LiveOut(**t.model_dump(include=set(LiveOut.model_fields)))
         if t is not None and d.status in ("queued", "downloading", "paused", "completed")
         else None,
+        imported_to=where,
+        imported_as=how,
     )
     if response is not None:
         response.headers["ETag"] = out.etag
@@ -133,7 +147,9 @@ async def list_downloads(
 ) -> list[DownloadOut]:
     """Queue order: highest priority first, then oldest."""
     svc = _svc(request)
-    return [_out(svc, d) for d in await svc.downloads(status)]
+    rows = await svc.downloads(status)
+    imported = await svc.imported_to([d.id for d in rows if d.import_status == "imported"])
+    return [_out(svc, d, imported=imported) for d in rows]
 
 
 @router.get("/downloads/limits", response_model=LimitsIO, dependencies=_read)

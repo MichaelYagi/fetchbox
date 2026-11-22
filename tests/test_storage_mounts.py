@@ -65,3 +65,42 @@ async def test_recycle_retention(server: Running, settings: Any) -> None:
 async def test_mounts_listed(c: httpx.AsyncClient) -> None:
     r = await c.get("/storage/mounts")
     assert r.status_code == 200 and isinstance(r.json(), list)
+
+
+async def test_copies_from_a_client_on_another_drive_are_flagged(
+    c: httpx.AsyncClient, server: Running, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A client saving to another drive than the library means a full second copy of
+    every download: the library folder says so, naming the client and its folder."""
+    other_drive = tmp_path / "C-drive" / "Downloads"
+    other_drive.mkdir(parents=True)
+    storage = server.app.state.storage
+    real = storage.local.check_access
+
+    async def probe(path: str, *, link_source: str | None = None) -> Any:
+        r = await real(path, link_source=link_source)
+        if link_source and Path(link_source) == other_drive:
+            r.hardlink_with = False  # what a second drive answers
+        return r
+
+    monkeypatch.setattr(storage.local, "check_access", probe)
+    movies = next(d for d in (await c.get("/destinations")).json() if d["media_kind"] == "movie")
+    assert (await c.post(f"/destinations/{movies['id']}/check")).json()["status"] == "online"
+
+    builtin = next(x for x in (await c.get("/download-clients")).json() if x["kind"] == "builtin")
+    r = await c.patch(f"/download-clients/{builtin['id']}",
+                      json={"policy": {"save_path": str(other_drive)}})  # fmt: skip
+    assert r.status_code == 200, r.text
+    d = (await c.post(f"/destinations/{movies['id']}/check")).json()
+    assert d["status"] == "degraded"
+    assert "are copied" in d["status_message"] and str(other_drive) in d["status_message"]
+    assert builtin["name"] in d["status_message"]
+    health = (await c.get("/system/health")).json()
+    assert any("are copied" in (x.get("message") or "") for x in health["checks"]), health
+
+    # hardlink only: such downloads wait instead of being copied, and it says that
+    r = await c.patch(f"/destinations/{movies['id']}", json={"link_mode": "hardlink_only"},
+                      headers={"If-Match": d["etag"]})  # fmt: skip
+    assert r.status_code == 200, r.text
+    d = (await c.post(f"/destinations/{movies['id']}/check")).json()
+    assert d["status"] == "degraded" and "can't be imported" in d["status_message"]

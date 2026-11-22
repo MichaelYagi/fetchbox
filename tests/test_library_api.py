@@ -130,6 +130,9 @@ async def test_gate_add_movie_get_named_file(
 
     [imp] = (await c.get("/imports")).json()
     assert imp["status"] == "imported" and imp["imported_at"]
+    # the queue says where the library copy is, and that it's a hardlink
+    [dl] = (await c.get("/downloads")).json()
+    assert dl["imported_to"] == str(placed) and dl["imported_as"] == "hardlink"
     hist = [h["type"] for h in (await c.get(f"/titles/{movie['id']}/history")).json()["items"]]
     assert hist == ["imported", "grabbed"]
 

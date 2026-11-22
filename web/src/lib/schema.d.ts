@@ -2965,6 +2965,16 @@ export interface components {
             grab_id: string;
             /** Id */
             id: string;
+            /**
+             * Imported As
+             * @description How: hardlink (one file, no extra space), copy, move...
+             */
+            imported_as?: string | null;
+            /**
+             * Imported To
+             * @description Where the imported file is in the library
+             */
+            imported_to?: string | null;
             /** Info Hash */
             info_hash: string;
             /** @description From the client's last poll (active downloads) */

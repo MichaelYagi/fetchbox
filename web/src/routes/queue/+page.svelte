@@ -42,9 +42,11 @@
 		const active = ['queued', 'downloading', 'paused'].includes(d.status);
 		const msg = active
 			? `Stop and remove ${d.name}? Its data is deleted and the release is blocklisted, so another one is searched for.`
-			: `Stop seeding ${d.name}? The torrent and its copy in the torrent folder are removed; ` +
-				`the file in your library stays (it's a separate link or copy). A download that ` +
-				`hasn't been imported yet keeps its files.`;
+			: d.imported_to
+				? `Stop seeding ${d.name}?\n\nThe torrent's files in ${d.save_path ?? 'the download folder'} are deleted.\n\n` +
+					`Your library keeps its file:\n${d.imported_to}` +
+					(d.imported_as === 'hardlink' ? '\n(the same file, so no space is freed)' : '')
+				: `Stop seeding ${d.name}? It hasn't been imported into your library, so its files are kept.`;
 		if (!confirm(msg)) return;
 		act(d.id, () => del(`/downloads/${d.id}`, { delete_data: true, blocklist: active }));
 	}
@@ -135,7 +137,12 @@
 						<tr>
 							<td class="name">
 								{d.name}
-								{#if d.save_path}<div class="small muted"><Path path={d.save_path} /></div>{/if}
+								{#if d.imported_to}
+									<div class="small">
+										In your library: <Path path={d.imported_to} />
+										{#if d.imported_as === 'copy'}<span class="badge warn" title="A second full copy: the library and the download folder are on different drives">copy</span>{/if}
+									</div>
+								{:else if d.save_path}<div class="small muted"><Path path={d.save_path} /></div>{/if}
 								{#if d.error}<div class="small err">{d.error}</div>{/if}
 							</td>
 							<td><span class="badge {tone(d)}">{label(d)}</span></td>

@@ -228,6 +228,7 @@ def create_app(
             torrents_dir=settings.downloads_dir / "Torrents",
         )
         app.state.storage = storage
+        storage.link_sources = downloads.link_sources
         library = LibraryService(db, bus, jobs, storage, downloads, profiles, media)
         storage.register_jobs(jobs, state.scheduler, lambda: config.current.storage.recycle_days)
         backups_router.register(jobs, state.scheduler, backups)
