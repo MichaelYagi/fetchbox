@@ -112,7 +112,8 @@ jobs:
           curl -sf -X POST http://127.0.0.1:8787/api/v1/auth/login \
             -H 'Content-Type: application/json' \
             -d '{"username":"admin","password":"ci-password-123"}' -o /dev/null
-          ls -la /tmp/media                                         # Movies/, TV/, Torrents/
-          test -d /tmp/media/Movies && test -d /tmp/media/Torrents
+          ls -la /tmp/media                                         # Movies/, TV/
+          # downloads go into the library folders themselves: no separate Torrents folder
+          test -d /tmp/media/Movies && test -d /tmp/media/TV && test ! -e /tmp/media/Torrents
       - if: failure()
         run: docker logs fb
