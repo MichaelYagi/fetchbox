@@ -7,6 +7,7 @@ import contextlib
 import json
 from datetime import date
 from pathlib import Path
+from typing import Any
 
 import httpx
 import pytest
@@ -381,3 +382,100 @@ async def test_import_an_existing_music_folder(c: httpx.AsyncClient, server: Run
         i for i in again["result"]["items"] if i["match"] and i["match"]["album"] == "Dummy"
     )
     assert dummy_again["status"] == "imported"
+
+
+async def test_a_better_format_upgrades_the_album(
+    c: httpx.AsyncClient, server: Running, fakes: Fakes, tmp_path: Path
+) -> None:
+    """Gate: the album arrives as MP3 320; the profile aims for FLAC, so a FLAC release
+    replaces it (the MP3s go to the recycle folder) and the album is then complete."""
+    music = server.app.state.music
+    music.transport, music.interval = fake_mb(), 0
+    server.app.state.downloads.poll_interval = 0.1
+    server.app.state.library.sweep_interval = 0.2
+    r = await c.post(
+        "/quality-profiles",
+        json={
+            "name": "MP3 now, FLAC later",
+            "media": "music",
+            "languages": [],
+            "ladder": [
+                {"name": "MP3", "qualities": ["MP3-320"]},
+                {"name": "FLAC", "qualities": ["FLAC"]},
+            ],
+            "cutoff": "FLAC",
+            "sizes": {"MP3-320": {"min": 0}, "FLAC": {"min": 0}},
+        },
+    )
+    assert r.status_code == 201, r.text
+    profile = r.json()["id"]
+    dest = next(d for d in (await c.get("/destinations")).json() if d["media_kind"] == "music")
+    await c.patch(f"/destinations/{dest['id']}", json={"link_mode": "copy"},
+                  headers={"If-Match": dest["etag"]})  # fmt: skip
+    artist = (await c.post("/music/artists", json={"mbid": ARTIST, "profile_id": profile})).json()
+    await music.fill_editions()
+    dummy = next(a for a in (await c.get(f"/titles/{artist['id']}/albums")).json()
+                 if a["name"] == "Dummy")  # fmt: skip
+    engine = next(x for x in server.app.state.downloads.clients.values() if x.kind == "builtin")
+
+    async def get(name: str, fixture: str, ext: str, host: str) -> dict[str, Any]:
+        files = {f"{t['number']:02d} - {t['name']}{ext}": (AUDIO / fixture).read_bytes()
+                 for t in dummy["tracks"]}  # fmt: skip
+        made = _album_torrent(tmp_path / host, name, files)
+        seed = await seeder(made)
+        try:
+            await _indexer(
+                c,
+                fakes,
+                host,
+                [
+                    Item(
+                        name,
+                        size=sum(map(len, files.values())),
+                        category=3010,
+                        magnet=made.magnet,
+                        infohash=made.info_hash,
+                    )
+                ],
+            )
+            rel = (
+                await c.get("/releases", params={"wanted_item_id": dummy["wanted"]["id"]})
+            ).json()
+            best = next(x for x in rel["releases"] if x["candidate"]["title"] == name)
+            assert best["accepted"], best["rejections"]
+            assert (
+                await c.post("/grabs", json={"release_id": best["release_id"]})
+            ).status_code == 201
+
+            async def imported() -> bool:
+                with contextlib.suppress(Exception):
+                    engine.connect_peer(made.info_hash, "127.0.0.1", seed.listen_port or 0)
+                a = next(x for x in (await c.get(f"/titles/{artist['id']}/albums")).json()
+                         if x["id"] == dummy["id"])  # fmt: skip
+                hist = (await c.get(f"/titles/{artist['id']}/history")).json()["items"]
+                return a["wanted"]["state"] == "acquired" and any(
+                    h["data"].get("release_title") == name and h["type"] in ("imported", "upgraded")
+                    for h in hist
+                )
+
+            await until(imported, within=60)
+        finally:
+            await seed.stop()
+        return next(x for x in (await c.get(f"/titles/{artist['id']}/albums")).json()
+                    if x["id"] == dummy["id"])  # fmt: skip
+
+    first = await get("Portishead - Dummy (1994) [MP3 320]", "mp3_320_1s.mp3", ".mp3", "mp3idx")
+    assert not first["wanted"]["cutoff_met"]  # MP3: below the FLAC cutoff
+    folder = Path(dest["path"]) / "Portishead" / "Dummy (1994)"
+    assert sorted(p.suffix for p in folder.iterdir()) == [".mp3"] * 11
+
+    second = await get("Portishead - Dummy (1994) [FLAC]", "flac16_1s.flac", ".flac", "flacidx")
+    assert second["wanted"]["cutoff_met"]
+    assert sorted(p.suffix for p in folder.iterdir()) == [".flac"] * 11  # the MP3s are gone
+    recycled = list((Path(dest["path"]) / ".fetchbox-recycle").rglob("*.mp3"))
+    assert len(recycled) == 11  # ...to the recycle folder
+    hist = (await c.get(f"/titles/{artist['id']}/history")).json()["items"]
+    up = next(h for h in hist if h["type"] == "upgraded")
+    assert up["data"]["quality"] == "FLAC" and len(up["data"]["replaced"]) == 11
+    files = (await c.get(f"/titles/{artist['id']}/files")).json()
+    assert len(files) == 11 and {f["quality"]["name"] for f in files} == {"FLAC"}

@@ -453,6 +453,9 @@ Progress (branch `phase5`, PR #7):
       removed: by hand or at its seeding goal; a paused one may seed again)
 - [x] Import an existing music folder: albums by tags (MusicBrainz ids match exactly) or
       Artist/Album (Year) folders; recorded in place; Settings has a Music folder card
+- [x] Gate, as tests: an artist added; an album downloaded as FLAC with every track
+      matched, named and tagged; a better format upgrading it (MP3 320 -> FLAC, the MP3s
+      recycled); an existing tagged folder imported in place
 - [x] Music naming presets (Settings > Library folders > Music): folders, track names,
       disc folders or 2-03 numbers, with live examples
 - [x] Album release dates on the calendar (wanted albums)
