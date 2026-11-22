@@ -36,7 +36,14 @@ from fetchbox.core.events import Actor, EventBus
 from fetchbox.core.jobs import Job, JobContext, JobRunner
 from fetchbox.core.schedules import ScheduleDef, Scheduler
 from fetchbox.modules.automation.rss import RSS_JOB, rss_sync
-from fetchbox.modules.media.models import Episode, HistoryEvent, Season, Title, WantedItem
+from fetchbox.modules.media.models import (
+    Album,
+    Episode,
+    HistoryEvent,
+    Season,
+    Title,
+    WantedItem,
+)
 from fetchbox.modules.media.series import aired
 from fetchbox.modules.media.service import MediaService, available_from
 from fetchbox.modules.profiles.models import QualityProfile
@@ -180,6 +187,7 @@ class AutoSearch:
         kind_ok = or_(
             Title.kind == "movie",
             (Title.kind == "series") & (Episode.air_date <= now.date()),
+            (Title.kind == "music") & (Album.release_date <= now.date()),
         )
         return (
             select(WantedItem.id, WantedItem.title_id, Season.number)
@@ -187,6 +195,7 @@ class AutoSearch:
             .join(QualityProfile, QualityProfile.id == Title.profile_id)
             .outerjoin(Episode, Episode.id == WantedItem.episode_id)
             .outerjoin(Season, Season.id == Episode.season_id)
+            .outerjoin(Album, Album.id == WantedItem.album_id)
             .where(WantedItem.monitored.is_(True), kind_ok, when, missing | upgrade)
             .order_by(WantedItem.next_search_at.is_not(None), WantedItem.next_search_at)
             .limit(BATCH)
@@ -227,6 +236,29 @@ class AutoSearch:
             if not items:
                 raise ConflictError(f"title {title_id} has no wanted items")
             return await self.request(items[0].id)
+        if title.kind == "music":
+            # every wanted, released album still to get: one search each
+            today = utcnow().date()
+            async with self.db.sessionmaker() as s:
+                ids = list(
+                    (
+                        await s.execute(
+                            select(WantedItem.id)
+                            .join(Album, Album.id == WantedItem.album_id)
+                            .where(
+                                WantedItem.title_id == title_id,
+                                WantedItem.monitored.is_(True),
+                                WantedItem.state.not_in(("acquired", *BUSY)),
+                                Album.release_date <= today,
+                            )
+                        )
+                    ).scalars()
+                )
+            album_jobs = [await self.queue(wid, reason="manual") for wid in ids]
+            first = next((j for j in album_jobs if j is not None), None)
+            if first is None:
+                raise ConflictError("no released, wanted albums to search for")
+            return first
         today = utcnow().date()
         seasons = sorted(
             {

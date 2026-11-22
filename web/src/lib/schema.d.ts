@@ -2895,7 +2895,7 @@ export interface components {
              * @description Empty = all
              * @default []
              */
-            media_kinds: ("movie" | "series")[];
+            media_kinds: ("movie" | "series" | "music")[];
             /** Name */
             name: string;
             /**
@@ -2972,7 +2972,7 @@ export interface components {
             /** Enabled */
             enabled?: boolean | null;
             /** Media Kinds */
-            media_kinds?: ("movie" | "series")[] | null;
+            media_kinds?: ("movie" | "series" | "music")[] | null;
             /** Policy */
             policy?: {
                 [key: string]: unknown;
@@ -3109,7 +3109,7 @@ export interface components {
              * Media Kind
              * @enum {string}
              */
-            media_kind: "movie" | "series";
+            media_kind: "movie" | "series" | "music";
             /** Name */
             name: string;
             /** Naming Template Id */
@@ -3151,7 +3151,7 @@ export interface components {
              * Media Kind
              * @enum {string}
              */
-            media_kind: "movie" | "series";
+            media_kind: "movie" | "series" | "music";
             /**
              * Mount Point
              * @description The share or drive it lives on, watched for unmounting
@@ -4808,7 +4808,7 @@ export interface components {
              * Code
              * @enum {string}
              */
-            code: "blocklisted" | "already_grabbed" | "wrong_title" | "wrong_year" | "wrong_media_type" | "wrong_episode" | "season_not_finished" | "season_pack_not_wanted" | "size_too_small" | "size_too_large" | "sample" | "too_few_seeders" | "quality_not_allowed" | "format_score_too_low" | "language" | "upgrades_disabled" | "cutoff_met" | "not_an_upgrade" | "rule";
+            code: "blocklisted" | "already_grabbed" | "wrong_title" | "wrong_year" | "wrong_media_type" | "wrong_episode" | "season_not_finished" | "season_pack_not_wanted" | "size_too_small" | "size_too_large" | "sample" | "too_few_seeders" | "quality_not_allowed" | "format_score_too_low" | "language" | "upgrades_disabled" | "cutoff_met" | "not_an_upgrade" | "rule" | "wrong_album" | "disc_image";
             /** Message */
             message: string;
         };
@@ -7416,7 +7416,7 @@ export interface operations {
     list_destinations_api_v1_destinations_get: {
         parameters: {
             query?: {
-                media_kind?: ("movie" | "series") | null;
+                media_kind?: ("movie" | "series" | "music") | null;
             };
             header?: never;
             path?: never;

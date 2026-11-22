@@ -63,6 +63,7 @@ class TorznabSettings(BaseModel):
     api_key: SecretStr | None = None
     movie_categories: list[int] = Field(default=[2000], description="Newznab categories")
     tv_categories: list[int] = Field(default=[5000])
+    music_categories: list[int] = Field(default=[3000])
     limit: int = Field(default=100, ge=1, le=1000, description="Results per search")
 
     @field_validator("url")
@@ -370,13 +371,20 @@ class TorznabProvider(IndexerProvider):
     # ---- IndexerProvider --------------------------------------------------------------------
 
     def _cats(self, kind: str) -> str:
-        cats = self.cfg.movie_categories if kind == "movie" else self.cfg.tv_categories
+        cats = {
+            "movie": self.cfg.movie_categories,
+            "music": self.cfg.music_categories,
+        }.get(kind, self.cfg.tv_categories)
         return ",".join(str(c) for c in cats)
 
     async def search(self, q: SearchQuery) -> list[ReleaseCandidate]:
         caps = await self.caps()
         limit = self._limit(caps)
         text = q.terms[0] if q.terms else ""
+        if q.kind == "music":
+            # A plain search in the music categories: every indexer takes it, and names
+            # are judged against the album afterwards
+            return await self._items(t="search", cat=self._cats("music"), limit=limit, q=text)
         if q.kind == "movie":
             cat = self._cats("movie")
             supported = caps.movie

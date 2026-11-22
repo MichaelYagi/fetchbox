@@ -62,7 +62,7 @@ ADD_JOB = "downloads.add"
 ADD_ATTEMPTS = 3
 POLL_INTERVAL = 2.0
 SWEEP_EVERY = 15  # polls between sweeps when nothing wakes us
-CATEGORY = {"movie": "fetchbox-movies", "series": "fetchbox-tv"}
+CATEGORY = {"movie": "fetchbox-movies", "series": "fetchbox-tv", "music": "fetchbox-music"}
 BUILTIN_NAME = "Built-in"
 DIRECT_NAME = "Direct downloads"
 

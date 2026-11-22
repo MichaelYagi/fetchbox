@@ -55,6 +55,8 @@ RejectionCode = Literal[
     "cutoff_met",
     "not_an_upgrade",
     "rule",
+    "wrong_album",
+    "disc_image",
 ]
 
 
@@ -109,9 +111,9 @@ class SeasonInfo:
 
 @dataclass(frozen=True)
 class Target:
-    """What the search is for: a movie, or some episodes of one series."""
+    """What the search is for: a movie, some episodes of one series, or an album."""
 
-    kind: Literal["movie", "series"]
+    kind: Literal["movie", "series", "music"]
     names: tuple[str, ...]  # primary first, then alternate / scene titles
     year: int | None = None
     original_language: str | None = None
@@ -119,6 +121,12 @@ class Target:
     existing: Existing | None = None  # movies
     episodes: tuple[WantedEpisode, ...] = ()  # series: the episodes being searched for
     seasons: Mapping[int, SeasonInfo] = field(default_factory=dict)
+    # music: names[0] is the artist
+    album: str | None = None
+    album_kind: str = "album"
+    other_albums: tuple[str, ...] = ()  # the artist's other album titles
+    album_ms: int | None = None  # the wanted edition's length
+    album_tracks: int | None = None
 
     def __post_init__(self) -> None:
         if not self.names:
@@ -279,7 +287,97 @@ def _upgrade_rejection(
     )
 
 
+def _decide_music(candidate: Candidate, target: Target, ctx: DecisionContext) -> Decision:
+    """An album: the same checks as video where they apply (blocklist, grabbed, seeders,
+    profile tier, size per minute, upgrades, rules, ranking); matching and format are
+    music's own."""
+    from fetchbox.modules.releases.music import match_album, parse_music, quality_from_size
+
+    parsed = parse_release(candidate.title)
+    mp = parse_music(candidate.title)
+    profile = ctx.profile
+    out: list[Rejection] = []
+
+    def reject(code: RejectionCode, message: str) -> None:
+        out.append(Rejection(code=code, message=message))
+
+    if any(k.matches(candidate) for k in ctx.blocklist):
+        reject("blocklisted", "this release is blocklisted")
+    if any(k.matches(candidate) for k in ctx.grabbed):
+        reject("already_grabbed", "this release was already grabbed")
+    m = match_album(
+        candidate.title,
+        target.names[0],
+        target.album or "",
+        other_albums=target.other_albums,
+        album_kind=target.album_kind,
+    )
+    if not m.ok:
+        reject("wrong_album", m.reason)
+    if mp.disc_image and mp.quality == "Unknown-Audio":
+        reject("disc_image", "an SACD / DVD-A disc image, not audio files")
+
+    quality = mp.quality
+    if quality == "Unknown-Audio":  # the name doesn't say: the size usually does
+        quality = quality_from_size(candidate.size, target.album_ms) or quality
+    mb_per_min: float | None = None
+    if candidate.size is not None and target.album_ms:
+        mb_per_min = candidate.size / 1_000_000 / (target.album_ms / 60000)
+        limit = profile.size_limit(quality)
+        if mb_per_min < limit.min:
+            reject(
+                "size_too_small",
+                f"{mb_per_min:.1f} MB/min is below the {quality} minimum of {limit.min:g} "
+                "(a single track, or a different album?)",
+            )
+        elif limit.max is not None and mb_per_min > limit.max:
+            reject(
+                "size_too_large",
+                f"{mb_per_min:.1f} MB/min is above the {quality} maximum of {limit.max:g} "
+                "(several albums, or video?)",
+            )
+    if candidate.seeders is not None and candidate.seeders < ctx.min_seeders:
+        reject("too_few_seeders", f"{candidate.seeders} seeders (minimum {ctx.min_seeders})")
+    tier_index = profile.tier_index(quality)
+    if tier_index is None:
+        reject("quality_not_allowed", f"{quality} is not in profile {profile.name!r}")
+    elif target.existing is not None:
+        r = _upgrade_rejection(profile, target.existing, tier_index, 1, 0)
+        if r is not None:
+            out.append(r)
+    for rule in ctx.rules:
+        if message := rule(candidate, parsed, target):
+            reject("rule", message)
+
+    d = Decision(
+        candidate=candidate,
+        parsed=parsed,
+        quality=quality,
+        tier=profile.ladder[tier_index].name if tier_index is not None else None,
+        format_score=0,
+        matched_formats=[],
+        cutoff_met=_cutoff_met(profile, quality, 0),
+        rejections=out,
+    )
+    preferred = profile.size_limit(quality).preferred
+    seeders = candidate.seeders or 0
+    d._key = (
+        bool(out),
+        -(tier_index if tier_index is not None else -1),
+        # a name that states its format beats one guessed from its size
+        mp.quality == "Unknown-Audio",
+        -(round(math.log10(seeders)) if seeders > 0 else -1),
+        candidate.priority,
+        abs(mb_per_min - preferred) if preferred is not None and mb_per_min is not None else 0,
+        -seeders,
+        candidate.title,
+    )
+    return d
+
+
 def decide(candidate: Candidate, target: Target, ctx: DecisionContext) -> Decision:
+    if target.kind == "music":
+        return _decide_music(candidate, target, ctx)
     parsed = parse_release(candidate.title)
     profile = ctx.profile
     info = ReleaseInfo(parsed, candidate.size, frozenset(candidate.indexer_flags))
@@ -429,7 +527,7 @@ def rank(decisions: Iterable[Decision]) -> list[Decision]:
 def select(ranked: Sequence[Decision], target: Target) -> list[Decision]:
     """What an automatic search grabs, from ``rank``'s output."""
     accepted = [d for d in ranked if d.accepted]
-    if target.kind == "movie":
+    if target.kind in ("movie", "music"):
         return accepted[:1]
     picks: list[Decision] = []
     covered: set[EpisodeKey] = set()

@@ -99,7 +99,7 @@ FIELDS = (
     "title", "guid", "info_hash", "download_url", "magnet_url", "info_url", "size",
     "seeders", "leechers", "published_at",
 )  # fmt: skip
-Condition = Literal["movie", "series", "term", "imdb", "tmdb", "tvdb", "season", "episode"]
+Condition = Literal["movie", "series", "music", "term", "imdb", "tmdb", "tvdb", "season", "episode"]
 
 
 class DefinitionError(ValueError):
@@ -622,6 +622,7 @@ class DefinitionProvider(IndexerProvider):
         have = {
             "movie": q.kind == "movie",
             "series": q.kind == "series",
+            "music": q.kind == "music",
             "term": bool(q.terms and q.terms[0]),
             "imdb": bool(q.ids.get("imdb")),
             "tmdb": bool(q.ids.get("tmdb")),
@@ -629,6 +630,8 @@ class DefinitionProvider(IndexerProvider):
             "season": q.season is not None,
             "episode": q.episode is not None,
         }
+        if q.kind == "music" and "music" not in r.when:
+            return False  # only definitions that say they have music are asked for it
         return all(have[c] for c in r.when)
 
     async def _run(self, spec: SearchSpec, q: SearchQuery | None) -> list[ReleaseCandidate]:

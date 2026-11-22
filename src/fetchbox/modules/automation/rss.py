@@ -76,7 +76,8 @@ async def _feeds(auto: AutoSearch) -> tuple[list[Candidate], list[str], int]:
 
 async def rss_sync(auto: AutoSearch) -> dict[str, Any]:
     releases, failed, n_sources = await _feeds(auto)
-    titles = await auto.media.all_titles()
+    # Video only: feed names are matched as movies and episodes (music isn't in RSS yet)
+    titles = [t for t in await auto.media.all_titles() if t.kind in ("movie", "series")]
     wanted = await auto.media.wanted_for([t.id for t in titles if t.kind == "movie"])
     index: dict[str, list[Title]] = defaultdict(list)
     for t in titles:

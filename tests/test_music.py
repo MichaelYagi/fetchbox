@@ -10,6 +10,8 @@ import httpx
 from fetchbox.modules.media.music import wanted_flags
 from fetchbox.providers.metadata.musicbrainz import AlbumResult
 from tests.conftest import Running
+from tests.fake_torznab import Item
+from tests.pipeline import Fakes, _indexer
 from tests.test_musicbrainz import ARTIST, fake_mb
 
 
@@ -90,3 +92,55 @@ async def test_add_an_artist(c: httpx.AsyncClient, server: Running) -> None:
     assert await music.refresh_artist(artist["id"]) == 0  # nothing new
     listed = (await c.get("/titles", params={"filter[kind]": "music"})).json()["items"]
     assert [t["name"] for t in listed] == ["Portishead"]
+
+
+async def test_search_for_an_album(c: httpx.AsyncClient, server: Running, fakes: Fakes) -> None:
+    """Real-world names for Dummy: the FLAC wins; each other one is turned down for what
+    it is. Dummy's standard edition is 11 tracks, 49 minutes."""
+    music = server.app.state.music
+    music.transport, music.interval = fake_mb(), 0
+    lossless = next(p["id"] for p in (await c.get("/quality-profiles")).json()
+                    if p["name"] == "Lossless")  # fmt: skip
+    artist = (await c.post("/music/artists", json={"mbid": ARTIST, "profile_id": lossless})).json()
+    await music.fill_editions()
+    dummy = next(a for a in (await c.get(f"/titles/{artist['id']}/albums")).json()
+                 if a["name"] == "Dummy")  # fmt: skip
+    mb = 1_000_000
+    names = [
+        ("Portishead - Dummy (1994) [FLAC]", 300 * mb),
+        ("Portishead - Dummy (1994) [MP3 320]", 115 * mb),  # lossy: not in Lossless
+        ("Portishead  Dummy (1994)", 290 * mb),  # says nothing; the size says FLAC
+        ("Portishead - Dummy - Glory Box (Single) [FLAC]", 40 * mb),
+        ("Portishead - Dummy (Karaoke) [FLAC]", 300 * mb),
+        ("Portishead Discography 1994-2008 [FLAC]", 1500 * mb),
+        ("Massive Attack - Mezzanine (1998) [FLAC]", 350 * mb),
+        ("Portishead - Dummy [FLAC]", 6 * mb),  # far too small for 49 minutes
+    ]
+    items = [
+        Item(n, size=s, category=3010, infohash=f"{i:040x}") for i, (n, s) in enumerate(names, 1)
+    ]
+    await _indexer(c, fakes, "musicidx", items)
+    r = await c.get("/releases", params={"wanted_item_id": dummy["wanted"]["id"]})
+    assert r.status_code == 200, r.text
+    got = {x["candidate"]["title"]: x for x in r.json()["releases"]}
+    best = r.json()["releases"][0]
+    assert best["candidate"]["title"] == "Portishead - Dummy (1994) [FLAC]" and best["accepted"]
+    assert best["quality"] == "FLAC"
+    assert got["Portishead  Dummy (1994)"]["accepted"]  # FLAC by size, ranked after
+    assert got["Portishead  Dummy (1994)"]["quality"] == "FLAC"
+
+    def why(name: str) -> str:
+        x = got[name]
+        assert not x["accepted"], name
+        return " | ".join(f"{j['code']}: {j['message']}" for j in x["rejections"])
+
+    assert "quality_not_allowed" in why("Portishead - Dummy (1994) [MP3 320]")
+    assert "single" in why("Portishead - Dummy - Glory Box (Single) [FLAC]")
+    assert "karaoke" in why("Portishead - Dummy (Karaoke) [FLAC]")
+    assert "wrong_album" in why("Portishead Discography 1994-2008 [FLAC]")
+    assert "not by Portishead" in why("Massive Attack - Mezzanine (1998) [FLAC]")
+    assert "size_too_small" in why("Portishead - Dummy [FLAC]")
+    # the indexer was asked for music, by artist and album
+    req = fakes.torznab["musicidx"].requests[-1]
+    assert req.url.params["t"] == "search" and req.url.params["cat"] == "3000"
+    assert req.url.params["q"] == "Portishead Dummy"

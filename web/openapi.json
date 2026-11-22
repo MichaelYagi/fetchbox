@@ -1103,7 +1103,8 @@
       "items": {
        "enum": [
         "movie",
-        "series"
+        "series",
+        "music"
        ],
        "type": "string"
       },
@@ -1274,7 +1275,8 @@
         "items": {
          "enum": [
           "movie",
-          "series"
+          "series",
+          "music"
          ],
          "type": "string"
         },
@@ -1579,7 +1581,8 @@
      "media_kind": {
       "enum": [
        "movie",
-       "series"
+       "series",
+       "music"
       ],
       "title": "Media Kind",
       "type": "string"
@@ -1686,7 +1689,8 @@
      "media_kind": {
       "enum": [
        "movie",
-       "series"
+       "series",
+       "music"
       ],
       "title": "Media Kind",
       "type": "string"
@@ -5971,7 +5975,9 @@
        "upgrades_disabled",
        "cutoff_met",
        "not_an_upgrade",
-       "rule"
+       "rule",
+       "wrong_album",
+       "disc_image"
       ],
       "title": "Code",
       "type": "string"
@@ -11381,7 +11387,8 @@
         {
          "enum": [
           "movie",
-          "series"
+          "series",
+          "music"
          ],
          "type": "string"
         },
