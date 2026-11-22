@@ -42,7 +42,6 @@ from fetchbox.modules.library.existing_music import ExistingMusic
 from fetchbox.modules.library.maintenance import LibraryCheck
 from fetchbox.modules.library.migrate import Migrator
 from fetchbox.modules.library.music_tags import DeferredTags
-from fetchbox.modules.library.relocate import FolderMover
 from fetchbox.modules.library.service import LibraryService
 from fetchbox.modules.media import music_router
 from fetchbox.modules.media import router as media_router
@@ -238,7 +237,6 @@ def create_app(
             torrents_dir=settings.downloads_dir / "Torrents",
         )
         app.state.storage = storage
-        storage.link_sources = downloads.link_sources
         library = LibraryService(db, bus, jobs, storage, downloads, profiles, media)
 
         def music_naming() -> Any:
@@ -266,9 +264,6 @@ def create_app(
         library_check.register_jobs()
         app.state.library_check = library_check
         DeferredTags(db, bus, jobs).register_jobs()
-        mover = FolderMover(db, jobs, storage)
-        mover.register_jobs()
-        app.state.folder_mover = mover
         migrator = Migrator(
             db, jobs, storage=storage, media=media, profiles=profiles, library=library
         )

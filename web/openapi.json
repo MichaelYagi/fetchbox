@@ -1762,18 +1762,6 @@
        }
       ],
       "title": "Status Message"
-     },
-     "suggested_path": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "description": "When this folder means a second copy of every download: a folder on the downloads' drive to move it to (PATCH path, which moves its files)",
-      "title": "Suggested Path"
      }
     },
     "required": [
@@ -4522,22 +4510,6 @@
      "free"
     ],
     "title": "MountOut",
-    "type": "object"
-   },
-   "MoveFolderIn": {
-    "properties": {
-     "path": {
-      "description": "The new folder",
-      "maxLength": 4000,
-      "minLength": 1,
-      "title": "Path",
-      "type": "string"
-     }
-    },
-    "required": [
-     "path"
-    ],
-    "title": "MoveFolderIn",
     "type": "object"
    },
    "MovieDetail": {
@@ -11873,93 +11845,6 @@
     "summary": "Check Destination",
     "tags": [
      "storage"
-    ]
-   }
-  },
-  "/api/v1/destinations/{dest_id}/move": {
-   "post": {
-    "description": "Move a library folder with its files (copy, check, switch, then delete the old\ncopies; safe across drives). Unlike changing the path, the library comes along.",
-    "operationId": "move_folder_api_v1_destinations__dest_id__move_post",
-    "parameters": [
-     {
-      "in": "path",
-      "name": "dest_id",
-      "required": true,
-      "schema": {
-       "title": "Dest Id",
-       "type": "string"
-      }
-     }
-    ],
-    "requestBody": {
-     "content": {
-      "application/json": {
-       "schema": {
-        "$ref": "#/components/schemas/MoveFolderIn"
-       }
-      }
-     },
-     "required": true
-    },
-    "responses": {
-     "202": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/JobOut"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "404": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/Problem"
-        }
-       },
-       "application/problem+json": {}
-      },
-      "description": "Not Found"
-     },
-     "409": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/Problem"
-        }
-       },
-       "application/problem+json": {}
-      },
-      "description": "Conflict"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/Problem"
-        }
-       },
-       "application/problem+json": {}
-      },
-      "description": "Unprocessable Content"
-     }
-    },
-    "security": [
-     {
-      "HTTPBearer": []
-     },
-     {
-      "APIKeyHeader": []
-     },
-     {
-      "APIKeyCookie": []
-     }
-    ],
-    "summary": "Move Folder",
-    "tags": [
-     "library"
     ]
    }
   },

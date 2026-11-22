@@ -43,11 +43,13 @@
 		const active = ['queued', 'downloading', 'paused'].includes(d.status);
 		const msg = active
 			? `Stop and remove ${d.name}? Its data is deleted and the release is blocklisted, so another one is searched for.`
-			: d.imported_to
-				? `Stop seeding ${d.name}?\n\nThe torrent's files in ${d.save_path ?? 'the download folder'} are deleted. ` +
-					`The file Fetchbox imported into your library isn't touched${d.imported_to ? ` (imported to ${d.imported_to})` : ''}.` +
-					(d.imported_as === 'hardlink' ? ' (It was the same file, so no space is freed.)' : '')
-				: `Stop seeding ${d.name}? It hasn't been imported into your library, so its files are kept.`;
+			: d.imported_as === 'in_place'
+				? `Stop seeding ${d.name}?\n\nThe torrent stops. Your file stays where it's filed:\n${d.imported_to}`
+				: d.imported_to
+					? `Stop seeding ${d.name}?\n\nThe torrent's files in ${d.save_path ?? 'the download folder'} are deleted. ` +
+						`The file Fetchbox imported into your library isn't touched (imported to ${d.imported_to}).` +
+						(d.imported_as === 'hardlink' ? ' (It was the same file, so no space is freed.)' : '')
+					: `Stop seeding ${d.name}? It hasn't been imported into your library, so its files are kept.`;
 		if (!confirm(msg)) return;
 		act(d.id, () => del(`/downloads/${d.id}`, { delete_data: true, blocklist: active }));
 	}
@@ -155,7 +157,7 @@
 						<tr>
 							<td class="name">
 								{d.name}
-								{#if d.save_path}<div class="small muted">Downloaded to <Path path={d.save_path} /></div>{/if}
+								{#if d.save_path && d.imported_as !== 'in_place'}<div class="small muted">Downloaded to <Path path={d.save_path} /></div>{/if}
 								{#if d.imported_to}
 									<div class="small muted">
 										Imported to <Path path={d.imported_to} />

@@ -86,9 +86,18 @@ async def test_grab_downloads_to_completion(
     d = await _download(c, "completed")
     assert d is not None and d["progress"] == 1.0 and d["completed_at"] and d["size"] == 2 * MB + 50
     assert d["live"] is not None and d["live"]["state"] == "seeding"
-    root = settings.downloads_dir / "Torrents" / "fetchbox-movies"
+    # straight into the movie's library folder (a hidden .incomplete folder there)
+    root = settings.downloads_dir / "Movies" / ".incomplete"
     assert d["save_path"] == str(root)
-    got = (root / NAME / f"{NAME}.mkv").read_bytes()
+    # the import files it in place right away: read the filed copy
+
+    async def filed() -> list[Path]:
+        movies = settings.downloads_dir / "Movies"
+        return [p for p in movies.rglob("*.mkv") if ".incomplete" not in p.parts]
+
+    await until(filed, within=20)
+    [placed] = await filed()
+    got = placed.read_bytes()
     assert digest(got) == digest(made.payload[f"{NAME}.mkv"])
 
     types = []
@@ -281,30 +290,15 @@ async def test_scopes(server: Running) -> None:
         assert (await c.put("/downloads/limits", json={})).status_code == 403
 
 
-async def test_built_in_download_folder(c: httpx.AsyncClient, tmp_path: Path) -> None:
+async def test_built_in_downloads_go_into_the_library_folders(
+    c: httpx.AsyncClient, tmp_path: Path
+) -> None:
+    """The built-in engine and direct downloads have no folder of their own: they
+    download into the library folder of what they're for. A folder can't be set."""
     clients = {x["kind"]: x for x in (await c.get("/download-clients")).json()}
-    builtin = clients["builtin"]
-    assert builtin["saves_to"].endswith("Torrents")
-    target = tmp_path / "Big disk" / "Torrents"
-    r = await c.patch(
-        f"/download-clients/{builtin['id']}", json={"policy": {"save_path": str(target)}}
-    )
-    assert r.status_code == 200, r.text
-    assert r.json()["saves_to"] == str(target) and target.is_dir()  # created
-    r = await c.patch(
-        f"/download-clients/{builtin['id']}", json={"policy": {"save_path": "relative/dir"}}
-    )
-    assert r.status_code == 422 and "absolute" in r.text
-    blocker = tmp_path / "a-file"
-    blocker.write_text("x")
-    r = await c.patch(
-        f"/download-clients/{builtin['id']}", json={"policy": {"save_path": str(blocker / "sub")}}
-    )
-    assert r.status_code == 422 and r.json()["errors"][0]["field"] == "body.policy.save_path"
-    r = await c.patch(f"/download-clients/{builtin['id']}", json={"policy": {"save_path": "  "}})
-    assert r.status_code == 200 and r.json()["saves_to"].endswith("Torrents")  # default again
-    direct = clients["direct"]
-    r = await c.patch(
-        f"/download-clients/{direct['id']}", json={"policy": {"save_path": str(target)}}
-    )
-    assert r.status_code == 200 and r.json()["saves_to"] == str(target)
+    for kind in ("builtin", "direct"):
+        assert clients[kind]["saves_to"] is None
+        r = await c.patch(f"/download-clients/{clients[kind]['id']}",
+                          json={"policy": {"save_path": str(tmp_path / "Torrents")}})  # fmt: skip
+        assert r.status_code == 422 and "library folders" in r.text
+        assert not (tmp_path / "Torrents").exists()

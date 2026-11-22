@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import Any
 
 import httpx
-import pytest
 
 from fetchbox.modules.media.music import wanted_flags
 from fetchbox.providers.metadata.musicbrainz import AlbumResult
@@ -198,9 +197,8 @@ def _album_torrent(root: Path, name: str, files: dict[str, bytes]) -> Made:
     return Made(torrent, str(ti.info_hashes().v1), root, name, files)
 
 
-@pytest.mark.parametrize("link_mode", ["copy", "hardlink_or_copy"])
 async def test_download_and_import_an_album(
-    c: httpx.AsyncClient, server: Running, fakes: Fakes, tmp_path: Path, link_mode: str
+    c: httpx.AsyncClient, server: Running, fakes: Fakes, tmp_path: Path
 ) -> None:
     """Gate: an album downloads as FLAC, and every track is matched, named and tagged.
     A hardlinked file is the torrent's own while it seeds: its tags aren't touched."""
@@ -219,9 +217,6 @@ async def test_download_and_import_an_album(
     music_dest = next(
         d for d in (await c.get("/destinations")).json() if d["media_kind"] == "music"
     )
-    r = await c.patch(f"/destinations/{music_dest['id']}", json={"link_mode": link_mode},
-                      headers={"If-Match": music_dest["etag"]})  # fmt: skip
-    assert r.status_code == 200, r.text
 
     artist = (
         await c.post("/music/artists", json={"mbid": ARTIST, "profile_id": lossless["id"]})
@@ -269,27 +264,28 @@ async def test_download_and_import_an_album(
     hist = (await c.get(f"/titles/{artist['id']}/history")).json()["items"]
     imported_ev = next(h for h in hist if h["type"] == "imported")
     assert imported_ev["data"]["tracks"] == 11
-    if link_mode == "copy":
-        assert first["title"] == ["Mysterons"] and first["artist"] == ["Portishead"]
-        assert first["album"] == ["Dummy"] and first["tracknumber"] == ["1"]
-        assert first["date"] == ["1994"] and first["musicbrainz_artistid"] == [ARTIST]
-        assert imported_ev["data"]["tagged"] == 11
-    else:  # hardlinked to the seeding download: left exactly as downloaded
-        assert imported_ev["data"]["link_mode"] == "hardlink"
-        assert imported_ev["data"]["tagged"] == 0 and not (first.tags or {}).get("title")
-        # once the torrent is removed, the held-back tags are written
-        [dl] = (await c.get("/downloads")).json()
-        assert (await c.delete(f"/downloads/{dl['id']}")).status_code == 204
+    # filed in place: the tracks ARE the seeding torrent's files, left as downloaded
+    assert imported_ev["data"]["link_mode"] == "in_place"
+    assert imported_ev["data"]["tagged"] == 0 and not (first.tags or {}).get("title")
+    engine = next(x for x in server.app.state.downloads.clients.values() if x.kind == "builtin")
+    engine_files = [f.path for f in await engine.files(made.info_hash)]
+    assert str(folder / "01 - Mysterons.flac") in engine_files
+    assert not list((Path(music_dest["path"]) / ".incomplete").rglob("*.flac"))
+    # stop seeding: the torrent stops, the album stays, and its tags are written
+    [dl] = (await c.get("/downloads")).json()
+    r = await c.delete(f"/downloads/{dl['id']}", params={"delete_data": True})
+    assert r.status_code == 204
 
-        async def tagged() -> bool:  # every track, whatever order the job takes them in
-            return all(
-                (f := mutagen.File(p)).tags and f.tags.get("title") for p in folder.iterdir()
-            )
+    async def tagged() -> bool:  # every track, whatever order the job takes them in
+        return all((f := mutagen.File(p)).tags and f.tags.get("title") for p in folder.iterdir())
 
-        await until(tagged, within=20)
-        last = mutagen.File(folder / "11 - Glory Box.flac")
-        assert last["tracknumber"] == ["11"] and last["album"] == ["Dummy"]
-        assert mutagen.File(folder / "01 - Mysterons.flac")["title"] == ["Mysterons"]
+    await until(tagged, within=20)
+    assert len(list(folder.iterdir())) == 11  # nothing deleted
+    first = mutagen.File(folder / "01 - Mysterons.flac")
+    assert first["title"] == ["Mysterons"] and first["artist"] == ["Portishead"]
+    assert first["album"] == ["Dummy"] and first["tracknumber"] == ["1"]
+    assert first["date"] == ["1994"] and first["musicbrainz_artistid"] == [ARTIST]
+    assert not (Path(music_dest["path"]) / ".incomplete" / name).exists()  # leftovers gone
     assert imported_ev["data"]["quality"] == "FLAC"
     queue = (await c.get("/downloads")).json()
     assert queue[0]["imported_to"].replace("\\", "/").endswith("Portishead/Dummy (1994)")
@@ -417,8 +413,6 @@ async def test_a_better_format_upgrades_the_album(
     assert r.status_code == 201, r.text
     profile = r.json()["id"]
     dest = next(d for d in (await c.get("/destinations")).json() if d["media_kind"] == "music")
-    await c.patch(f"/destinations/{dest['id']}", json={"link_mode": "copy"},
-                  headers={"If-Match": dest["etag"]})  # fmt: skip
     artist = (await c.post("/music/artists", json={"mbid": ARTIST, "profile_id": profile})).json()
     await music.fill_editions()
     dummy = next(a for a in (await c.get(f"/titles/{artist['id']}/albums")).json()

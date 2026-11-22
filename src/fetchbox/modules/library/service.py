@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import os
 import re
 from datetime import date, timedelta
 from pathlib import Path, PurePosixPath
@@ -37,7 +38,7 @@ from fetchbox.core.errors import ConflictError, FieldError, NotFoundError, Probl
 from fetchbox.core.events import Actor, EventBus, Subject
 from fetchbox.core.jobs import JobContext, JobRunner
 from fetchbox.modules.downloads.models import Download
-from fetchbox.modules.downloads.service import DownloadsService
+from fetchbox.modules.downloads.service import DownloadsService, in_library
 from fetchbox.modules.library.models import MediaFile, MediaFileItem, NamingTemplate
 from fetchbox.modules.library.naming import (
     DEFAULT_PATTERNS,
@@ -275,6 +276,12 @@ async def _cover(meta: dict[str, Any]) -> bytes | None:
     return None
 
 
+def _rename_into(src: Path, dst: Path) -> None:
+    """A file to its library place, on the same drive: a rename, never a copy."""
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    os.replace(src, dst)
+
+
 def _quality_json(
     parsed: ParsedRelease, quality: str, info: MediaInfo | None = None
 ) -> dict[str, Any]:
@@ -496,7 +503,7 @@ class LibraryService:
         info = await asyncio.to_thread(probe, src)
         rel = movie_path(patterns, movie_context(title, parsed, quality, info), src.suffix)
         dst = Path(dest.path) / rel
-        mode = await self._place(src, dst, dest)
+        mode = await self._place(src, dst, dest, d, video.path)
         mf, replaced, cutoff_met = await self._record(
             d, grab, title, dest, waiting, rel, dst, mode, parsed, quality, score, info, video.path
         )
@@ -575,10 +582,12 @@ class LibraryService:
             )
             dst = Path(dest.path) / rel
             if str(dst) in old_paths and await asyncio.to_thread(dst.exists):
-                # an upgrade at the same path (FLAC over FLAC): the old file is recycled
+                # an upgrade at the same path (FLAC over FLAC): the old file is recycled,
+                # after stopping the torrent that seeds it (if one still does)
+                await self.downloads.release_files({str(dst)})
                 with contextlib.suppress(StorageError):
                     await self.storage.local.delete(str(dst), recycle_dir=recycle)
-            placed.append((t, rel, dst, await self._place(af.path, dst, dest), af))
+            placed.append((t, rel, dst, await self._place(af.path, dst, dest, d, af.rel), af))
 
         # Tags change the file's bytes: never in a file the torrent still seeds from
         # (a hardlink or the download itself), only in the library's own copy.
@@ -612,6 +621,11 @@ class LibraryService:
         cutoff_met = tier is not None and tier >= profile.cutoff_index
         new_paths = {str(dst) for _, _, dst, _, _ in placed}
         replaced: list[str] = []
+        # old tracks about to go: stop any torrent still seeding them first (before this
+        # import's own database transaction, which would otherwise wait on it)
+        await self.downloads.release_files(
+            {str(Path(dest.path) / of.relative_path) for of in old} - new_paths
+        )
         async with self.db.sessionmaker() as s:
             for of in old:
                 full = str(Path(dest.path) / of.relative_path)
@@ -744,6 +758,20 @@ class LibraryService:
             and (profile.cutoff_format_score is None or score >= profile.cutoff_format_score)
         )
         replaced: list[str] = []
+        # The files this one replaces: stop any torrent still seeding them first, before
+        # this transaction (stopping one writes too, and would wait on it)
+        async with self.db.sessionmaker() as s:
+            prior = (
+                await s.execute(
+                    select(MediaFile.relative_path, Destination.path)
+                    .join(MediaFileItem, MediaFileItem.media_file_id == MediaFile.id)
+                    .join(Destination, Destination.id == MediaFile.destination_id)
+                    .where(MediaFileItem.wanted_item_id.in_([w.id for w in items]))
+                )
+            ).all()
+        await self.downloads.release_files(
+            {str(Path(root) / r) for r, root in prior} - {str(Path(dest.path) / rel)}
+        )
         async with self.db.sessionmaker() as s:
             ids = [w.id for w in items]
             old_q = (
@@ -929,7 +957,7 @@ class LibraryService:
             )
             rel = episode_path(patterns, ctx, src.suffix)
             dst = Path(dest.path) / rel
-            mode = await self._place(src, dst, dest)
+            mode = await self._place(src, dst, dest, d, video.path)
             items = [by_key[k][1] for k in matched]
             mf, replaced, _ = await self._record(
                 d,
@@ -990,8 +1018,17 @@ class LibraryService:
             )
         return {**DEFAULT_PATTERNS, **(row.patterns if row else {})}
 
-    async def _place(self, src: Path, dst: Path, dest: Destination) -> str:
-        """Put src at dst using the destination's link mode. Returns the mode used."""
+    async def _place(
+        self,
+        src: Path,
+        dst: Path,
+        dest: Destination,
+        d: Download | None = None,
+        rel: str | None = None,
+    ) -> str:
+        """Put src at dst. Returns how: "in_place" (the built-in engine moved its file
+        into the library and seeds it from there), "move" (a direct download, renamed into
+        place), or, for external clients, the destination's link mode."""
         try:
             inside(dest.path, dst)  # never write outside the library folder
         except StorageError as exc:
@@ -1002,6 +1039,18 @@ class LibraryService:
             return "existing"  # re-import of the same file
         if existing == "different":
             raise ImportProblem(f"a different file already exists at {dst}", retry=False)
+        if d is not None and in_library(d):
+            client = self.downloads.clients.get(d.client_id or "")
+            try:
+                if client is not None and client.can_relocate and rel is not None:
+                    await client.relocate(d.client_ref, {rel: str(dst)})
+                    return "in_place"
+                await asyncio.to_thread(_rename_into, src, dst)
+                return "move"
+            except (DownloadClientError, OSError) as exc:
+                raise ImportProblem(
+                    f"could not move the file into place: {getattr(exc, 'message', exc)}"
+                ) from None
         mode = dest.link_mode
         try:
             if mode in ("hardlink_or_copy", "hardlink_only", "move"):
@@ -1096,6 +1145,7 @@ class LibraryService:
         if delete_from_disk and f.destination_id:
             dest = await self.storage.destination(f.destination_id)
             recycle = str(Path(dest.path) / RECYCLE_DIR) if dest.recycle else None
+            await self.downloads.release_files({str(Path(dest.path) / f.relative_path)})
             try:
                 recycled = await self.storage.local.delete(
                     str(Path(dest.path) / f.relative_path), recycle_dir=recycle
@@ -1327,9 +1377,14 @@ class LibraryService:
                 )
                 continue
             try:
-                await asyncio.to_thread(_move, src, dst, root)
-            except OSError as exc:
-                failed.append({"file_id": p["file_id"], "current": p["current"], "error": str(exc)})
+                # a file the torrent still seeds from moves through the engine
+                if not await self.downloads.move_seeding_file(str(src), str(dst)):
+                    await asyncio.to_thread(_move, src, dst, root)
+                else:
+                    await asyncio.to_thread(_prune, src.parent, root)
+            except (OSError, DownloadClientError) as exc:
+                msg = getattr(exc, "message", None) or str(exc)
+                failed.append({"file_id": p["file_id"], "current": p["current"], "error": msg})
                 continue
             async with self.db.sessionmaker() as s:
                 mf = await s.get(MediaFile, p["file_id"])
@@ -1453,6 +1508,16 @@ def _info(data: dict[str, Any] | None) -> MediaInfo | None:
         return None
     fields = set(MediaInfo.__dataclass_fields__)
     return MediaInfo(**{k: v for k, v in data.items() if k in fields})
+
+
+def _prune(folder: Path, root: Path) -> None:
+    """Remove ``folder`` and its parents while empty, up to ``root``."""
+    while folder != root and root in folder.parents:
+        try:
+            folder.rmdir()  # only if empty
+        except OSError:
+            break
+        folder = folder.parent
 
 
 def _move(src: Path, dst: Path, root: Path) -> None:

@@ -160,6 +160,11 @@ class BuiltinClient(DownloadClientProvider):
         self._session: Any = None
         self._handles: dict[ClientRef, Any] = {}
         self._errors: dict[ClientRef, str] = {}
+        self._rename_failed: dict[ClientRef, str] = {}
+        # files moved into the library: ref -> {file index: absolute path}. libtorrent's
+        # torrent_file() keeps the original names, so these come from its rename alerts
+        # (and the resume data after a restart).
+        self._renamed: dict[ClientRef, dict[int, str]] = {}
         self._flushing: set[ClientRef] = set()  # finished, paused to close its files
         self._flushed: set[ClientRef] = set()  # finished and on disk
         self._resume_after_flush: set[ClientRef] = set()
@@ -193,9 +198,12 @@ class BuiltinClient(DownloadClientProvider):
                 try:
                     params = lt.read_resume_data(f.read_bytes())
                     params.flags &= ~lt.torrent_flags.auto_managed
+                    renamed = {int(i): str(p) for i, p in dict(params.renamed_files).items()}
                     h = self._session.add_torrent(params)
                     ref = ref_of(h.info_hashes())
                     self._handles[ref] = h
+                    if renamed:
+                        self._renamed[ref] = renamed
                     self._flushed.add(ref)  # whatever finished before a restart is on disk
                 except Exception as exc:  # a corrupt file must not stop the engine
                     log.warning("builtin.resume_failed", file=f.name, error=str(exc))
@@ -311,6 +319,12 @@ class BuiltinClient(DownloadClientProvider):
                 if a.handle.is_valid():
                     a.handle.save_resume_data(lt.save_resume_flags_t.save_info_dict)
                     self._pending_saves += 1
+            elif isinstance(a, lt.file_renamed_alert) and a.handle.is_valid():
+                ref = ref_of(a.handle.info_hashes())
+                new = a.new_name() if callable(a.new_name) else a.new_name  # method in lt 2.0
+                self._renamed.setdefault(ref, {})[int(a.index)] = str(new)
+            elif isinstance(a, lt.file_rename_failed_alert) and a.handle.is_valid():
+                self._rename_failed[ref_of(a.handle.info_hashes())] = a.message()
             elif (
                 isinstance(a, lt.torrent_error_alert | lt.file_error_alert) and a.handle.is_valid()
             ):
@@ -485,7 +499,9 @@ class BuiltinClient(DownloadClientProvider):
             size = int(fs.file_size(i))
             out.append(
                 ClientFile(
-                    path=fs.file_path(i), size=size, progress=(done[i] / size) if size else 1.0
+                    path=self._renamed.get(ref, {}).get(i) or fs.file_path(i),
+                    size=size,
+                    progress=(done[i] / size) if size else 1.0,
                 )
             )
         return out
@@ -521,10 +537,46 @@ class BuiltinClient(DownloadClientProvider):
         self._resume_after_flush.discard(ref)
         self._counters.pop((ref, "down"), None)
         self._counters.pop((ref, "up"), None)
+        self._renamed.pop(ref, None)
         if h is not None and h.is_valid():
             self._s().remove_torrent(h, lt.options_t.delete_files if delete_data else 0)
         if self.state_dir is not None:
             (self.state_dir / f"{ref}.fastresume").unlink(missing_ok=True)
+
+    can_relocate = True
+
+    async def relocate(self, ref: ClientRef, moves: dict[str, str]) -> None:
+        """Have the engine move files into the library (same drive: a rename) and keep
+        seeding them there; the new paths are saved in the resume data."""
+        h = self._handle(ref)
+        ti = h.torrent_file()
+        if ti is None:
+            raise DownloadClientError("not_found", f"torrent {ref} has no metadata yet")
+        fs = ti.layout() if hasattr(ti, "layout") else ti.files()
+        index = {fs.file_path(i): i for i in range(fs.num_files())}
+        # a file moved before (into the library) is known by where it is now too
+        index.update({path: i for i, path in self._renamed.get(ref, {}).items()})
+        targets: dict[int, Path] = {}
+        for rel, dst in moves.items():
+            if rel not in index:
+                raise DownloadClientError("not_found", f"{rel} isn't a file of torrent {ref}")
+            Path(dst).parent.mkdir(parents=True, exist_ok=True)
+            targets[index[rel]] = Path(dst)
+        self._rename_failed.pop(ref, None)
+        for i, target in targets.items():
+            h.rename_file(i, str(target))
+        for _ in range(300):  # the disk thread does it; a few ms normally
+            await asyncio.sleep(0.05)
+            self._drain_alerts()
+            if (msg := self._rename_failed.pop(ref, None)) is not None:
+                raise DownloadClientError("rejected", f"couldn't move the file: {msg}")
+            moved = self._renamed.get(ref, {})
+            if all(moved.get(i) == str(t) and t.exists() for i, t in targets.items()):
+                break
+        else:
+            raise DownloadClientError("rejected", "the engine didn't move the files in time")
+        h.save_resume_data(lt.save_resume_flags_t.save_info_dict)
+        self._pending_saves += 1
 
     async def recheck(self, ref: ClientRef) -> None:
         self._handle(ref).force_recheck()

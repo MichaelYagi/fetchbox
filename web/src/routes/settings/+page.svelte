@@ -143,10 +143,7 @@
 		const bindChanged =
 			c.kind === 'builtin' && ((st.interface ?? '') !== draft.iface || (st.kill_switch ?? true) !== draft.kill);
 		const body = builtIn
-			? {
-					policy: { save_path: folder },
-					...(bindChanged ? { settings: { interface: draft.iface || null, kill_switch: draft.kill } } : {})
-				}
+			? { ...(bindChanged ? { settings: { interface: draft.iface || null, kill_switch: draft.kill } } : {}) }
 			: { settings, policy: { path_mappings: mappings, save_path: folder } };
 		act(`save-${c.id}`, () => patch(`/download-clients/${c.id}`, body, c.etag), `${c.name} saved.`).then(
 			() => {
@@ -475,7 +472,8 @@
 									{#if c.id === inUse}<span class="badge info">Used for torrents</span>{/if}
 								</div>
 								<div class="muted small where">
-									Saves to {#if c.saves_to}<Path path={c.saves_to} />{:else}{c.name}'s own download folder{/if}
+									{#if c.kind === 'builtin'}Saves into each library folder, and seeds from where it's filed
+									{:else if c.saves_to}Saves to <Path path={c.saves_to} />{:else}Saves to {c.name}'s own download folder{/if}
 								</div>
 							</td>
 							<td class="muted">{c.kind}</td>
@@ -505,13 +503,12 @@
 											{#if c.kind !== 'deluge'}<label>Username <input bind:value={draft.username} autocomplete="off" /></label>{/if}
 											<label>Password <input type="password" bind:value={draft.password} placeholder="unchanged" autocomplete="off" /></label>
 										{/if}
-										<label class="grow">
-											Download folder
-											<input
-												bind:value={draft.folder}
-												placeholder={c.kind === 'builtin' || c.kind === 'direct' ? 'default: ~/Downloads/Fetchbox/Torrents' : `empty: ${c.name}'s own folder`}
-											/>
-										</label>
+										{#if c.kind !== 'builtin' && c.kind !== 'direct'}
+											<label class="grow">
+												Download folder
+												<input bind:value={draft.folder} placeholder="empty: {c.name}'s own folder" />
+											</label>
+										{/if}
 										<button class="primary" disabled={!!busy}>Save</button>
 									</form>
 									{#if c.kind === 'builtin'}
@@ -551,12 +548,16 @@
 											Docker: the same folder as Fetchbox sees it and as the client sees it.
 										</p>
 										<div class="row">
-											<label class="grow">Fetchbox path <input bind:value={draft.local} placeholder="/mnt/t/Torrents" /></label>
+											<label class="grow">Fetchbox path <input bind:value={draft.local} placeholder="/srv/torrents" /></label>
 											<label class="grow">Client path <input bind:value={draft.remote} placeholder="/Users/me/Torrents" /></label>
 										</div>
 									</div>
 									{/if}
-									<p class="muted small hint">The download folder applies to new downloads; ones in progress stay where they are.</p>
+									{#if c.kind === 'builtin'}
+										<p class="muted small hint">Downloads go into the library folder of what they're for (a hidden .incomplete folder there), and are seeded from where they're filed: one file, nowhere else.</p>
+									{:else}
+										<p class="muted small hint">The download folder applies to new downloads; ones in progress stay where they are.</p>
+									{/if}
 								</td>
 							</tr>
 						{/if}
@@ -565,7 +566,7 @@
 						<tr class="direct">
 							<td><div class="row"><span class="order"></span><strong>{c.name}</strong>
 								{#if c.enabled && c.running}<span class="badge">Used for direct files</span>{/if}</div>
-								<div class="muted small where">Saves to <Path path={c.saves_to} /></div></td>
+								<div class="muted small where">Saves into each library folder</div></td>
 							<td class="muted">{c.kind}</td>
 							<td class="small">
 								<span class="badge {c.enabled ? (c.running ? 'ok' : 'warn') : ''}">{c.enabled ? (c.running ? 'Running' : 'Not running') : 'Disabled'}</span>
@@ -584,14 +585,10 @@
 	{#if editing === c.id}
 		<tr class="editrow">
 			<td colspan="4">
-				<form class="row" onsubmit={(e) => saveClient(e, c)}>
-					<label class="grow">
-						Download folder
-						<input bind:value={draft.folder} placeholder="default: ~/Downloads/Fetchbox/Torrents" />
-					</label>
-					<button class="primary" disabled={!!busy}>Save</button>
-				</form>
-				<p class="muted small hint">The download folder applies to new downloads; ones in progress stay where they are.</p>
+				<p class="muted small hint">
+					Direct downloads go into the library folder of what they're for (a hidden .incomplete folder there) and
+					are moved into place when finished: one file, nowhere else.
+				</p>
 			</td>
 		</tr>
 	{/if}

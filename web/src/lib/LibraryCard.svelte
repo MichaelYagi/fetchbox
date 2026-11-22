@@ -150,23 +150,6 @@
 			onChanged();
 		}, 'Saved.');
 
-	// Move the library (folder and files) next to the downloads: one copy per file.
-	let moving = $state<number | null>(null);
-	const moveTo = (path: string) =>
-		act('move', async () => {
-			const job = await post<S['JobOut']>(`/destinations/${dest!.id}/move`, { path });
-			moving = 0;
-			for (;;) {
-				const j = await get<S['JobOut']>(`/jobs/${job.id}`);
-				moving = j.progress;
-				if (j.status === 'succeeded') break;
-				if (j.status === 'failed') throw new Error(j.error ?? 'the move failed');
-				await new Promise((r) => setTimeout(r, 700));
-			}
-			moving = null;
-			onChanged();
-			await load();
-		}, 'Moved. New downloads are now hardlinked: one copy of each file.').finally(() => (moving = null));
 
 	const saveFolder = (e: SubmitEvent) => {
 		e.preventDefault();
@@ -217,21 +200,7 @@
 				<button class="small" onclick={() => ((folder = dest.path), (editingFolder = true))}>Change</button>
 				<a class="button small" href="/library/import?dest={dest.id}">Import what's already here</a>
 			</div>
-			{#if dest.suggested_path}
-				<div class="notice warn small stack">
-					<div>
-						Every download is stored twice: once where it downloads, and again here, because this folder is on a
-						different drive.
-					</div>
-					<div>Fetchbox can move this folder, with the files already in it, to:</div>
-					<Path path={dest.suggested_path} />
-					<div>
-						<button class="primary small" disabled={!!busy} onclick={() => moveTo(dest!.suggested_path!)}>
-							{moving !== null ? `Moving… ${Math.round(moving * 100)}%` : 'Move the library next to the downloads'}
-						</button>
-					</div>
-				</div>
-			{:else if dest.status_message && dest.status_message !== 'ok'}<div class="muted small">{dest.status_message}</div>{/if}
+			{#if dest.status_message && dest.status_message !== 'ok'}<div class="muted small">{dest.status_message}</div>{/if}
 		{:else if dest}
 			<form class="row" onsubmit={saveFolder}>
 				<input class="grow" bind:value={folder} required aria-label="{tv ? 'TV' : 'Movies'} folder" />
@@ -243,8 +212,12 @@
 	</div>
 
 	{#if dest}
+		<p class="muted small">
+			Downloads go straight into this folder (a hidden .incomplete folder while they download), are filed here when
+			finished, and seed from where they're filed: one file each, nowhere else.
+		</p>
 		<div class="field">
-			<label class="label" for="linkmode-{kind}">How finished downloads get here</label>
+			<label class="label" for="linkmode-{kind}">Downloads from other clients (qBittorrent, Transmission, Deluge)</label>
 			<select id="linkmode-{kind}" value={dest.link_mode} onchange={(e) => setLinkMode(e.currentTarget.value)} disabled={!!busy}>
 				{#each LINK_MODES as [v, l] (v)}<option value={v}>{l}</option>{/each}
 			</select>

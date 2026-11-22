@@ -203,7 +203,7 @@ async def test_add_client_and_download_through_it(
     assert d["save_path"] == str(torrents_local)  # qBittorrent's folder, as Fetchbox sees it
     clients = {x["id"]: x for x in (await c.get("/download-clients")).json()}
     assert clients[qb["id"]]["saves_to"] is None  # the client decides
-    assert clients[builtin["id"]]["saves_to"].endswith("Torrents")
+    assert clients[builtin["id"]]["saves_to"] is None  # into the library folders
 
     async def running() -> bool:
         return not store.torrents[made.info_hash].paused

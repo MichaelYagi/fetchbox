@@ -2,8 +2,8 @@
 #   docker run -d -p 8787:8787 -p 6881:6881 -p 6881:6881/udp \
 #     -e FETCHBOX_ADMIN_PASSWORD=change-me -e PUID=1000 -e PGID=1000 \
 #     -v fetchbox-config:/config -v /srv/media:/data ghcr.io/michaelyagi/fetchbox
-# /config holds the database, secrets key and logs; /data holds downloads and the
-# library (Torrents/, Movies/, TV/ by default) on ONE volume, so imports are hardlinks.
+# /config holds the database, secrets key and logs; /data holds the library (Movies/,
+# TV/, Music/). Downloads go straight into those folders and are filed (and seeded) there.
 
 FROM node:24-slim AS web
 WORKDIR /src/web

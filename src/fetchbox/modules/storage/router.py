@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field, computed_field, field_validator
 
 from fetchbox.core.concurrency import etag
 from fetchbox.core.errors import problem_responses as pr
-from fetchbox.core.paths import host_path
+from fetchbox.core.paths import native_folder_problem
 from fetchbox.modules.auth.deps import CurrentPrincipal, require
 from fetchbox.modules.storage.models import Destination, StorageNode
 from fetchbox.modules.storage.service import StorageService, mounts
@@ -64,11 +64,6 @@ class DestinationOut(_Versioned):
     )
     status_message: str | None
     checked_at: datetime | None
-    suggested_path: str | None = Field(
-        default=None,
-        description="When this folder means a second copy of every download: a folder on "
-        "the downloads' drive to move it to (PATCH path, which moves its files)",
-    )
 
 
 class DestinationIn(BaseModel):
@@ -84,9 +79,11 @@ class DestinationIn(BaseModel):
 
     @field_validator("path", mode="before")
     @classmethod
-    def _host(cls, v: object) -> object:
-        r"""Under WSL, a Windows path (C:\Media) is taken as its /mnt/c/Media form."""
-        return host_path(v) if isinstance(v, str) else v
+    def _native(cls, v: object) -> object:
+        """In WSL only WSL folders; on Windows only Windows folders."""
+        if isinstance(v, str) and (why := native_folder_problem(v)):
+            raise ValueError(why)
+        return v
 
 
 class DestinationPatch(BaseModel):
@@ -100,9 +97,11 @@ class DestinationPatch(BaseModel):
 
     @field_validator("path", mode="before")
     @classmethod
-    def _host(cls, v: object) -> object:
-        r"""Under WSL, a Windows path (C:\Media) is taken as its /mnt/c/Media form."""
-        return host_path(v) if isinstance(v, str) else v
+    def _native(cls, v: object) -> object:
+        """In WSL only WSL folders; on Windows only Windows folders."""
+        if isinstance(v, str) and (why := native_folder_problem(v)):
+            raise ValueError(why)
+        return v
 
 
 def _node(n: StorageNode) -> NodeOut:

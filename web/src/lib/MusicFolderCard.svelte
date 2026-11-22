@@ -10,7 +10,6 @@
 	let busy = $state('');
 	let error = $state('');
 	let message = $state('');
-	let moving = $state<number | null>(null);
 
 	// naming (Settings: music.folder / music.track / music.disc_folders)
 	type Naming = { folder: string; track: string; disc_folders: boolean };
@@ -56,7 +55,7 @@
 	const MODES: [string, string][] = [
 		['hardlink_or_copy', 'Hardlink when possible, else copy (recommended)'],
 		['hardlink_only', 'Hardlink only (fail rather than use double space)'],
-		['copy', 'Always copy (tags written right away)'],
+		['copy', 'Always copy'],
 		['move', 'Move (after seeding is done)']
 	];
 
@@ -82,19 +81,6 @@
 	};
 	const setMode = (mode: string) =>
 		act('mode', () => patch(`/destinations/${dest!.id}`, { link_mode: mode }, dest!.etag), 'Saved.');
-	const moveTo = (path: string) =>
-		act('move', async () => {
-			const job = await post<S['JobOut']>(`/destinations/${dest!.id}/move`, { path });
-			moving = 0;
-			for (;;) {
-				const j = await get<S['JobOut']>(`/jobs/${job.id}`);
-				moving = j.progress;
-				if (j.status === 'succeeded') break;
-				if (j.status === 'failed') throw new Error(j.error ?? 'the move failed');
-				await new Promise((r) => setTimeout(r, 700));
-			}
-			moving = null;
-		}, 'Moved. New albums are now hardlinked: one copy of each file.');
 </script>
 
 <div class="card stack">
@@ -115,18 +101,7 @@
 					<button class="small" onclick={() => ((folder = dest.path), (editing = true))}>Change</button>
 					<a class="button small" href="/library/import?dest={dest.id}">Import what's already here</a>
 				</div>
-				{#if dest.suggested_path}
-					<div class="notice warn small stack">
-						<div>Every album is stored twice: once where it downloads, and again here, because this folder is on a different drive.</div>
-						<div>Fetchbox can move this folder, with the albums already in it, to:</div>
-						<Path path={dest.suggested_path} />
-						<div>
-							<button class="primary small" disabled={!!busy} onclick={() => moveTo(dest!.suggested_path!)}>
-								{moving !== null ? `Moving… ${Math.round(moving * 100)}%` : 'Move the library next to the downloads'}
-							</button>
-						</div>
-					</div>
-				{:else if dest.status_message && dest.status_message !== 'ok'}<div class="muted small">{dest.status_message}</div>{/if}
+				{#if dest.status_message && dest.status_message !== 'ok'}<div class="muted small">{dest.status_message}</div>{/if}
 			{:else}
 				<form class="row" onsubmit={save}>
 					<input class="grow" bind:value={folder} required aria-label="Music folder" />
@@ -136,7 +111,7 @@
 			{/if}
 		</div>
 		<label class="field">
-			<span class="label">How finished downloads get here</span>
+			<span class="label">Downloads from other clients (qBittorrent, Transmission, Deluge)</span>
 			<select value={dest.link_mode} onchange={(e) => setMode(e.currentTarget.value)} disabled={!!busy}>
 				{#each MODES as [v, l] (v)}<option value={v}>{l}</option>{/each}
 			</select>
@@ -167,8 +142,8 @@
 			</div>
 		</div>
 		<p class="muted small">
-			Tags come from MusicBrainz. A hardlinked album is the seeding torrent's own file, so its tags are written once seeding
-			ends.
+			Albums download straight into this folder and are filed here, seeded from where they're filed. Tags come from
+			MusicBrainz and are written once seeding ends (changing a file a torrent shares would break it).
 		</p>
 	{/if}
 </div>
