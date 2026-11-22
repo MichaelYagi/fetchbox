@@ -4,7 +4,7 @@
 	import Badge from '#lib/Badge.svelte';
 	import Path from '#lib/Path.svelte';
 	import ReleasesTable from '#lib/ReleasesTable.svelte';
-	import { ago, ApiError, bytes, del, duration, get, patch, post, type S, type Title } from '#lib/api.ts';
+	import { ago, ApiError, bytes, del, duration, get, patch, post, put, type S, type Title } from '#lib/api.ts';
 
 	const id = $derived(page.params.id ?? '');
 	let title = $state<Title | null>(null);
@@ -16,12 +16,17 @@
 	let releasesFor = $state('');
 	let seasons = $state<S['SeasonOut'][]>([]);
 	let open = $state<Record<number, boolean>>({});
+	let albums = $state<S['AlbumOut'][]>([]);
+	let openAlbum = $state<Record<string, boolean>>({});
+	let editions = $state<Record<string, S['EditionOut'][]>>({});
+	let showKinds = $state<Record<string, boolean>>({});
 	let error = $state('');
 	let message = $state('');
 	let busy = $state('');
 
 	const series = $derived(title?.kind === 'series');
-	const wanted = $derived(series ? null : (title?.wanted[0] ?? null));
+	const music = $derived(title?.kind === 'music');
+	const wanted = $derived(series || music ? null : (title?.wanted[0] ?? null));
 	const profileName = $derived(profiles.find((p) => p.id === title?.profile_id)?.name ?? '');
 
 	async function load() {
@@ -34,6 +39,7 @@
 			title = t;
 			files = f;
 			history = h.items;
+			if (t.kind === 'music') albums = await get<S['AlbumOut'][]>(`/titles/${id}/albums`);
 			if (t.kind === 'series') {
 				seasons = await get<S['SeasonOut'][]>(`/titles/${id}/episodes`);
 				if (Object.keys(open).length === 0) {
@@ -126,6 +132,55 @@
 		const got = x.episodes.filter((e) => e.wanted.state === 'acquired').length;
 		return `${got} of ${x.episodes.length}`;
 	}
+	// ---- music ----
+	const ARTIST_MODES: [string, string][] = [
+		['all', 'All their albums'],
+		['future', 'Only new albums'],
+		['latest', 'The latest album, and new ones'],
+		['none', 'Nothing']
+	];
+	const KIND_NAMES: [string, string][] = [
+		['album', 'Albums'],
+		['ep', 'EPs'],
+		['single', 'Singles'],
+		['live', 'Live'],
+		['compilation', 'Compilations'],
+		['other', 'Remixes, soundtracks and more']
+	];
+	const albumKinds = $derived(
+		KIND_NAMES.map(([k, l]) => ({ kind: k, label: l, items: albums.filter((a) => a.kind === k) })).filter((g) => g.items.length)
+	);
+	// a kind is shown open when one of its albums is wanted
+	const kindOpen = (k: string, items: S['AlbumOut'][]) => showKinds[k] ?? items.some((a) => a.wanted.monitored);
+	const released = (a: S['AlbumOut']) => !!a.release_date && a.release_date <= new Date().toISOString().slice(0, 10);
+	const fmtLen = (ms: number | null) => (ms ? `${Math.floor(ms / 60000)}:${String(Math.round((ms % 60000) / 1000)).padStart(2, '0')}` : '');
+	const albumLen = (a: S['AlbumOut']) => fmtLen(a.tracks.reduce((n, t) => n + (t.length_ms ?? 0), 0));
+	const monitorAlbum = (a: S['AlbumOut'], on: boolean) =>
+		act('monitor', () => patch(`/wanted/${a.wanted.id}`, { monitored: on }, a.wanted.etag));
+	const searchAlbum = (a: S['AlbumOut']) =>
+		act('search', () => post(`/wanted/${a.wanted.id}/search`), `Searching for ${a.name}; the best release is grabbed automatically.`);
+	const chooseAlbum = (a: S['AlbumOut']) =>
+		act('interactive', async () => {
+			releases = null;
+			releasesFor = a.name;
+			releases = await get<S['InteractiveOut']>('/releases', { wanted_item_id: a.wanted.id });
+			reveal();
+		});
+	async function toggleAlbum(a: S['AlbumOut']) {
+		openAlbum = { ...openAlbum, [a.id]: !openAlbum[a.id] };
+		if (openAlbum[a.id] && !editions[a.id] && a.editions) {
+			try {
+				editions = { ...editions, [a.id]: await get<S['EditionOut'][]>(`/albums/${a.id}/editions`) };
+			} catch {
+				/* the track list still shows */
+			}
+		}
+	}
+	const chooseEdition = (a: S['AlbumOut'], mbid: string) =>
+		act('edition', () => put(`/albums/${a.id}/edition`, { edition_mbid: mbid }), 'Edition changed: its track list is now the one wanted.');
+	const editionLabel = (e: S['EditionOut']) =>
+		[e.date?.slice(0, 4), e.country, e.formats.join('+'), `${e.tracks} tracks`, fmtLen(e.length_ms)].filter(Boolean).join(' · ');
+
 	const MODES: [string, string][] = [
 		['all', 'All episodes'],
 		['future', 'Only new episodes'],
@@ -263,6 +318,33 @@
 							{#if title.physical_date}<span>· Disc {title.physical_date}</span>{/if}
 						</div>
 					{/if}
+				{:else if music}
+					{#if title.albums}
+						<div class="row small">
+							<span class="badge ok">{title.albums.acquired} downloaded</span>
+							{#if title.albums.missing}<span class="badge warn">{title.albums.missing} missing</span>{/if}
+							<span class="muted">{title.albums.monitored} of {title.albums.albums} albums wanted</span>
+						</div>
+					{/if}
+					<div class="row">
+						<label class="inline">
+							Quality
+							<select value={title.profile_id} onchange={(e) => setProfile(e.currentTarget.value)} disabled={!!busy}>
+								{#each profiles.filter((x) => x.media === 'music') as p (p.id)}<option value={p.id}>{p.name}</option>{/each}
+							</select>
+						</label>
+						<label class="inline">
+							Download
+							<select value={title.monitor_mode} onchange={(e) => setMode(e.currentTarget.value)} disabled={!!busy}>
+								{#each ARTIST_MODES as [v, l] (v)}<option value={v}>{l}</option>{/each}
+							</select>
+						</label>
+					</div>
+					<div class="row">
+						<button class="primary" onclick={searchNow} disabled={!!busy} title="Every wanted, released album still to get">Search all missing</button>
+						{#if title.mbid}<a class="button" href="https://musicbrainz.org/artist/{title.mbid}" target="_blank" rel="noreferrer">MusicBrainz</a>{/if}
+						<button class="danger" onclick={remove} disabled={!!busy}>Remove</button>
+					</div>
 				{:else if series}
 					{#if title.episodes}
 						<div class="row small">
@@ -292,6 +374,66 @@
 				{/if}
 			</div>
 		</div>
+
+		{#if music}
+			{#each albumKinds as g (g.kind)}
+				<h2>
+					<button class="link" onclick={() => (showKinds = { ...showKinds, [g.kind]: !kindOpen(g.kind, g.items) })} aria-expanded={kindOpen(g.kind, g.items)}>
+						{kindOpen(g.kind, g.items) ? '▾' : '▸'} {g.label} <span class="muted small">{g.items.length}</span>
+					</button>
+				</h2>
+				{#if kindOpen(g.kind, g.items)}
+					{#each g.items as a (a.id)}
+						<div class="card album" class:unmonitored={!a.wanted.monitored}>
+							<div class="album-head">
+								{#if a.cover_url}<img class="cover" src={a.cover_url} alt="" loading="lazy" onerror={(e) => ((e.currentTarget as HTMLImageElement).style.visibility = 'hidden')} />{:else}<div class="cover"></div>{/if}
+								<div class="grow">
+									<button class="link" onclick={() => toggleAlbum(a)} aria-expanded={!!openAlbum[a.id]}>
+										<strong>{a.name}</strong>
+									</button>
+									<div class="muted small">
+										{a.release_date ?? 'No date'}{a.tracks.length ? ` · ${a.tracks.length} tracks · ${albumLen(a)}` : ''}
+									</div>
+								</div>
+								<div class="row">
+									{#if a.wanted.state === 'missing' && !released(a)}
+										<span class="muted small">{a.release_date ? `Out ${a.release_date}` : 'Not out yet'}</span>
+									{:else}<Badge state={a.wanted.state} />{/if}
+									<input type="checkbox" title="Wanted" aria-label="Wanted" checked={a.wanted.monitored} onchange={(e) => monitorAlbum(a, e.currentTarget.checked)} disabled={!!busy} />
+									<button class="small" onclick={() => searchAlbum(a)} disabled={!!busy || !released(a)}>Search</button>
+									<button class="small" onclick={() => chooseAlbum(a)} disabled={!!busy || !released(a)}>Choose a release</button>
+								</div>
+							</div>
+							{#if openAlbum[a.id]}
+								{#if editions[a.id]?.length}
+									<label class="inline small edition">
+										Edition
+										<select value={a.edition_mbid ?? ''} onchange={(e) => chooseEdition(a, e.currentTarget.value)} disabled={!!busy}>
+											{#each editions[a.id] as e (e.mbid)}<option value={e.mbid}>{editionLabel(e)}</option>{/each}
+										</select>
+									</label>
+								{/if}
+								{#if a.tracks.length}
+									<table class="tracks">
+										<tbody>
+											{#each a.tracks as t (t.id)}
+												<tr>
+													<td class="num muted">{a.tracks.some((x) => x.disc > 1) ? `${t.disc}-` : ''}{t.number}</td>
+													<td>{t.name}</td>
+													<td class="muted small">{fmtLen(t.length_ms)}</td>
+												</tr>
+											{/each}
+										</tbody>
+									</table>
+								{:else}
+									<p class="muted small">The track list is fetched from MusicBrainz when the album is wanted.</p>
+								{/if}
+							{/if}
+						</div>
+					{/each}
+				{/if}
+			{/each}
+		{/if}
 
 		{#if series}
 			<h2>Seasons</h2>
@@ -422,6 +564,46 @@
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
+	}
+	.album {
+		margin-bottom: 0.5rem;
+		padding: 0.6rem 0.75rem;
+	}
+	.album.unmonitored {
+		opacity: 0.7;
+	}
+	.album-head {
+		display: flex;
+		gap: 0.75rem;
+		align-items: center;
+		flex-wrap: wrap;
+	}
+	.cover {
+		width: 56px;
+		height: 56px;
+		border-radius: 4px;
+		object-fit: cover;
+		background: var(--surface-2);
+		flex: none;
+	}
+	.album .grow {
+		flex: 1;
+		min-width: 10rem;
+	}
+	.edition {
+		margin: 0.5rem 0;
+	}
+	.tracks {
+		width: 100%;
+		margin-top: 0.4rem;
+	}
+	.tracks td.num {
+		width: 3rem;
+		text-align: right;
+		padding-right: 0.75rem;
+	}
+	h2 .link {
+		font: inherit;
 	}
 	.season {
 		padding: 0.5rem 0.75rem;

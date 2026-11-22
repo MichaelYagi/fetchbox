@@ -422,6 +422,27 @@ class MediaService:
         )
         return season
 
+    async def _remonitor_albums(self, s: AsyncSession, title: Title, mode: str) -> None:
+        """An artist's new monitor mode, applied to their albums of the chosen kinds."""
+        from fetchbox.modules.media.models import Album
+        from fetchbox.modules.media.music import DEFAULT_KINDS, monitor_flags
+
+        rows = (
+            await s.execute(
+                select(Album, WantedItem)
+                .join(WantedItem, WantedItem.album_id == Album.id)
+                .where(Album.title_id == title.id)
+            )
+        ).all()
+        kinds = (title.meta or {}).get("album_kinds") or DEFAULT_KINDS
+        flags = monitor_flags(
+            mode, kinds, [(a.id, a.kind, a.release_date) for a, _ in rows], utcnow().date()
+        )
+        for a, w in rows:
+            if w.monitored != flags[a.id]:
+                w.monitored = flags[a.id]
+                w.version += 1
+
     async def album_stats(self, title_ids: list[str]) -> dict[str, dict[str, int]]:
         """Per artist: albums, monitored, acquired, missing (monitored, released, no files)."""
         if not title_ids:
@@ -530,6 +551,14 @@ class MediaService:
                     "body.monitor_mode",
                     f"a movie's monitor mode is one of {', '.join(MOVIE_MONITOR_MODES)}",
                 )
+            if (
+                mode is not None
+                and row.kind == "music"
+                and mode not in ("all", "future", "latest", "none")
+            ):
+                raise _invalid(
+                    "body.monitor_mode", "an artist's monitor mode is all, future, latest or none"
+                )
             if mode is not None and row.kind == "series" and mode not in SERIES_MODES:
                 raise _invalid(
                     "body.monitor_mode",
@@ -554,6 +583,8 @@ class MediaService:
                     w.monitored = mode == "all"
             elif mode is not None and row.kind == "series":
                 await self._remonitor(s, row.id, mode)
+            elif mode is not None and row.kind == "music":
+                await self._remonitor_albums(s, row, mode)
             await s.commit()
         await self._emit("title.updated", row, actor, fields=sorted(changes))
         return row

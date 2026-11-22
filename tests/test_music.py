@@ -95,6 +95,24 @@ async def test_add_an_artist(c: httpx.AsyncClient, server: Running) -> None:
     assert dummy["edition_mbid"] == ten["mbid"] and len(dummy["tracks"]) == 10
 
     assert await music.refresh_artist(artist["id"]) == 0  # nothing new
+
+    # changing the artist's mode re-applies it to the albums of the chosen kinds
+    async def monitored() -> set[str]:
+        albums = (await c.get(f"/titles/{artist['id']}/albums")).json()
+        return {a["name"] for a in albums if a["wanted"]["monitored"]}
+
+    t = (await c.get(f"/titles/{artist['id']}")).json()
+    r = await c.patch(f"/titles/{artist['id']}", json={"monitor_mode": "latest"},
+                      headers={"If-Match": t["etag"]})  # fmt: skip
+    assert r.status_code == 200, r.text
+    assert await monitored() == {"Third"}  # the newest studio album (2008)
+    r = await c.patch(f"/titles/{artist['id']}", json={"monitor_mode": "season_1"},
+                      headers={"If-Match": r.headers["etag"]})  # fmt: skip
+    assert r.status_code == 422 and "artist" in r.text
+    t = (await c.get(f"/titles/{artist['id']}")).json()
+    await c.patch(f"/titles/{artist['id']}", json={"monitor_mode": "all"},
+                  headers={"If-Match": t["etag"]})  # fmt: skip
+    assert await monitored() == {"Dummy", "Portishead", "Third"}
     listed = (await c.get("/titles", params={"filter[kind]": "music"})).json()["items"]
     assert [t["name"] for t in listed] == ["Portishead"]
 

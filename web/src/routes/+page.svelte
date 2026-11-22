@@ -29,6 +29,7 @@
 			if (t.wanted.some((w) => !['missing', 'acquired'].includes(w.state))) return 'downloading';
 			return e.missing > 0 ? 'missing' : 'acquired';
 		}
+		if (t.kind === 'music') return t.albums && t.albums.missing > 0 ? 'missing' : 'acquired';
 		return t.wanted[0]?.state ?? 'missing';
 	}
 	const shown = $derived(
@@ -90,6 +91,10 @@
 							{#if t.kind === 'series' && t.episodes}
 								<span class="badge {t.episodes.missing ? 'warn' : 'ok'}" title="Episodes downloaded of monitored">
 									{t.episodes.acquired}/{t.episodes.monitored}
+								</span>
+							{:else if t.kind === 'music' && t.albums}
+								<span class="badge {t.albums.missing ? 'warn' : 'ok'}" title="Albums downloaded of wanted">
+									{t.albums.acquired}/{t.albums.monitored}
 								</span>
 							{:else}
 								<Badge state={stateOf(t)} />

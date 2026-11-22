@@ -7,7 +7,25 @@
 	let profiles = $state<S['ProfileOut'][]>([]);
 	let profile = $state('');
 	let searchNow = $state(true);
-	let kind = $state<'movie' | 'series'>('movie');
+	let kind = $state<'movie' | 'series' | 'music'>('movie');
+	let artists = $state<S['ArtistHit'][] | null>(null);
+	let artistMode = $state('all');
+	let albumKinds = $state<string[]>(['album']);
+	let addingArtist = $state<string | null>(null);
+	const ARTIST_MODES: [string, string][] = [
+		['all', 'All their albums'],
+		['future', 'Only new albums'],
+		['latest', 'The latest album, and new ones'],
+		['none', 'Nothing for now']
+	];
+	const KINDS: [string, string][] = [
+		['album', 'Albums'],
+		['ep', 'EPs'],
+		['single', 'Singles'],
+		['live', 'Live'],
+		['compilation', 'Compilations'],
+		['other', 'Remixes, soundtracks…']
+	];
 	let monitorMode = $state('all');
 	let availability = $state('released');
 	const MODES: [string, string][] = [
@@ -23,17 +41,21 @@
 		['in_cinemas', 'Once in cinemas'],
 		['announced', 'Right away']
 	];
-	const noun = $derived(kind === 'movie' ? 'movie' : 'TV show');
+	const noun = $derived(kind === 'movie' ? 'movie' : kind === 'series' ? 'TV show' : 'music artist');
 	let error = $state<ApiError | null>(null);
 	let busy = $state(false);
 	let adding = $state<number | null>(null);
 	let owned = $state(new Map<number, string>());
 
 	$effect(() => {
-		get<S['ProfileOut'][]>('/quality-profiles', { media: 'video' }).then((p) => {
+		const media = kind === 'music' ? 'music' : 'video';
+		get<S['ProfileOut'][]>('/quality-profiles', { media }).then((p) => {
 			profiles = p;
-			profile = (p.find((x) => x.name === '1080p') ?? p[0])?.id ?? '';
+			const pick = media === 'music' ? 'Lossless' : '1080p';
+			profile = (p.find((x) => x.name === pick) ?? p[0])?.id ?? '';
 		});
+	});
+	$effect(() => {
 		get<S['TitlePage']>('/titles', { limit: 500 }).then((page) => {
 			owned = new Map(page.items.filter((t) => t.tmdb_id).map((t) => [t.tmdb_id as number, t.id]));
 		});
@@ -45,12 +67,35 @@
 		busy = true;
 		error = null;
 		try {
+			if (kind === 'music') {
+				artists = await get<S['ArtistHit'][]>('/music/search', { q: q.trim() });
+				return;
+			}
 			results = await get<S['TitleSummary'][]>('/discovery/search', { q: q.trim(), kind });
 		} catch (err) {
 			error = err instanceof ApiError ? err : new ApiError(0, String(err));
 			results = null;
 		} finally {
 			busy = false;
+		}
+	}
+
+	async function addArtist(a: S['ArtistHit']) {
+		addingArtist = a.mbid;
+		error = null;
+		try {
+			const t = await post<Title>('/music/artists', {
+				mbid: a.mbid,
+				profile_id: profile,
+				monitor_mode: artistMode,
+				album_kinds: albumKinds,
+				search: searchNow
+			});
+			await goto(`/title/${t.id}`);
+		} catch (err) {
+			error = err instanceof ApiError ? err : new ApiError(0, String(err));
+		} finally {
+			addingArtist = null;
 		}
 	}
 
@@ -77,14 +122,15 @@
 <main>
 	<h1>Add a {noun}</h1>
 	<div class="tabs" role="tablist">
-		{#each [['movie', 'Movies'], ['series', 'TV shows']] as [k, label] (k)}
+		{#each [['movie', 'Movies'], ['series', 'TV shows'], ['music', 'Music']] as [k, label] (k)}
 			<button
 				role="tab"
 				aria-selected={kind === k}
 				class:active={kind === k}
 				onclick={() => {
-					kind = k as 'movie' | 'series';
+					kind = k as 'movie' | 'series' | 'music';
 					results = null;
+					artists = null;
 				}}>{label}</button
 			>
 		{/each}
@@ -93,7 +139,11 @@
 		<div class="row">
 			<input
 				class="grow"
-				placeholder={kind === 'movie' ? 'Movie title, e.g. Dune' : 'Show title, e.g. Severance'}
+				placeholder={kind === 'movie'
+					? 'Movie title, e.g. Dune'
+					: kind === 'series'
+						? 'Show title, e.g. Severance'
+						: 'Artist, e.g. Massive Attack'}
 				bind:value={q}
 				aria-label="Search"
 			/>
@@ -106,7 +156,14 @@
 					{#each profiles as p (p.id)}<option value={p.id}>{p.name}</option>{/each}
 				</select>
 			</label>
-			{#if kind === 'series'}
+			{#if kind === 'music'}
+				<label class="inline">
+					Download
+					<select bind:value={artistMode}>
+						{#each ARTIST_MODES as [v, l] (v)}<option value={v}>{l}</option>{/each}
+					</select>
+				</label>
+			{:else if kind === 'series'}
 				<label class="inline">
 					Download
 					<select bind:value={monitorMode}>
@@ -125,10 +182,25 @@
 				<input type="checkbox" bind:checked={searchNow} /> Search for it right away
 			</label>
 		</div>
-		<p class="muted small hint">
-			“Any” also accepts releases that don't name their quality, such as the public-domain
-			films from Internet Archive.
-		</p>
+		{#if kind === 'music'}
+			<fieldset class="row kinds">
+				<legend class="small">Which kinds</legend>
+				{#each KINDS as [v, l] (v)}
+					<label class="inline check small"
+						><input type="checkbox" value={v} bind:group={albumKinds} /> {l}</label
+					>
+				{/each}
+			</fieldset>
+			<p class="muted small hint">
+				Artists, albums and track lists come from MusicBrainz. Lossless prefers FLAC; High-quality
+				lossy takes MP3 320 / V0 and AAC.
+			</p>
+		{:else}
+			<p class="muted small hint">
+				“Any” also accepts releases that don't name their quality, such as the public-domain
+				films from Internet Archive.
+			</p>
+		{/if}
 	</form>
 
 	{#if error}
@@ -141,6 +213,42 @@
 				>, then <a href="/settings#tmdb">paste it in Settings</a>.
 			{/if}
 		</div>
+	{/if}
+
+	{#if artists !== null}
+		{#if artists.length === 0}
+			<p class="empty">No artists found for “{q}”.</p>
+		{:else}
+			<div class="results">
+				{#each artists as a (a.mbid)}
+					<div class="card result">
+						<div class="avatar" aria-hidden="true">{a.name.slice(0, 1)}</div>
+						<div class="body">
+							<div class="spread">
+								<strong>{a.name}</strong>
+								{#if a.in_library}
+									<a class="button" href="/title/{a.in_library}">In library</a>
+								{:else}
+									<button
+										class="primary"
+										disabled={addingArtist !== null || !profile || albumKinds.length === 0}
+										onclick={() => addArtist(a)}
+									>
+										{addingArtist === a.mbid ? 'Adding… (asking MusicBrainz)' : 'Add'}
+									</button>
+								{/if}
+							</div>
+							<div class="muted small">
+								{[a.type, a.country, a.begin_year ? `since ${a.begin_year}` : null]
+									.filter(Boolean)
+									.join(' · ')}
+							</div>
+							{#if a.disambiguation}<p class="muted small overview">{a.disambiguation}</p>{/if}
+						</div>
+					</div>
+				{/each}
+			</div>
+		{/if}
 	{/if}
 
 	{#if results !== null}
@@ -230,6 +338,26 @@
 	.body {
 		flex: 1;
 		min-width: 0;
+	}
+	.avatar {
+		width: 56px;
+		height: 56px;
+		border-radius: 50%;
+		background: var(--surface-2);
+		display: grid;
+		place-items: center;
+		font-size: 1.4rem;
+		font-weight: 600;
+		flex: none;
+	}
+	.kinds {
+		border: none;
+		padding: 0;
+		margin: 0;
+		gap: 0.75rem;
+	}
+	.kinds legend {
+		margin-right: 0.5rem;
 	}
 	.overview {
 		margin: 0.35rem 0 0;

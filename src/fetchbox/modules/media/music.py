@@ -47,25 +47,37 @@ EDITIONS_JOB = "music.editions"
 REFRESH_JOB = "music.refresh"
 
 
+def monitor_flags(
+    mode: str, kinds: list[str], albums: list[tuple[str, str, date | None]], today: date
+) -> dict[str, bool]:
+    """(id, kind, release date) per album -> monitored, for an artist's mode and kinds."""
+    chosen = [a for a in albums if a[1] in kinds]
+    released = [a for a in chosen if a[2] is not None and a[2] <= today]
+    latest = max(released, key=lambda a: a[2] or date.min, default=None)
+    out = {}
+    for aid, kind, released_on in albums:
+        future = released_on is None or released_on > today
+        out[aid] = kind in kinds and (
+            mode == "all"
+            or (mode == "future" and future)
+            or (mode == "latest" and (future or (latest is not None and aid == latest[0])))
+        )
+    return out
+
+
 def wanted_flags(
     mode: str, kinds: list[str], albums: list[AlbumResult], today: date
 ) -> dict[str, bool]:
     """Album id -> monitored, for a newly added artist."""
-    chosen = [a for a in albums if a.kind in kinds]
-    latest = max(
-        (a for a in chosen if a.release_date and a.release_date <= today),
-        key=lambda a: a.release_date or date.min,
-        default=None,
-    )
-    out = {}
-    for a in albums:
-        future = a.release_date is None or a.release_date > today
-        out[a.id] = a.kind in kinds and (
-            mode == "all"
-            or (mode == "future" and future)
-            or (mode == "latest" and (future or (latest is not None and a.id == latest.id)))
-        )
-    return out
+    return monitor_flags(mode, kinds, [(a.id, a.kind, a.release_date) for a in albums], today)
+
+
+def _poster(albums: list[AlbumResult]) -> str | None:
+    """An artist's picture: the cover of their newest studio album (MusicBrainz has no
+    artist images)."""
+    studio = [a for a in albums if a.kind == "album" and a.release_date]
+    newest = max(studio, key=lambda a: a.release_date or date.min, default=None)
+    return cover_url(newest.id, 500) if newest else None
 
 
 class MusicService:
@@ -187,6 +199,7 @@ class MusicService:
             monitor_mode=monitor_mode,
             refreshed_at=utcnow(),
             meta={
+                "poster_url": _poster(albums),
                 "album_kinds": kinds,
                 "type": artist.type,
                 "country": artist.country,
