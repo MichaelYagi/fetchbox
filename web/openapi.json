@@ -3220,6 +3220,30 @@
    },
    "ImportItemIn": {
     "properties": {
+     "album_mbid": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Music: the release group",
+      "title": "Album Mbid"
+     },
+     "artist_mbid": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Music: the MusicBrainz artist",
+      "title": "Artist Mbid"
+     },
      "files": {
       "description": "Paths relative to the library folder",
       "items": {
@@ -3259,14 +3283,21 @@
       "type": "string"
      },
      "tmdb_id": {
-      "title": "Tmdb Id",
-      "type": "integer"
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Movies and series",
+      "title": "Tmdb Id"
      }
     },
     "required": [
      "folder",
      "files",
-     "tmdb_id",
      "profile_id"
     ],
     "title": "ImportItemIn",

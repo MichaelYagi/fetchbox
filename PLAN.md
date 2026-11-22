@@ -451,7 +451,8 @@ Progress (branch `phase5`, PR #7):
 - [x] RSS for music (feeds include category 3000; wanted albums matched and decided)
 - [x] Write the tags deferred while a hardlinked album was seeding (when the torrent is
       removed: by hand or at its seeding goal; a paused one may seed again)
-- [ ] Import an existing music folder (by tags)
+- [x] Import an existing music folder: albums by tags (MusicBrainz ids match exactly) or
+      Artist/Album (Year) folders; recorded in place; Settings has a Music folder card
 - [ ] Music naming presets in Settings
 - [x] Album release dates on the calendar (wanted albums)
 

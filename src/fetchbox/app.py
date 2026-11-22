@@ -37,6 +37,7 @@ from fetchbox.modules.integrations import router as integrations_router
 from fetchbox.modules.integrations.service import IntegrationsService
 from fetchbox.modules.library import router as library_router
 from fetchbox.modules.library.existing import ExistingLibrary
+from fetchbox.modules.library.existing_music import ExistingMusic
 from fetchbox.modules.library.maintenance import LibraryCheck
 from fetchbox.modules.library.migrate import Migrator
 from fetchbox.modules.library.music_tags import DeferredTags
@@ -250,6 +251,7 @@ def create_app(
         existing = ExistingLibrary(
             db, jobs, storage=storage, media=media, discovery=discovery, library=library
         )
+        existing.music = ExistingMusic(db, music=music, profiles=profiles)
         existing.register_jobs()
         library_check = LibraryCheck(db, bus, jobs, storage)
         library_check.register_jobs()

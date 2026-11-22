@@ -4,6 +4,7 @@ service (Portishead; every album answers with Dummy's editions)."""
 from __future__ import annotations
 
 import contextlib
+import json
 from datetime import date
 from pathlib import Path
 
@@ -16,7 +17,7 @@ from tests.conftest import Running
 from tests.fake_torznab import Item
 from tests.pipeline import Fakes, _indexer
 from tests.test_music_files import AUDIO
-from tests.test_musicbrainz import ARTIST, fake_mb
+from tests.test_musicbrainz import ARTIST, FIX, fake_mb
 from tests.torrents import Made, seeder, until
 
 
@@ -317,3 +318,66 @@ async def test_rss_grabs_a_wanted_album(
     # the feed asks for music too
     req = fakes.torznab["musicfeed"].requests[-1]
     assert "3000" in req.url.params["cat"].split(",")
+
+
+async def test_import_an_existing_music_folder(c: httpx.AsyncClient, server: Running) -> None:
+    """A tagged album (with MusicBrainz ids, as Picard writes) matches exactly; an untagged
+    one is recognised from its Artist/Album (Year) folders. Applying records the files in
+    place: nothing moves."""
+    from fetchbox.modules.library.music_files import TagValues, write_tags
+    from tests.test_existing_library import _job
+
+    music = server.app.state.music
+    music.transport, music.interval = fake_mb(), 0
+    dest = next(d for d in (await c.get("/destinations")).json() if d["media_kind"] == "music")
+    root = Path(dest["path"])
+    dummy_tracks = [
+        t["title"]
+        for t in json.loads((FIX / "rels.json").read_text())["releases"][0]["media"][0]["tracks"]
+    ]
+    for i, name in enumerate(dummy_tracks, 1):
+        p = root / "Portishead" / "Dummy (1994)" / f"{i:02d} - {name}.flac"
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_bytes((AUDIO / "flac16_1s.flac").read_bytes())
+        write_tags(p, TagValues(artist="Portishead", album="Dummy", year=1994, title=name,
+                                track=i, tracks=len(dummy_tracks), disc=1, discs=1,
+                                artist_mbid=ARTIST,
+                                album_mbid="48140466-cff6-3222-bd55-63c27e43190d"))  # fmt: skip
+    third = root / "Portishead" / "Third (2008)" / "01 - Silence.mp3"
+    third.parent.mkdir(parents=True)
+    third.write_bytes((AUDIO / "mp3_320_1s.mp3").read_bytes())
+
+    scan = await _job(
+        c, (await c.post("/library/scan", json={"destination_id": dest["id"]})).json()["id"]
+    )
+    items = {i["match"]["album"]: i for i in scan["result"]["items"] if i["match"]}
+    assert set(items) == {"Dummy", "Third"}, scan["result"]["items"]
+    assert items["Dummy"]["confidence"] == "exact" and len(items["Dummy"]["files"]) == 11
+    assert items["Third"]["confidence"] == "high" and items["Third"]["status"] == "new"
+
+    lossless = next(p["id"] for p in (await c.get("/quality-profiles")).json()
+                    if p["name"] == "Lossless")  # fmt: skip
+    d = items["Dummy"]
+    body = {"destination_id": dest["id"], "items": [{
+        "folder": d["folder"], "files": [f["path"] for f in d["files"]],
+        "artist_mbid": d["match"]["artist_mbid"], "album_mbid": d["match"]["album_mbid"],
+        "profile_id": lossless,
+    }]}  # fmt: skip
+    res = (await _job(c, (await c.post("/library/import", json=body)).json()["id"]))["result"]
+    assert res["files"] == 11 and not res["skipped"], res
+    [artist] = (await c.get("/titles", params={"filter[kind]": "music"})).json()["items"]
+    albums = {a["name"]: a for a in (await c.get(f"/titles/{artist['id']}/albums")).json()}
+    assert (
+        albums["Dummy"]["wanted"]["state"] == "acquired" and albums["Dummy"]["wanted"]["monitored"]
+    )
+    assert not albums["Third"]["wanted"]["monitored"]  # only what was imported is wanted
+    files = (await c.get(f"/titles/{artist['id']}/files")).json()
+    assert len(files) == 11 and {f["link_mode"] for f in files} == {"existing"}
+    assert (root / "Portishead" / "Dummy (1994)" / "01 - Mysterons.flac").is_file()  # in place
+    again = await _job(
+        c, (await c.post("/library/scan", json={"destination_id": dest["id"]})).json()["id"]
+    )
+    dummy_again = next(
+        i for i in again["result"]["items"] if i["match"] and i["match"]["album"] == "Dummy"
+    )
+    assert dummy_again["status"] == "imported"

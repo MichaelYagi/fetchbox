@@ -3632,6 +3632,16 @@ export interface components {
         /** ImportItemIn */
         ImportItemIn: {
             /**
+             * Album Mbid
+             * @description Music: the release group
+             */
+            album_mbid?: string | null;
+            /**
+             * Artist Mbid
+             * @description Music: the MusicBrainz artist
+             */
+            artist_mbid?: string | null;
+            /**
              * Files
              * @description Paths relative to the library folder
              */
@@ -3656,8 +3666,11 @@ export interface components {
             monitored: boolean;
             /** Profile Id */
             profile_id: string;
-            /** Tmdb Id */
-            tmdb_id: number;
+            /**
+             * Tmdb Id
+             * @description Movies and series
+             */
+            tmdb_id?: number | null;
         };
         /** ImportOut */
         ImportOut: {

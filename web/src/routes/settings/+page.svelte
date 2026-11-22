@@ -5,6 +5,7 @@
 	import LibraryCard from '#lib/LibraryCard.svelte';
 	import LibraryCheckCard from '#lib/LibraryCheckCard.svelte';
 	import MediaServersCard from '#lib/MediaServersCard.svelte';
+	import MusicFolderCard from '#lib/MusicFolderCard.svelte';
 	import NetworkCard from '#lib/NetworkCard.svelte';
 	import NotificationsCard from '#lib/NotificationsCard.svelte';
 	import Path from '#lib/Path.svelte';
@@ -632,6 +633,10 @@
 				{#each ['movie', 'series'] as const as kind (kind)}
 					<LibraryCard {kind} dest={destinations.find((d) => d.media_kind === kind && d.is_default) ?? destinations.find((d) => d.media_kind === kind)} options={namingOptions} onChanged={load} />
 				{/each}
+				<MusicFolderCard
+					dest={destinations.find((d) => d.media_kind === 'music' && d.is_default) ?? destinations.find((d) => d.media_kind === 'music')}
+					onChanged={load}
+				/>
 				<LibraryCheckCard />
 			</div>
 		{/if}
