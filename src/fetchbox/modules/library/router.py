@@ -92,6 +92,33 @@ async def title_files(title_id: str, request: Request) -> list[FileOut]:
     return [_file(f, i) for f, i in await _svc(request).files(title_id)]
 
 
+class TitleFolderOut(BaseModel):
+    library_folder_id: str
+    library_folder_name: str
+    library_folder_path: str
+    own: bool = Field(description="Chosen for this title; false: the default for its kind")
+    path: str = Field(description="Its folder in there, by the naming settings")
+
+
+@router.get(
+    "/titles/{title_id}/folder",
+    response_model=TitleFolderOut,
+    dependencies=_read,
+    responses=pr(404, 409),
+)
+async def title_folder(title_id: str, request: Request) -> TitleFolderOut:
+    """Where the title's files go (or went): its library folder and its folder in there."""
+    out = await _svc(request).title_folder(title_id)
+    dest = out["library_folder"]
+    return TitleFolderOut(
+        library_folder_id=dest.id,
+        library_folder_name=dest.name,
+        library_folder_path=dest.path,
+        own=out["own"],
+        path=out["path"],
+    )
+
+
 @router.get("/files/{file_id}", response_model=FileOut, dependencies=_read, responses=pr(404))
 async def get_file(file_id: str, request: Request) -> FileOut:
     return _file(*await _svc(request).file(file_id))

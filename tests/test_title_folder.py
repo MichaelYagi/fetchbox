@@ -49,6 +49,10 @@ async def test_a_movie_downloads_into_its_own_folder(
     assert default["is_default"] and extra["path"] == str(own) and extra["name"] == "Movies 2"
     assert movie["destination_id"] == extra["id"]
     assert extra["naming_template_id"] == default["naming_template_id"]  # named the same way
+    # the title page says where it will go, before anything is downloaded
+    where = (await c.get(f"/titles/{movie['id']}/folder")).json()
+    assert where["own"] is True and where["library_folder_path"] == str(own)
+    assert where["path"] == str(own / "Dune (2021) {tmdb-438631}")
 
     async def acquired() -> bool:
         with contextlib.suppress(DownloadClientError):  # gone once filed (no seeding)
@@ -58,6 +62,7 @@ async def test_a_movie_downloads_into_its_own_folder(
 
     await until(acquired, within=60)
     assert (own / EXPECTED).is_file()  # downloaded and filed there
+    assert str((own / EXPECTED).parent) == where["path"]  # just where the page said
     assert not (settings.downloads_dir / "Movies" / EXPECTED).exists()  # not the default
 
 
@@ -108,3 +113,28 @@ async def test_an_artist_gets_its_own_music_folder(
     extra = next(d for d in await _folders(c, "music") if d["path"] == str(own))
     assert r.json()["destination_id"] == extra["id"] and extra["name"] == "Vinyl rips"
     assert own.is_dir()
+
+
+async def test_where_a_title_goes_by_default(
+    c: httpx.AsyncClient, fakes: Fakes, server: Running, settings: Any
+) -> None:
+    movie = (await _add(c, None)).json()
+    where = (await c.get(f"/titles/{movie['id']}/folder")).json()
+    movies = settings.downloads_dir / "Movies"
+    assert where["own"] is False and where["library_folder_name"] == "Movies"
+    assert where["path"] == str(movies / "Dune (2021) {tmdb-438631}")
+    hd = await standard_hd(c)
+    show = {"kind": "series", "tmdb_id": 95396, "search": False, "profile_id": hd,
+            "monitor_mode": "none"}  # fmt: skip
+    r = await c.post("/titles", json=show)
+    assert r.status_code == 201, r.text
+    where = (await c.get(f"/titles/{r.json()['id']}/folder")).json()
+    assert where["path"] == str(settings.downloads_dir / "TV" / "Severance (2022) {tvdb-371980}")
+    music = server.app.state.music
+    music.transport, music.interval = fake_mb(), 0
+    lossless = next(p["id"] for p in (await c.get("/quality-profiles")).json()
+                    if p["name"] == "Lossless")  # fmt: skip
+    r = await c.post("/music/artists", json={"mbid": ARTIST, "profile_id": lossless})
+    where = (await c.get(f"/titles/{r.json()['id']}/folder")).json()
+    assert where["path"] == str(Path(where["library_folder_path"]) / "Portishead")
+    assert (await c.get("/titles/nope/folder")).status_code == 404

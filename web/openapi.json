@@ -7559,6 +7559,41 @@
     "title": "Tier",
     "type": "object"
    },
+   "TitleFolderOut": {
+    "properties": {
+     "library_folder_id": {
+      "title": "Library Folder Id",
+      "type": "string"
+     },
+     "library_folder_name": {
+      "title": "Library Folder Name",
+      "type": "string"
+     },
+     "library_folder_path": {
+      "title": "Library Folder Path",
+      "type": "string"
+     },
+     "own": {
+      "description": "Chosen for this title; false: the default for its kind",
+      "title": "Own",
+      "type": "boolean"
+     },
+     "path": {
+      "description": "Its folder in there, by the naming settings",
+      "title": "Path",
+      "type": "string"
+     }
+    },
+    "required": [
+     "library_folder_id",
+     "library_folder_name",
+     "library_folder_path",
+     "own",
+     "path"
+    ],
+    "title": "TitleFolderOut",
+    "type": "object"
+   },
    "TitleIn": {
     "properties": {
      "folder": {
@@ -19470,6 +19505,82 @@
      }
     ],
     "summary": "Title Files",
+    "tags": [
+     "library"
+    ]
+   }
+  },
+  "/api/v1/titles/{title_id}/folder": {
+   "get": {
+    "description": "Where the title's files go (or went): its library folder and its folder in there.",
+    "operationId": "title_folder_api_v1_titles__title_id__folder_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "title_id",
+      "required": true,
+      "schema": {
+       "title": "Title Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TitleFolderOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Conflict"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Title Folder",
     "tags": [
      "library"
     ]

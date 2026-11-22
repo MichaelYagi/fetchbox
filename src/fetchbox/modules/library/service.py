@@ -47,6 +47,8 @@ from fetchbox.modules.library.naming import (
     TemplateError,
     episode_path,
     movie_path,
+    render,
+    safe_component,
     validate_patterns,
 )
 from fetchbox.modules.library.probe import MediaInfo, probe
@@ -1008,6 +1010,37 @@ class LibraryService:
                     )
                 )
             await s.commit()
+
+    async def title_folder(self, title_id: str) -> dict[str, Any]:
+        """Where a title's files go: its library folder (its own, else the default for its
+        kind) and its folder in there, named by that folder's naming settings. Movies and
+        shows: ``Title (Year) {...}``; music: the artist's folder (or, with
+        "Artist - Album (Year)" naming, the library folder itself: one folder per album)."""
+        title = await self.media.get_title(title_id)
+        own = bool(title.destination_id)
+        dest = await (
+            self.storage.destination(title.destination_id)
+            if title.destination_id
+            else self.storage.default_destination(title.kind)
+        )
+        sub: str | None
+        if title.kind == "music":
+            from fetchbox.modules.library import music_files as mfiles
+
+            naming = self.music_naming() or mfiles.Naming()
+            sub = None if naming.folder == "artist - album (year)" else safe_component(title.name)
+        else:
+            patterns = await self._patterns(dest)
+            ctx = movie_context(title, parse_release(title.name or ""), "", None)
+            ctx["TvdbId"] = title.tvdb_id
+            key = "series_folder" if title.kind == "series" else "movie_folder"
+            sub = safe_component(render(patterns[key], ctx)) or None
+        root = Path(dest.path)
+        return {
+            "library_folder": dest,
+            "own": own,
+            "path": str(root / sub) if sub else str(root),
+        }
 
     async def _patterns(self, dest: Destination) -> dict[str, str]:
         async with self.db.sessionmaker() as s:

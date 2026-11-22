@@ -9,6 +9,8 @@
 	const id = $derived(page.params.id ?? '');
 	let title = $state<Title | null>(null);
 	let files = $state<S['FileOut'][]>([]);
+	// where its files go (or went): its library folder and its own folder in there
+	let folder = $state<S['TitleFolderOut'] | null>(null);
 	let history = $state<S['HistoryOut'][]>([]);
 	let profiles = $state<S['ProfileOut'][]>([]);
 	let destinations = $state<S['DestinationOut'][]>([]);
@@ -39,6 +41,9 @@
 			title = t;
 			files = f;
 			history = h.items;
+			get<S['TitleFolderOut']>(`/titles/${id}/folder`)
+				.then((x) => (folder = x))
+				.catch(() => (folder = null)); // no library folder for its kind yet
 			if (t.kind === 'music') albums = await get<S['AlbumOut'][]>(`/titles/${id}/albums`);
 			if (t.kind === 'series') {
 				seasons = await get<S['SeasonOut'][]>(`/titles/${id}/episodes`);
@@ -266,6 +271,15 @@
 					</div>
 				</div>
 				{#if title.overview}<p class="overview">{title.overview}</p>{/if}
+				{#if folder}
+					<div class="small where">
+						<span class="muted">{files.length || albums.some((a) => a.wanted.state === 'acquired') ? 'Files in' : 'Downloads to'}</span>
+						<Path path={folder.path} />
+						<span class="muted">
+							· {folder.own ? `its own library folder, ${folder.library_folder_name}` : `the ${folder.library_folder_name} folder from Settings`}{#if title.kind === 'music' && folder.path === folder.library_folder_path}, one folder per album{/if}
+						</span>
+					</div>
+				{/if}
 				{#if wanted}
 					<div class="row">
 						<Badge state={wanted.state} />
