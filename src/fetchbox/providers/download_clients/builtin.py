@@ -532,8 +532,23 @@ class BuiltinClient(DownloadClientProvider):
     # ---- test helpers -------------------------------------------------------------------------
 
     def connect_peer(self, ref: ClientRef, host: str, port: int) -> None:
-        """Point a torrent at a known peer (tests use this; DHT is off there)."""
+        """Point a torrent at a known peer (tests use this; DHT is off there). A single
+        attempt can fail (seen on Windows over loopback), so it is retried every second
+        until the torrent has finished, for up to a minute."""
         self._handle(ref).connect_peer((host, port))
+
+        async def retry() -> None:
+            for _ in range(60):
+                await asyncio.sleep(1.0)
+                h = self._handles.get(ref)
+                if self._session is None or h is None or not h.is_valid():
+                    return
+                if h.status().is_seeding:
+                    return
+                h.connect_peer((host, port))
+
+        with contextlib.suppress(RuntimeError):  # no running loop: the one attempt only
+            self._tasks.append(asyncio.get_running_loop().create_task(retry()))
 
 
 registry.register(BuiltinClient)
