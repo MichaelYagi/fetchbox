@@ -17,6 +17,7 @@ from __future__ import annotations
 import contextlib
 import os
 import secrets
+import socket
 import subprocess
 import sys
 import threading
@@ -28,7 +29,7 @@ from typing import Any
 import httpx
 
 from fetchbox import updater
-from fetchbox.config import Settings
+from fetchbox.config import Settings, write_config_value
 
 POLL_SECONDS = 3.0
 STOP_GRACE_SECONDS = 40.0
@@ -70,6 +71,16 @@ def _open_folder(path: Path) -> None:
         subprocess.Popen(["open", str(path)])
     else:
         subprocess.Popen(["xdg-open", str(path)])
+
+
+def lan_address() -> str | None:
+    """This computer's address on the local network (no packet is sent)."""
+    with contextlib.suppress(OSError), socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+        s.connect(("192.0.2.1", 9))  # a reserved address: only picks the outgoing interface
+        ip = str(s.getsockname()[0])
+        if not ip.startswith(("127.", "0.")):
+            return ip
+    return None
 
 
 class Supervisor:
@@ -158,6 +169,26 @@ class Supervisor:
     def restart(self) -> None:
         self.stop()
         self.start()
+
+    # ---- access from other devices ------------------------------------------------------
+
+    @property
+    def shared(self) -> bool:
+        return not self.settings.is_loopback
+
+    def network_url(self) -> str | None:
+        ip = lan_address() if self.shared else None
+        return f"http://{ip}:{self.settings.port}" if ip else None
+
+    def set_shared(self, on: bool) -> None:
+        """Listen on every address (the default: other devices on the network) or only
+        on this computer; saved in config.toml, applied by restarting the server."""
+        if on == self.shared:
+            return
+        write_config_value(self.settings.data_dir, "host", None if on else "127.0.0.1")
+        self.settings.host = "0.0.0.0" if on else "127.0.0.1"
+        if self.running:
+            self.restart()
 
     def poll(self) -> None:
         """Refresh the status line (called every few seconds)."""
@@ -328,6 +359,12 @@ def run(settings: Settings) -> int:
 
     updates = Updates(sup, settings.data_dir)
 
+    def toggle_shared(*_: Any) -> None:
+        def work() -> None:
+            sup.set_shared(not sup.shared)
+
+        threading.Thread(target=work, daemon=True, name="tray-share").start()
+
     def install_update(icon: Any, *_: Any) -> None:
         def quit_tray() -> None:
             stopping.set()
@@ -359,6 +396,16 @@ def run(settings: Settings) -> int:
         pystray.MenuItem("Start server", lambda *_: sup.start(), visible=lambda _: not sup.running),
         pystray.MenuItem("Restart server", lambda *_: sup.restart(), visible=lambda _: sup.running),
         pystray.MenuItem("Stop server", lambda *_: sup.stop(), visible=lambda _: sup.running),
+        pystray.Menu.SEPARATOR,
+        pystray.MenuItem(
+            "Allow access from other devices", toggle_shared, checked=lambda _: sup.shared
+        ),
+        pystray.MenuItem(
+            lambda _: f"Other devices: {sup.network_url()}",
+            None,
+            enabled=False,
+            visible=lambda _: sup.network_url() is not None,
+        ),
         pystray.Menu.SEPARATOR,
         pystray.MenuItem("Open data folder", lambda *_: _open_folder(settings.data_dir)),
         pystray.MenuItem("Open logs folder", lambda *_: _open_folder(settings.data_dir / "logs")),

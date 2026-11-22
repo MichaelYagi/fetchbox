@@ -17,6 +17,11 @@ On first run, choose the admin password in the browser. The terminal also prints
 one-time API key for scripts. Back up `data/secrets.key`: it encrypts stored passwords and
 keys.
 
+Other devices on your network open it at `http://<this computer's address>:8787` and sign
+in (the first-run password can only be chosen on this computer). To keep it to this
+computer only: `--host 127.0.0.1`, `host = "127.0.0.1"` in `data/config.toml`, or untick
+"Allow access from other devices" in the desktop tray menu.
+
 ### Docker
 
 ```sh

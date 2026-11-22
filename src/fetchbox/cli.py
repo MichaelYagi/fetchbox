@@ -19,7 +19,7 @@ def _parser() -> argparse.ArgumentParser:
     sub = p.add_subparsers(dest="command", required=True)
 
     serve = sub.add_parser("serve", help="run the server")
-    serve.add_argument("--host", help="bind address (default 127.0.0.1)")
+    serve.add_argument("--host", help="bind address (default 0.0.0.0; 127.0.0.1: only here)")
     serve.add_argument("--port", type=int, help="port (default 8787)")
     serve.add_argument("--db-url", help="database URL (default SQLite in the data dir)")
     serve.add_argument("--log-level", choices=["debug", "info", "warning", "error"])
@@ -38,7 +38,7 @@ def _parser() -> argparse.ArgumentParser:
     corpus.add_argument("--limit", type=int, default=500)
 
     tray = sub.add_parser("tray", help="desktop tray: start the server and open the UI")
-    tray.add_argument("--host", help="bind address (default 127.0.0.1)")
+    tray.add_argument("--host", help="bind address (default 0.0.0.0; 127.0.0.1: only here)")
     tray.add_argument("--port", type=int, help="port (default 8787)")
 
     mig = sub.add_parser("migrate", help="apply database migrations and exit")
@@ -275,13 +275,6 @@ def main(argv: Sequence[str] | None = None) -> int:
             if code:
                 return code
             print("admin password set from FETCHBOX_ADMIN_PASSWORD", file=sys.stderr)
-        if not settings.is_loopback and not _has_admin_password(settings):
-            print(
-                f"error: refusing to bind {settings.host}: set an admin password first "
-                "(fetchbox reset-password), or bind to 127.0.0.1",
-                file=sys.stderr,
-            )
-            return 2
 
         fastapi_app = create_app(settings)
         config = uvicorn.Config(

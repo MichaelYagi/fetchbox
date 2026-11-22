@@ -122,10 +122,6 @@ def print_bootstrap_key(key: str) -> None:
     )
 
 
-class StartupRefused(RuntimeError):
-    pass
-
-
 def create_app(
     settings: Settings,
     *,
@@ -172,12 +168,6 @@ def create_app(
         app.state.auth = auth
         if (first_key := await auth.bootstrap()) is not None:
             on_bootstrap_key(first_key)
-        if not settings.is_loopback and not await auth.has_password():
-            await db.dispose()
-            raise StartupRefused(
-                f"refusing to bind {settings.host}: set an admin password first "
-                "(fetchbox reset-password), or bind to 127.0.0.1"
-            )
 
         profiles = ProfilesService(db, bus)
         await profiles.seed_defaults()

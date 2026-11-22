@@ -103,7 +103,8 @@ async def setup(body: SetupIn, request: Request, response: Response) -> SessionO
         raise ProblemError(
             403,
             "Forbidden",
-            "first-run setup is only allowed from localhost",
+            "Set the admin password on the computer Fetchbox runs on (open it there, at "
+            "http://127.0.0.1), then sign in from here",
             slug="setup-local-only",
         )
     user = await auth.set_password(body.password, username=body.username)

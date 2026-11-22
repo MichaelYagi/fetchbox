@@ -56,7 +56,9 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="FETCHBOX_", extra="ignore")
 
     data_dir: Path = Field(default_factory=default_data_dir)
-    host: str = "127.0.0.1"
+    # every address: other devices on the network can open it (sign-in still applies;
+    # first-run setup only from this computer). 127.0.0.1: this computer only.
+    host: str = "0.0.0.0"
     port: int = Field(default=8787, ge=1, le=65535)
     db_url: str | None = None
     log_level: Literal["debug", "info", "warning", "error"] = "info"
@@ -126,3 +128,23 @@ def load_settings(data_dir: str | os.PathLike[str] | None = None, **cli: Any) ->
         return Settings(**overrides)
     finally:
         _TOML_PATH_CTX["path"] = None
+
+
+def write_config_value(data_dir: Path, key: str, value: str | None) -> Path:
+    """Set (or, with None, remove) a top-level ``key = "value"`` in the data dir's
+    config.toml, keeping every other line as it is."""
+    import json
+    import re
+
+    path = data_dir / CONFIG_FILENAME
+    lines = path.read_text(encoding="utf-8").splitlines() if path.is_file() else []
+    pattern = re.compile(rf"^\s*{re.escape(key)}\s*=")
+    # top-level keys end where the first [table] starts
+    end = next((i for i, ln in enumerate(lines) if ln.lstrip().startswith("[")), len(lines))
+    kept = [ln for ln in lines[:end] if not pattern.match(ln)]
+    if value is not None:
+        kept.append(f"{key} = {json.dumps(value)}")
+    out = kept + lines[end:]
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(out) + ("\n" if out else ""), encoding="utf-8")
+    return path

@@ -71,7 +71,7 @@ def test_supervisor_starts_and_stops_a_real_server(
     monkeypatch.setenv("FETCHBOX_SEED_INDEXERS", "0")
     settings = load_settings(tmp_path / "data", port=_free_port())
     cmd = server_command(settings)
-    assert cmd[-4:] == ["--host", "127.0.0.1", "--port", str(settings.port)]
+    assert cmd[-4:] == ["--host", "0.0.0.0", "--port", str(settings.port)]
     sup = Supervisor(settings)
     sup.start()
     try:
@@ -102,3 +102,25 @@ def test_icon_draws() -> None:
     assert img.size == (64, 64) and img.mode == "RGBA"
     assert img.getpixel((32, 4))[:3] == (37, 99, 235)
     assert icon_image(64, warning=True).getpixel((54, 10))[:3] == (217, 119, 6)
+
+
+def test_access_from_other_devices_is_saved_in_config(tmp_path: Path) -> None:
+    """The tray's "Allow access from other devices": on (the default) listens on every
+    address; off keeps it to this computer, saved in config.toml, other lines kept."""
+    data = tmp_path / "data"
+    data.mkdir()
+    (data / "config.toml").write_text('port = 9999\n\n[network]\nhost = "keep-me"\n')
+    sup = Supervisor(load_settings(data))
+    assert sup.shared and sup.settings.host == "0.0.0.0"
+
+    sup.set_shared(False)  # the server isn't running: nothing to restart
+    assert not sup.shared
+    assert load_settings(data).host == "127.0.0.1" and load_settings(data).port == 9999
+    assert server_command(sup.settings)[-4:-2] == ["--host", "127.0.0.1"]
+    text = (data / "config.toml").read_text()
+    assert 'host = "keep-me"' in text  # a table's own key is left alone
+    assert text.index('host = "127.0.0.1"') < text.index("[network]")
+
+    sup.set_shared(True)
+    assert sup.shared and load_settings(data).host == "0.0.0.0"
+    assert 'host = "127.0.0.1"' not in (data / "config.toml").read_text()
