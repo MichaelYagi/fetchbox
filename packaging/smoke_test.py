@@ -64,3 +64,7 @@ finally:
         proc.wait(30)
     except subprocess.TimeoutExpired:
         proc.kill()
+    if sys.platform == "win32":
+        # A one-file Windows build is two processes (launcher and the program); the
+        # second would keep Fetchbox.exe locked for whatever runs next.
+        subprocess.run(["taskkill", "/F", "/T", "/PID", str(proc.pid)], capture_output=True)

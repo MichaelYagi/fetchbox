@@ -76,6 +76,21 @@ begin
   Result := ExpandConstant('{param:RELAUNCH|0}') = '1';
 end;
 
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+var
+  Code: Integer;
+begin
+  { An update from the tray: whatever is left of the old Fetchbox must not hold
+    Fetchbox.exe open (the tray has asked the server to stop and is quitting). }
+  if Relaunch then
+  begin
+    Exec(ExpandConstant('{sys}\taskkill.exe'), '/F /T /IM Fetchbox.exe', '', SW_HIDE,
+      ewWaitUntilTerminated, Code);
+    Sleep(1000);
+  end;
+  Result := '';
+end;
+
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
   Code: Integer;

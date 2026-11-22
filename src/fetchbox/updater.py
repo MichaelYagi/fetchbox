@@ -108,7 +108,8 @@ def download(installer: Download, sums: Download, folder: Path, *, transport: An
 def apply(installer: Path, app: Path, *, wait_pid: int, relaunch: bool = True) -> None:
     """Start installing; the caller (the tray) quits right after."""
     if sys.platform == "win32":
-        args = [str(installer), "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART"]
+        args = [str(installer), "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART",
+                "/FORCECLOSEAPPLICATIONS"]  # fmt: skip
         if relaunch:
             args.append("/RELAUNCH=1")
         flags = getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(
