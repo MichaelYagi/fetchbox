@@ -322,6 +322,8 @@ class LibraryService:
         self.sweep_interval = SWEEP_INTERVAL
         # Settings > Library folders > Music (set by the app from the config)
         self.music_naming: Any = lambda: None
+        # the MusicService (set by the app): fetches an album's track list at import
+        self.music: Any = None
 
     # ---- lifecycle ----------------------------------------------------------------------------
 
@@ -517,6 +519,33 @@ class LibraryService:
             "cutoff_met": cutoff_met,
         }
 
+    async def _fetch_tracks(self, album_id: str, files: int) -> list[Any]:
+        from fetchbox.modules.media.models import Track
+        from fetchbox.providers.metadata.musicbrainz import MusicBrainzError
+
+        if self.music is not None:
+            try:
+                eds = await self.music.editions(album_id)
+                fit = next((e for e in eds if e.track_count == files), None)
+                await self.music.choose_edition(album_id, fit.id if fit else None)
+            except MusicBrainzError as exc:
+                raise ImportProblem(
+                    f"the album's track list isn't known yet (MusicBrainz: {exc.message})"
+                ) from None
+        async with self.db.sessionmaker() as s:
+            rows = list(
+                (
+                    await s.execute(
+                        select(Track)
+                        .where(Track.album_id == album_id)
+                        .order_by(Track.disc, Track.number)
+                    )
+                ).scalars()
+            )
+        if not rows:
+            raise ImportProblem("MusicBrainz has no track list for this album yet")
+        return rows
+
     async def _import_album(
         self, d: Download, grab: Grab, title: Title, waiting: list[WantedItem], dest: Destination
     ) -> dict[str, Any]:
@@ -547,11 +576,14 @@ class LibraryService:
                     )
                 ).scalars()
             )
-        if not rows:
-            raise ImportProblem("the album's track list isn't known yet (asking MusicBrainz)")
         audio_files = [f for f in await self._files(d) if mfiles.is_audio(f.path)]
         if not audio_files:
             raise ImportProblem("no audio files in the download", retry=False)
+        if not rows:
+            # No edition picked yet (an album not monitored is skipped by the background
+            # pick, but can still be downloaded by hand): pick it now, the edition with as
+            # many tracks as the download has files (else the standard one).
+            rows = await self._fetch_tracks(album.id, len(audio_files))
         audio = []
         for f in audio_files:
             src = await self._on_disk(d, f)
