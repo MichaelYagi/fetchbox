@@ -3579,6 +3579,21 @@
     "title": "LiveOut",
     "type": "object"
    },
+   "LoginCodeIn": {
+    "properties": {
+     "code": {
+      "maxLength": 200,
+      "minLength": 10,
+      "title": "Code",
+      "type": "string"
+     }
+    },
+    "required": [
+     "code"
+    ],
+    "title": "LoginCodeIn",
+    "type": "object"
+   },
    "LoginIn": {
     "properties": {
      "password": {
@@ -3599,6 +3614,20 @@
      "password"
     ],
     "title": "LoginIn",
+    "type": "object"
+   },
+   "LoginLinkOut": {
+    "properties": {
+     "path": {
+      "description": "Open it within 60 s: /login?code=\u2026, signs the admin in once",
+      "title": "Path",
+      "type": "string"
+     }
+    },
+    "required": [
+     "path"
+    ],
+    "title": "LoginLinkOut",
     "type": "object"
    },
    "MatchedFormat": {
@@ -8886,6 +8915,103 @@
      }
     ],
     "summary": "Login",
+    "tags": [
+     "auth"
+    ]
+   }
+  },
+  "/api/v1/auth/login-code": {
+   "post": {
+    "description": "Trade a one-time code from a sign-in link for a session.",
+    "operationId": "login_with_code_api_v1_auth_login_code_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/LoginCodeIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SessionOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Unauthorized"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Login With Code",
+    "tags": [
+     "auth"
+    ]
+   }
+  },
+  "/api/v1/auth/login-link": {
+   "post": {
+    "description": "A one-time sign-in link (the tray's \"Open Fetchbox\": no password prompt on the\ncomputer Fetchbox runs on). Valid 60 seconds, once.",
+    "operationId": "login_link_api_v1_auth_login_link_post",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/LoginLinkOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Login Link",
     "tags": [
      "auth"
     ]
@@ -17329,26 +17455,8 @@
   },
   "/api/v1/system/shutdown": {
    "post": {
-    "description": "Stop the server gracefully (running jobs get up to 30 s, downloads save their\nstate). Needs ``system:write``, or the token the desktop tray gave the server it\nstarted (``X-Fetchbox-Supervisor``).",
+    "description": "Stop the server gracefully (running jobs get up to 30 s, downloads save their\nstate). The desktop tray uses this with its own per-launch token.",
     "operationId": "shutdown_api_v1_system_shutdown_post",
-    "parameters": [
-     {
-      "in": "header",
-      "name": "x-fetchbox-supervisor",
-      "required": false,
-      "schema": {
-       "anyOf": [
-        {
-         "type": "string"
-        },
-        {
-         "type": "null"
-        }
-       ],
-       "title": "X-Fetchbox-Supervisor"
-      }
-     }
-    ],
     "responses": {
      "202": {
       "content": {
@@ -17380,15 +17488,16 @@
       },
       "description": "Forbidden"
      },
-     "422": {
+     "409": {
       "content": {
        "application/json": {
         "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
+         "$ref": "#/components/schemas/Problem"
         }
-       }
+       },
+       "application/problem+json": {}
       },
-      "description": "Validation Error"
+      "description": "Conflict"
      }
     },
     "security": [

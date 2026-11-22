@@ -14,22 +14,47 @@ from fetchbox.tray import Supervisor, server_command
 from tests.conftest import Running
 
 
-async def test_shutdown_needs_system_write_or_the_supervisor_token(
+async def test_tray_token_is_a_narrow_principal(
     server: Running, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     stopped: list[bool] = []
     server.app.state.request_shutdown = lambda: stopped.append(True)
+    monkeypatch.setenv("FETCHBOX_SUPERVISOR_TOKEN", "tray-secret")
+    tray = {"X-Fetchbox-Supervisor": "tray-secret"}
     async with server.client(key="") as anon:
         assert (await anon.post("/system/shutdown")).status_code == 401
-        monkeypatch.setenv("FETCHBOX_SUPERVISOR_TOKEN", "tray-secret")
         r = await anon.post("/system/shutdown", headers={"X-Fetchbox-Supervisor": "wrong"})
         assert r.status_code == 401
-        r = await anon.post("/system/shutdown", headers={"X-Fetchbox-Supervisor": "tray-secret"})
-        assert r.status_code == 202
-    async with server.client() as root:
-        assert (await root.post("/system/shutdown")).status_code == 202
+        assert (await anon.post("/downloads/pause-all", headers=tray)).status_code == 200
+        r = await anon.post("/titles", headers=tray, json={"tmdb_id": 1, "profile_id": "x"})
+        assert r.status_code == 403  # only system:write and downloads:write
+        # the sign-in link: one code, one session
+        path = (await anon.post("/auth/login-link", headers=tray)).json()["path"]
+        code = path.split("code=")[1]
+        r = await anon.post("/auth/login-code", json={"code": code})
+        assert r.status_code == 200 and "fb_session" in r.headers.get("set-cookie", "")
+        assert (await anon.post("/auth/login-code", json={"code": code})).status_code == 401
+        assert (await anon.post("/system/shutdown", headers=tray)).status_code == 202
     await asyncio.sleep(0.5)  # it stops just after answering
-    assert stopped == [True, True]
+    assert stopped == [True]
+
+
+def test_autostart_entry(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import sys
+
+    from fetchbox import tray
+
+    if sys.platform == "win32":
+        pytest.skip("writes the real HKCU Run key")
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    monkeypatch.setattr(Path, "home", lambda: tmp_path)
+    assert not tray.autostart_enabled()
+    tray.set_autostart(True)
+    assert tray.autostart_enabled()
+    entry = tray._autostart_file().read_bytes()
+    assert b"fetchbox" in entry.lower()
+    tray.set_autostart(False)
+    assert not tray.autostart_enabled()
 
 
 def _free_port() -> int:

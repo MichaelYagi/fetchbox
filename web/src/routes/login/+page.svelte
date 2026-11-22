@@ -12,6 +12,18 @@
 	let busy = $state(false);
 
 	$effect(() => {
+		// A one-time sign-in link from the tray ("Open Fetchbox"): no password prompt.
+		const code = page.url.searchParams.get('code');
+		if (code) {
+			post('/auth/login-code', { code })
+				.then(async () => {
+					session.me = await get<S['Me']>('/auth/me');
+					await goto('/', { replaceState: true }); // the code leaves the address bar
+				})
+				.catch((err) => {
+					error = err instanceof ApiError ? err.message : 'Could not reach Fetchbox.';
+				});
+		}
 		get<{ setup_required: boolean }>('/auth/status').then((s) => (setup = s.setup_required));
 	});
 

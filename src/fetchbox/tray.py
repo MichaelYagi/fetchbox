@@ -14,6 +14,7 @@ a different pystray.
 
 from __future__ import annotations
 
+import contextlib
 import os
 import secrets
 import subprocess
@@ -138,6 +139,21 @@ class Supervisor:
             self.proc = None
             self.status, self.healthy = "Stopped", False
 
+    def call(self, method: str, path: str) -> httpx.Response | None:
+        """The API with the tray's own token (scopes system:write, downloads:write)."""
+        try:
+            return httpx.request(method, f"{self.url}/api/v1{path}", timeout=10.0,
+                                 headers={"X-Fetchbox-Supervisor": self.token})  # fmt: skip
+        except httpx.HTTPError:
+            return None
+
+    def open_url(self) -> str:
+        """The UI, signed in: a one-time link (no password prompt on this computer)."""
+        r = self.call("POST", "/auth/login-link")
+        if r is not None and r.status_code == 200:
+            return self.url + str(r.json()["path"])
+        return self.url
+
     def restart(self) -> None:
         self.stop()
         self.start()
@@ -164,6 +180,69 @@ class Supervisor:
             self.status = "Starting…"
 
 
+# ---- start at login (Windows Run key, macOS LaunchAgent, XDG autostart) ----------------------
+
+APP_ID = "dev.fetchbox.Fetchbox"
+
+
+def _launch_command() -> list[str]:
+    if getattr(sys, "frozen", False):
+        return [sys.executable]  # the desktop build starts the tray with no arguments
+    return [sys.executable, "-m", "fetchbox", "tray"]
+
+
+def autostart_enabled() -> bool:
+    if sys.platform == "win32":
+        import winreg
+
+        try:
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER,
+                                r"Software\Microsoft\Windows\CurrentVersion\Run") as k:  # fmt: skip
+                winreg.QueryValueEx(k, "Fetchbox")
+            return True
+        except OSError:
+            return False
+    return _autostart_file().is_file()
+
+
+def _autostart_file() -> Path:
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "LaunchAgents" / f"{APP_ID}.plist"
+    base = os.environ.get("XDG_CONFIG_HOME") or str(Path.home() / ".config")
+    return Path(base) / "autostart" / "fetchbox.desktop"
+
+
+def set_autostart(on: bool) -> None:
+    cmd = _launch_command()
+    if sys.platform == "win32":
+        import subprocess as sp
+        import winreg
+
+        path = r"Software\Microsoft\Windows\CurrentVersion\Run"
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, path, 0, winreg.KEY_SET_VALUE) as k:
+            if on:
+                winreg.SetValueEx(k, "Fetchbox", 0, winreg.REG_SZ, sp.list2cmdline(cmd))
+            else:
+                with contextlib.suppress(OSError):
+                    winreg.DeleteValue(k, "Fetchbox")
+        return
+    f = _autostart_file()
+    if not on:
+        f.unlink(missing_ok=True)
+        return
+    f.parent.mkdir(parents=True, exist_ok=True)
+    if sys.platform == "darwin":
+        import plistlib
+
+        f.write_bytes(plistlib.dumps({"Label": APP_ID, "ProgramArguments": cmd,
+                                      "RunAtLoad": True}))  # fmt: skip
+    else:
+        import shlex
+
+        f.write_text("[Desktop Entry]\nType=Application\nName=Fetchbox\n"
+                     f"Exec={shlex.join(cmd)}\nX-GNOME-Autostart-enabled=true\n")  # fmt: skip
+
+
 def run(settings: Settings) -> int:
     try:
         import pystray
@@ -176,7 +255,7 @@ def run(settings: Settings) -> int:
     stopping = threading.Event()
 
     def open_ui(*_: Any) -> None:
-        webbrowser.open(sup.url)
+        webbrowser.open(sup.open_url())
 
     def quit_(icon: Any, *_: Any) -> None:
         stopping.set()
@@ -186,6 +265,16 @@ def run(settings: Settings) -> int:
     menu = pystray.Menu(
         pystray.MenuItem(lambda _: sup.status, None, enabled=False),
         pystray.MenuItem("Open Fetchbox", open_ui, default=True, enabled=lambda _: sup.healthy),
+        pystray.MenuItem(
+            "Pause all downloads",
+            lambda *_: sup.call("POST", "/downloads/pause-all"),
+            enabled=lambda _: sup.healthy,
+        ),
+        pystray.MenuItem(
+            "Resume all downloads",
+            lambda *_: sup.call("POST", "/downloads/resume-all"),
+            enabled=lambda _: sup.healthy,
+        ),
         pystray.Menu.SEPARATOR,
         pystray.MenuItem("Start server", lambda *_: sup.start(), visible=lambda _: not sup.running),
         pystray.MenuItem("Restart server", lambda *_: sup.restart(), visible=lambda _: sup.running),
@@ -193,6 +282,11 @@ def run(settings: Settings) -> int:
         pystray.Menu.SEPARATOR,
         pystray.MenuItem("Open data folder", lambda *_: _open_folder(settings.data_dir)),
         pystray.MenuItem("Open logs folder", lambda *_: _open_folder(settings.data_dir / "logs")),
+        pystray.MenuItem(
+            "Start at login",
+            lambda *_: set_autostart(not autostart_enabled()),
+            checked=lambda _: autostart_enabled(),
+        ),
         pystray.Menu.SEPARATOR,
         pystray.MenuItem("Quit Fetchbox", quit_),
     )

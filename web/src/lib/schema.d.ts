@@ -112,6 +112,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/login-code": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Login With Code
+         * @description Trade a one-time code from a sign-in link for a session.
+         */
+        post: operations["login_with_code_api_v1_auth_login_code_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/login-link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Login Link
+         * @description A one-time sign-in link (the tray's "Open Fetchbox": no password prompt on the
+         *     computer Fetchbox runs on). Valid 60 seconds, once.
+         */
+        post: operations["login_link_api_v1_auth_login_link_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/logout": {
         parameters: {
             query?: never;
@@ -1981,8 +2022,7 @@ export interface paths {
         /**
          * Shutdown
          * @description Stop the server gracefully (running jobs get up to 30 s, downloads save their
-         *     state). Needs ``system:write``, or the token the desktop tray gave the server it
-         *     started (``X-Fetchbox-Supervisor``).
+         *     state). The desktop tray uses this with its own per-launch token.
          */
         post: operations["shutdown_api_v1_system_shutdown_post"];
         delete?: never;
@@ -3582,12 +3622,25 @@ export interface components {
             /** Uploaded */
             uploaded: number;
         };
+        /** LoginCodeIn */
+        LoginCodeIn: {
+            /** Code */
+            code: string;
+        };
         /** LoginIn */
         LoginIn: {
             /** Password */
             password: string;
             /** Username */
             username: string;
+        };
+        /** LoginLinkOut */
+        LoginLinkOut: {
+            /**
+             * Path
+             * @description Open it within 60 s: /login?code=…, signs the admin in once
+             */
+            path: string;
         };
         /** MatchedFormat */
         MatchedFormat: {
@@ -5827,6 +5880,69 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Problem"];
                     "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    login_with_code_api_v1_auth_login_code_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginCodeIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    login_link_api_v1_auth_login_link_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoginLinkOut"];
                 };
             };
         };
@@ -10910,9 +11026,7 @@ export interface operations {
     shutdown_api_v1_system_shutdown_post: {
         parameters: {
             query?: never;
-            header?: {
-                "x-fetchbox-supervisor"?: string | null;
-            };
+            header?: never;
             path?: never;
             cookie?: never;
         };
@@ -10947,13 +11061,14 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Conflict */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
                 };
             };
         };

@@ -331,8 +331,13 @@ Release pipeline (pulled forward from Phase 4, same flow as roast-telemetry):
 - [x] Tray launcher (`fetchbox tray`, default when the desktop build is double-clicked):
       supervises the server process, status line, open UI, start/stop/restart, data and
       logs folders, quit; graceful stop via `POST /system/shutdown` (system:write, or the
-      token the tray gives the server it starts). Remaining Phase 4 tray items: one-time
-      login link, pause all, start at login, updates, keyring-stored key
+      token the tray gives the server it starts)
+- [x] Tray, more: the per-launch tray token is now a narrow principal (system:write and
+      downloads:write only; nothing else). "Open Fetchbox" signs in with a one-time link
+      (`POST /auth/login-link` -> `/login?code=`, 60 s, single use, hashed in memory, the
+      code leaves the address bar). Pause / resume all downloads. "Start at login" toggle
+      (HKCU Run key, macOS LaunchAgent, XDG autostart). Remaining: installing updates
+      from the tray, keyring-stored secrets key
 
 ### Phase 4 — Operability + release (v1.0)
 Backups/restore, config export/import, pre-migration backups, diagnostics zip, updates;

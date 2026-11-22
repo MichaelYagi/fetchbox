@@ -18,6 +18,7 @@ Cookie-authenticated unsafe requests must echo the session's CSRF token in
 from __future__ import annotations
 
 import dataclasses
+import os
 from typing import Annotated
 from urllib.parse import urlsplit
 
@@ -72,12 +73,26 @@ def _same_origin(conn: HTTPConnection) -> bool:
     return urlsplit(origin).netloc == conn.headers.get("host")
 
 
+TRAY_ENV = "FETCHBOX_SUPERVISOR_TOKEN"
+TRAY_HEADER = "x-fetchbox-supervisor"
+TRAY_SCOPES = frozenset({"system:write", "downloads:write"})
+
+
 async def resolve_principal(
     conn: HTTPConnection, *, method: str | None, allow_stream_token: bool = False
 ) -> Principal | None:
     """Authenticate a request or WebSocket. `method=None` means WebSocket."""
     auth = get_auth(conn)
     ip = client_ip(conn)
+    # The desktop tray: a random token it gave the server it started (in the server's
+    # environment, gone with it), good for its own few actions only.
+    tray = os.environ.get(TRAY_ENV)
+    sent = conn.headers.get(TRAY_HEADER)
+    if tray and sent:
+        if not constant_time_equals(sent, tray):
+            raise AuthFailed(401, "Invalid tray token", "unauthorized")
+        return Principal(type="api_key", id="tray", name="tray", scopes=TRAY_SCOPES,
+                         via="api_key", ip=ip)  # fmt: skip
     header = conn.headers.get("authorization", "")
     raw: str | None = None
     if header.lower().startswith("bearer "):

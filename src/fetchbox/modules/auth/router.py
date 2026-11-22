@@ -238,3 +238,38 @@ async def revoke_key(
     key = await _auth(request).revoke_key(p, key_id, if_match=if_match)
     response.headers["ETag"] = etag_of(key)
     return ApiKeyOut.model_validate(key)
+
+
+class LoginLinkOut(BaseModel):
+    path: str = Field(description="Open it within 60 s: /login?code=…, signs the admin in once")
+
+
+class LoginCodeIn(BaseModel):
+    code: str = Field(min_length=10, max_length=200)
+
+
+@router.post(
+    "/login-link",
+    response_model=LoginLinkOut,
+    dependencies=[Depends(require("system:write"))],
+)
+async def login_link(request: Request) -> LoginLinkOut:
+    """A one-time sign-in link (the tray's "Open Fetchbox": no password prompt on the
+    computer Fetchbox runs on). Valid 60 seconds, once."""
+    return LoginLinkOut(path=f"/login?code={_auth(request).issue_login_code()}")
+
+
+@router.post(
+    "/login-code",
+    response_model=SessionOut,
+    dependencies=[Depends(public())],
+    responses=problem_responses(401),
+)
+async def login_with_code(body: LoginCodeIn, request: Request, response: Response) -> SessionOut:
+    """Trade a one-time code from a sign-in link for a session."""
+    auth = _auth(request)
+    token, csrf = await auth.redeem_login_code(
+        body.code, ip=client_ip(request), user_agent=request.headers.get("user-agent")
+    )
+    _set_session_cookies(request, response, token, csrf)
+    return SessionOut(csrf_token=csrf, user="admin")

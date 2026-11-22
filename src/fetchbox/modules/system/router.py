@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-import hmac
 import json
-import os
 import re
 from typing import Annotated, Any
 
@@ -123,29 +121,15 @@ async def patch_config(
     return _config_out(view, response)
 
 
-SUPERVISOR_ENV = "FETCHBOX_SUPERVISOR_TOKEN"
-
-
 @router.post(
     "/shutdown",
     status_code=202,
-    dependencies=[Depends(public())],
-    responses=problem_responses(401, 403),
+    dependencies=[Depends(require("system:write"))],
+    responses=problem_responses(401, 403, 409),
 )
-async def shutdown(
-    request: Request,
-    x_fetchbox_supervisor: Annotated[str | None, Header()] = None,
-) -> Response:
+async def shutdown(request: Request) -> Response:
     """Stop the server gracefully (running jobs get up to 30 s, downloads save their
-    state). Needs ``system:write``, or the token the desktop tray gave the server it
-    started (``X-Fetchbox-Supervisor``)."""
-    expected = os.environ.get(SUPERVISOR_ENV)
-    if not (
-        expected
-        and x_fetchbox_supervisor
-        and hmac.compare_digest(expected.encode(), x_fetchbox_supervisor.encode())
-    ):
-        await require("system:write")(request)
+    state). The desktop tray uses this with its own per-launch token."""
     stop = getattr(request.app.state, "request_shutdown", None)
     if stop is None:
         raise ProblemError(409, "Conflict", "this server can't stop itself", slug="conflict")
