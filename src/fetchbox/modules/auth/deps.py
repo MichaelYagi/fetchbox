@@ -18,7 +18,10 @@ Cookie-authenticated unsafe requests must echo the session's CSRF token in
 from __future__ import annotations
 
 import dataclasses
-from typing import Annotated
+import functools
+import ipaddress
+import os
+from typing import Annotated, Any
 from urllib.parse import urlsplit
 
 from fastapi import Depends, Request, WebSocket, WebSocketException
@@ -60,16 +63,85 @@ def get_auth(conn: HTTPConnection) -> AuthService:
     return svc
 
 
-def client_ip(conn: HTTPConnection) -> str:
-    # TODO(phase 0): honour X-Forwarded-For only from configured trusted_proxies.
+# ---- reverse proxies (Settings > Network) ----------------------------------------------
+
+
+def _network(conn: HTTPConnection) -> Any:
+    cfg = getattr(conn.app.state, "config", None)
+    return cfg.current.network if cfg is not None else None
+
+
+@functools.lru_cache(maxsize=32)
+def _nets(raw: tuple[str, ...]) -> tuple[ipaddress.IPv4Network | ipaddress.IPv6Network, ...]:
+    return tuple(ipaddress.ip_network(n, strict=False) for n in raw)
+
+
+def _within(ip: str, nets: tuple[Any, ...]) -> bool:
+    try:
+        addr = ipaddress.ip_address(ip)
+    except ValueError:
+        return False
+    if isinstance(addr, ipaddress.IPv6Address) and addr.ipv4_mapped:
+        addr = addr.ipv4_mapped
+    return any(addr in n for n in nets)
+
+
+def _peer(conn: HTTPConnection) -> str:
     return conn.client.host if conn.client else "unknown"
+
+
+def from_trusted_proxy(conn: HTTPConnection) -> bool:
+    net = _network(conn)
+    return bool(net and net.trusted_proxies) and _within(
+        _peer(conn), _nets(tuple(net.trusted_proxies))
+    )
+
+
+def client_ip(conn: HTTPConnection) -> str:
+    """The client's address. Behind a trusted proxy: the last X-Forwarded-For hop that
+    isn't itself a trusted proxy (earlier hops can be written by the client)."""
+    peer = _peer(conn)
+    if not from_trusted_proxy(conn):
+        return peer
+    nets = _nets(tuple(_network(conn).trusted_proxies))
+    hops = [h.strip() for h in conn.headers.get("x-forwarded-for", "").split(",") if h.strip()]
+    for hop in reversed(hops):
+        if not _within(hop, nets):
+            try:
+                return str(ipaddress.ip_address(hop))
+            except ValueError:
+                return peer  # garbage in the header: don't log it as an address
+    return hops[0] if hops else peer
+
+
+def request_host(conn: HTTPConnection) -> str | None:
+    """The host the browser used: X-Forwarded-Host from a trusted proxy (nginx often
+    passes its upstream as Host), else Host."""
+    if from_trusted_proxy(conn) and (fwd := conn.headers.get("x-forwarded-host")):
+        return fwd.split(",")[0].strip()
+    return conn.headers.get("host")
 
 
 def _same_origin(conn: HTTPConnection) -> bool:
     origin = conn.headers.get("origin")
     if origin is None:
-        return True  # non-browser clients send no Origin
-    return urlsplit(origin).netloc == conn.headers.get("host")
+        # non-browser clients send no Origin; a browser that says cross-site is refused
+        return conn.headers.get("sec-fetch-site") not in ("cross-site", "same-site")
+    return urlsplit(origin).netloc == request_host(conn)
+
+
+def _proxy_user(conn: HTTPConnection) -> str | None:
+    """Who the trusted proxy's sign-in header names (Authelia, Authentik...), if set."""
+    net = _network(conn)
+    if not (net and net.auth_header) or not from_trusted_proxy(conn):
+        return None
+    who = conn.headers.get(net.auth_header, "").strip()
+    return who[:64] or None
+
+
+TRAY_ENV = "FETCHBOX_SUPERVISOR_TOKEN"
+TRAY_HEADER = "x-fetchbox-supervisor"
+TRAY_SCOPES = frozenset({"system:read", "system:write", "downloads:write"})
 
 
 async def resolve_principal(
@@ -78,6 +150,24 @@ async def resolve_principal(
     """Authenticate a request or WebSocket. `method=None` means WebSocket."""
     auth = get_auth(conn)
     ip = client_ip(conn)
+    # The desktop tray: a random token it gave the server it started (in the server's
+    # environment, gone with it), good for its own few actions only.
+    tray = os.environ.get(TRAY_ENV)
+    sent = conn.headers.get(TRAY_HEADER)
+    if tray and sent:
+        if not constant_time_equals(sent, tray):
+            raise AuthFailed(401, "Invalid tray token", "unauthorized")
+        return Principal(type="api_key", id="tray", name="tray", scopes=TRAY_SCOPES,
+                         via="api_key", ip=ip)  # fmt: skip
+    if (who := _proxy_user(conn)) is not None and "authorization" not in conn.headers \
+            and "x-api-key" not in conn.headers:  # fmt: skip
+        # The proxy signed this person in. It adds the header to every request the
+        # browser makes, so other sites must not be able to make that browser write.
+        if (method is None or method not in SAFE_METHODS) and not _same_origin(conn):
+            raise AuthFailed(403, "Cross-origin request refused", "csrf")
+        principal = await auth.proxy_principal(who)
+        if principal is not None:
+            return dataclasses.replace(principal, ip=ip)
     header = conn.headers.get("authorization", "")
     raw: str | None = None
     if header.lower().startswith("bearer "):

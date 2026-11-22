@@ -44,7 +44,7 @@ A phase starts only when the previous gate passes.
       escalation guard, rotate/revoke/expiry, sessions + CSRF, login rate limit,
       first-run bootstrap, `fetchbox reset-password`, LAN bind refused without password
 - [x] Route-scope coverage test (enumerates OpenAPI operations; public routes allowlisted)
-- [ ] Trusted proxies (`X-Forwarded-For`) and forward-auth header (Authelia/Authentik)
+- [x] Trusted proxies (`X-Forwarded-For`) and forward-auth header (Authelia/Authentik): Phase 4
 - [x] API conventions: keyset cursor pagination + `sort`, ETag/If-Match on versioned rows
       (concurrent writes -> 412, never a lost update), Idempotency-Key store (per actor,
       24 h, replay / 422 mismatch / 409 in progress, errors not stored)
@@ -52,10 +52,10 @@ A phase starts only when the previous gate passes.
       Last-Event-ID replay with gap signal, `auth.*` admin-only, stream closes when its
       credential is revoked, single-use stream tokens, same-origin check for cookie WS
 - [x] Activity log: batched writer (lossless shutdown), `/activity`, prune job
-- [ ] Activity entries for request IPs behind proxies (needs trusted_proxies)
+- [x] Activity entries for request IPs behind proxies: Phase 4 (from trusted proxies)
 - [x] AES-GCM secrets with `secrets.key` (0600, AAD-bound per field), SecretStr
       seal/open/mask/merge helpers for provider settings; LAN bind refused without password
-- [ ] Optional OS-keychain storage of `secrets.key` on desktop; key rotation
+- [ ] Key rotation (OS-keychain storage of `secrets.key`: done in Phase 4)
 - [ ] PostgreSQL CI job (asyncpg)
 
 **Gate:** fresh start creates admin + `default` key; a test job survives `kill -9` and
@@ -331,14 +331,80 @@ Release pipeline (pulled forward from Phase 4, same flow as roast-telemetry):
 - [x] Tray launcher (`fetchbox tray`, default when the desktop build is double-clicked):
       supervises the server process, status line, open UI, start/stop/restart, data and
       logs folders, quit; graceful stop via `POST /system/shutdown` (system:write, or the
-      token the tray gives the server it starts). Remaining Phase 4 tray items: one-time
-      login link, pause all, start at login, updates, keyring-stored key
+      token the tray gives the server it starts)
+- [x] Tray, more: the per-launch tray token is now a narrow principal (system:write and
+      downloads:write only; nothing else). "Open Fetchbox" signs in with a one-time link
+      (`POST /auth/login-link` -> `/login?code=`, 60 s, single use, hashed in memory, the
+      code leaves the address bar). Pause / resume all downloads. "Start at login" toggle
+      (HKCU Run key, macOS LaunchAgent, XDG autostart)
+- [x] Updates from the tray: desktop builds go on the public release with
+      SHA256SUMS-desktop.txt; the tray (via `GET /system/updates`, so the "check for
+      updates" setting applies) offers "Install Fetchbox vX" for an installed copy:
+      download, checksum, stop the server, then the Windows installer silently with
+      `/RELAUNCH=1`, or on macOS a script that swaps the .app from the .dmg and reopens
+      it. Others (portable zip) get the release page. Both paths tested in the release
+      workflow
+- [x] Secrets key in the OS keyring: Windows desktop app by default (Credential
+      Manager), `FETCHBOX_KEYRING=1/0` to force; macOS opt-in (an unsigned app is asked
+      again after each update). A key file wins and is moved in (restores); a keyring
+      read error stops startup rather than making a new key; backups "with key" read it
+      from the keyring
+- [x] Reverse proxies (Settings > Network): trusted proxies (X-Forwarded-For /
+      -Host), optional sign-in by a trusted proxy's header (Authelia / Authentik),
+      cross-site writes refused under it; `/auth/me` shows the addresses seen
+- [x] Optional "only send webhooks to public addresses": resolved once, every
+      address checked, the request pinned to the checked address (Host + TLS name kept),
+      no redirects
+- [x] Installers, built and tested by the release workflow (install, check, run the
+      installed copy, uninstall): Windows Inno Setup (per user, no admin prompt, Start
+      menu, optional start at sign-in using the tray's own Run entry, uninstaller asks
+      before deleting data), macOS .dmg (drag to Applications), Linux .deb (systemd
+      service as user `fetchbox`, data in /var/lib/fetchbox, settings in
+      /etc/default/fetchbox, data kept on purge) and AppImage (pinned appimagetool
+      1.9.1 + static type2 runtime, SHA-256 checked; no libfuse2 needed)
 
 ### Phase 4 — Operability + release (v1.0)
 Backups/restore, config export/import, pre-migration backups, diagnostics zip, updates;
 Sonarr/Radarr migration wizard; tray (keyring-stored key); packaging (multi-arch Docker,
 PyInstaller, Inno Setup, .app, AppImage/.deb); hardening (CSP, brute-force limit, outbound
 restrictions, filesystem-boundary tests).
+
+Progress:
+- [x] Backups and restore: zips in `<data>/backups` (SQLite online-backup snapshot,
+      config.toml, manifest; the secrets key only with a password, scrypt + AES-GCM);
+      weekly (last 8), on demand, automatically before migrations (last 5); restore is
+      staged, the server stops, and the next start swaps it in (current data kept as a
+      before-restore backup) and migrates it forward; newer-schema backups refused.
+      API `/backups` (list, create, download, delete, upload, restore), CLI
+      `fetchbox backup` / `fetchbox restore <zip>`, Settings > Backups
+- [x] Diagnostics: `GET /system/diagnostics` zip (versions incl. schema revision, health,
+      settings with secrets masked, last 2000 log lines with keys / tokens / passwords
+      scrubbed, indexer / client / folder summary without addresses or credentials);
+      "Download diagnostics" in Settings > This computer
+- [x] Config export / import: `GET /config/export` (no secrets) / `POST /config/export`
+      {password} (secrets password-encrypted); `POST /config/import` dry run by default,
+      apply in one transaction: rows match by id then name (a fresh install's defaults
+      are updated, references remapped to local ids), secrets re-sealed with this
+      install's key, nothing deleted, restart after. Settings > Move settings
+- [x] Update check: `GET /system/updates` asks GitHub for the latest release (6 h cache;
+      `updates.check`, on by default, off = no contact); Settings > This computer shows
+      the version and "Update available" with a link. Installing updates from the tray
+      is still to do
+- [x] Hardening: strict CSP for the UI (a SvelteKit-generated meta tag hashing its own
+      bootstrap script: no 'unsafe-inline' scripts), plus nosniff / no-referrer / DENY
+      framing / permissions headers on every response and `default-src 'none'` on API
+      JSON; filesystem boundary (`inside()`: resolved paths, symlinks followed) checked
+      when placing imports, renaming and adopting existing files (paths from the API).
+      Login brute-force limit was already there (429). Still to do: optionally blocking
+      webhooks to private networks for internet-exposed installs
+- [x] Sonarr/Radarr migration wizard (`/library/migrate`): connect (URL + API key, kept in
+      memory, never in job payloads) -> scan (titles by TMDB id, monitored, profiles mapped
+      by resolution, root folders, files; indexers / clients listed only: their API masks
+      secrets) -> apply: root folders become library folders (optional path translation),
+      titles added without an immediate search, Sonarr's per-episode monitoring copied,
+      files recorded in place. Radarr / Sonarr never written to: side by side works.
+      Built and checked against real Radarr 7.0.3 and Sonarr 4.0.20 (their responses
+      recorded as test fixtures); refuses up front without a TMDB key
 
 **Gate:** migrate a real Sonarr+Radarr install and run side by side; installers work on all
 three OSes; a backup restores on a fresh machine.

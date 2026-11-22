@@ -31,6 +31,8 @@ async def test_bootstrap_default_key(server: Running, client: httpx.AsyncClient)
         "name": "default",
         "scopes": ["*"],
         "via": "api_key",
+        "ip": "127.0.0.1",
+        "connected_from": "127.0.0.1",
     }
     assert parse_key(server.root_key) is not None
 

@@ -12,6 +12,7 @@ from fetchbox.modules.auth.deps import CurrentPrincipal, require
 from fetchbox.modules.downloads.models import Download
 from fetchbox.modules.library.existing import ExistingLibrary
 from fetchbox.modules.library.maintenance import LibraryCheck
+from fetchbox.modules.library.migrate import Migrator
 from fetchbox.modules.library.models import MediaFile, NamingTemplate
 from fetchbox.modules.library.naming import (
     KIND_KEYS,
@@ -518,3 +519,53 @@ async def forget_missing(body: ForgetIn, request: Request, p: CurrentPrincipal) 
     searched for again. Files still on disk are left alone."""
     checker: LibraryCheck = request.app.state.library_check
     return ForgetOut(forgotten=await checker.forget(body.file_ids, actor=p.actor()))
+
+
+# ---- move from Radarr / Sonarr ------------------------------------------------------------
+
+
+class MigrateConnectIn(BaseModel):
+    kind: Literal["radarr", "sonarr"]
+    url: str = Field(min_length=1, description="e.g. http://192.168.1.10:7878")
+    api_key: str = Field(min_length=1, description="Settings > General > API Key")
+
+
+class PathMapIn(BaseModel):
+    from_: str = Field(alias="from", min_length=1, description="The path as Radarr/Sonarr sees it")
+    to: str = Field(min_length=1, description="The same folder as Fetchbox sees it")
+
+
+class MigrateApplyIn(MigrateConnectIn):
+    path_map: list[PathMapIn] = []
+    profile_map: dict[str, str] = Field(
+        default={}, description="Their quality profile id -> a Fetchbox profile id"
+    )
+    only: list[int] | None = Field(default=None, description="Their title ids; null: all")
+
+
+def _migrator(request: Request) -> Migrator:
+    svc: Migrator = request.app.state.migrator
+    return svc
+
+
+@router.post("/library/migrate/scan", status_code=202, response_model=JobOut, dependencies=_write,
+             responses=pr(409, 422))  # fmt: skip
+async def migrate_scan(body: MigrateConnectIn, request: Request) -> Response:
+    """Read what Radarr or Sonarr has (changes nothing on either side). The job's result
+    lists titles, files, root folders, profile mapping, indexers and clients."""
+    return accepted(await _migrator(request).start_scan(body.kind, body.url, body.api_key))
+
+
+@router.post("/library/migrate/apply", status_code=202, response_model=JobOut, dependencies=_write,
+             responses=pr(409, 422))  # fmt: skip
+async def migrate_apply(body: MigrateApplyIn, request: Request, p: CurrentPrincipal) -> Response:
+    """Add their titles and record their files in place. Radarr / Sonarr aren't changed."""
+    options = {
+        "path_map": [{"from": m.from_, "to": m.to} for m in body.path_map],
+        "profile_map": body.profile_map,
+        "only": body.only,
+    }
+    job = await _migrator(request).start_apply(
+        body.kind, body.url, body.api_key, options, p.actor()
+    )
+    return accepted(job)

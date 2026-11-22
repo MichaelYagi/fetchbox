@@ -1,0 +1,8 @@
+#!/bin/sh
+set -e
+# The data in /var/lib/fetchbox (settings, library database, downloads) is kept even on
+# purge: it may hold finished downloads. Delete it by hand if you want it gone.
+if [ -d /run/systemd/system ]; then
+    systemctl daemon-reload || true
+fi
+exit 0

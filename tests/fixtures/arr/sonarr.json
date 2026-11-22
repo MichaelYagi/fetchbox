@@ -1,0 +1,2437 @@
+{
+ "/system/status": {
+  "appName": "Sonarr",
+  "version": "4.0.20.3014"
+ },
+ "/series": [
+  {
+   "title": "Severance",
+   "alternateTitles": [
+    {
+     "title": "Separación",
+     "seasonNumber": -1
+    },
+    {
+     "title": "Scissione",
+     "seasonNumber": -1
+    },
+    {
+     "title": "Severence Scissione",
+     "seasonNumber": -1
+    },
+    {
+     "title": "Separacion",
+     "seasonNumber": -1
+    }
+   ],
+   "sortTitle": "severance",
+   "status": "continuing",
+   "ended": false,
+   "overview": "Mark leads a team of office workers whose memories have been surgically divided between their work and personal lives. When a mysterious colleague appears outside of work, it begins a journey to discover the truth about their jobs.",
+   "previousAiring": "2025-03-21T01:00:00Z",
+   "network": "Apple TV",
+   "airTime": "21:00",
+   "images": [
+    {
+     "coverType": "banner",
+     "url": "/MediaCover/1/banner.jpg?lastWrite=639309055915539010",
+     "remoteUrl": "https://artworks.thetvdb.com/banners/v4/series/371980/banners/67d3854a3f3f2.jpg"
+    },
+    {
+     "coverType": "poster",
+     "url": "/MediaCover/1/poster.jpg?lastWrite=639309055915899010",
+     "remoteUrl": "https://artworks.thetvdb.com/banners/v4/series/371980/posters/621096b26f0e2.jpg"
+    },
+    {
+     "coverType": "fanart",
+     "url": "/MediaCover/1/fanart.jpg?lastWrite=639309055916579009",
+     "remoteUrl": "https://artworks.thetvdb.com/banners/v4/series/371980/backgrounds/61bdee7c62d99.jpg"
+    },
+    {
+     "coverType": "clearlogo",
+     "url": "/MediaCover/1/clearlogo.png?lastWrite=639309055916739009",
+     "remoteUrl": "https://artworks.thetvdb.com/banners/v4/series/371980/clearlogo/67deb201804b5.png"
+    }
+   ],
+   "originalLanguage": {
+    "id": 1,
+    "name": "English"
+   },
+   "seasons": [
+    {
+     "seasonNumber": 0,
+     "monitored": false,
+     "statistics": {
+      "episodeFileCount": 0,
+      "episodeCount": 0,
+      "totalEpisodeCount": 21,
+      "sizeOnDisk": 0,
+      "releaseGroups": [],
+      "percentOfEpisodes": 0
+     }
+    },
+    {
+     "seasonNumber": 1,
+     "monitored": true,
+     "statistics": {
+      "previousAiring": "2022-04-09T01:00:00Z",
+      "episodeFileCount": 2,
+      "episodeCount": 9,
+      "totalEpisodeCount": 9,
+      "sizeOnDisk": 600000,
+      "releaseGroups": [
+       "NTb"
+      ],
+      "percentOfEpisodes": 22.22222222222222
+     }
+    },
+    {
+     "seasonNumber": 2,
+     "monitored": true,
+     "statistics": {
+      "previousAiring": "2025-03-21T01:00:00Z",
+      "episodeFileCount": 0,
+      "episodeCount": 10,
+      "totalEpisodeCount": 10,
+      "sizeOnDisk": 0,
+      "releaseGroups": [],
+      "percentOfEpisodes": 0
+     }
+    }
+   ],
+   "year": 2022,
+   "path": "{ROOT}/tv/Severance",
+   "qualityProfileId": 4,
+   "seasonFolder": true,
+   "monitored": true,
+   "monitorNewItems": "all",
+   "useSceneNumbering": false,
+   "runtime": 49,
+   "tvdbId": 371980,
+   "tvRageId": 0,
+   "tvMazeId": 44933,
+   "tmdbId": 95396,
+   "firstAired": "2022-02-18T00:00:00Z",
+   "lastAired": "2025-03-20T00:00:00Z",
+   "seriesType": "standard",
+   "cleanTitle": "severance",
+   "imdbId": "tt11280740",
+   "titleSlug": "severance",
+   "rootFolderPath": "{ROOT}/tv",
+   "certification": "TV-MA",
+   "genres": [
+    "Drama",
+    "Mystery",
+    "Science Fiction",
+    "Thriller"
+   ],
+   "tags": [],
+   "added": "2026-11-22T00:53:11Z",
+   "ratings": {
+    "votes": 416397,
+    "value": 8.6
+   },
+   "statistics": {
+    "seasonCount": 2,
+    "episodeFileCount": 2,
+    "episodeCount": 19,
+    "totalEpisodeCount": 40,
+    "sizeOnDisk": 600000,
+    "releaseGroups": [
+     "NTb"
+    ],
+    "percentOfEpisodes": 10.526315789473685
+   },
+   "languageProfileId": 1,
+   "id": 1
+  }
+ ],
+ "/rootfolder": [
+  {
+   "path": "{ROOT}/tv",
+   "accessible": true,
+   "freeSpace": 4885331968,
+   "unmappedFolders": [],
+   "id": 1
+  }
+ ],
+ "/qualityprofile": [
+  {
+   "name": "Any",
+   "upgradeAllowed": false,
+   "cutoff": 1,
+   "items": [
+    {
+     "quality": {
+      "id": 0,
+      "name": "Unknown",
+      "source": "unknown",
+      "resolution": 0
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "quality": {
+      "id": 1,
+      "name": "SDTV",
+      "source": "television",
+      "resolution": 480
+     },
+     "items": [],
+     "allowed": true
+    },
+    {
+     "name": "WEB 480p",
+     "items": [
+      {
+       "quality": {
+        "id": 12,
+        "name": "WEBRip-480p",
+        "source": "webRip",
+        "resolution": 480
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 8,
+        "name": "WEBDL-480p",
+        "source": "web",
+        "resolution": 480
+       },
+       "items": [],
+       "allowed": true
+      }
+     ],
+     "allowed": true,
+     "id": 1000
+    },
+    {
+     "quality": {
+      "id": 2,
+      "name": "DVD",
+      "source": "dvd",
+      "resolution": 480
+     },
+     "items": [],
+     "allowed": true
+    },
+    {
+     "quality": {
+      "id": 13,
+      "name": "Bluray-480p",
+      "source": "bluray",
+      "resolution": 480
+     },
+     "items": [],
+     "allowed": true
+    },
+    {
+     "quality": {
+      "id": 22,
+      "name": "Bluray-576p",
+      "source": "bluray",
+      "resolution": 576
+     },
+     "items": [],
+     "allowed": true
+    },
+    {
+     "quality": {
+      "id": 4,
+      "name": "HDTV-720p",
+      "source": "television",
+      "resolution": 720
+     },
+     "items": [],
+     "allowed": true
+    },
+    {
+     "quality": {
+      "id": 9,
+      "name": "HDTV-1080p",
+      "source": "television",
+      "resolution": 1080
+     },
+     "items": [],
+     "allowed": true
+    },
+    {
+     "quality": {
+      "id": 10,
+      "name": "Raw-HD",
+      "source": "televisionRaw",
+      "resolution": 1080
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "name": "WEB 720p",
+     "items": [
+      {
+       "quality": {
+        "id": 14,
+        "name": "WEBRip-720p",
+        "source": "webRip",
+        "resolution": 720
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 5,
+        "name": "WEBDL-720p",
+        "source": "web",
+        "resolution": 720
+       },
+       "items": [],
+       "allowed": true
+      }
+     ],
+     "allowed": true,
+     "id": 1001
+    },
+    {
+     "quality": {
+      "id": 6,
+      "name": "Bluray-720p",
+      "source": "bluray",
+      "resolution": 720
+     },
+     "items": [],
+     "allowed": true
+    },
+    {
+     "name": "WEB 1080p",
+     "items": [
+      {
+       "quality": {
+        "id": 15,
+        "name": "WEBRip-1080p",
+        "source": "webRip",
+        "resolution": 1080
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 3,
+        "name": "WEBDL-1080p",
+        "source": "web",
+        "resolution": 1080
+       },
+       "items": [],
+       "allowed": true
+      }
+     ],
+     "allowed": true,
+     "id": 1002
+    },
+    {
+     "quality": {
+      "id": 7,
+      "name": "Bluray-1080p",
+      "source": "bluray",
+      "resolution": 1080
+     },
+     "items": [],
+     "allowed": true
+    },
+    {
+     "quality": {
+      "id": 20,
+      "name": "Bluray-1080p Remux",
+      "source": "blurayRaw",
+      "resolution": 1080
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "quality": {
+      "id": 16,
+      "name": "HDTV-2160p",
+      "source": "television",
+      "resolution": 2160
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "name": "WEB 2160p",
+     "items": [
+      {
+       "quality": {
+        "id": 17,
+        "name": "WEBRip-2160p",
+        "source": "webRip",
+        "resolution": 2160
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 18,
+        "name": "WEBDL-2160p",
+        "source": "web",
+        "resolution": 2160
+       },
+       "items": [],
+       "allowed": false
+      }
+     ],
+     "allowed": false,
+     "id": 1003
+    },
+    {
+     "quality": {
+      "id": 19,
+      "name": "Bluray-2160p",
+      "source": "bluray",
+      "resolution": 2160
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "quality": {
+      "id": 21,
+      "name": "Bluray-2160p Remux",
+      "source": "blurayRaw",
+      "resolution": 2160
+     },
+     "items": [],
+     "allowed": false
+    }
+   ],
+   "minFormatScore": 0,
+   "cutoffFormatScore": 0,
+   "minUpgradeFormatScore": 1,
+   "formatItems": [],
+   "id": 1
+  },
+  {
+   "name": "SD",
+   "upgradeAllowed": false,
+   "cutoff": 1,
+   "items": [
+    {
+     "quality": {
+      "id": 0,
+      "name": "Unknown",
+      "source": "unknown",
+      "resolution": 0
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "quality": {
+      "id": 1,
+      "name": "SDTV",
+      "source": "television",
+      "resolution": 480
+     },
+     "items": [],
+     "allowed": true
+    },
+    {
+     "name": "WEB 480p",
+     "items": [
+      {
+       "quality": {
+        "id": 12,
+        "name": "WEBRip-480p",
+        "source": "webRip",
+        "resolution": 480
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 8,
+        "name": "WEBDL-480p",
+        "source": "web",
+        "resolution": 480
+       },
+       "items": [],
+       "allowed": true
+      }
+     ],
+     "allowed": true,
+     "id": 1000
+    },
+    {
+     "quality": {
+      "id": 2,
+      "name": "DVD",
+      "source": "dvd",
+      "resolution": 480
+     },
+     "items": [],
+     "allowed": true
+    },
+    {
+     "quality": {
+      "id": 13,
+      "name": "Bluray-480p",
+      "source": "bluray",
+      "resolution": 480
+     },
+     "items": [],
+     "allowed": true
+    },
+    {
+     "quality": {
+      "id": 22,
+      "name": "Bluray-576p",
+      "source": "bluray",
+      "resolution": 576
+     },
+     "items": [],
+     "allowed": true
+    },
+    {
+     "quality": {
+      "id": 4,
+      "name": "HDTV-720p",
+      "source": "television",
+      "resolution": 720
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "quality": {
+      "id": 9,
+      "name": "HDTV-1080p",
+      "source": "television",
+      "resolution": 1080
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "quality": {
+      "id": 10,
+      "name": "Raw-HD",
+      "source": "televisionRaw",
+      "resolution": 1080
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "name": "WEB 720p",
+     "items": [
+      {
+       "quality": {
+        "id": 14,
+        "name": "WEBRip-720p",
+        "source": "webRip",
+        "resolution": 720
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 5,
+        "name": "WEBDL-720p",
+        "source": "web",
+        "resolution": 720
+       },
+       "items": [],
+       "allowed": false
+      }
+     ],
+     "allowed": false,
+     "id": 1001
+    },
+    {
+     "quality": {
+      "id": 6,
+      "name": "Bluray-720p",
+      "source": "bluray",
+      "resolution": 720
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "name": "WEB 1080p",
+     "items": [
+      {
+       "quality": {
+        "id": 15,
+        "name": "WEBRip-1080p",
+        "source": "webRip",
+        "resolution": 1080
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 3,
+        "name": "WEBDL-1080p",
+        "source": "web",
+        "resolution": 1080
+       },
+       "items": [],
+       "allowed": false
+      }
+     ],
+     "allowed": false,
+     "id": 1002
+    },
+    {
+     "quality": {
+      "id": 7,
+      "name": "Bluray-1080p",
+      "source": "bluray",
+      "resolution": 1080
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "quality": {
+      "id": 20,
+      "name": "Bluray-1080p Remux",
+      "source": "blurayRaw",
+      "resolution": 1080
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "quality": {
+      "id": 16,
+      "name": "HDTV-2160p",
+      "source": "television",
+      "resolution": 2160
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "name": "WEB 2160p",
+     "items": [
+      {
+       "quality": {
+        "id": 17,
+        "name": "WEBRip-2160p",
+        "source": "webRip",
+        "resolution": 2160
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 18,
+        "name": "WEBDL-2160p",
+        "source": "web",
+        "resolution": 2160
+       },
+       "items": [],
+       "allowed": false
+      }
+     ],
+     "allowed": false,
+     "id": 1003
+    },
+    {
+     "quality": {
+      "id": 19,
+      "name": "Bluray-2160p",
+      "source": "bluray",
+      "resolution": 2160
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "quality": {
+      "id": 21,
+      "name": "Bluray-2160p Remux",
+      "source": "blurayRaw",
+      "resolution": 2160
+     },
+     "items": [],
+     "allowed": false
+    }
+   ],
+   "minFormatScore": 0,
+   "cutoffFormatScore": 0,
+   "minUpgradeFormatScore": 1,
+   "formatItems": [],
+   "id": 2
+  },
+  {
+   "name": "HD-720p",
+   "upgradeAllowed": false,
+   "cutoff": 4,
+   "items": [
+    {
+     "quality": {
+      "id": 0,
+      "name": "Unknown",
+      "source": "unknown",
+      "resolution": 0
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "quality": {
+      "id": 1,
+      "name": "SDTV",
+      "source": "television",
+      "resolution": 480
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "name": "WEB 480p",
+     "items": [
+      {
+       "quality": {
+        "id": 12,
+        "name": "WEBRip-480p",
+        "source": "webRip",
+        "resolution": 480
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 8,
+        "name": "WEBDL-480p",
+        "source": "web",
+        "resolution": 480
+       },
+       "items": [],
+       "allowed": false
+      }
+     ],
+     "allowed": false,
+     "id": 1000
+    },
+    {
+     "quality": {
+      "id": 2,
+      "name": "DVD",
+      "source": "dvd",
+      "resolution": 480
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "quality": {
+      "id": 13,
+      "name": "Bluray-480p",
+      "source": "bluray",
+      "resolution": 480
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "quality": {
+      "id": 22,
+      "name": "Bluray-576p",
+      "source": "bluray",
+      "resolution": 576
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "quality": {
+      "id": 4,
+      "name": "HDTV-720p",
+      "source": "television",
+      "resolution": 720
+     },
+     "items": [],
+     "allowed": true
+    },
+    {
+     "quality": {
+      "id": 9,
+      "name": "HDTV-1080p",
+      "source": "television",
+      "resolution": 1080
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "quality": {
+      "id": 10,
+      "name": "Raw-HD",
+      "source": "televisionRaw",
+      "resolution": 1080
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "name": "WEB 720p",
+     "items": [
+      {
+       "quality": {
+        "id": 14,
+        "name": "WEBRip-720p",
+        "source": "webRip",
+        "resolution": 720
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 5,
+        "name": "WEBDL-720p",
+        "source": "web",
+        "resolution": 720
+       },
+       "items": [],
+       "allowed": true
+      }
+     ],
+     "allowed": true,
+     "id": 1001
+    },
+    {
+     "quality": {
+      "id": 6,
+      "name": "Bluray-720p",
+      "source": "bluray",
+      "resolution": 720
+     },
+     "items": [],
+     "allowed": true
+    },
+    {
+     "name": "WEB 1080p",
+     "items": [
+      {
+       "quality": {
+        "id": 15,
+        "name": "WEBRip-1080p",
+        "source": "webRip",
+        "resolution": 1080
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 3,
+        "name": "WEBDL-1080p",
+        "source": "web",
+        "resolution": 1080
+       },
+       "items": [],
+       "allowed": false
+      }
+     ],
+     "allowed": false,
+     "id": 1002
+    },
+    {
+     "quality": {
+      "id": 7,
+      "name": "Bluray-1080p",
+      "source": "bluray",
+      "resolution": 1080
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "quality": {
+      "id": 20,
+      "name": "Bluray-1080p Remux",
+      "source": "blurayRaw",
+      "resolution": 1080
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "quality": {
+      "id": 16,
+      "name": "HDTV-2160p",
+      "source": "television",
+      "resolution": 2160
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "name": "WEB 2160p",
+     "items": [
+      {
+       "quality": {
+        "id": 17,
+        "name": "WEBRip-2160p",
+        "source": "webRip",
+        "resolution": 2160
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 18,
+        "name": "WEBDL-2160p",
+        "source": "web",
+        "resolution": 2160
+       },
+       "items": [],
+       "allowed": false
+      }
+     ],
+     "allowed": false,
+     "id": 1003
+    },
+    {
+     "quality": {
+      "id": 19,
+      "name": "Bluray-2160p",
+      "source": "bluray",
+      "resolution": 2160
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "quality": {
+      "id": 21,
+      "name": "Bluray-2160p Remux",
+      "source": "blurayRaw",
+      "resolution": 2160
+     },
+     "items": [],
+     "allowed": false
+    }
+   ],
+   "minFormatScore": 0,
+   "cutoffFormatScore": 0,
+   "minUpgradeFormatScore": 1,
+   "formatItems": [],
+   "id": 3
+  },
+  {
+   "name": "HD-1080p",
+   "upgradeAllowed": false,
+   "cutoff": 9,
+   "items": [
+    {
+     "quality": {
+      "id": 0,
+      "name": "Unknown",
+      "source": "unknown",
+      "resolution": 0
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "quality": {
+      "id": 1,
+      "name": "SDTV",
+      "source": "television",
+      "resolution": 480
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "name": "WEB 480p",
+     "items": [
+      {
+       "quality": {
+        "id": 12,
+        "name": "WEBRip-480p",
+        "source": "webRip",
+        "resolution": 480
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 8,
+        "name": "WEBDL-480p",
+        "source": "web",
+        "resolution": 480
+       },
+       "items": [],
+       "allowed": false
+      }
+     ],
+     "allowed": false,
+     "id": 1000
+    },
+    {
+     "quality": {
+      "id": 2,
+      "name": "DVD",
+      "source": "dvd",
+      "resolution": 480
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "quality": {
+      "id": 13,
+      "name": "Bluray-480p",
+      "source": "bluray",
+      "resolution": 480
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "quality": {
+      "id": 22,
+      "name": "Bluray-576p",
+      "source": "bluray",
+      "resolution": 576
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "quality": {
+      "id": 4,
+      "name": "HDTV-720p",
+      "source": "television",
+      "resolution": 720
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "quality": {
+      "id": 9,
+      "name": "HDTV-1080p",
+      "source": "television",
+      "resolution": 1080
+     },
+     "items": [],
+     "allowed": true
+    },
+    {
+     "quality": {
+      "id": 10,
+      "name": "Raw-HD",
+      "source": "televisionRaw",
+      "resolution": 1080
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "name": "WEB 720p",
+     "items": [
+      {
+       "quality": {
+        "id": 14,
+        "name": "WEBRip-720p",
+        "source": "webRip",
+        "resolution": 720
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 5,
+        "name": "WEBDL-720p",
+        "source": "web",
+        "resolution": 720
+       },
+       "items": [],
+       "allowed": false
+      }
+     ],
+     "allowed": false,
+     "id": 1001
+    },
+    {
+     "quality": {
+      "id": 6,
+      "name": "Bluray-720p",
+      "source": "bluray",
+      "resolution": 720
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "name": "WEB 1080p",
+     "items": [
+      {
+       "quality": {
+        "id": 15,
+        "name": "WEBRip-1080p",
+        "source": "webRip",
+        "resolution": 1080
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 3,
+        "name": "WEBDL-1080p",
+        "source": "web",
+        "resolution": 1080
+       },
+       "items": [],
+       "allowed": true
+      }
+     ],
+     "allowed": true,
+     "id": 1002
+    },
+    {
+     "quality": {
+      "id": 7,
+      "name": "Bluray-1080p",
+      "source": "bluray",
+      "resolution": 1080
+     },
+     "items": [],
+     "allowed": true
+    },
+    {
+     "quality": {
+      "id": 20,
+      "name": "Bluray-1080p Remux",
+      "source": "blurayRaw",
+      "resolution": 1080
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "quality": {
+      "id": 16,
+      "name": "HDTV-2160p",
+      "source": "television",
+      "resolution": 2160
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "name": "WEB 2160p",
+     "items": [
+      {
+       "quality": {
+        "id": 17,
+        "name": "WEBRip-2160p",
+        "source": "webRip",
+        "resolution": 2160
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 18,
+        "name": "WEBDL-2160p",
+        "source": "web",
+        "resolution": 2160
+       },
+       "items": [],
+       "allowed": false
+      }
+     ],
+     "allowed": false,
+     "id": 1003
+    },
+    {
+     "quality": {
+      "id": 19,
+      "name": "Bluray-2160p",
+      "source": "bluray",
+      "resolution": 2160
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "quality": {
+      "id": 21,
+      "name": "Bluray-2160p Remux",
+      "source": "blurayRaw",
+      "resolution": 2160
+     },
+     "items": [],
+     "allowed": false
+    }
+   ],
+   "minFormatScore": 0,
+   "cutoffFormatScore": 0,
+   "minUpgradeFormatScore": 1,
+   "formatItems": [],
+   "id": 4
+  },
+  {
+   "name": "Ultra-HD",
+   "upgradeAllowed": false,
+   "cutoff": 16,
+   "items": [
+    {
+     "quality": {
+      "id": 0,
+      "name": "Unknown",
+      "source": "unknown",
+      "resolution": 0
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "quality": {
+      "id": 1,
+      "name": "SDTV",
+      "source": "television",
+      "resolution": 480
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "name": "WEB 480p",
+     "items": [
+      {
+       "quality": {
+        "id": 12,
+        "name": "WEBRip-480p",
+        "source": "webRip",
+        "resolution": 480
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 8,
+        "name": "WEBDL-480p",
+        "source": "web",
+        "resolution": 480
+       },
+       "items": [],
+       "allowed": false
+      }
+     ],
+     "allowed": false,
+     "id": 1000
+    },
+    {
+     "quality": {
+      "id": 2,
+      "name": "DVD",
+      "source": "dvd",
+      "resolution": 480
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "quality": {
+      "id": 13,
+      "name": "Bluray-480p",
+      "source": "bluray",
+      "resolution": 480
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "quality": {
+      "id": 22,
+      "name": "Bluray-576p",
+      "source": "bluray",
+      "resolution": 576
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "quality": {
+      "id": 4,
+      "name": "HDTV-720p",
+      "source": "television",
+      "resolution": 720
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "quality": {
+      "id": 9,
+      "name": "HDTV-1080p",
+      "source": "television",
+      "resolution": 1080
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "quality": {
+      "id": 10,
+      "name": "Raw-HD",
+      "source": "televisionRaw",
+      "resolution": 1080
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "name": "WEB 720p",
+     "items": [
+      {
+       "quality": {
+        "id": 14,
+        "name": "WEBRip-720p",
+        "source": "webRip",
+        "resolution": 720
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 5,
+        "name": "WEBDL-720p",
+        "source": "web",
+        "resolution": 720
+       },
+       "items": [],
+       "allowed": false
+      }
+     ],
+     "allowed": false,
+     "id": 1001
+    },
+    {
+     "quality": {
+      "id": 6,
+      "name": "Bluray-720p",
+      "source": "bluray",
+      "resolution": 720
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "name": "WEB 1080p",
+     "items": [
+      {
+       "quality": {
+        "id": 15,
+        "name": "WEBRip-1080p",
+        "source": "webRip",
+        "resolution": 1080
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 3,
+        "name": "WEBDL-1080p",
+        "source": "web",
+        "resolution": 1080
+       },
+       "items": [],
+       "allowed": false
+      }
+     ],
+     "allowed": false,
+     "id": 1002
+    },
+    {
+     "quality": {
+      "id": 7,
+      "name": "Bluray-1080p",
+      "source": "bluray",
+      "resolution": 1080
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "quality": {
+      "id": 20,
+      "name": "Bluray-1080p Remux",
+      "source": "blurayRaw",
+      "resolution": 1080
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "quality": {
+      "id": 16,
+      "name": "HDTV-2160p",
+      "source": "television",
+      "resolution": 2160
+     },
+     "items": [],
+     "allowed": true
+    },
+    {
+     "name": "WEB 2160p",
+     "items": [
+      {
+       "quality": {
+        "id": 17,
+        "name": "WEBRip-2160p",
+        "source": "webRip",
+        "resolution": 2160
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 18,
+        "name": "WEBDL-2160p",
+        "source": "web",
+        "resolution": 2160
+       },
+       "items": [],
+       "allowed": true
+      }
+     ],
+     "allowed": true,
+     "id": 1003
+    },
+    {
+     "quality": {
+      "id": 19,
+      "name": "Bluray-2160p",
+      "source": "bluray",
+      "resolution": 2160
+     },
+     "items": [],
+     "allowed": true
+    },
+    {
+     "quality": {
+      "id": 21,
+      "name": "Bluray-2160p Remux",
+      "source": "blurayRaw",
+      "resolution": 2160
+     },
+     "items": [],
+     "allowed": false
+    }
+   ],
+   "minFormatScore": 0,
+   "cutoffFormatScore": 0,
+   "minUpgradeFormatScore": 1,
+   "formatItems": [],
+   "id": 5
+  },
+  {
+   "name": "HD - 720p/1080p",
+   "upgradeAllowed": false,
+   "cutoff": 4,
+   "items": [
+    {
+     "quality": {
+      "id": 0,
+      "name": "Unknown",
+      "source": "unknown",
+      "resolution": 0
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "quality": {
+      "id": 1,
+      "name": "SDTV",
+      "source": "television",
+      "resolution": 480
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "name": "WEB 480p",
+     "items": [
+      {
+       "quality": {
+        "id": 12,
+        "name": "WEBRip-480p",
+        "source": "webRip",
+        "resolution": 480
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 8,
+        "name": "WEBDL-480p",
+        "source": "web",
+        "resolution": 480
+       },
+       "items": [],
+       "allowed": false
+      }
+     ],
+     "allowed": false,
+     "id": 1000
+    },
+    {
+     "quality": {
+      "id": 2,
+      "name": "DVD",
+      "source": "dvd",
+      "resolution": 480
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "quality": {
+      "id": 13,
+      "name": "Bluray-480p",
+      "source": "bluray",
+      "resolution": 480
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "quality": {
+      "id": 22,
+      "name": "Bluray-576p",
+      "source": "bluray",
+      "resolution": 576
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "quality": {
+      "id": 4,
+      "name": "HDTV-720p",
+      "source": "television",
+      "resolution": 720
+     },
+     "items": [],
+     "allowed": true
+    },
+    {
+     "quality": {
+      "id": 9,
+      "name": "HDTV-1080p",
+      "source": "television",
+      "resolution": 1080
+     },
+     "items": [],
+     "allowed": true
+    },
+    {
+     "quality": {
+      "id": 10,
+      "name": "Raw-HD",
+      "source": "televisionRaw",
+      "resolution": 1080
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "name": "WEB 720p",
+     "items": [
+      {
+       "quality": {
+        "id": 14,
+        "name": "WEBRip-720p",
+        "source": "webRip",
+        "resolution": 720
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 5,
+        "name": "WEBDL-720p",
+        "source": "web",
+        "resolution": 720
+       },
+       "items": [],
+       "allowed": true
+      }
+     ],
+     "allowed": true,
+     "id": 1001
+    },
+    {
+     "quality": {
+      "id": 6,
+      "name": "Bluray-720p",
+      "source": "bluray",
+      "resolution": 720
+     },
+     "items": [],
+     "allowed": true
+    },
+    {
+     "name": "WEB 1080p",
+     "items": [
+      {
+       "quality": {
+        "id": 15,
+        "name": "WEBRip-1080p",
+        "source": "webRip",
+        "resolution": 1080
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 3,
+        "name": "WEBDL-1080p",
+        "source": "web",
+        "resolution": 1080
+       },
+       "items": [],
+       "allowed": true
+      }
+     ],
+     "allowed": true,
+     "id": 1002
+    },
+    {
+     "quality": {
+      "id": 7,
+      "name": "Bluray-1080p",
+      "source": "bluray",
+      "resolution": 1080
+     },
+     "items": [],
+     "allowed": true
+    },
+    {
+     "quality": {
+      "id": 20,
+      "name": "Bluray-1080p Remux",
+      "source": "blurayRaw",
+      "resolution": 1080
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "quality": {
+      "id": 16,
+      "name": "HDTV-2160p",
+      "source": "television",
+      "resolution": 2160
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "name": "WEB 2160p",
+     "items": [
+      {
+       "quality": {
+        "id": 17,
+        "name": "WEBRip-2160p",
+        "source": "webRip",
+        "resolution": 2160
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 18,
+        "name": "WEBDL-2160p",
+        "source": "web",
+        "resolution": 2160
+       },
+       "items": [],
+       "allowed": false
+      }
+     ],
+     "allowed": false,
+     "id": 1003
+    },
+    {
+     "quality": {
+      "id": 19,
+      "name": "Bluray-2160p",
+      "source": "bluray",
+      "resolution": 2160
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "quality": {
+      "id": 21,
+      "name": "Bluray-2160p Remux",
+      "source": "blurayRaw",
+      "resolution": 2160
+     },
+     "items": [],
+     "allowed": false
+    }
+   ],
+   "minFormatScore": 0,
+   "cutoffFormatScore": 0,
+   "minUpgradeFormatScore": 1,
+   "formatItems": [],
+   "id": 6
+  }
+ ],
+ "/indexer": [],
+ "/downloadclient": [],
+ "/episode?seriesId=1": [
+  {
+   "seriesId": 1,
+   "tvdbId": 10872740,
+   "episodeFileId": 0,
+   "seasonNumber": 0,
+   "episodeNumber": 11,
+   "title": "Season 2 Sneak Peek",
+   "airDate": "2024-07-10",
+   "airDateUtc": "2024-07-11T01:00:00Z",
+   "runtime": 10,
+   "overview": "First 10 minutes of the first episode of season 2, sneak peek.",
+   "hasFile": false,
+   "monitored": false,
+   "unverifiedSceneNumbering": false,
+   "id": 1
+  },
+  {
+   "seriesId": 1,
+   "tvdbId": 10911960,
+   "episodeFileId": 0,
+   "seasonNumber": 0,
+   "episodeNumber": 12,
+   "title": "Season 1 Recap",
+   "airDate": "2024-11-18",
+   "airDateUtc": "2024-11-19T02:00:00Z",
+   "runtime": 2,
+   "overview": "Per our last season.",
+   "hasFile": false,
+   "monitored": false,
+   "unverifiedSceneNumbering": false,
+   "id": 2
+  },
+  {
+   "seriesId": 1,
+   "tvdbId": 10930486,
+   "episodeFileId": 0,
+   "seasonNumber": 0,
+   "episodeNumber": 13,
+   "title": "Inside the Episode: \"Goodbye, Mrs. Selvig\"",
+   "airDate": "2025-01-24",
+   "airDateUtc": "2025-01-25T02:00:00Z",
+   "runtime": 4,
+   "overview": "Severance writer Dan Erickson, Ben Stiller, Adam Scott, Patricia Arquette, Tramell Tillman, Britt Lower, and director Sam Donovan sit down to unpack key elements in Severance episode 202. In this edition, they take us through the each manager's response to the events of the Season 1 finale.",
+   "hasFile": false,
+   "monitored": false,
+   "unverifiedSceneNumbering": false,
+   "id": 3
+  },
+  {
+   "seriesId": 1,
+   "tvdbId": 10939893,
+   "episodeFileId": 0,
+   "seasonNumber": 0,
+   "episodeNumber": 14,
+   "title": "Inside the Episode: \"Who Is Alive?\"",
+   "airDate": "2025-01-31",
+   "airDateUtc": "2025-02-01T02:00:00Z",
+   "runtime": 4,
+   "overview": "Severance writer Dan Erickson, Ben Stiller, Adam Scott, Tramell Tillman, and Zach Cherry sit down to unpack key elements in Severance episode 203. In this edition, they talk reintegration, goats, and the ultimate perk.",
+   "hasFile": false,
+   "monitored": false,
+   "unverifiedSceneNumbering": false,
+   "id": 4
+  },
+  {
+   "seriesId": 1,
+   "tvdbId": 10948444,
+   "episodeFileId": 0,
+   "seasonNumber": 0,
+   "episodeNumber": 15,
+   "title": "Lumon Management Program: Integrating New Team Members",
+   "airDate": "2025-01-22",
+   "airDateUtc": "2025-01-23T02:00:00Z",
+   "runtime": 1,
+   "overview": "Mr. Milchick freatures in a training video explaining how to integrate new employees into the Lumon Severance Progam.",
+   "hasFile": false,
+   "monitored": false,
+   "unverifiedSceneNumbering": false,
+   "id": 5
+  },
+  {
+   "seriesId": 1,
+   "tvdbId": 10948445,
+   "episodeFileId": 0,
+   "seasonNumber": 0,
+   "episodeNumber": 16,
+   "title": "Lumon is Listening",
+   "airDate": "2025-01-13",
+   "airDateUtc": "2025-01-14T02:00:00Z",
+   "runtime": 1,
+   "overview": "A public relations video released by Lumon after the Macrodat Uprising, featuring Natalie.",
+   "hasFile": false,
+   "monitored": false,
+   "unverifiedSceneNumbering": false,
+   "id": 6
+  },
+  {
+   "seriesId": 1,
+   "tvdbId": 10948447,
+   "episodeFileId": 0,
+   "seasonNumber": 0,
+   "episodeNumber": 18,
+   "title": "Excerpt from The You You Are",
+   "airDate": "2025-02-01",
+   "airDateUtc": "2025-02-02T02:00:00Z",
+   "runtime": 1,
+   "overview": "An excerpt from \"The You You Are\" as read by the author himself, Dr. Ricken Lazlo Hale.",
+   "hasFile": false,
+   "monitored": false,
+   "unverifiedSceneNumbering": false,
+   "id": 7
+  },
+  {
+   "seriesId": 1,
+   "tvdbId": 10948626,
+   "episodeFileId": 0,
+   "seasonNumber": 0,
+   "episodeNumber": 19,
+   "title": "Welcome to Lumon",
+   "airDate": "2021-12-15",
+   "airDateUtc": "2021-12-16T02:00:00Z",
+   "runtime": 7,
+   "overview": "A first person trek through the corridors of the Severance floor, featuring some of the cast. Released by Ben Stiller on X before the series began.",
+   "hasFile": false,
+   "monitored": false,
+   "unverifiedSceneNumbering": false,
+   "id": 8
+  },
+  {
+   "seriesId": 1,
+   "tvdbId": 10950661,
+   "episodeFileId": 0,
+   "seasonNumber": 0,
+   "episodeNumber": 20,
+   "title": "Inside the Episode: \"Hello, Ms. Cobel\"",
+   "airDate": "2025-02-02",
+   "airDateUtc": "2025-02-03T02:00:00Z",
+   "runtime": 2,
+   "overview": "Severance writer Dan Erickson, Ben Stiller, Adam Scott, Britt Lower, Tramell Tillman, Zach Cherry and Patricia Arquette sit down to unpack key elements in Severance episode 201. In this edition, they discuss perplexing new questions, exploring their outies, and how worlds are expanding this season.",
+   "hasFile": false,
+   "monitored": false,
+   "unverifiedSceneNumbering": false,
+   "id": 9
+  },
+  {
+   "seriesId": 1,
+   "tvdbId": 10950662,
+   "episodeFileId": 0,
+   "seasonNumber": 0,
+   "episodeNumber": 21,
+   "title": "Inside the Episode: \"Woe's Hollow\"",
+   "airDate": "2025-02-07",
+   "airDateUtc": "2025-02-08T02:00:00Z",
+   "runtime": 5,
+   "overview": "The cast and creatives behind Severance sit down to unpack the fourth episode of Season 2 \"Woe's Hollow\" for Inside the Episode. In this edition, they detail the intricacies of filming outside of the Lumon headquarters and MDR's character development.",
+   "hasFile": false,
+   "monitored": false,
+   "unverifiedSceneNumbering": false,
+   "id": 10
+  },
+  {
+   "seriesId": 1,
+   "tvdbId": 10958826,
+   "episodeFileId": 0,
+   "seasonNumber": 0,
+   "episodeNumber": 22,
+   "title": "Lumon Management Program: Boosting Team Morale",
+   "airDate": "2025-02-12",
+   "airDateUtc": "2025-02-13T02:00:00Z",
+   "runtime": 1,
+   "overview": "Lumon Industries is jubilant to expose the public to yet another installment of the Lumon Management Program—otherwise known by its breviloquent moniker of LUMP. Today, Mr. Milchick and Ms. Huang dig deep into: \"Boosting Team Morale.\"",
+   "hasFile": false,
+   "monitored": false,
+   "unverifiedSceneNumbering": false,
+   "id": 11
+  },
+  {
+   "seriesId": 1,
+   "tvdbId": 10961483,
+   "episodeFileId": 0,
+   "seasonNumber": 0,
+   "episodeNumber": 23,
+   "title": "Inside the Episode: \"Trojan's Horse\"",
+   "airDate": "2025-02-13",
+   "airDateUtc": "2025-02-14T02:00:00Z",
+   "runtime": 5,
+   "overview": "The cast and creatives behind Severance sit down to unpack the fifth episode of Season 2 \"Trojan's Horse\" for Inside the Episode. In this edition, they outline the complicated relationship dynamics on the severed floor.",
+   "hasFile": false,
+   "monitored": false,
+   "unverifiedSceneNumbering": false,
+   "id": 12
+  },
+  {
+   "seriesId": 1,
+   "tvdbId": 10975089,
+   "episodeFileId": 0,
+   "seasonNumber": 0,
+   "episodeNumber": 24,
+   "title": "Inside the Episode: \"Attila\"",
+   "airDate": "2025-02-20",
+   "airDateUtc": "2025-02-21T02:00:00Z",
+   "runtime": 4,
+   "overview": "The cast and creatives behind Severance sit down to unpack the sixth episode of Season 2 \"Attila\" for Inside the Episode. In this edition, they discuss the implications of disrupting the Severance barrier.",
+   "hasFile": false,
+   "monitored": false,
+   "unverifiedSceneNumbering": false,
+   "id": 13
+  },
+  {
+   "seriesId": 1,
+   "tvdbId": 10990340,
+   "episodeFileId": 0,
+   "seasonNumber": 0,
+   "episodeNumber": 25,
+   "title": "Inside the Episode: \"Chikhai Bardo\"",
+   "airDate": "2025-02-27",
+   "airDateUtc": "2025-02-28T02:00:00Z",
+   "runtime": 4,
+   "overview": "The cast and creatives behind Severance sit down to unpack the seventh episode of Season 2 \"Chikhai Bardo\" for Inside the Episode. In this edition, they work backwards to develop the character of Gemma.",
+   "hasFile": false,
+   "monitored": false,
+   "unverifiedSceneNumbering": false,
+   "id": 14
+  },
+  {
+   "seriesId": 1,
+   "tvdbId": 10998154,
+   "episodeFileId": 0,
+   "seasonNumber": 0,
+   "episodeNumber": 26,
+   "title": "Tim C, The Core of the Apple",
+   "airDate": "2025-01-24",
+   "airDateUtc": "2025-01-25T02:49:00Z",
+   "runtime": 1,
+   "overview": "Mr. Milchick welcomes Lumon's newest employee, Tim C.",
+   "hasFile": false,
+   "monitored": false,
+   "unverifiedSceneNumbering": false,
+   "id": 15
+  },
+  {
+   "seriesId": 1,
+   "tvdbId": 11008078,
+   "episodeFileId": 0,
+   "seasonNumber": 0,
+   "episodeNumber": 27,
+   "title": "Lumon Management Program: Enforcing Workplace Wellness",
+   "airDate": "2025-03-05",
+   "airDateUtc": "2025-03-06T02:00:00Z",
+   "runtime": 1,
+   "overview": "Lumon Industries proudly presents the culminating installment of the Lumon Management Program—affectionately known by its breviloquent moniker, LUMP. In this final course, our severed management team delves into the essential proficiency of: \"Enforcing Workplace Wellness.\"",
+   "hasFile": false,
+   "monitored": false,
+   "unverifiedSceneNumbering": false,
+   "id": 16
+  },
+  {
+   "seriesId": 1,
+   "tvdbId": 11008085,
+   "episodeFileId": 0,
+   "seasonNumber": 0,
+   "episodeNumber": 28,
+   "title": "Inside the Episode: \"Sweet Vitriol\"",
+   "airDate": "2025-03-06",
+   "airDateUtc": "2025-03-07T02:00:00Z",
+   "runtime": 4,
+   "overview": "The cast and creatives behind Severance sit down to unpack the eighth episode of Season 2 \"Sweet Vitriol\" for Inside the Episode. In this edition, they begin to uncover the inner workings of Ms. Cobel through Lumon's influence on her hometown.",
+   "hasFile": false,
+   "monitored": false,
+   "unverifiedSceneNumbering": false,
+   "id": 17
+  },
+  {
+   "seriesId": 1,
+   "tvdbId": 11023795,
+   "episodeFileId": 0,
+   "seasonNumber": 0,
+   "episodeNumber": 29,
+   "title": "Inside the Episode: \"The After Hours\"",
+   "airDate": "2025-03-13",
+   "airDateUtc": "2025-03-14T01:00:00Z",
+   "runtime": 5,
+   "overview": "The cast and creatives behind Severance sit down to unpack the ninth episode of Season 2 \"The After Hours\" for Inside the Episode. In this edition, they explore how the consciousness of each MDR member influences the others.",
+   "hasFile": false,
+   "monitored": false,
+   "unverifiedSceneNumbering": false,
+   "id": 18
+  },
+  {
+   "seriesId": 1,
+   "tvdbId": 11039985,
+   "episodeFileId": 0,
+   "seasonNumber": 0,
+   "episodeNumber": 30,
+   "title": "Inside the Episode: \"Cold Harbor\"",
+   "airDate": "2025-03-20",
+   "airDateUtc": "2025-03-21T01:00:00Z",
+   "runtime": 5,
+   "overview": "The cast and creatives behind Severance sit down to unpack the Season 2 finale \"Cold Harbor\" for Inside the Episode. In this edition, they weave together every element that leads to the explosive final moments of this season.",
+   "hasFile": false,
+   "monitored": false,
+   "unverifiedSceneNumbering": false,
+   "id": 19
+  },
+  {
+   "seriesId": 1,
+   "tvdbId": 11041804,
+   "episodeFileId": 0,
+   "seasonNumber": 0,
+   "episodeNumber": 31,
+   "title": "Season 1 Recap, Courtesy of Lumon",
+   "airDate": "2025-01-19",
+   "airDateUtc": "2025-01-20T02:00:00Z",
+   "runtime": 3,
+   "overview": "In Severance, Mark Scout (Adam Scott) leads a team at Lumon Industries, whose employees have undergone a severance procedure, which surgically divides their memories between their work and personal lives. This daring experiment in “work-life balance” is called into question as Mark finds himself at the center of an unraveling mystery that will force him to confront the true nature of his work… and of himself.",
+   "hasFile": false,
+   "monitored": false,
+   "unverifiedSceneNumbering": false,
+   "id": 20
+  },
+  {
+   "seriesId": 1,
+   "tvdbId": 11046980,
+   "episodeFileId": 0,
+   "seasonNumber": 0,
+   "episodeNumber": 32,
+   "title": "Season 3 Renewal",
+   "airDate": "2025-03-21",
+   "airDateUtc": "2025-03-22T01:00:00Z",
+   "runtime": 1,
+   "finaleType": "season",
+   "overview": "Cue the choreography and merriment. Severance has been renewed for Season 3.",
+   "hasFile": false,
+   "monitored": false,
+   "unverifiedSceneNumbering": false,
+   "id": 21
+  },
+  {
+   "seriesId": 1,
+   "tvdbId": 8891221,
+   "episodeFileId": 1,
+   "seasonNumber": 1,
+   "episodeNumber": 1,
+   "title": "Good News About Hell",
+   "airDate": "2022-02-18",
+   "airDateUtc": "2022-02-19T02:00:00Z",
+   "runtime": 57,
+   "overview": "Mark is promoted to lead a team who've had their memories surgically divided between their work and personal lives.",
+   "hasFile": true,
+   "monitored": true,
+   "unverifiedSceneNumbering": false,
+   "id": 22
+  },
+  {
+   "seriesId": 1,
+   "tvdbId": 8891222,
+   "episodeFileId": 2,
+   "seasonNumber": 1,
+   "episodeNumber": 2,
+   "title": "Half Loop",
+   "airDate": "2022-02-18",
+   "airDateUtc": "2022-02-19T02:49:00Z",
+   "runtime": 53,
+   "overview": "The team train new hire Helly on macrodata refinement. Mark takes a day off to meet with a mysterious former colleague.",
+   "hasFile": true,
+   "monitored": true,
+   "unverifiedSceneNumbering": false,
+   "id": 23
+  },
+  {
+   "seriesId": 1,
+   "tvdbId": 8891223,
+   "episodeFileId": 0,
+   "seasonNumber": 1,
+   "episodeNumber": 3,
+   "title": "In Perpetuity",
+   "airDate": "2022-02-25",
+   "airDateUtc": "2022-02-26T02:00:00Z",
+   "runtime": 57,
+   "overview": "Mark takes the team on a field trip, but Helly continues to rebel.",
+   "hasFile": false,
+   "monitored": true,
+   "unverifiedSceneNumbering": false,
+   "id": 24
+  },
+  {
+   "seriesId": 1,
+   "tvdbId": 8891224,
+   "episodeFileId": 0,
+   "seasonNumber": 1,
+   "episodeNumber": 4,
+   "title": "The You You Are",
+   "airDate": "2022-03-04",
+   "airDateUtc": "2022-03-05T02:00:00Z",
+   "runtime": 47,
+   "overview": "Irving makes an intriguing discovery at work. Helly aggressively pursues a meeting with her Outie. Mark grapples with the loss of his wife.",
+   "hasFile": false,
+   "monitored": true,
+   "unverifiedSceneNumbering": false,
+   "id": 25
+  },
+  {
+   "seriesId": 1,
+   "tvdbId": 8891225,
+   "episodeFileId": 0,
+   "seasonNumber": 1,
+   "episodeNumber": 5,
+   "title": "The Grim Barbarity of Optics and Design",
+   "airDate": "2022-03-11",
+   "airDateUtc": "2022-03-12T02:00:00Z",
+   "runtime": 44,
+   "overview": "Irving and Dylan confront Burt. The team ventures out into the hallways.",
+   "hasFile": false,
+   "monitored": true,
+   "unverifiedSceneNumbering": false,
+   "id": 26
+  },
+  {
+   "seriesId": 1,
+   "tvdbId": 8891226,
+   "episodeFileId": 0,
+   "seasonNumber": 1,
+   "episodeNumber": 6,
+   "title": "Hide and Seek",
+   "airDate": "2022-03-18",
+   "airDateUtc": "2022-03-19T01:00:00Z",
+   "runtime": 40,
+   "overview": "The team angers Cobel by forming an alliance.",
+   "hasFile": false,
+   "monitored": true,
+   "unverifiedSceneNumbering": false,
+   "id": 27
+  },
+  {
+   "seriesId": 1,
+   "tvdbId": 8891227,
+   "episodeFileId": 0,
+   "seasonNumber": 1,
+   "episodeNumber": 7,
+   "title": "Defiant Jazz",
+   "airDate": "2022-03-25",
+   "airDateUtc": "2022-03-26T01:00:00Z",
+   "runtime": 50,
+   "overview": "Mark and the team encounter new security measures from Cobel.",
+   "hasFile": false,
+   "monitored": true,
+   "unverifiedSceneNumbering": false,
+   "id": 28
+  },
+  {
+   "seriesId": 1,
+   "tvdbId": 8891228,
+   "episodeFileId": 0,
+   "seasonNumber": 1,
+   "episodeNumber": 8,
+   "title": "What’s for Dinner?",
+   "airDate": "2022-04-01",
+   "airDateUtc": "2022-04-02T01:00:00Z",
+   "runtime": 47,
+   "overview": "The team prepares a plan. Mark attends Devon and Ricken’s party.",
+   "hasFile": false,
+   "monitored": true,
+   "unverifiedSceneNumbering": false,
+   "id": 29
+  },
+  {
+   "seriesId": 1,
+   "tvdbId": 8891229,
+   "episodeFileId": 0,
+   "seasonNumber": 1,
+   "episodeNumber": 9,
+   "title": "The We We Are",
+   "airDate": "2022-04-08",
+   "airDateUtc": "2022-04-09T01:00:00Z",
+   "runtime": 40,
+   "finaleType": "season",
+   "overview": "The team discovers troubling revelations.",
+   "hasFile": false,
+   "monitored": true,
+   "unverifiedSceneNumbering": false,
+   "id": 30
+  },
+  {
+   "seriesId": 1,
+   "tvdbId": 10586352,
+   "episodeFileId": 0,
+   "seasonNumber": 2,
+   "episodeNumber": 1,
+   "title": "Hello, Ms. Cobel",
+   "airDate": "2025-01-16",
+   "airDateUtc": "2025-01-17T02:00:00Z",
+   "runtime": 49,
+   "overview": "Mark returns to work under different circumstances. Secrets from the Outie world come to light.",
+   "hasFile": false,
+   "monitored": true,
+   "unverifiedSceneNumbering": false,
+   "id": 31
+  },
+  {
+   "seriesId": 1,
+   "tvdbId": 10592759,
+   "episodeFileId": 0,
+   "seasonNumber": 2,
+   "episodeNumber": 2,
+   "title": "Goodbye, Mrs. Selvig",
+   "airDate": "2025-01-23",
+   "airDateUtc": "2025-01-24T02:00:00Z",
+   "runtime": 46,
+   "overview": "Mark contemplates the meaning of a message.",
+   "hasFile": false,
+   "monitored": true,
+   "unverifiedSceneNumbering": false,
+   "id": 32
+  },
+  {
+   "seriesId": 1,
+   "tvdbId": 10592760,
+   "episodeFileId": 0,
+   "seasonNumber": 2,
+   "episodeNumber": 3,
+   "title": "Who Is Alive?",
+   "airDate": "2025-01-30",
+   "airDateUtc": "2025-01-31T02:00:00Z",
+   "runtime": 54,
+   "overview": "Mark, Helly, Irving, and Dylan search for answers.",
+   "hasFile": false,
+   "monitored": true,
+   "unverifiedSceneNumbering": false,
+   "id": 33
+  },
+  {
+   "seriesId": 1,
+   "tvdbId": 10592761,
+   "episodeFileId": 0,
+   "seasonNumber": 2,
+   "episodeNumber": 4,
+   "title": "Woe’s Hollow",
+   "airDate": "2025-02-06",
+   "airDateUtc": "2025-02-07T02:00:00Z",
+   "runtime": 51,
+   "overview": "The team participates in a group activity.",
+   "hasFile": false,
+   "monitored": true,
+   "unverifiedSceneNumbering": false,
+   "id": 34
+  },
+  {
+   "seriesId": 1,
+   "tvdbId": 10592762,
+   "episodeFileId": 0,
+   "seasonNumber": 2,
+   "episodeNumber": 5,
+   "title": "Trojan’s Horse",
+   "airDate": "2025-02-13",
+   "airDateUtc": "2025-02-14T02:00:00Z",
+   "runtime": 47,
+   "overview": "Tensions emerge after the team suffers a loss.",
+   "hasFile": false,
+   "monitored": true,
+   "unverifiedSceneNumbering": false,
+   "id": 35
+  },
+  {
+   "seriesId": 1,
+   "tvdbId": 10592763,
+   "episodeFileId": 0,
+   "seasonNumber": 2,
+   "episodeNumber": 6,
+   "title": "Attila",
+   "airDate": "2025-02-20",
+   "airDateUtc": "2025-02-21T02:00:00Z",
+   "runtime": 48,
+   "overview": "Bonds are tested. Mark continues on his path of discovery.",
+   "hasFile": false,
+   "monitored": true,
+   "unverifiedSceneNumbering": false,
+   "id": 36
+  },
+  {
+   "seriesId": 1,
+   "tvdbId": 10592764,
+   "episodeFileId": 0,
+   "seasonNumber": 2,
+   "episodeNumber": 7,
+   "title": "Chikhai Bardo",
+   "airDate": "2025-02-27",
+   "airDateUtc": "2025-02-28T02:00:00Z",
+   "runtime": 50,
+   "overview": "An old romance intersects with a deadly present threat.",
+   "hasFile": false,
+   "monitored": true,
+   "unverifiedSceneNumbering": false,
+   "id": 37
+  },
+  {
+   "seriesId": 1,
+   "tvdbId": 10592765,
+   "episodeFileId": 0,
+   "seasonNumber": 2,
+   "episodeNumber": 8,
+   "title": "Sweet Vitriol",
+   "airDate": "2025-03-06",
+   "airDateUtc": "2025-03-07T02:00:00Z",
+   "runtime": 37,
+   "overview": "Discoveries are made.",
+   "hasFile": false,
+   "monitored": true,
+   "unverifiedSceneNumbering": false,
+   "id": 38
+  },
+  {
+   "seriesId": 1,
+   "tvdbId": 10592766,
+   "episodeFileId": 0,
+   "seasonNumber": 2,
+   "episodeNumber": 9,
+   "title": "The After Hours",
+   "airDate": "2025-03-13",
+   "airDateUtc": "2025-03-14T01:00:00Z",
+   "runtime": 45,
+   "overview": "Mark and Devon team with an ally. Helly investigates further.",
+   "hasFile": false,
+   "monitored": true,
+   "unverifiedSceneNumbering": false,
+   "id": 39
+  },
+  {
+   "seriesId": 1,
+   "tvdbId": 10592768,
+   "episodeFileId": 0,
+   "seasonNumber": 2,
+   "episodeNumber": 10,
+   "title": "Cold Harbor",
+   "airDate": "2025-03-20",
+   "airDateUtc": "2025-03-21T01:00:00Z",
+   "runtime": 76,
+   "finaleType": "season",
+   "overview": "Mark forms a shaky alliance in an all-or-nothing play, while the team makes a dangerous last stand.",
+   "hasFile": false,
+   "monitored": true,
+   "unverifiedSceneNumbering": false,
+   "id": 40
+  }
+ ],
+ "/episodefile?seriesId=1": [
+  {
+   "seriesId": 1,
+   "seasonNumber": 1,
+   "relativePath": "Season 01/Severance.S01E01.1080p.WEB-DL-NTb.mkv",
+   "path": "{ROOT}/tv/Severance/Season 01/Severance.S01E01.1080p.WEB-DL-NTb.mkv",
+   "size": 300000,
+   "dateAdded": "2026-11-22T00:53:12Z",
+   "releaseGroup": "NTb",
+   "languages": [
+    {
+     "id": 1,
+     "name": "English"
+    }
+   ],
+   "quality": {
+    "quality": {
+     "id": 3,
+     "name": "WEBDL-1080p",
+     "source": "web",
+     "resolution": 1080
+    },
+    "revision": {
+     "version": 1,
+     "real": 0,
+     "isRepack": false
+    }
+   },
+   "customFormats": [],
+   "customFormatScore": 0,
+   "indexerFlags": 0,
+   "releaseType": "singleEpisode",
+   "qualityCutoffNotMet": false,
+   "id": 1
+  },
+  {
+   "seriesId": 1,
+   "seasonNumber": 1,
+   "relativePath": "Season 01/Severance.S01E02.1080p.WEB-DL-NTb.mkv",
+   "path": "{ROOT}/tv/Severance/Season 01/Severance.S01E02.1080p.WEB-DL-NTb.mkv",
+   "size": 300000,
+   "dateAdded": "2026-11-22T00:53:12Z",
+   "releaseGroup": "NTb",
+   "languages": [
+    {
+     "id": 1,
+     "name": "English"
+    }
+   ],
+   "quality": {
+    "quality": {
+     "id": 3,
+     "name": "WEBDL-1080p",
+     "source": "web",
+     "resolution": 1080
+    },
+    "revision": {
+     "version": 1,
+     "real": 0,
+     "isRepack": false
+    }
+   },
+   "customFormats": [],
+   "customFormatScore": 0,
+   "indexerFlags": 0,
+   "releaseType": "singleEpisode",
+   "qualityCutoffNotMet": false,
+   "id": 2
+  }
+ ]
+}

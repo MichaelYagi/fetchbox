@@ -418,6 +418,77 @@
     "title": "AuthStatus",
     "type": "object"
    },
+   "BackupIn": {
+    "properties": {
+     "password": {
+      "anyOf": [
+       {
+        "minLength": 8,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Include the secrets key, encrypted with this password (needed to restore on another computer)",
+      "title": "Password"
+     }
+    },
+    "title": "BackupIn",
+    "type": "object"
+   },
+   "BackupOut": {
+    "properties": {
+     "app_version": {
+      "title": "App Version",
+      "type": "string"
+     },
+     "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "includes_secrets_key": {
+      "title": "Includes Secrets Key",
+      "type": "boolean"
+     },
+     "reason": {
+      "description": "manual, scheduled, pre-migration, before-restore, uploaded",
+      "title": "Reason",
+      "type": "string"
+     },
+     "schema_revision": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Schema Revision"
+     },
+     "size": {
+      "title": "Size",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "id",
+     "size",
+     "created_at",
+     "reason",
+     "app_version",
+     "schema_revision",
+     "includes_secrets_key"
+    ],
+    "title": "BackupOut",
+    "type": "object"
+   },
    "BlockIn": {
     "properties": {
      "guid": {
@@ -584,6 +655,20 @@
      "created_at"
     ],
     "title": "BlockOut",
+    "type": "object"
+   },
+   "Body_upload_backup_api_v1_backups_upload_post": {
+    "properties": {
+     "file": {
+      "contentMediaType": "application/octet-stream",
+      "title": "File",
+      "type": "string"
+     }
+    },
+    "required": [
+     "file"
+    ],
+    "title": "Body_upload_backup_api_v1_backups_upload_post",
     "type": "object"
    },
    "CalendarEntry": {
@@ -988,6 +1073,33 @@
      }
     },
     "title": "ClientPatch",
+    "type": "object"
+   },
+   "ConfigImportOut": {
+    "properties": {
+     "applied": {
+      "title": "Applied",
+      "type": "boolean"
+     },
+     "plan": {
+      "additionalProperties": {
+       "$ref": "#/components/schemas/PlanPart"
+      },
+      "title": "Plan",
+      "type": "object"
+     },
+     "restarting": {
+      "default": false,
+      "description": "Applied: Fetchbox restarts to use it",
+      "title": "Restarting",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "applied",
+     "plan"
+    ],
+    "title": "ConfigImportOut",
     "type": "object"
    },
    "ConfigOut": {
@@ -1950,6 +2062,21 @@
     "title": "EventKindOut",
     "type": "object"
    },
+   "ExportIn": {
+    "properties": {
+     "password": {
+      "description": "Encrypts the secrets in the export",
+      "minLength": 8,
+      "title": "Password",
+      "type": "string"
+     }
+    },
+    "required": [
+     "password"
+    ],
+    "title": "ExportIn",
+    "type": "object"
+   },
    "FieldError": {
     "properties": {
      "code": {
@@ -2671,28 +2798,6 @@
      "downloads_root"
     ],
     "title": "HostInfo",
-    "type": "object"
-   },
-   "ImportIn": {
-    "properties": {
-     "destination_id": {
-      "title": "Destination Id",
-      "type": "string"
-     },
-     "items": {
-      "items": {
-       "$ref": "#/components/schemas/ImportItemIn"
-      },
-      "minItems": 1,
-      "title": "Items",
-      "type": "array"
-     }
-    },
-    "required": [
-     "destination_id",
-     "items"
-    ],
-    "title": "ImportIn",
     "type": "object"
    },
    "ImportItemIn": {
@@ -3474,6 +3579,21 @@
     "title": "LiveOut",
     "type": "object"
    },
+   "LoginCodeIn": {
+    "properties": {
+     "code": {
+      "maxLength": 200,
+      "minLength": 10,
+      "title": "Code",
+      "type": "string"
+     }
+    },
+    "required": [
+     "code"
+    ],
+    "title": "LoginCodeIn",
+    "type": "object"
+   },
    "LoginIn": {
     "properties": {
      "password": {
@@ -3494,6 +3614,20 @@
      "password"
     ],
     "title": "LoginIn",
+    "type": "object"
+   },
+   "LoginLinkOut": {
+    "properties": {
+     "path": {
+      "description": "Open it within 60 s: /login?code=\u2026, signs the admin in once",
+      "title": "Path",
+      "type": "string"
+     }
+    },
+    "required": [
+     "path"
+    ],
+    "title": "LoginLinkOut",
     "type": "object"
    },
    "MatchedFormat": {
@@ -3544,9 +3678,33 @@
    },
    "Me": {
     "properties": {
+     "connected_from": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "The address that connected to Fetchbox: a reverse proxy's, if any",
+      "title": "Connected From"
+     },
      "id": {
       "title": "Id",
       "type": "string"
+     },
+     "ip": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "This client's address, as Fetchbox sees it",
+      "title": "Ip"
      },
      "name": {
       "title": "Name",
@@ -3782,6 +3940,100 @@
      "coverage"
     ],
     "title": "MediaServerTestOut",
+    "type": "object"
+   },
+   "MigrateApplyIn": {
+    "properties": {
+     "api_key": {
+      "description": "Settings > General > API Key",
+      "minLength": 1,
+      "title": "Api Key",
+      "type": "string"
+     },
+     "kind": {
+      "enum": [
+       "radarr",
+       "sonarr"
+      ],
+      "title": "Kind",
+      "type": "string"
+     },
+     "only": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "integer"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Their title ids; null: all",
+      "title": "Only"
+     },
+     "path_map": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/PathMapIn"
+      },
+      "title": "Path Map",
+      "type": "array"
+     },
+     "profile_map": {
+      "additionalProperties": {
+       "type": "string"
+      },
+      "default": {},
+      "description": "Their quality profile id -> a Fetchbox profile id",
+      "title": "Profile Map",
+      "type": "object"
+     },
+     "url": {
+      "description": "e.g. http://192.168.1.10:7878",
+      "minLength": 1,
+      "title": "Url",
+      "type": "string"
+     }
+    },
+    "required": [
+     "kind",
+     "url",
+     "api_key"
+    ],
+    "title": "MigrateApplyIn",
+    "type": "object"
+   },
+   "MigrateConnectIn": {
+    "properties": {
+     "api_key": {
+      "description": "Settings > General > API Key",
+      "minLength": 1,
+      "title": "Api Key",
+      "type": "string"
+     },
+     "kind": {
+      "enum": [
+       "radarr",
+       "sonarr"
+      ],
+      "title": "Kind",
+      "type": "string"
+     },
+     "url": {
+      "description": "e.g. http://192.168.1.10:7878",
+      "minLength": 1,
+      "title": "Url",
+      "type": "string"
+     }
+    },
+    "required": [
+     "kind",
+     "url",
+     "api_key"
+    ],
+    "title": "MigrateConnectIn",
     "type": "object"
    },
    "MountOut": {
@@ -4505,6 +4757,28 @@
     "title": "ParsedRelease",
     "type": "object"
    },
+   "PathMapIn": {
+    "properties": {
+     "from": {
+      "description": "The path as Radarr/Sonarr sees it",
+      "minLength": 1,
+      "title": "From",
+      "type": "string"
+     },
+     "to": {
+      "description": "The same folder as Fetchbox sees it",
+      "minLength": 1,
+      "title": "To",
+      "type": "string"
+     }
+    },
+    "required": [
+     "from",
+     "to"
+    ],
+    "title": "PathMapIn",
+    "type": "object"
+   },
    "PathMapping-Input": {
     "properties": {
      "local": {
@@ -4585,6 +4859,38 @@
      }
     },
     "title": "Ping",
+    "type": "object"
+   },
+   "PlanPart": {
+    "properties": {
+     "create": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Create",
+      "type": "array"
+     },
+     "unchanged": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Unchanged",
+      "type": "array"
+     },
+     "update": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Update",
+      "type": "array"
+     }
+    },
+    "required": [
+     "create",
+     "update",
+     "unchanged"
+    ],
+    "title": "PlanPart",
     "type": "object"
    },
    "Policy": {
@@ -5391,6 +5697,35 @@
     "title": "ReleaseCandidate",
     "type": "object"
    },
+   "ReleaseFileOut": {
+    "properties": {
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "size": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Size"
+     },
+     "url": {
+      "title": "Url",
+      "type": "string"
+     }
+    },
+    "required": [
+     "name",
+     "url"
+    ],
+    "title": "ReleaseFileOut",
+    "type": "object"
+   },
    "ReleaseIn": {
     "properties": {
      "indexer_flags": {
@@ -5620,6 +5955,42 @@
      "new"
     ],
     "title": "RenameStepOut",
+    "type": "object"
+   },
+   "RestoreIn": {
+    "properties": {
+     "password": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "The backup's key password",
+      "title": "Password"
+     }
+    },
+    "title": "RestoreIn",
+    "type": "object"
+   },
+   "RestoreOut": {
+    "properties": {
+     "restarting": {
+      "description": "False: restart Fetchbox yourself to finish",
+      "title": "Restarting",
+      "type": "boolean"
+     },
+     "staged": {
+      "$ref": "#/components/schemas/BackupOut"
+     }
+    },
+    "required": [
+     "staged",
+     "restarting"
+    ],
+    "title": "RestoreOut",
     "type": "object"
    },
    "Revision": {
@@ -7174,6 +7545,87 @@
     "title": "UnlockOut",
     "type": "object"
    },
+   "UpdateOut": {
+    "properties": {
+     "checked": {
+      "description": "False: checking is off, or GitHub couldn't be reached",
+      "title": "Checked",
+      "type": "boolean"
+     },
+     "current": {
+      "title": "Current",
+      "type": "string"
+     },
+     "downloads": {
+      "default": [],
+      "description": "The release's files",
+      "items": {
+       "$ref": "#/components/schemas/ReleaseFileOut"
+      },
+      "title": "Downloads",
+      "type": "array"
+     },
+     "error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Error"
+     },
+     "latest": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Latest"
+     },
+     "published_at": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Published At"
+     },
+     "update_available": {
+      "title": "Update Available",
+      "type": "boolean"
+     },
+     "url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "The release page",
+      "title": "Url"
+     }
+    },
+    "required": [
+     "current",
+     "latest",
+     "update_available",
+     "url",
+     "published_at",
+     "checked"
+    ],
+    "title": "UpdateOut",
+    "type": "object"
+   },
    "ValidationError": {
     "properties": {
      "ctx": {
@@ -7665,6 +8117,28 @@
     "title": "PathMapping",
     "type": "object"
    },
+   "fetchbox__modules__library__router__ImportIn": {
+    "properties": {
+     "destination_id": {
+      "title": "Destination Id",
+      "type": "string"
+     },
+     "items": {
+      "items": {
+       "$ref": "#/components/schemas/ImportItemIn"
+      },
+      "minItems": 1,
+      "title": "Items",
+      "type": "array"
+     }
+    },
+    "required": [
+     "destination_id",
+     "items"
+    ],
+    "title": "ImportIn",
+    "type": "object"
+   },
    "fetchbox__modules__sources__router__ReorderIn": {
     "properties": {
      "ids": {
@@ -7681,6 +8155,39 @@
      "ids"
     ],
     "title": "ReorderIn",
+    "type": "object"
+   },
+   "fetchbox__modules__system__config_router__ImportIn": {
+    "properties": {
+     "apply": {
+      "default": false,
+      "description": "False: only show what would change",
+      "title": "Apply",
+      "type": "boolean"
+     },
+     "document": {
+      "additionalProperties": true,
+      "description": "A Fetchbox config export",
+      "title": "Document",
+      "type": "object"
+     },
+     "password": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "If the export holds secrets",
+      "title": "Password"
+     }
+    },
+    "required": [
+     "document"
+    ],
+    "title": "ImportIn",
     "type": "object"
    }
   },
@@ -8475,6 +8982,103 @@
     ]
    }
   },
+  "/api/v1/auth/login-code": {
+   "post": {
+    "description": "Trade a one-time code from a sign-in link for a session.",
+    "operationId": "login_with_code_api_v1_auth_login_code_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/LoginCodeIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SessionOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Unauthorized"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Login With Code",
+    "tags": [
+     "auth"
+    ]
+   }
+  },
+  "/api/v1/auth/login-link": {
+   "post": {
+    "description": "A one-time sign-in link (the tray's \"Open Fetchbox\": no password prompt on the\ncomputer Fetchbox runs on). Valid 60 seconds, once.",
+    "operationId": "login_link_api_v1_auth_login_link_post",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/LoginLinkOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Login Link",
+    "tags": [
+     "auth"
+    ]
+   }
+  },
   "/api/v1/auth/logout": {
    "post": {
     "operationId": "logout_api_v1_auth_logout_post",
@@ -8973,6 +9577,361 @@
     ]
    }
   },
+  "/api/v1/backups": {
+   "get": {
+    "operationId": "list_backups_api_v1_backups_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/BackupOut"
+         },
+         "title": "Response List Backups Api V1 Backups Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "List Backups",
+    "tags": [
+     "system"
+    ]
+   },
+   "post": {
+    "description": "Back up the database and settings now (safe while Fetchbox runs).",
+    "operationId": "make_backup_api_v1_backups_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "anyOf": [
+         {
+          "$ref": "#/components/schemas/BackupIn"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "title": "Body"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/BackupOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Unprocessable Content"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Make Backup",
+    "tags": [
+     "system"
+    ]
+   }
+  },
+  "/api/v1/backups/upload": {
+   "post": {
+    "description": "Add a backup made elsewhere (checked before it's kept).",
+    "operationId": "upload_backup_api_v1_backups_upload_post",
+    "requestBody": {
+     "content": {
+      "multipart/form-data": {
+       "schema": {
+        "$ref": "#/components/schemas/Body_upload_backup_api_v1_backups_upload_post"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/BackupOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Unprocessable Content"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Upload Backup",
+    "tags": [
+     "system"
+    ]
+   }
+  },
+  "/api/v1/backups/{backup_id}": {
+   "delete": {
+    "operationId": "delete_backup_api_v1_backups__backup_id__delete",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "backup_id",
+      "required": true,
+      "schema": {
+       "title": "Backup Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Delete Backup",
+    "tags": [
+     "system"
+    ]
+   },
+   "get": {
+    "operationId": "download_backup_api_v1_backups__backup_id__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "backup_id",
+      "required": true,
+      "schema": {
+       "title": "Backup Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Download Backup",
+    "tags": [
+     "system"
+    ]
+   }
+  },
+  "/api/v1/backups/{backup_id}/restore": {
+   "post": {
+    "description": "Restore a backup: it is staged, Fetchbox stops, and the next start applies it\n(keeping the current data as a before-restore backup) and brings it up to date.",
+    "operationId": "restore_backup_api_v1_backups__backup_id__restore_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "backup_id",
+      "required": true,
+      "schema": {
+       "title": "Backup Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "anyOf": [
+         {
+          "$ref": "#/components/schemas/RestoreIn"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "title": "Body"
+       }
+      }
+     }
+    },
+    "responses": {
+     "202": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/RestoreOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Conflict"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Unprocessable Content"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Restore Backup",
+    "tags": [
+     "system"
+    ]
+   }
+  },
   "/api/v1/blocklist": {
    "get": {
     "operationId": "list_blocklist_api_v1_blocklist_get",
@@ -9231,6 +10190,149 @@
     "summary": "Get Calendar",
     "tags": [
      "media"
+    ]
+   }
+  },
+  "/api/v1/config/export": {
+   "get": {
+    "description": "All configuration as one JSON document (no media data). Secrets are left out:\nPOST with a password to include them, encrypted.",
+    "operationId": "export_config_api_v1_config_export_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Export Config Api V1 Config Export Get",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Export Config",
+    "tags": [
+     "system"
+    ]
+   },
+   "post": {
+    "description": "The same, with secrets (API keys, passwords) encrypted with ``password``.",
+    "operationId": "export_config_with_secrets_api_v1_config_export_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ExportIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Export Config With Secrets Api V1 Config Export Post",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Unprocessable Content"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Export Config With Secrets",
+    "tags": [
+     "system"
+    ]
+   }
+  },
+  "/api/v1/config/import": {
+   "post": {
+    "description": "Compare an export with this install (``apply: false``, the default) or apply it in\none transaction. Rows match by id, then by name; nothing is deleted. After applying,\nFetchbox restarts so every part uses the new configuration.",
+    "operationId": "import_config_api_v1_config_import_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/fetchbox__modules__system__config_router__ImportIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ConfigImportOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Unprocessable Content"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Import Config",
+    "tags": [
+     "system"
     ]
    }
   },
@@ -13593,7 +14695,7 @@
      "content": {
       "application/json": {
        "schema": {
-        "$ref": "#/components/schemas/ImportIn"
+        "$ref": "#/components/schemas/fetchbox__modules__library__router__ImportIn"
        }
       }
      },
@@ -13656,6 +14758,136 @@
      }
     ],
     "summary": "Import Existing",
+    "tags": [
+     "library"
+    ]
+   }
+  },
+  "/api/v1/library/migrate/apply": {
+   "post": {
+    "description": "Add their titles and record their files in place. Radarr / Sonarr aren't changed.",
+    "operationId": "migrate_apply_api_v1_library_migrate_apply_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/MigrateApplyIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "202": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/JobOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Conflict"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Unprocessable Content"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Migrate Apply",
+    "tags": [
+     "library"
+    ]
+   }
+  },
+  "/api/v1/library/migrate/scan": {
+   "post": {
+    "description": "Read what Radarr or Sonarr has (changes nothing on either side). The job's result\nlists titles, files, root folders, profile mapping, indexers and clients.",
+    "operationId": "migrate_scan_api_v1_library_migrate_scan_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/MigrateConnectIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "202": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/JobOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Conflict"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Unprocessable Content"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Migrate Scan",
     "tags": [
      "library"
     ]
@@ -16077,6 +17309,35 @@
     ]
    }
   },
+  "/api/v1/system/diagnostics": {
+   "get": {
+    "description": "A zip to attach to a bug report: settings (secrets masked), recent logs (keys\nscrubbed), the health report, versions and a summary of indexers, clients and folders\n(kinds and statuses, no addresses or credentials).",
+    "operationId": "diagnostics_api_v1_system_diagnostics_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/zip": {}
+      },
+      "description": "Successful Response"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Diagnostics",
+    "tags": [
+     "system"
+    ]
+   }
+  },
   "/api/v1/system/health": {
    "get": {
     "operationId": "get_health_api_v1_system_health_get",
@@ -16256,26 +17517,8 @@
   },
   "/api/v1/system/shutdown": {
    "post": {
-    "description": "Stop the server gracefully (running jobs get up to 30 s, downloads save their\nstate). Needs ``system:write``, or the token the desktop tray gave the server it\nstarted (``X-Fetchbox-Supervisor``).",
+    "description": "Stop the server gracefully (running jobs get up to 30 s, downloads save their\nstate). The desktop tray uses this with its own per-launch token.",
     "operationId": "shutdown_api_v1_system_shutdown_post",
-    "parameters": [
-     {
-      "in": "header",
-      "name": "x-fetchbox-supervisor",
-      "required": false,
-      "schema": {
-       "anyOf": [
-        {
-         "type": "string"
-        },
-        {
-         "type": "null"
-        }
-       ],
-       "title": "X-Fetchbox-Supervisor"
-      }
-     }
-    ],
     "responses": {
      "202": {
       "content": {
@@ -16307,15 +17550,16 @@
       },
       "description": "Forbidden"
      },
-     "422": {
+     "409": {
       "content": {
        "application/json": {
         "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
+         "$ref": "#/components/schemas/Problem"
         }
-       }
+       },
+       "application/problem+json": {}
       },
-      "description": "Validation Error"
+      "description": "Conflict"
      }
     },
     "security": [
@@ -16363,6 +17607,61 @@
      }
     ],
     "summary": "Get Status",
+    "tags": [
+     "system"
+    ]
+   }
+  },
+  "/api/v1/system/updates": {
+   "get": {
+    "description": "Is a newer Fetchbox released? (Settings: updates.check; nothing is installed.)",
+    "operationId": "check_updates_api_v1_system_updates_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "fresh",
+      "required": false,
+      "schema": {
+       "default": false,
+       "title": "Fresh",
+       "type": "boolean"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/UpdateOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Check Updates",
     "tags": [
      "system"
     ]

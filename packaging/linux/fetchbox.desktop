@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Fetchbox
+Comment=Find and download movies and TV
+Exec=fetchbox
+Icon=fetchbox
+Terminal=true
+Categories=Network;P2P;

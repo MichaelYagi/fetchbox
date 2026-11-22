@@ -38,6 +38,7 @@ from fetchbox.modules.integrations.service import IntegrationsService
 from fetchbox.modules.library import router as library_router
 from fetchbox.modules.library.existing import ExistingLibrary
 from fetchbox.modules.library.maintenance import LibraryCheck
+from fetchbox.modules.library.migrate import Migrator
 from fetchbox.modules.library.service import LibraryService
 from fetchbox.modules.media import router as media_router
 from fetchbox.modules.media.service import MediaService
@@ -52,13 +53,17 @@ from fetchbox.modules.sources import router as sources_router
 from fetchbox.modules.sources.service import SourcesService
 from fetchbox.modules.storage import router as storage_router
 from fetchbox.modules.storage.service import StorageService
-from fetchbox.modules.system import activity_router, jobs_router
+from fetchbox.modules.system import activity_router, backups_router, config_router, jobs_router
 from fetchbox.modules.system import jobs as system_jobs
 from fetchbox.modules.system import router as system_router
 from fetchbox.modules.system.activity import ActivityWriter
+from fetchbox.modules.system.backups import Backups, sqlite_path
 from fetchbox.modules.system.config import ConfigService
+from fetchbox.modules.system.portable import Portable
 from fetchbox.modules.system.service import register_core_checks
+from fetchbox.modules.system.updates import UpdateChecker
 from fetchbox.providers import builtin as _builtin_providers  # noqa: F401 (registers them)
+from fetchbox.security_headers import SecurityHeaders
 from fetchbox.ui import STATIC_DIR, install_ui
 
 API_PREFIX = "/api/v1"
@@ -87,6 +92,8 @@ API_ROUTERS: tuple[APIRouter, ...] = (
     library_router.router,
     integrations_router.router,
     notifications_router.router,
+    backups_router.router,
+    config_router.router,
 )
 
 
@@ -124,12 +131,24 @@ def create_app(
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         settings.data_dir.mkdir(parents=True, exist_ok=True)
+        backups = Backups(settings.data_dir, settings.database_url)
+        if sqlite_path(settings.database_url) is not None:
+            # A restore staged by POST /backups/{id}/restore is applied now, before
+            # anything opens the database; then a backup if a migration is due.
+            restored = await asyncio.to_thread(backups.apply_pending)
+            if restored:
+                log.warning("backup.restored", backup_created_at=restored.get("created_at"),
+                            app_version=restored.get("app_version"))  # fmt: skip
+            if settings.run_migrations:
+                pre = await asyncio.to_thread(backups.before_migrations)
+                if pre is not None:
+                    log.info("backup.pre_migration", backup=pre.id)
         if settings.run_migrations:
-            # TODO(phase 4): automatic pre-migration backup before upgrading.
             await asyncio.to_thread(migrations.upgrade, settings.database_url)
 
         db = Database(settings.database_url)
         bus = EventBus()
+        app.state.backups = backups
         jobs = JobRunner(db, bus)
         box, _created = load_secrets(settings.data_dir)
         state = AppState(
@@ -211,10 +230,14 @@ def create_app(
         app.state.storage = storage
         library = LibraryService(db, bus, jobs, storage, downloads, profiles, media)
         storage.register_jobs(jobs, state.scheduler, lambda: config.current.storage.recycle_days)
+        backups_router.register(jobs, state.scheduler, backups)
         integrations = IntegrationsService(db, bus, box, provider_registry)
         notifications = NotificationsService(db, bus, box, provider_registry)
+        notifications.public_only = lambda: config.current.network.block_private_webhooks
         app.state.notifications = notifications
         app.state.integrations = integrations
+        app.state.portable = Portable(db, box, provider_registry, config)
+        app.state.updates = UpdateChecker()
         existing = ExistingLibrary(
             db, jobs, storage=storage, media=media, discovery=discovery, library=library
         )
@@ -222,6 +245,11 @@ def create_app(
         library_check = LibraryCheck(db, bus, jobs, storage)
         library_check.register_jobs()
         app.state.library_check = library_check
+        migrator = Migrator(
+            db, jobs, storage=storage, media=media, profiles=profiles, library=library
+        )
+        migrator.register_jobs()
+        app.state.migrator = migrator
         app.state.existing = existing
         library.register_jobs()
         app.state.library = library
@@ -295,6 +323,7 @@ def create_app(
         lifespan=lifespan,
     )
     install_error_handlers(app)
+    app.add_middleware(SecurityHeaders)
     app.include_router(build_api_router())
     install_ui(app, static_dir or STATIC_DIR)
     return app

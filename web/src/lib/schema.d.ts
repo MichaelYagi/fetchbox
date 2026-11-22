@@ -112,6 +112,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/login-code": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Login With Code
+         * @description Trade a one-time code from a sign-in link for a session.
+         */
+        post: operations["login_with_code_api_v1_auth_login_code_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/login-link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Login Link
+         * @description A one-time sign-in link (the tray's "Open Fetchbox": no password prompt on the
+         *     computer Fetchbox runs on). Valid 60 seconds, once.
+         */
+        post: operations["login_link_api_v1_auth_login_link_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/logout": {
         parameters: {
             query?: never;
@@ -258,6 +299,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/backups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Backups */
+        get: operations["list_backups_api_v1_backups_get"];
+        put?: never;
+        /**
+         * Make Backup
+         * @description Back up the database and settings now (safe while Fetchbox runs).
+         */
+        post: operations["make_backup_api_v1_backups_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/backups/upload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload Backup
+         * @description Add a backup made elsewhere (checked before it's kept).
+         */
+        post: operations["upload_backup_api_v1_backups_upload_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/backups/{backup_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download Backup */
+        get: operations["download_backup_api_v1_backups__backup_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete Backup */
+        delete: operations["delete_backup_api_v1_backups__backup_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/backups/{backup_id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Restore Backup
+         * @description Restore a backup: it is staged, Fetchbox stops, and the next start applies it
+         *     (keeping the current data as a before-restore backup) and brings it up to date.
+         */
+        post: operations["restore_backup_api_v1_backups__backup_id__restore_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/blocklist": {
         parameters: {
             query?: never;
@@ -310,6 +431,53 @@ export interface paths {
         get: operations["get_calendar_api_v1_calendar_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/config/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export Config
+         * @description All configuration as one JSON document (no media data). Secrets are left out:
+         *     POST with a password to include them, encrypted.
+         */
+        get: operations["export_config_api_v1_config_export_get"];
+        put?: never;
+        /**
+         * Export Config With Secrets
+         * @description The same, with secrets (API keys, passwords) encrypted with ``password``.
+         */
+        post: operations["export_config_with_secrets_api_v1_config_export_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/config/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import Config
+         * @description Compare an export with this install (``apply: false``, the default) or apply it in
+         *     one transaction. Rows match by id, then by name; nothing is deleted. After applying,
+         *     Fetchbox restarts so every part uses the new configuration.
+         */
+        post: operations["import_config_api_v1_config_import_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1190,6 +1358,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/library/migrate/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Migrate Apply
+         * @description Add their titles and record their files in place. Radarr / Sonarr aren't changed.
+         */
+        post: operations["migrate_apply_api_v1_library_migrate_apply_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/library/migrate/scan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Migrate Scan
+         * @description Read what Radarr or Sonarr has (changes nothing on either side). The job's result
+         *     lists titles, files, root folders, profile mapping, indexers and clients.
+         */
+        post: operations["migrate_scan_api_v1_library_migrate_scan_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/library/naming-options": {
         parameters: {
             query?: never;
@@ -1702,6 +1911,28 @@ export interface paths {
         patch: operations["patch_config_api_v1_system_config_patch"];
         trace?: never;
     };
+    "/api/v1/system/diagnostics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Diagnostics
+         * @description A zip to attach to a bug report: settings (secrets masked), recent logs (keys
+         *     scrubbed), the health report, versions and a summary of indexers, clients and folders
+         *     (kinds and statuses, no addresses or credentials).
+         */
+        get: operations["diagnostics_api_v1_system_diagnostics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/system/health": {
         parameters: {
             query?: never;
@@ -1791,8 +2022,7 @@ export interface paths {
         /**
          * Shutdown
          * @description Stop the server gracefully (running jobs get up to 30 s, downloads save their
-         *     state). Needs ``system:write``, or the token the desktop tray gave the server it
-         *     started (``X-Fetchbox-Supervisor``).
+         *     state). The desktop tray uses this with its own per-launch token.
          */
         post: operations["shutdown_api_v1_system_shutdown_post"];
         delete?: never;
@@ -1813,6 +2043,26 @@ export interface paths {
          * @description Includes `host`: the machine Fetchbox runs on; every path it shows is there.
          */
         get: operations["get_status_api_v1_system_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system/updates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Check Updates
+         * @description Is a newer Fetchbox released? (Settings: updates.check; nothing is installed.)
+         */
+        get: operations["check_updates_api_v1_system_updates_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2252,6 +2502,37 @@ export interface components {
              */
             setup_required: boolean;
         };
+        /** BackupIn */
+        BackupIn: {
+            /**
+             * Password
+             * @description Include the secrets key, encrypted with this password (needed to restore on another computer)
+             */
+            password?: string | null;
+        };
+        /** BackupOut */
+        BackupOut: {
+            /** App Version */
+            app_version: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Id */
+            id: string;
+            /** Includes Secrets Key */
+            includes_secrets_key: boolean;
+            /**
+             * Reason
+             * @description manual, scheduled, pre-migration, before-restore, uploaded
+             */
+            reason: string;
+            /** Schema Revision */
+            schema_revision: string | null;
+            /** Size */
+            size: number;
+        };
         /** BlockIn */
         BlockIn: {
             /** Guid */
@@ -2291,6 +2572,11 @@ export interface components {
             release_title: string | null;
             /** Title Id */
             title_id: string | null;
+        };
+        /** Body_upload_backup_api_v1_backups_upload_post */
+        Body_upload_backup_api_v1_backups_upload_post: {
+            /** File */
+            file: string;
         };
         /** CalendarEntry */
         CalendarEntry: {
@@ -2450,6 +2736,21 @@ export interface components {
             } | null;
             /** Tags */
             tags?: string[] | null;
+        };
+        /** ConfigImportOut */
+        ConfigImportOut: {
+            /** Applied */
+            applied: boolean;
+            /** Plan */
+            plan: {
+                [key: string]: components["schemas"]["PlanPart"];
+            };
+            /**
+             * Restarting
+             * @description Applied: Fetchbox restarts to use it
+             * @default false
+             */
+            restarting: boolean;
         };
         /** ConfigOut */
         ConfigOut: {
@@ -2773,6 +3074,14 @@ export interface components {
             /** Label */
             label: string;
         };
+        /** ExportIn */
+        ExportIn: {
+            /**
+             * Password
+             * @description Encrypts the secrets in the export
+             */
+            password: string;
+        };
         /** FieldError */
         FieldError: {
             /** Code */
@@ -3014,13 +3323,6 @@ export interface components {
              * @description Set when running in WSL: paths are inside that distro
              */
             wsl_distro?: string | null;
-        };
-        /** ImportIn */
-        ImportIn: {
-            /** Destination Id */
-            destination_id: string;
-            /** Items */
-            items: components["schemas"]["ImportItemIn"][];
         };
         /** ImportItemIn */
         ImportItemIn: {
@@ -3320,12 +3622,25 @@ export interface components {
             /** Uploaded */
             uploaded: number;
         };
+        /** LoginCodeIn */
+        LoginCodeIn: {
+            /** Code */
+            code: string;
+        };
         /** LoginIn */
         LoginIn: {
             /** Password */
             password: string;
             /** Username */
             username: string;
+        };
+        /** LoginLinkOut */
+        LoginLinkOut: {
+            /**
+             * Path
+             * @description Open it within 60 s: /login?code=…, signs the admin in once
+             */
+            path: string;
         };
         /** MatchedFormat */
         MatchedFormat: {
@@ -3347,8 +3662,18 @@ export interface components {
         };
         /** Me */
         Me: {
+            /**
+             * Connected From
+             * @description The address that connected to Fetchbox: a reverse proxy's, if any
+             */
+            connected_from?: string | null;
             /** Id */
             id: string;
+            /**
+             * Ip
+             * @description This client's address, as Fetchbox sees it
+             */
+            ip?: string | null;
             /** Name */
             name: string;
             /** Scopes */
@@ -3437,6 +3762,60 @@ export interface components {
             message: string;
             /** Ok */
             ok: boolean;
+        };
+        /** MigrateApplyIn */
+        MigrateApplyIn: {
+            /**
+             * Api Key
+             * @description Settings > General > API Key
+             */
+            api_key: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "radarr" | "sonarr";
+            /**
+             * Only
+             * @description Their title ids; null: all
+             */
+            only?: number[] | null;
+            /**
+             * Path Map
+             * @default []
+             */
+            path_map: components["schemas"]["PathMapIn"][];
+            /**
+             * Profile Map
+             * @description Their quality profile id -> a Fetchbox profile id
+             * @default {}
+             */
+            profile_map: {
+                [key: string]: string;
+            };
+            /**
+             * Url
+             * @description e.g. http://192.168.1.10:7878
+             */
+            url: string;
+        };
+        /** MigrateConnectIn */
+        MigrateConnectIn: {
+            /**
+             * Api Key
+             * @description Settings > General > API Key
+             */
+            api_key: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "radarr" | "sonarr";
+            /**
+             * Url
+             * @description e.g. http://192.168.1.10:7878
+             */
+            url: string;
         };
         /** MountOut */
         MountOut: {
@@ -3733,6 +4112,19 @@ export interface components {
             /** Year */
             year?: number | null;
         };
+        /** PathMapIn */
+        PathMapIn: {
+            /**
+             * From
+             * @description The path as Radarr/Sonarr sees it
+             */
+            from: string;
+            /**
+             * To
+             * @description The same folder as Fetchbox sees it
+             */
+            to: string;
+        };
         /** PathMapping */
         "PathMapping-Input": {
             /**
@@ -3781,6 +4173,15 @@ export interface components {
              * @default ok
              */
             status: string;
+        };
+        /** PlanPart */
+        PlanPart: {
+            /** Create */
+            create: string[];
+            /** Unchanged */
+            unchanged: string[];
+            /** Update */
+            update: string[];
         };
         /** Policy */
         Policy: {
@@ -4141,6 +4542,15 @@ export interface components {
             /** Title */
             title: string;
         };
+        /** ReleaseFileOut */
+        ReleaseFileOut: {
+            /** Name */
+            name: string;
+            /** Size */
+            size?: number | null;
+            /** Url */
+            url: string;
+        };
         /** ReleaseIn */
         ReleaseIn: {
             /**
@@ -4232,6 +4642,23 @@ export interface components {
             title: string;
             /** Title Id */
             title_id: string;
+        };
+        /** RestoreIn */
+        RestoreIn: {
+            /**
+             * Password
+             * @description The backup's key password
+             */
+            password?: string | null;
+        };
+        /** RestoreOut */
+        RestoreOut: {
+            /**
+             * Restarting
+             * @description False: restart Fetchbox yourself to finish
+             */
+            restarting: boolean;
+            staged: components["schemas"]["BackupOut"];
         };
         /** Revision */
         Revision: {
@@ -4817,6 +5244,35 @@ export interface components {
             search_job_id: string | null;
             wanted: components["schemas"]["WantedOut"];
         };
+        /** UpdateOut */
+        UpdateOut: {
+            /**
+             * Checked
+             * @description False: checking is off, or GitHub couldn't be reached
+             */
+            checked: boolean;
+            /** Current */
+            current: string;
+            /**
+             * Downloads
+             * @description The release's files
+             * @default []
+             */
+            downloads: components["schemas"]["ReleaseFileOut"][];
+            /** Error */
+            error?: string | null;
+            /** Latest */
+            latest: string | null;
+            /** Published At */
+            published_at: string | null;
+            /** Update Available */
+            update_available: boolean;
+            /**
+             * Url
+             * @description The release page
+             */
+            url: string | null;
+        };
         /** ValidationError */
         ValidationError: {
             /** Context */
@@ -4975,6 +5431,13 @@ export interface components {
              */
             remote: string;
         };
+        /** ImportIn */
+        fetchbox__modules__library__router__ImportIn: {
+            /** Destination Id */
+            destination_id: string;
+            /** Items */
+            items: components["schemas"]["ImportItemIn"][];
+        };
         /** ReorderIn */
         fetchbox__modules__sources__router__ReorderIn: {
             /**
@@ -4982,6 +5445,27 @@ export interface components {
              * @description Indexer ids, best first
              */
             ids: string[];
+        };
+        /** ImportIn */
+        fetchbox__modules__system__config_router__ImportIn: {
+            /**
+             * Apply
+             * @description False: only show what would change
+             * @default false
+             */
+            apply: boolean;
+            /**
+             * Document
+             * @description A Fetchbox config export
+             */
+            document: {
+                [key: string]: unknown;
+            };
+            /**
+             * Password
+             * @description If the export holds secrets
+             */
+            password?: string | null;
         };
     };
     responses: never;
@@ -5425,6 +5909,69 @@ export interface operations {
             };
         };
     };
+    login_with_code_api_v1_auth_login_code_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginCodeIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    login_link_api_v1_auth_login_link_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoginLinkOut"];
+                };
+            };
+        };
+    };
     logout_api_v1_auth_logout_post: {
         parameters: {
             query?: never;
@@ -5730,6 +6277,228 @@ export interface operations {
             };
         };
     };
+    list_backups_api_v1_backups_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackupOut"][];
+                };
+            };
+        };
+    };
+    make_backup_api_v1_backups_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["BackupIn"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackupOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    upload_backup_api_v1_backups_upload_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_backup_api_v1_backups_upload_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackupOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    download_backup_api_v1_backups__backup_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                backup_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_backup_api_v1_backups__backup_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                backup_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    restore_backup_api_v1_backups__backup_id__restore_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                backup_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["RestoreIn"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RestoreOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
     list_blocklist_api_v1_blocklist_get: {
         parameters: {
             query?: {
@@ -5872,6 +6641,98 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CalendarEntry"][];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    export_config_api_v1_config_export_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    export_config_with_secrets_api_v1_config_export_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExportIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    import_config_api_v1_config_import_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["fetchbox__modules__system__config_router__ImportIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfigImportOut"];
                 };
             };
             /** @description Unprocessable Content */
@@ -8490,7 +9351,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ImportIn"];
+                "application/json": components["schemas"]["fetchbox__modules__library__router__ImportIn"];
             };
         };
         responses: {
@@ -8511,6 +9372,94 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Problem"];
                     "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    migrate_apply_api_v1_library_migrate_apply_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MigrateApplyIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    migrate_scan_api_v1_library_migrate_scan_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MigrateConnectIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobOut"];
                 };
             };
             /** @description Conflict */
@@ -9983,6 +10932,26 @@ export interface operations {
             };
         };
     };
+    diagnostics_api_v1_system_diagnostics_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/zip": unknown;
+                };
+            };
+        };
+    };
     get_health_api_v1_system_health_get: {
         parameters: {
             query?: never;
@@ -10082,9 +11051,7 @@ export interface operations {
     shutdown_api_v1_system_shutdown_post: {
         parameters: {
             query?: never;
-            header?: {
-                "x-fetchbox-supervisor"?: string | null;
-            };
+            header?: never;
             path?: never;
             cookie?: never;
         };
@@ -10119,13 +11086,14 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Conflict */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
                 };
             };
         };
@@ -10146,6 +11114,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StatusInfo"];
+                };
+            };
+        };
+    };
+    check_updates_api_v1_system_updates_get: {
+        parameters: {
+            query?: {
+                fresh?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

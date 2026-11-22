@@ -55,13 +55,16 @@ LOGIN_WINDOW_S = 15 * 60
 _hasher = PasswordHasher()  # argon2id with library defaults
 
 
+LOGIN_CODE_TTL_S = 60.0
+
+
 @dataclass(frozen=True)
 class Principal:
     type: Literal["user", "api_key"]
     id: str
     name: str
     scopes: frozenset[str]
-    via: Literal["session", "api_key", "stream_token"]
+    via: Literal["session", "api_key", "stream_token", "proxy"]
     csrf_token: str | None = None
     ip: str | None = None
 
@@ -160,6 +163,7 @@ class AuthService:
         self.limiter = LoginLimiter()
         self._key_cache: dict[str, _CachedKey] = {}
         self._stream_tokens: dict[str, tuple[Principal, float]] = {}
+        self._login_codes: dict[str, float] = {}  # sha256(code) -> expiry
         # Long-lived refs so `last_used_at` background writes aren't garbage-collected.
         self._bg: set[asyncio.Task[None]] = set()
 
@@ -266,6 +270,16 @@ class AuthService:
             await s.execute(delete(AuthSession).where(AuthSession.token_hash == _sha256(token)))
             await s.commit()
 
+    async def proxy_principal(self, who: str) -> Principal | None:
+        """Signed in by a trusted reverse proxy's header: the admin (single user in v1),
+        named as the proxy named them for the activity log."""
+        async with self.db.sessionmaker() as s:
+            user = (await s.execute(select(AppUser).order_by(AppUser.created_at))).scalar()
+        if user is None:
+            return None
+        return Principal(type="user", id=user.id, name=who, scopes=frozenset({sc.ALL}),
+                         via="proxy")  # fmt: skip
+
     async def resolve_session(self, token: str) -> Principal | None:
         now = utcnow()
         async with self.db.sessionmaker() as s:
@@ -297,6 +311,29 @@ class AuthService:
         )
 
     # ---- event-stream tokens ----------------------------------------------------------
+
+    def issue_login_code(self) -> str:
+        """A one-time code that signs the admin in (the tray's "Open Fetchbox"): 60 s,
+        single use, kept hashed and only in memory."""
+        now = time.monotonic()
+        for h, exp in list(self._login_codes.items()):
+            if exp < now:
+                del self._login_codes[h]
+        code = secrets.token_urlsafe(24)
+        self._login_codes[_sha256(code)] = now + LOGIN_CODE_TTL_S
+        return code
+
+    async def redeem_login_code(
+        self, code: str, *, ip: str, user_agent: str | None
+    ) -> tuple[str, str]:
+        exp = self._login_codes.pop(_sha256(code), None)
+        if exp is None or exp < time.monotonic():
+            raise unauthorized("This sign-in link has expired or was already used")
+        async with self.db.sessionmaker() as s:
+            user = (await s.execute(select(AppUser).order_by(AppUser.created_at))).scalar()
+        if user is None:
+            raise unauthorized("No user to sign in")
+        return await self.create_session(user, ip=ip, user_agent=user_agent)
 
     def issue_stream_token(self, principal: Principal) -> tuple[str, int]:
         """Short-lived, single-use token for `?token=` on the event stream.

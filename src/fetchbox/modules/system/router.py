@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import asyncio
-import hmac
-import os
+import json
+import re
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Header, Request, Response
@@ -121,29 +121,15 @@ async def patch_config(
     return _config_out(view, response)
 
 
-SUPERVISOR_ENV = "FETCHBOX_SUPERVISOR_TOKEN"
-
-
 @router.post(
     "/shutdown",
     status_code=202,
-    dependencies=[Depends(public())],
-    responses=problem_responses(401, 403),
+    dependencies=[Depends(require("system:write"))],
+    responses=problem_responses(401, 403, 409),
 )
-async def shutdown(
-    request: Request,
-    x_fetchbox_supervisor: Annotated[str | None, Header()] = None,
-) -> Response:
+async def shutdown(request: Request) -> Response:
     """Stop the server gracefully (running jobs get up to 30 s, downloads save their
-    state). Needs ``system:write``, or the token the desktop tray gave the server it
-    started (``X-Fetchbox-Supervisor``)."""
-    expected = os.environ.get(SUPERVISOR_ENV)
-    if not (
-        expected
-        and x_fetchbox_supervisor
-        and hmac.compare_digest(expected.encode(), x_fetchbox_supervisor.encode())
-    ):
-        await require("system:write")(request)
+    state). The desktop tray uses this with its own per-launch token."""
     stop = getattr(request.app.state, "request_shutdown", None)
     if stop is None:
         raise ProblemError(409, "Conflict", "this server can't stop itself", slug="conflict")
@@ -181,3 +167,126 @@ async def network_interfaces() -> list[NetworkInterface]:
         return sorted(out, key=lambda i: (not i.vpn, not i.up, i.name.lower()))
 
     return await asyncio.to_thread(collect)
+
+
+_SECRETISH = re.compile(
+    r"(?i)((?:api[_-]?key|apikey|token|password|passkey|secret|authorization)[\"'=:\s]+)"
+    r"([^\s\"'&,;]{6,})"
+)
+_LONG_HEX = re.compile(r"\b[0-9a-fA-F]{32,}\b")
+_FB_KEY = re.compile(r"\bfb_[A-Za-z0-9_-]{8,}")
+
+
+def redact(text: str) -> str:
+    """Scrub what looks like a credential: key=value pairs, long hex keys, Fetchbox keys."""
+    text = _SECRETISH.sub(lambda m: m.group(1) + "[redacted]", text)
+    text = _FB_KEY.sub("fb_[redacted]", text)
+    return _LONG_HEX.sub("[redacted-hex]", text)
+
+
+@router.get(
+    "/diagnostics",
+    dependencies=[Depends(require("system:read"))],
+    response_class=Response,
+    responses={200: {"content": {"application/zip": {}}}},
+)
+async def diagnostics(request: Request, state: State) -> Response:
+    """A zip to attach to a bug report: settings (secrets masked), recent logs (keys
+    scrubbed), the health report, versions and a summary of indexers, clients and folders
+    (kinds and statuses, no addresses or credentials)."""
+    import io
+    import platform
+    import sqlite3
+    import sys
+    import zipfile
+    from datetime import UTC, datetime
+
+    import fetchbox
+    from fetchbox import migrations
+
+    app = request.app
+    report = await service.health_report(state)
+    try:
+        import libtorrent
+
+        lt_version = str(libtorrent.__version__)
+    except ImportError:
+        lt_version = "not installed"
+    versions = {
+        "fetchbox": fetchbox.__version__,
+        "python": sys.version.split()[0],
+        "platform": platform.platform(),
+        "frozen": bool(getattr(sys, "frozen", False)),
+        "libtorrent": lt_version,
+        "sqlite": sqlite3.sqlite_version,
+        "schema_revision": await migrations.current_revision(state.db.engine),
+        "schema_head": migrations.head_revision(),
+    }
+    indexers = [
+        {
+            "kind": i.kind,
+            "enabled": i.enabled,
+            "failures": i.failure_count,
+            "last_error": redact(i.last_error or ""),
+        }
+        for i in await app.state.sources.all()
+    ]
+    running = app.state.downloads.clients
+    clients = [
+        {"kind": c.kind, "enabled": c.enabled, "running": c.id in running}
+        for c in await app.state.downloads.client_rows()
+    ]
+    folders = [
+        {
+            "kind": d.media_kind,
+            "status": d.status,
+            "message": d.status_message,
+            "link_mode": d.link_mode,
+            "mounted": d.mount_point is not None,
+        }
+        for d in await app.state.storage.destinations()
+    ]
+    logs = ""
+    log_file = state.data_dir / "logs" / "fetchbox.log"
+    if log_file.is_file():
+        lines = log_file.read_text(encoding="utf-8", errors="replace").splitlines()[-2000:]
+        logs = redact("\n".join(lines))
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr("versions.json", json.dumps(versions, indent=2))
+        z.writestr("health.json", report.model_dump_json(indent=2))
+        z.writestr("config.json", json.dumps(_config(request).view(), indent=2, default=str))
+        z.writestr("setup.json", json.dumps(
+            {"indexers": indexers, "download_clients": clients, "library_folders": folders},
+            indent=2))  # fmt: skip
+        z.writestr("fetchbox.log", logs)
+    name = f"fetchbox-diagnostics-{datetime.now(UTC):%Y%m%d-%H%M%S}.zip"
+    return Response(buf.getvalue(), media_type="application/zip",
+                    headers={"Content-Disposition": f'attachment; filename="{name}"'})  # fmt: skip
+
+
+class ReleaseFileOut(BaseModel):
+    name: str
+    url: str
+    size: int | None = None
+
+
+class UpdateOut(BaseModel):
+    current: str
+    latest: str | None
+    update_available: bool
+    url: str | None = Field(description="The release page")
+    published_at: str | None
+    checked: bool = Field(description="False: checking is off, or GitHub couldn't be reached")
+    error: str | None = None
+    downloads: list[ReleaseFileOut] = Field(default=[], description="The release's files")
+
+
+@router.get("/updates", response_model=UpdateOut, dependencies=_read)
+async def check_updates(request: Request, fresh: bool = False) -> UpdateOut:
+    """Is a newer Fetchbox released? (Settings: updates.check; nothing is installed.)"""
+    from dataclasses import asdict
+
+    checker = request.app.state.updates
+    info = await checker.check(enabled=_config(request).current.updates.check, fresh=fresh)
+    return UpdateOut(**asdict(info))

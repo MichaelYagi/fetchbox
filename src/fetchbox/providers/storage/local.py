@@ -259,3 +259,14 @@ class LocalStorage(StorageBackend):
 
 
 registry.register(LocalStorage)
+
+
+def inside(root: str | Path, path: str | Path) -> Path:
+    """``path`` resolved (``..`` and symlinks followed); raises StorageError("outside")
+    unless it lies within ``root`` (spec: "Filesystem boundary"). Call before writing."""
+    r = Path(root).resolve()
+    p = Path(path)
+    resolved = (p if p.is_absolute() else r / p).resolve()
+    if resolved != r and r not in resolved.parents:
+        raise StorageError("outside", f"{path} is outside {root}")
+    return resolved

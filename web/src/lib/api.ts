@@ -66,6 +66,21 @@ export async function api<T>(
 }
 
 export const get = <T>(path: string, query?: Query) => api<T>('GET', path, { query });
+/** POST a file as multipart form data (field "file"), same credentials as api(). */
+export async function upload<T>(path: string, file: File): Promise<T> {
+	const form = new FormData();
+	form.append('file', file);
+	const r = await fetch(`/api/v1${path}`, {
+		method: 'POST',
+		headers: { Accept: 'application/json', 'X-CSRF-Token': csrf() },
+		credentials: 'same-origin',
+		body: form
+	});
+	const data = (await r.text()) || 'null';
+	const parsed = JSON.parse(data);
+	if (!r.ok) throw new ApiError(r.status, parsed?.detail ?? parsed?.title ?? `HTTP ${r.status}`, null, []);
+	return parsed as T;
+}
 export const post = <T>(path: string, body?: unknown, query?: Query) =>
 	api<T>('POST', path, { body, query });
 export const put = <T>(path: string, body: unknown) => api<T>('PUT', path, { body });

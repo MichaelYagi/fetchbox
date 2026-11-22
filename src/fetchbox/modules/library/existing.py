@@ -43,6 +43,8 @@ from fetchbox.modules.media.service import MediaService
 from fetchbox.modules.releases.decision import title_key
 from fetchbox.modules.releases.parser import parse_release
 from fetchbox.modules.storage.service import RECYCLE_DIR, StorageService
+from fetchbox.providers.storage import StorageError
+from fetchbox.providers.storage.local import inside
 
 log = structlog.get_logger(__name__)
 
@@ -341,7 +343,11 @@ class ExistingLibrary:
         if title.kind == "movie":
             sizes: dict[str, int] = {}
             for p in paths:
-                if (n := await asyncio.to_thread(_size, root / p)) is not None:
+                try:
+                    full = inside(root, p)  # paths come from the API: stay in the folder
+                except StorageError:
+                    continue
+                if (n := await asyncio.to_thread(_size, full)) is not None:
                     sizes[p] = n
             if not sizes:
                 return 0

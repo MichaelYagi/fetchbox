@@ -1,0 +1,20 @@
+#!/bin/sh
+set -e
+if [ "$1" = "configure" ]; then
+    if ! getent passwd fetchbox >/dev/null; then
+        adduser --system --group --home /var/lib/fetchbox --no-create-home --quiet fetchbox
+    fi
+    install -d -o fetchbox -g fetchbox -m 0750 /var/lib/fetchbox
+    if [ -d /run/systemd/system ]; then
+        systemctl daemon-reload
+        systemctl enable fetchbox.service >/dev/null 2>&1 || true
+        systemctl restart fetchbox.service || true
+    fi
+    if [ -z "$2" ]; then
+        echo
+        echo "Fetchbox is running: open http://127.0.0.1:8787 on this computer."
+        echo "To reach it from other computers, see /etc/default/fetchbox."
+        echo
+    fi
+fi
+exit 0

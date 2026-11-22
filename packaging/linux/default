@@ -1,0 +1,13 @@
+# Fetchbox service settings (read by fetchbox.service). After a change:
+#   sudo systemctl restart fetchbox
+#
+# Reach Fetchbox from other computers. Set the admin password first (in the web UI at
+# http://127.0.0.1:8787, or: sudo -u fetchbox fetchbox --data /var/lib/fetchbox/data
+# reset-password); Fetchbox refuses to listen on the network without one.
+#FETCHBOX_HOST=0.0.0.0
+#FETCHBOX_PORT=8787
+#
+# Where downloads go while they run (default /var/lib/fetchbox/Downloads/Fetchbox).
+# The fetchbox user must be able to write there, and to your library folders: e.g.
+#   sudo usermod -aG media fetchbox
+#FETCHBOX_DOWNLOADS_ROOT=/srv/downloads

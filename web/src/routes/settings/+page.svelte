@@ -1,14 +1,18 @@
 <script lang="ts">
 	import { ApiError, del, get, patch, post, type S } from '#lib/api.ts';
+	import BackupsCard from '#lib/BackupsCard.svelte';
+	import ConfigTransferCard from '#lib/ConfigTransferCard.svelte';
 	import LibraryCard from '#lib/LibraryCard.svelte';
 	import LibraryCheckCard from '#lib/LibraryCheckCard.svelte';
 	import MediaServersCard from '#lib/MediaServersCard.svelte';
+	import NetworkCard from '#lib/NetworkCard.svelte';
 	import NotificationsCard from '#lib/NotificationsCard.svelte';
 	import Path from '#lib/Path.svelte';
 	import { session } from '#lib/session.svelte.ts';
 
 	type Cfg = {
 		tmdb: { api_key: string | null; language: string };
+		updates?: { check: boolean };
 		tvdb?: { api_key: string | null; pin: string | null };
 		search: Record<string, unknown>;
 	};
@@ -26,6 +30,7 @@
 
 	let tmdbKey = $state('');
 	let tvdbKey = $state('');
+	let update = $state<S['UpdateOut'] | null>(null);
 	let tvdbPin = $state('');
 	let newIndexer = $state({ kind: 'prowlarr', name: '', url: '', api_key: '', definition: '' });
 	let newClient = $state({ kind: 'qbittorrent', name: '', url: '', username: '', password: '' });
@@ -167,6 +172,7 @@
 	$effect(() => {
 		load();
 		get<S['NamingOptionsOut']>('/library/naming-options').then((o) => (namingOptions = o));
+		get<S['UpdateOut']>('/system/updates').then((u) => (update = u)).catch(() => {});
 	});
 
 	async function act(key: string, fn: () => Promise<unknown>, done = '') {
@@ -190,6 +196,12 @@
 			() => (tmdbKey = '')
 		);
 	};
+
+	const setUpdates = (on: boolean) =>
+		act('updates', async () => {
+			await patch('/system/config', { updates: { check: on } });
+			update = await get<S['UpdateOut']>('/system/updates', { fresh: true });
+		});
 
 	const saveTvdb = (e: SubmitEvent) => {
 		e.preventDefault();
@@ -271,6 +283,30 @@
 						</tr>
 						<tr><td class="w muted">Downloads</td><td><Path path={session.host.downloads_root} /></td></tr>
 						<tr><td class="w muted">Fetchbox data</td><td><Path path={session.host.data_dir} /></td></tr>
+						<tr>
+							<td class="w muted">Version</td>
+							<td>
+								{update?.current ?? ''}
+								{#if update?.update_available}
+									<a class="badge warn" href={update.url} target="_blank" rel="noreferrer">Update available: {update.latest}</a>
+								{:else if update?.checked}
+									<span class="muted small">· up to date</span>
+								{:else if update?.error}
+									<span class="muted small">· {update.error}</span>
+								{/if}
+								<label class="muted small inline-check"
+									><input type="checkbox" checked={config?.config.updates?.check ?? true}
+										onchange={(e) => setUpdates(e.currentTarget.checked)} /> Check for updates (asks GitHub)</label
+								>
+							</td>
+						</tr>
+						<tr>
+							<td class="w muted">Problems?</td>
+							<td>
+								<a class="button small" href="/api/v1/system/diagnostics" download>Download diagnostics</a>
+								<span class="muted small">a zip for bug reports: versions, health, settings and recent logs, with keys and passwords removed</span>
+							</td>
+						</tr>
 					</tbody>
 				</table>
 			</div>
@@ -587,7 +623,10 @@
 
 	<section id="library">
 		<h2>Library</h2>
-		<p class="muted small">Where finished downloads go and how they're named. Most people only pick a folder and a style.</p>
+		<p class="muted small">
+			Where finished downloads go and how they're named. Most people only pick a folder and a style.
+			Coming from Radarr or Sonarr? <a href="/library/migrate">Move your library over</a>.
+		</p>
 		{#if namingOptions}
 			<div class="libs">
 				{#each ['movie', 'series'] as const as kind (kind)}
@@ -606,6 +645,21 @@
 	<section id="notifications">
 		<h2>Notifications</h2>
 		<NotificationsCard />
+	</section>
+
+	<section id="network">
+		<h2>Network</h2>
+		<NetworkCard />
+	</section>
+
+	<section id="backups">
+		<h2>Backups</h2>
+		<BackupsCard />
+	</section>
+
+	<section id="move-settings">
+		<h2>Move settings</h2>
+		<ConfigTransferCard />
 	</section>
 </main>
 

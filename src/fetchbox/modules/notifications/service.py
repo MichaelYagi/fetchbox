@@ -112,6 +112,7 @@ class NotificationsService:
         self.box = box
         self.providers = providers
         self.provider_kwargs: dict[str, Any] = {}  # tests: a fake transport
+        self.public_only: Callable[[], bool] = lambda: False  # Settings > Network
         self._tasks: set[asyncio.Task[None]] = set()
 
         @bus.on(*EVENTS)
@@ -158,7 +159,8 @@ class NotificationsService:
         settings = open_settings(
             self.box, cls.Settings, row.settings, context=f"notification_target:{row.id}"
         )
-        p = cls(settings, **self.provider_kwargs)
+        kwargs: dict[str, Any] = {"public_only": self.public_only(), **self.provider_kwargs}
+        p = cls(settings, **kwargs)
         assert isinstance(p, NotifierProvider)
         return p
 
