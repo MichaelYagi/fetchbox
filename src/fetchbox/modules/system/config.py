@@ -8,7 +8,7 @@ the precedence in ``fetchbox.config``; the API reports which fields are overridd
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, SecretStr, ValidationError, field_validator
 
@@ -86,6 +86,18 @@ class UpdatesConfig(BaseModel):
     )
 
 
+class MusicConfig(BaseModel):
+    folder: Literal["artist/album (year)", "artist/album", "artist - album (year)"] = Field(
+        default="artist/album (year)", description="Album folders in the music library"
+    )
+    track: Literal["nn - title", "nn. title", "artist - nn - title"] = Field(
+        default="nn - title", description="Track file names"
+    )
+    disc_folders: bool = Field(
+        default=True, description="Multi-disc albums: a CD1 / CD2 folder (else 1-01, 2-01)"
+    )
+
+
 class NetworkConfig(BaseModel):
     trusted_proxies: list[str] = Field(
         default=[],
@@ -128,6 +140,7 @@ class SystemConfig(BaseModel):
     storage: StorageConfig = StorageConfig()
     updates: UpdatesConfig = UpdatesConfig()
     network: NetworkConfig = NetworkConfig()
+    music: MusicConfig = MusicConfig()
 
 
 SECRETS: tuple[tuple[str, str], ...] = (("tmdb", "api_key"), ("tvdb", "api_key"), ("tvdb", "pin"))

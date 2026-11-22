@@ -311,6 +311,8 @@ class LibraryService:
         self._wake = asyncio.Event()
         self._tasks: list[asyncio.Task[None]] = []
         self.sweep_interval = SWEEP_INTERVAL
+        # Settings > Library folders > Music (set by the app from the config)
+        self.music_naming: Any = lambda: None
 
     # ---- lifecycle ----------------------------------------------------------------------------
 
@@ -568,7 +570,9 @@ class LibraryService:
         placed: list[tuple[mfiles.WantedTrack, str, Path, str, mfiles.AudioFile]] = []
         for t in tracks:
             af = m.pairs[t.id]
-            rel = mfiles.track_path(title.name, album.name, year, t, discs, af.path.suffix)
+            rel = mfiles.track_path(
+                title.name, album.name, year, t, discs, af.path.suffix, self.music_naming()
+            )
             dst = Path(dest.path) / rel
             if str(dst) in old_paths and await asyncio.to_thread(dst.exists):
                 # an upgrade at the same path (FLAC over FLAC): the old file is recycled

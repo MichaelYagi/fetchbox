@@ -121,3 +121,19 @@ def test_track_path() -> None:
     assert track_path("AC/DC", "Back in Black", None, t, 1, ".mp3").startswith(
         "AC-DC/Back in Black/03 - "
     )
+
+
+def test_naming_presets() -> None:
+    from fetchbox.modules.library.music_files import Naming
+
+    [t] = _tracks((2, 3, "Roads", 0))
+    path = lambda **kw: track_path("Portishead", "Dummy", 1994, t, 2, ".flac", Naming(**kw))  # noqa: E731
+    assert path() == "Portishead/Dummy (1994)/CD2/03 - Roads.flac"
+    assert path(folder="artist/album") == "Portishead/Dummy/CD2/03 - Roads.flac"
+    assert path(folder="artist - album (year)", disc_folders=False) == (
+        "Portishead - Dummy (1994)/2-03 - Roads.flac"
+    )
+    assert path(track="nn. title", disc_folders=False) == "Portishead/Dummy (1994)/2-03. Roads.flac"
+    assert path(track="artist - nn - title") == (
+        "Portishead/Dummy (1994)/CD2/Portishead - 03 - Roads.flac"
+    )

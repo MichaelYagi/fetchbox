@@ -234,15 +234,45 @@ def match(files: list[AudioFile], tracks: list[WantedTrack]) -> TrackMatch:
     return out
 
 
+@dataclass
+class Naming:
+    """Settings > Library folders > Music (MusicConfig)."""
+
+    folder: str = "artist/album (year)"
+    track: str = "nn - title"
+    disc_folders: bool = True
+
+
 def track_path(
-    artist: str, album: str, year: int | None, t: WantedTrack, discs: int, ext: str
+    artist: str,
+    album: str,
+    year: int | None,
+    t: WantedTrack,
+    discs: int,
+    ext: str,
+    naming: Naming | None = None,
 ) -> str:
-    """Artist/Album (Year)/[CD2/]03 - Title.flac"""
-    folder = safe_component(f"{album} ({year})" if year else album)
-    parts = [safe_component(artist), folder]
+    """Artist/Album (Year)/[CD2/]03 - Title.flac, or as ``naming`` says."""
+    n = naming or Naming()
+    dated = f"{album} ({year})" if year else album
+    if n.folder == "artist - album (year)":
+        parts = [safe_component(f"{artist} - {dated}")]
+    else:
+        parts = [
+            safe_component(artist),
+            safe_component(album if n.folder == "artist/album" else dated),
+        ]
+    num = f"{t.number:02d}"
     if discs > 1:
-        parts.append(f"CD{t.disc}")
-    parts.append(safe_component(f"{t.number:02d} - {t.name}") + ext.lower())
+        if n.disc_folders:
+            parts.append(f"CD{t.disc}")
+        else:
+            num = f"{t.disc}-{num}"
+    name = {
+        "nn. title": f"{num}. {t.name}",
+        "artist - nn - title": f"{artist} - {num} - {t.name}",
+    }.get(n.track, f"{num} - {t.name}")
+    parts.append(safe_component(name) + ext.lower())
     return "/".join(parts)
 
 

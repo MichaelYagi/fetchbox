@@ -12,6 +12,47 @@
 	let message = $state('');
 	let moving = $state<number | null>(null);
 
+	// naming (Settings: music.folder / music.track / music.disc_folders)
+	type Naming = { folder: string; track: string; disc_folders: boolean };
+	let naming = $state<Naming>({ folder: 'artist/album (year)', track: 'nn - title', disc_folders: true });
+	$effect(() => {
+		get<{ config: { music?: Naming } }>('/system/config').then((c) => {
+			if (c.config.music) naming = c.config.music;
+		});
+	});
+	const FOLDERS: [string, string][] = [
+		['artist/album (year)', 'Artist / Album (Year)'],
+		['artist/album', 'Artist / Album'],
+		['artist - album (year)', 'Artist - Album (Year)']
+	];
+	const TRACKS: [string, string][] = [
+		['nn - title', '01 - Title'],
+		['nn. title', '01. Title'],
+		['artist - nn - title', 'Artist - 01 - Title']
+	];
+	function example(n: Naming, multi: boolean, disc: number, num: number, title: string): string {
+		const folder =
+			n.folder === 'artist - album (year)'
+				? 'Portishead - Dummy (1994)'
+				: n.folder === 'artist/album'
+					? 'Portishead/Dummy'
+					: 'Portishead/Dummy (1994)';
+		let nn = String(num).padStart(2, '0');
+		const parts = [folder];
+		if (multi) {  // only albums with more than one disc get a disc folder / number
+			if (n.disc_folders) parts.push(`CD${disc}`);
+			else nn = `${disc}-${nn}`;
+		}
+		const name = n.track === 'nn. title' ? `${nn}. ${title}` : n.track === 'artist - nn - title' ? `Portishead - ${nn} - ${title}` : `${nn} - ${title}`;
+		parts.push(`${name}.flac`);
+		return parts.join('/');
+	}
+	const saveNaming = (patchIt: Partial<Naming>) =>
+		act('naming', async () => {
+			naming = { ...naming, ...patchIt };
+			await patch('/system/config', { music: naming });
+		}, 'Naming saved: it applies to albums imported from now on.');
+
 	const MODES: [string, string][] = [
 		['hardlink_or_copy', 'Hardlink when possible, else copy (recommended)'],
 		['hardlink_only', 'Hardlink only (fail rather than use double space)'],
@@ -100,9 +141,34 @@
 				{#each MODES as [v, l] (v)}<option value={v}>{l}</option>{/each}
 			</select>
 		</label>
+		<div class="field">
+			<span class="label">Naming</span>
+			<div class="row">
+				<label class="inline small"
+					>Folders
+					<select value={naming.folder} onchange={(e) => saveNaming({ folder: e.currentTarget.value })} disabled={!!busy}>
+						{#each FOLDERS as [v, l] (v)}<option value={v}>{l}</option>{/each}
+					</select>
+				</label>
+				<label class="inline small"
+					>Tracks
+					<select value={naming.track} onchange={(e) => saveNaming({ track: e.currentTarget.value })} disabled={!!busy}>
+						{#each TRACKS as [v, l] (v)}<option value={v}>{l}</option>{/each}
+					</select>
+				</label>
+				<label class="inline small"
+					><input type="checkbox" checked={naming.disc_folders} onchange={(e) => saveNaming({ disc_folders: e.currentTarget.checked })} disabled={!!busy} />
+					A folder per disc</label
+				>
+			</div>
+			<div class="mono small examples">
+				<div>{example(naming, false, 1, 1, 'Mysterons')}</div>
+				<div class="muted">{example(naming, true, 2, 3, 'Roads')} <span>(a two-disc album)</span></div>
+			</div>
+		</div>
 		<p class="muted small">
-			Albums are named <span class="mono">Artist/Album (Year)/01 - Title.flac</span> (a CD folder per disc) and tagged
-			from MusicBrainz. A hardlinked album is the seeding torrent's own file, so its tags are written once seeding ends.
+			Tags come from MusicBrainz. A hardlinked album is the seeding torrent's own file, so its tags are written once seeding
+			ends.
 		</p>
 	{/if}
 </div>
@@ -119,6 +185,16 @@
 	.label {
 		font-weight: 600;
 		font-size: 0.9rem;
+	}
+	.inline {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+	}
+	.examples {
+		display: grid;
+		gap: 0.15rem;
+		overflow-wrap: anywhere;
 	}
 	.mono {
 		font-family: var(--mono, ui-monospace, monospace);

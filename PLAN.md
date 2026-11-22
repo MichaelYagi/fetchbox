@@ -453,7 +453,8 @@ Progress (branch `phase5`, PR #7):
       removed: by hand or at its seeding goal; a paused one may seed again)
 - [x] Import an existing music folder: albums by tags (MusicBrainz ids match exactly) or
       Artist/Album (Year) folders; recorded in place; Settings has a Music folder card
-- [ ] Music naming presets in Settings
+- [x] Music naming presets (Settings > Library folders > Music): folders, track names,
+      disc folders or 2-03 numbers, with live examples
 - [x] Album release dates on the calendar (wanted albums)
 
 **Until then:** keep Phases 3-4 generic about media kind where it is cheap (library

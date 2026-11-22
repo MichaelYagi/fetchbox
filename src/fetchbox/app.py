@@ -7,6 +7,7 @@ import os
 from collections.abc import AsyncIterator, Callable, Sequence
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Any
 
 import structlog
 from fastapi import APIRouter, FastAPI
@@ -239,6 +240,14 @@ def create_app(
         app.state.storage = storage
         storage.link_sources = downloads.link_sources
         library = LibraryService(db, bus, jobs, storage, downloads, profiles, media)
+
+        def music_naming() -> Any:
+            from fetchbox.modules.library.music_files import Naming
+
+            m = config.current.music
+            return Naming(folder=m.folder, track=m.track, disc_folders=m.disc_folders)
+
+        library.music_naming = music_naming
         storage.register_jobs(jobs, state.scheduler, lambda: config.current.storage.recycle_days)
         backups_router.register(jobs, state.scheduler, backups)
         integrations = IntegrationsService(db, bus, box, provider_registry)
