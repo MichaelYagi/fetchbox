@@ -247,11 +247,92 @@ qBittorrent/Transmission/Deluge; path mappings + client path probe; mount nodes,
 checks, all link modes, recycle folder, duplicate detection; existing-library import
 (read-only until apply), match correction, rename preview, maintenance; Plex/Jellyfin/Emby;
 webhook + Discord; interface bind + kill switch; HTML (CSS selector) responses for
-indexer definitions. From Phase 2: optional TVDB (scene / absolute numbering); grow the
+indexer definitions (done). From Phase 2: optional TVDB (scene / absolute numbering); grow the
 parser corpus from real indexer results.
 
 **Gate:** Docker + remote qBittorrent + NAS mount + Plex: import an existing library, apply,
 Plex refreshes.
+
+Progress:
+- [x] Existing-library import: Settings > Library > "Import what's already here" scans a
+      library folder (a job; read-only): one movie or show per folder (loose movie files
+      too), matched on TMDB by an id in the name (`{tmdb-…}`, `[tmdbid-…]`, `{tvdb-…}`)
+      or title and year, with a confidence (sure / good / check / none) and status (new,
+      already in Fetchbox, already imported). Review: filter, correct a match by search,
+      untick. Import (a job) adds titles without an immediate search (first search after
+      an hour) and records files in place (`link_mode: existing`): a movie's biggest
+      file, a show's files matched to episodes (multi-episode files too); cutoff judged
+      from the file's quality. Re-scanning and re-importing are idempotent.
+- [x] Plex / Jellyfin / Emby: Settings > Media servers (address + token / API key, path
+      mappings when the server sees folders elsewhere). Test lists the server's libraries
+      and which one holds each Fetchbox library folder. Imports, upgrades, renames and
+      existing-library imports announce their folders; gathered for 5 s, each enabled
+      server rescans just those (Plex: partial section scan; Jellyfin/Emby:
+      /Library/Media/Updated). Failures are recorded on the connection, never raised.
+      Checked against real Plex 1.43.5 (partial scan adds the movie in ~2 s) and
+      Jellyfin 12.4 (picks up new/renamed files after its 60 s monitor delay; needs a
+      library that has been scanned once). Emby: by its documented API only
+- [x] NAS shares / mounts: each library folder learns the mount it lives on while
+      mounted; if that mount disappears the folder is `unmounted` (health error), nothing
+      is created or written underneath, imports wait. Checked every minute with the
+      health check. `GET /storage/mounts` lists drives and network shares (psutil).
+- [x] Link mode per library folder in the UI (hardlink-or-copy, hardlink only, copy,
+      move, symlink); recycle-folder retention (`storage.recycle_days`, default 7, daily
+      `recycle_cleanup` schedule)
+- [x] Notifications: Settings > Notifications, Discord (channel webhook) and generic
+      webhook (JSON POST, optional X-Fetchbox-Secret); per target, which events
+      (downloaded, upgraded, download failed, import needs attention, folder offline /
+      low space by default; grabbed, indexer failing, media server rescan failed, health
+      changed on request); sent in the background, last error shown; "Send a test".
+      Webhook checked against a real local HTTP receiver; Discord payload per its docs
+- [x] Interface bind + kill switch: the built-in engine can be bound to one network
+      interface (a VPN's); bound by its current address (works on every OS, follows a
+      reconnect's new address), no LSD / UPnP announcing on the LAN; with the kill switch
+      the whole session pauses while the interface is down or has no address (client
+      health error) and resumes when it's back. `GET /system/network-interfaces`; set
+      in Settings > Download clients > Built-in > Edit. Tested with a real download
+      bound to loopback
+- [x] HTML responses for indexer definitions: `response.type: html`, rows and fields
+      by CSS selector (`{{ row.td.name a }}`, `{{ row.a.dl@href }}`), parsed with lxml
+      via BeautifulSoup so unclosed tags recover like in a browser
+- [x] Duplicate detection and maintenance: Settings > Library > Check library (a job,
+      read-only): files missing from disk (online folders only), duplicates by (size,
+      quick hash) across all folders (reported, never deleted), video files no record
+      points to; fills missing quick hashes. "Search for them again" forgets missing
+      files' records so their items are wanted again
+- [x] Docker image (pulled from Phase 4): `Dockerfile` (web build, uv-synced venv, slim
+      runtime, tini, runs as PUID/PGID, `/config` + single `/data` volume for hardlinks,
+      healthcheck), `docker/compose.yaml`; `FETCHBOX_ADMIN_PASSWORD(_FILE)` sets the first
+      password so it can listen on the LAN; CI builds and runs it on every push (answers,
+      serves the UI, login works, not root); release.yml publishes
+      ghcr.io/michaelyagi/fetchbox for linux/amd64 + arm64
+- [x] Parser corpus from real results: `fetchbox corpus capture --out f.jsonl [--search X]`
+      reads every enabled indexer's feed (and searches) through the server's providers and
+      writes new release names with today's parse, for review into
+      tests/fixtures/releases. Checked against real Prowlarr 3.0.2. Growing the corpus
+      itself is ongoing: run it against real indexers and review the output
+- [x] Optional TVDB (v4): with a key (+ PIN for personal keys) in Settings, adding or
+      refreshing a show fills each episode's absolute number from TVDB's default order
+      (TMDB has none), so absolute-numbered anime matches; fetched before any DB session;
+      failures logged, never fatal. Not checked against the real TVDB (needs a key)
+- [x] Rename preview (Phase 2, library settings)
+- [x] qBittorrent / Transmission / Deluge, path mappings (Phase 1-2 feedback)
+
+Release pipeline (pulled forward from Phase 4, same flow as roast-telemetry):
+- [x] `vX.Y.Z` tag -> `release.yml` (version check against pyproject.toml / web/package.json,
+      lint, tests) publishes the wheel, sdist and a source zip with the built web UI;
+      `notify-desktop.yml` dispatches to the private `MichaelYagi/fetchbox-artifacts`
+      (secret `DESKTOP_DISPATCH_TOKEN`), whose `desktop-build.yml` builds Windows .exe,
+      macOS Silicon + Intel .app and Linux binary (PyInstaller onefile, `packaging/`),
+      smoke-tests each (scratch data dir: answers, right version, serves the UI), adds
+      README / LICENSE / generated THIRD-PARTY-NOTICES, and releases them privately
+- [x] All four desktop builds pass in fetchbox-artifacts (test run from `phase3`, publish
+      off): Windows 41 MB, macOS Silicon / Intel 40 MB, Linux 62 MB, each smoke-tested
+- [x] Tray launcher (`fetchbox tray`, default when the desktop build is double-clicked):
+      supervises the server process, status line, open UI, start/stop/restart, data and
+      logs folders, quit; graceful stop via `POST /system/shutdown` (system:write, or the
+      token the tray gives the server it starts). Remaining Phase 4 tray items: one-time
+      login link, pause all, start at login, updates, keyring-stored key
 
 ### Phase 4 — Operability + release (v1.0)
 Backups/restore, config export/import, pre-migration backups, diagnostics zip, updates;
@@ -261,6 +342,39 @@ restrictions, filesystem-boundary tests).
 
 **Gate:** migrate a real Sonarr+Radarr install and run side by side; installers work on all
 three OSes; a backup restores on a fresh machine.
+
+### Phase 5 — Music (after v1.0)
+Artists, albums and tracks next to movies and TV: a Lidarr replacement in the same app.
+
+- **Metadata:** MusicBrainz (artists, release groups, releases/editions, tracks), cover
+  art from the Cover Art Archive; respect its 1 request/s limit and send a proper
+  User-Agent. Artist refresh adds new albums.
+- **Model:** a `music` media kind: artist (the title) → release group → chosen release
+  (edition) → tracks. The wanted item is an album; monitor modes per artist (all, future
+  albums, latest, none) and per album type (album / EP / single / live / compilation).
+- **Quality:** a format ladder (MP3 VBR / 320, AAC, FLAC 16-bit, FLAC 24-bit) with
+  presets (Lossless, High-quality lossy, Any); upgrades as for video.
+- **Search and RSS:** Newznab/Torznab category 3000, artist + album queries; release names
+  parsed ("Artist - Album (Year) [FLAC]"), then checked against MusicBrainz: track
+  count and total length within tolerance, edition chosen by the closest match.
+- **Import:** match every file to a track (tags, then file names, then durations),
+  multi-disc albums, write tags (ID3v2.4 / Vorbis comments / MP4) and embedded cover
+  art, naming presets (`Artist/Album (Year)/01 - Title.flac`, with disc folders).
+- **Library import:** scan an existing music folder by tags, match to MusicBrainz,
+  read-only until applied (the Phase 3 importer, extended).
+- **UI:** add artist, artist page (albums by type, monitor, search, choose a release),
+  album page (tracks, files), calendar shows album release dates.
+- **Media servers:** Plex / Jellyfin music library refresh.
+
+Shared with video and reused unchanged: indexers and Prowlarr, download clients, queue,
+library folders and naming UI, RSS, jobs and schedules, calendar, history.
+
+**Until then:** keep Phases 3-4 generic about media kind where it is cheap (library
+import, naming, destinations, the kind check constraints), so music adds a kind rather
+than reworking these.
+
+**Gate:** add an artist, an album downloads as FLAC, every track is matched, tagged and
+named; a better edition or format upgrades it; an existing tagged music folder imports.
 
 ## Spike results (2026-11-20)
 
@@ -421,10 +535,14 @@ three OSes; a backup restores on a fresh machine.
 8. Anime fansub names often state only a resolution (`[SubsPlease] ... (1080p)`), which
    parses to `Unknown-1080p` and no default profile allows it. Decide in Phase 2 whether
    to treat it as WEB-DL (Sonarr's choice) or ship an anime profile.
-9. SQLite "database is locked" under load (writers waiting > busy_timeout 5 s): seen in
-   Phase 1 and reproducible in `tests/test_tv_search.py::test_automatic_search_packs_first_then_episodes`
-   (job claims, poll updates, API-key touches, activity inserts time out). Instrumenting
-   showed no SQLAlchemy connection inside a transaction at the moment of the error, so
-   it is not a transaction left open. Effects are retried or best-effort (claims, polls,
-   key touches), but up to 5 s stalls are possible. Next: try `BEGIN IMMEDIATE` for
-   writing sessions / a dedicated writer connection, and check WAL checkpointing.
+9. (Mitigated) SQLite "database is locked" under load. Findings (2026-11-21): reads run
+   outside transactions (pysqlite's default), so it is not stale-snapshot upgrades; the
+   lock is a write transaction held across a stalled event loop: synchronous work in a
+   coroutine delays the commit while every other writer waits on busy_timeout. A guard
+   (`FETCHBOX_DB_GUARD=1`: slow writes, nested writes, loop stalls > 0.5 s with the
+   blocking stack) found no culprit in the search, import, RSS and download suites; the
+   remaining suspect is synchronous libtorrent calls on a busy disk (Risk 1).
+   busy_timeout is now 30 s. The reproducer also showed lost updates for
+   read-modify-write outside version checks: indexer failure counts now increment in
+   SQL. Next if it recurs: run the guard on the affected install; move libtorrent
+   status calls to a thread.

@@ -11,7 +11,11 @@ deleted, hardlinks work from the torrent folder, and free space is above the flo
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Sequence
+import os
+import re
+import shutil
+from collections.abc import Callable, Sequence
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
@@ -23,7 +27,9 @@ from fetchbox.core.concurrency import check_if_match
 from fetchbox.core.db import Database, utcnow
 from fetchbox.core.errors import ConflictError, FieldError, NotFoundError, ProblemError
 from fetchbox.core.events import Actor, EventBus, Subject
+from fetchbox.core.jobs import JobContext, JobRunner
 from fetchbox.core.providers import HealthStatus
+from fetchbox.core.schedules import ScheduleDef, Scheduler
 from fetchbox.modules.storage.models import LINK_MODES, Destination, StorageNode
 from fetchbox.providers.storage import StorageError
 from fetchbox.providers.storage.local import LocalStorage, cleanup_partials
@@ -35,6 +41,7 @@ GB = 1_000_000_000
 FLOOR_MIN = 20 * GB
 FLOOR_SHARE = 0.05
 RECYCLE_DIR = ".fetchbox-recycle"
+RECYCLE_JOB = "storage.recycle_cleanup"
 
 
 def _invalid(field: str, message: str) -> ProblemError:
@@ -44,6 +51,62 @@ def _invalid(field: str, message: str) -> ProblemError:
         slug="validation",
         errors=[FieldError(field=field, message=message)],
     )
+
+
+def _days(bin_: Path) -> list[Path]:
+    return sorted(bin_.iterdir()) if bin_.is_dir() else []
+
+
+class _Unmounted(Exception):
+    def __init__(self, mount: str) -> None:
+        super().__init__(mount)
+        self.mount = mount
+
+
+def mount_of(path: Path) -> str | None:
+    """The mount point holding ``path`` (or its nearest existing parent)."""
+    p = Path(os.path.abspath(path))
+    while not p.exists() and p != p.parent:
+        p = p.parent
+    while True:
+        if os.path.ismount(p):
+            return str(p)
+        if p == p.parent:
+            return None
+        p = p.parent
+
+
+def _is_root(mount: str) -> bool:
+    """The system's own root: nothing to watch (a missing root means no Fetchbox either)."""
+    return mount in ("/", os.path.abspath(os.sep)) or (
+        len(mount) <= 3 and mount[1:2] == ":" and mount[:1].upper() == "C"
+    )
+
+
+NETWORK_FS = {"nfs", "nfs4", "cifs", "smb", "smb3", "smbfs", "afpfs", "fuse.sshfs", "davfs",
+              "fuse.rclone", "9p"}  # fmt: skip
+
+
+def mounts() -> list[dict[str, Any]]:
+    """Drives and shares mounted on this computer, for picking a library folder."""
+    import psutil
+
+    out = []
+    for part in psutil.disk_partitions(all=True):
+        mp = part.mountpoint
+        if mp.startswith(("/proc", "/sys", "/dev", "/run", "/snap", "/boot", "/var/lib", "/usr")):
+            continue
+        network = part.fstype in NETWORK_FS or part.device.startswith(("//", "\\\\"))
+        local_disk = part.device.startswith(("/dev/", "C:", "D:", "E:", "F:")) or len(mp) <= 3
+        if not (network or local_disk or part.fstype in ("drvfs", "ntfs", "exfat", "vfat")):
+            continue
+        try:
+            u = psutil.disk_usage(mp)
+        except OSError:
+            continue
+        out.append({"path": mp, "device": part.device, "fstype": part.fstype,
+                    "network": network, "total": u.total, "free": u.free})  # fmt: skip
+    return sorted(out, key=lambda m: m["path"])
 
 
 def default_floor(total: int) -> int:
@@ -177,6 +240,8 @@ class StorageService:
                 await self._clear_default(s, changes.get("media_kind", row.media_kind))
             for k, v in changes.items():
                 setattr(row, k, v)
+            if "path" in changes:
+                row.mount_point = None  # learned again for the new folder
             try:
                 await s.commit()
             except IntegrityError:
@@ -209,7 +274,16 @@ class StorageService:
         d = await self.destination(dest_id)
         path = Path(d.path)
         status, message = "online", "ok"
+        learned: str | None = None
         try:
+            if d.mount_point and not await asyncio.to_thread(os.path.ismount, d.mount_point):
+                # Never create or write anything here: it would land on the local disk
+                # underneath, and vanish from view once the share is back.
+                raise _Unmounted(d.mount_point)
+            if d.mount_point is None:
+                current = await asyncio.to_thread(mount_of, path)
+                if current is not None and not _is_root(current):
+                    learned = current
             link_from = await asyncio.to_thread(self._prepare, path, d.is_default)
             r = await self.local.check_access(str(path), link_source=str(link_from))
             if not r.exists:
@@ -233,6 +307,12 @@ class StorageService:
                     message = f"{usage.free / GB:.1f} GB free" + (
                         "" if r.hardlink_with else "; files will be copied (no hardlinks)"
                     )
+        except _Unmounted as exc:
+            status = "unmounted"
+            message = (
+                f"{exc.mount} isn't mounted (the NAS or drive is off or disconnected); "
+                "imports wait until it's back"
+            )
         except (StorageError, OSError) as exc:
             status, message = "offline", str(getattr(exc, "message", exc))
         if status != d.status:
@@ -254,11 +334,39 @@ class StorageService:
                     status=status,
                     status_message=message,
                     checked_at=utcnow(),
+                    **({"mount_point": learned} if learned else {}),
                 )
                 .execution_options(synchronize_session=False)
             )
             await s.commit()
         return await self.destination(d.id)
+
+    def register_jobs(
+        self, jobs: JobRunner, scheduler: Scheduler, recycle_days: Callable[[], int]
+    ) -> None:
+        """Daily: empty recycle-folder days older than ``recycle_days()``."""
+
+        @jobs.handler(RECYCLE_JOB, queue="maintenance", max_attempts=1)
+        async def run(ctx: JobContext) -> dict[str, Any]:
+            return {"removed": await self.purge_recycle(int(recycle_days()))}
+
+        scheduler.define(
+            ScheduleDef(
+                "recycle_cleanup", RECYCLE_JOB, timedelta(days=1),
+                "Delete recycled files older than the retention (Settings: 7 days)",
+            )
+        )  # fmt: skip
+
+    async def purge_recycle(self, days: int) -> int:
+        """Delete recycle-folder days older than ``days`` in every destination."""
+        cutoff = (utcnow() - timedelta(days=days)).strftime("%Y-%m-%d")
+        removed = 0
+        for d in await self.destinations():
+            for day in await asyncio.to_thread(_days, Path(d.path) / RECYCLE_DIR):
+                if re.fullmatch(r"\d{4}-\d{2}-\d{2}", day.name) and day.name < cutoff:
+                    await asyncio.to_thread(shutil.rmtree, day, True)
+                    removed += 1
+        return removed
 
     async def check_all(self) -> list[Destination]:
         return [await self.check(d.id) for d in await self.destinations()]
@@ -267,7 +375,9 @@ class StorageService:
         rows: Sequence[Destination] = await self.check_all()
         if not rows:
             return HealthStatus(status="error", message="No destinations: add a library folder")
-        bad = [f"{d.name}: {d.status_message}" for d in rows if d.status == "offline"]
+        bad = [
+            f"{d.name}: {d.status_message}" for d in rows if d.status in ("offline", "unmounted")
+        ]
         warn = [
             f"{d.name}: {d.status_message}" for d in rows if d.status in ("low_space", "degraded")
         ]

@@ -196,7 +196,8 @@ async def test_max_active_holds_the_second_download(
     await until(lambda: _count(c, "downloading", 1), within=20)
     for _ in range(5):
         await svc.poll()
-    assert await _count(c, "queued", 1)  # still held back
+    states = [(d["name"], d["status"], d.get("error")) for d in (await c.get("/downloads")).json()]
+    assert await _count(c, "queued", 1), states  # still held back
 
     # reorder puts the waiting one first, but running downloads aren't preempted
     queued = await _download(c, "queued")

@@ -28,8 +28,9 @@ Cardigann/Jackett syntax). Shape::
         - path: /api/search
           params: {q: "{{ query.term }} {{ query.year }}"}
       response:
-        type: json                   # json or xml
-        rows: data.results           # json: dotted path; xml: ElementTree path
+        type: json                   # json, xml or html
+        rows: data.results           # json: dotted path; xml: ElementTree path;
+                                     # html: CSS selector (e.g. "table.results tr.row")
         fields:
           title: "{{ row.name }}"
           download_url: "{{ row.link }}"
@@ -41,8 +42,11 @@ season, episode, kind, ids.imdb/tmdb/tvdb), ``settings`` (base_url, api_key, use
 password, cookie), ``options`` or ``row``. A template that is a single ``{{ }}`` keeps
 the value's type; otherwise parts are joined as text (missing = empty). For XML rows a
 path is an ElementTree path to a child's text, ``child@attr`` for an attribute, with
-prefixes from ``response.namespaces``. Filters: lower, upper, strip, urlencode, quote,
-int, float, size, date, first, zpad:N, default:X, replace:A:B, regex:PATTERN, join:SEP.
+prefixes from ``response.namespaces``. For HTML rows the path is a CSS selector within
+the row with an optional ``@attr``: ``{{ row.td.name a }}`` is that element's text,
+``{{ row.a.download@href }}`` its attribute, ``{{ row. }}`` the row's own text.
+Filters: lower, upper, strip, urlencode, quote, int, float, size, date, first, zpad:N,
+default:X, replace:A:B, regex:PATTERN, join:SEP.
 """
 
 from __future__ import annotations
@@ -63,6 +67,7 @@ from urllib.parse import quote, quote_plus, urljoin, urlsplit
 import httpx
 import libtorrent as lt
 import yaml
+from bs4 import BeautifulSoup, Tag
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -134,7 +139,7 @@ class RequestSpec(_Strict):
 
 
 class ResponseSpec(_Strict):
-    type: Literal["json", "xml"]
+    type: Literal["json", "xml", "html"]
     rows: str = ""
     namespaces: dict[str, str] = {}
     error: str | None = Field(default=None, description="Path to an error message, if any")
@@ -374,6 +379,8 @@ class Context:
     def lookup(self, path: str) -> Any:
         root, _, rest = path.partition(".")
         if root == "row":
+            if isinstance(self.row, Tag):
+                return _html_get(self.row, rest)
             return (
                 _xml_get(self.row, rest, self.ns)
                 if isinstance(self.row, ET.Element)
@@ -404,6 +411,26 @@ def _xml_get(el: ET.Element | None, path: str, ns: dict[str, str]) -> Any:
     if node is None:
         return None
     return node.get(attr) if attr else (node.text or "").strip()
+
+
+def _html_get(el: Tag | None, path: str) -> Any:
+    """``selector`` -> the first match's text; ``selector@attr`` -> its attribute;
+    "" or "." (or just ``@attr``) -> the element itself."""
+    if el is None:
+        return None
+    selector, attr = path.strip(), ""
+    if (m := _ATTR.search(selector)) is not None:
+        selector, attr = selector[: m.start()].strip(), m.group(1)
+    try:
+        node = el if selector in ("", ".") else el.select_one(selector)
+    except Exception:  # a selector soupsieve can't read
+        return None
+    if node is None:
+        return None
+    if attr:
+        v = node.get(attr)
+        return " ".join(v) if isinstance(v, list) else v
+    return node.get_text(" ", strip=True)
 
 
 def render(template: str, ctx: Context) -> Any:
@@ -645,6 +672,13 @@ class DefinitionProvider(IndexerProvider):
             if not isinstance(rows, list):
                 raise IndexerError("invalid_response", f"{spec.rows!r} is not a list")
             return rows, doc
+        if spec.type == "html":
+            soup = BeautifulSoup(body, "lxml")  # recovers from unclosed tags like browsers
+            try:
+                rows = soup.select(spec.rows) if spec.rows else [soup]
+            except Exception as exc:  # a bad selector: the definition's fault
+                raise IndexerError("invalid_response", f"bad rows selector: {exc}") from None
+            return list(rows), soup
         if b"<!DOCTYPE" in body[:2048] or b"<!ENTITY" in body:
             raise IndexerError("invalid_response", "XML with a DTD is refused")
         try:
@@ -661,6 +695,8 @@ class DefinitionProvider(IndexerProvider):
             err = (
                 _json_get(doc, spec.error)
                 if spec.type == "json"
+                else _html_get(doc, spec.error)
+                if spec.type == "html"
                 else _xml_get(doc, spec.error, spec.namespaces)
             )
             if err:

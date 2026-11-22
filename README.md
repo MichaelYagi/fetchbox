@@ -17,6 +17,27 @@ On first run, choose the admin password in the browser. The terminal also prints
 one-time API key for scripts. Back up `data/secrets.key`: it encrypts stored passwords and
 keys.
 
+### Docker
+
+```sh
+docker run -d --name fetchbox -p 8787:8787 -p 6881:6881 -p 6881:6881/udp \
+  -e FETCHBOX_ADMIN_PASSWORD=change-me -e PUID=1000 -e PGID=1000 \
+  -v fetchbox-config:/config -v /srv/media:/data ghcr.io/michaelyagi/fetchbox
+```
+
+`/config` holds the database and settings. `/data` is one folder for downloads and the
+library (`Torrents/`, `Movies/`, `TV/`), so finished downloads are hardlinked into the
+library instead of copied. Set `PUID`/`PGID` to the owner of your media folder. The
+password is only used on first start; change it in the web UI. A compose file is in
+`docker/compose.yaml`.
+
+### Desktop apps
+
+Each release has a Windows app, a macOS app (Apple Silicon and Intel) and a Linux binary.
+Windows and macOS start in the tray / menu bar and open Fetchbox in your browser. They're
+unsigned: the bundled README.txt explains getting past SmartScreen or Gatekeeper.
+Building them yourself: `packaging/README.md`.
+
 ### What you need
 
 | | Needed for | Where to get it |
@@ -44,6 +65,13 @@ releases that don't state a quality. Profiles can be edited through the API
 
 Files go to `~/Downloads/Fetchbox/Movies` and `.../TV` (Linux: your XDG Downloads folder).
 Set `FETCHBOX_DOWNLOADS_ROOT` to change that.
+
+### Troubleshooting: "database is locked" or stalls
+
+Start Fetchbox with `FETCHBOX_DB_GUARD=1` (and optionally `FETCHBOX_DB_GUARD_OUT=guard.txt`)
+to record what holds the database: write transactions held over a second, a task waiting on
+its own write, and any moment the server's event loop is blocked for over half a second,
+each with the code responsible. Attach that file to a bug report.
 
 ## Development
 

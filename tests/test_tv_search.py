@@ -124,14 +124,23 @@ async def test_automatic_search_packs_first_then_episodes(
     pack = (await c.get("/grabs", params={"wanted_item_id": eps[(1, 5)]["wanted"]["id"]})).json()
     assert [g["release_title"] for g in pack] == [PACK]
 
-    # searching again: nothing left that can be found
+    # Searching again: season 2 still has aired missing episodes, so a search is queued,
+    # unless the (fast, in tests) automatic sweep already queued it: 409, also correct.
     r = await c.post(f"/titles/{t['id']}/search")
-    assert r.status_code == 202, r.text  # season 2 still has aired missing episodes
+    assert r.status_code in (202, 409), r.text
+    if r.status_code == 409:
+        assert "already queued" in r.text
 
 
 async def test_title_search_conflicts_when_nothing_to_get(
-    c: httpx.AsyncClient, fakes: Fakes
+    c: httpx.AsyncClient, fakes: Fakes, server: Running, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    # Hold the job workers: a queued search that already ran may be queued again, so a
+    # fast runner made the 409 below a race.
+    async def nothing(queue: str) -> None:
+        return None
+
+    monkeypatch.setattr(server.app.state.fb.jobs, "_claim", nothing)
     t = await _series(c, search=False)
     r = await c.post(f"/titles/{t['id']}/search")
     assert r.status_code == 202  # aired missing episodes in both seasons

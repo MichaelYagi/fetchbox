@@ -1128,6 +1128,68 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/library/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Check Library
+         * @description Look for missing files, duplicates (same size and quick hash) and video files no
+         *     record points to. Changes nothing; the job's result is the report.
+         */
+        post: operations["check_library_api_v1_library_check_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/library/check/forget": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Forget Missing
+         * @description Drop records of files that are missing from disk; their movies and episodes are
+         *     searched for again. Files still on disk are left alone.
+         */
+        post: operations["forget_missing_api_v1_library_check_forget_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/library/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import Existing
+         * @description Add the chosen titles (no search yet) and record their files where they are.
+         */
+        post: operations["import_existing_api_v1_library_import_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/library/naming-options": {
         parameters: {
             query?: never;
@@ -1217,6 +1279,104 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/library/scan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Scan Library
+         * @description Read a library folder and match what's in it on TMDB. Changes nothing: the job's
+         *     result lists every movie or show found, with its files, match and status.
+         */
+        post: operations["scan_library_api_v1_library_scan_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/media-servers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Servers */
+        get: operations["list_servers_api_v1_media_servers_get"];
+        put?: never;
+        /**
+         * Add Server
+         * @description Plex, Jellyfin or Emby to tell about new and changed files.
+         */
+        post: operations["add_server_api_v1_media_servers_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/media-servers/kinds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Server Kinds */
+        get: operations["server_kinds_api_v1_media_servers_kinds_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/media-servers/{server_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove Server */
+        delete: operations["remove_server_api_v1_media_servers__server_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Server */
+        patch: operations["update_server_api_v1_media_servers__server_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/media-servers/{server_id}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Test Server
+         * @description Connect, list the server's libraries, and show which one holds each Fetchbox
+         *     library folder (after path mappings).
+         */
+        post: operations["test_server_api_v1_media_servers__server_id__test_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/naming-templates": {
         parameters: {
             query?: never;
@@ -1270,6 +1430,99 @@ export interface paths {
         head?: never;
         /** Update Template */
         patch: operations["update_template_api_v1_naming_templates__template_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/notifications/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Event Kinds
+         * @description What can be notified about, with the default selection.
+         */
+        get: operations["event_kinds_api_v1_notifications_events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications/kinds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Target Kinds */
+        get: operations["target_kinds_api_v1_notifications_kinds_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications/targets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Targets */
+        get: operations["list_targets_api_v1_notifications_targets_get"];
+        put?: never;
+        /** Add Target */
+        post: operations["add_target_api_v1_notifications_targets_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications/targets/{target_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove Target */
+        delete: operations["remove_target_api_v1_notifications_targets__target_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Target */
+        patch: operations["update_target_api_v1_notifications_targets__target_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/notifications/targets/{target_id}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Test Target
+         * @description Send a test notification now.
+         */
+        post: operations["test_target_api_v1_notifications_targets__target_id__test_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/qualities": {
@@ -1371,6 +1624,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/storage/mounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Mounts
+         * @description Drives and network shares mounted on this computer: candidates for library folders.
+         */
+        get: operations["list_mounts_api_v1_storage_mounts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/storage/nodes": {
         parameters: {
             query?: never;
@@ -1446,6 +1719,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system/network-interfaces": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Network Interfaces
+         * @description This computer's network interfaces, to bind the torrent engine to one (a VPN).
+         */
+        get: operations["network_interfaces_api_v1_system_network_interfaces_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/system/ping": {
         parameters: {
             query?: never;
@@ -1480,6 +1773,28 @@ export interface paths {
          * @description Queue a diagnostic job that reports progress; watch it on the event stream.
          */
         post: operations["selftest_api_v1_system_selftest_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system/shutdown": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Shutdown
+         * @description Stop the server gracefully (running jobs get up to 30 s, downloads save their
+         *     state). Needs ``system:write``, or the token the desktop tray gave the server it
+         *     started (``X-Fetchbox-Supervisor``).
+         */
+        post: operations["shutdown_api_v1_system_shutdown_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2156,6 +2471,26 @@ export interface components {
             /** Count */
             count: number;
         };
+        /** CoverageOut */
+        CoverageOut: {
+            /**
+             * Folder
+             * @description A Fetchbox library folder
+             */
+            folder: string;
+            /**
+             * Library
+             * @description The server's library holding it; null: none
+             */
+            library: string | null;
+            /** Local */
+            local: string;
+            /**
+             * Remote
+             * @description The same folder as the server sees it
+             */
+            remote: string;
+        };
         /** DefinitionIn */
         DefinitionIn: {
             /**
@@ -2267,6 +2602,11 @@ export interface components {
              * @enum {string}
              */
             media_kind: "movie" | "series";
+            /**
+             * Mount Point
+             * @description The share or drive it lives on, watched for unmounting
+             */
+            mount_point?: string | null;
             /** Name */
             name: string;
             /** Naming Template Id */
@@ -2279,7 +2619,7 @@ export interface components {
             recycle: boolean;
             /**
              * Status
-             * @description online, degraded, low_space, offline, unknown
+             * @description online, degraded, low_space, offline, unmounted (its NAS share or drive is disconnected), unknown
              */
             status: string;
             /** Status Message */
@@ -2424,6 +2764,15 @@ export interface components {
             /** Title */
             title: string;
         };
+        /** EventKindOut */
+        EventKindOut: {
+            /** Default */
+            default: boolean;
+            /** Event */
+            event: string;
+            /** Label */
+            label: string;
+        };
         /** FieldError */
         FieldError: {
             /** Code */
@@ -2480,6 +2829,19 @@ export interface components {
             status: string;
             /** Status Message */
             status_message: string | null;
+        };
+        /** ForgetIn */
+        ForgetIn: {
+            /** File Ids */
+            file_ids: string[];
+        };
+        /** ForgetOut */
+        ForgetOut: {
+            /**
+             * Forgotten
+             * @description Records dropped; their items are wanted again
+             */
+            forgotten: number;
         };
         /** FormatIn */
         FormatIn: {
@@ -2652,6 +3014,43 @@ export interface components {
              * @description Set when running in WSL: paths are inside that distro
              */
             wsl_distro?: string | null;
+        };
+        /** ImportIn */
+        ImportIn: {
+            /** Destination Id */
+            destination_id: string;
+            /** Items */
+            items: components["schemas"]["ImportItemIn"][];
+        };
+        /** ImportItemIn */
+        ImportItemIn: {
+            /**
+             * Files
+             * @description Paths relative to the library folder
+             */
+            files: string[];
+            /**
+             * Folder
+             * @description As the scan listed it
+             */
+            folder: string;
+            /**
+             * Monitor Mode
+             * @description Series
+             * @default all
+             * @enum {string}
+             */
+            monitor_mode: "all" | "future" | "missing" | "first_season" | "latest_season" | "none";
+            /**
+             * Monitored
+             * @description Movies
+             * @default true
+             */
+            monitored: boolean;
+            /** Profile Id */
+            profile_id: string;
+            /** Tmdb Id */
+            tmdb_id: number;
         };
         /** ImportOut */
         ImportOut: {
@@ -2875,6 +3274,20 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /** Library */
+        Library: {
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "movie" | "series" | "music" | "other";
+            /** Name */
+            name: string;
+            /** Paths */
+            paths: string[];
+        };
         /** LimitsIO */
         LimitsIO: {
             /**
@@ -2944,6 +3357,104 @@ export interface components {
             type: string;
             /** Via */
             via: string;
+        };
+        /** MediaServerIn */
+        MediaServerIn: {
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /**
+             * Kind
+             * @description plex, jellyfin or emby
+             */
+            kind: string;
+            /** Name */
+            name: string;
+            /**
+             * Path Mappings
+             * @default []
+             */
+            path_mappings: components["schemas"]["PathMapping-Input"][];
+            /** Settings */
+            settings: {
+                [key: string]: unknown;
+            };
+        };
+        /** MediaServerOut */
+        MediaServerOut: {
+            /** Enabled */
+            enabled: boolean;
+            /** Etag */
+            readonly etag: string;
+            /** Id */
+            id: string;
+            /** Kind */
+            kind: string;
+            /**
+             * Last Error
+             * @description The last refresh's problem, if any
+             */
+            last_error: string | null;
+            /** Last Refresh At */
+            last_refresh_at: string | null;
+            /** Name */
+            name: string;
+            /** Path Mappings */
+            path_mappings: components["schemas"]["fetchbox__modules__integrations__service__PathMapping"][];
+            /**
+             * Settings
+             * @description Secrets come back masked
+             */
+            settings: {
+                [key: string]: unknown;
+            };
+        };
+        /** MediaServerPatch */
+        MediaServerPatch: {
+            /** Enabled */
+            enabled?: boolean | null;
+            /** Name */
+            name?: string | null;
+            /** Path Mappings */
+            path_mappings?: components["schemas"]["PathMapping-Input"][] | null;
+            /**
+             * Settings
+             * @description Send the mask back to keep a secret
+             */
+            settings?: {
+                [key: string]: unknown;
+            } | null;
+        };
+        /** MediaServerTestOut */
+        MediaServerTestOut: {
+            /** Coverage */
+            coverage: components["schemas"]["CoverageOut"][];
+            /** Libraries */
+            libraries: components["schemas"]["Library"][];
+            /** Message */
+            message: string;
+            /** Ok */
+            ok: boolean;
+        };
+        /** MountOut */
+        MountOut: {
+            /** Device */
+            device: string;
+            /** Free */
+            free: number;
+            /** Fstype */
+            fstype: string;
+            /**
+             * Network
+             * @description A NAS / network share
+             */
+            network: boolean;
+            /** Path */
+            path: string;
+            /** Total */
+            total: number;
         };
         /** MovieDetail */
         MovieDetail: {
@@ -3035,6 +3546,23 @@ export interface components {
             preset: string;
             /** Samples */
             samples: components["schemas"]["SampleOut"][];
+        };
+        /** NetworkInterface */
+        NetworkInterface: {
+            /**
+             * Address
+             * @description Its current address; null: down or none
+             */
+            address: string | null;
+            /** Name */
+            name: string;
+            /** Up */
+            up: boolean;
+            /**
+             * Vpn
+             * @description Looks like a VPN (tun, wg, utun, ProtonVPN, …)
+             */
+            vpn: boolean;
         };
         /** NodeOut */
         NodeOut: {
@@ -3206,17 +3734,17 @@ export interface components {
             year?: number | null;
         };
         /** PathMapping */
-        PathMapping: {
-            /**
-             * Client
-             * @description The same path as the client sees it
-             */
-            client: string;
+        "PathMapping-Input": {
             /**
              * Local
              * @description Path as Fetchbox sees it
              */
             local: string;
+            /**
+             * Remote
+             * @description The same path as the media server sees it
+             */
+            remote: string;
         };
         /**
          * PatternCondition
@@ -3267,7 +3795,7 @@ export interface components {
              * @description Where the client sees Fetchbox's folders differently (Docker, another machine): each maps a Fetchbox path prefix to the client's
              * @default []
              */
-            path_mappings: components["schemas"]["PathMapping"][];
+            path_mappings: components["schemas"]["fetchbox__modules__downloads__service__PathMapping"][];
             /**
              * Save Path
              * @description Download folder as Fetchbox sees it. Built-in clients: default <downloads root>/Torrents; external clients: default is the client's own folder
@@ -3725,6 +4253,11 @@ export interface components {
             /** Path */
             path: string;
         };
+        /** ScanIn */
+        ScanIn: {
+            /** Destination Id */
+            destination_id: string;
+        };
         /** ScheduleOut */
         ScheduleOut: {
             /** Default Interval Seconds */
@@ -3983,6 +4516,69 @@ export interface components {
             expires_in: number;
             /** Token */
             token: string;
+        };
+        /** TargetIn */
+        TargetIn: {
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /**
+             * Events
+             * @description Null: the default set
+             */
+            events?: string[] | null;
+            /**
+             * Kind
+             * @description webhook or discord
+             */
+            kind: string;
+            /** Name */
+            name: string;
+            /** Settings */
+            settings: {
+                [key: string]: unknown;
+            };
+        };
+        /** TargetOut */
+        TargetOut: {
+            /** Enabled */
+            enabled: boolean;
+            /** Etag */
+            readonly etag: string;
+            /** Events */
+            events: string[];
+            /** Id */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Last Error */
+            last_error: string | null;
+            /** Last Sent At */
+            last_sent_at: string | null;
+            /** Name */
+            name: string;
+            /**
+             * Settings
+             * @description Secrets come back masked
+             */
+            settings: {
+                [key: string]: unknown;
+            };
+        };
+        /** TargetPatch */
+        TargetPatch: {
+            /** Enabled */
+            enabled?: boolean | null;
+            /** Events */
+            events?: string[] | null;
+            /** Name */
+            name?: string | null;
+            /** Settings */
+            settings?: {
+                [key: string]: unknown;
+            } | null;
         };
         /** TemplateIn */
         TemplateIn: {
@@ -4352,6 +4948,32 @@ export interface components {
              * @description Download ids, first runs first
              */
             ids: string[];
+        };
+        /** PathMapping */
+        fetchbox__modules__downloads__service__PathMapping: {
+            /**
+             * Client
+             * @description The same path as the client sees it
+             */
+            client: string;
+            /**
+             * Local
+             * @description Path as Fetchbox sees it
+             */
+            local: string;
+        };
+        /** PathMapping */
+        fetchbox__modules__integrations__service__PathMapping: {
+            /**
+             * Local
+             * @description Path as Fetchbox sees it
+             */
+            local: string;
+            /**
+             * Remote
+             * @description The same path as the media server sees it
+             */
+            remote: string;
         };
         /** ReorderIn */
         fetchbox__modules__sources__router__ReorderIn: {
@@ -7796,6 +8418,123 @@ export interface operations {
             };
         };
     };
+    check_library_api_v1_library_check_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    forget_missing_api_v1_library_check_forget_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ForgetIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForgetOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    import_existing_api_v1_library_import_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
     naming_options_api_v1_library_naming_options_get: {
         parameters: {
             query?: never;
@@ -8015,6 +8754,305 @@ export interface operations {
             };
         };
     };
+    scan_library_api_v1_library_scan_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScanIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_servers_api_v1_media_servers_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaServerOut"][];
+                };
+            };
+        };
+    };
+    add_server_api_v1_media_servers_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MediaServerIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaServerOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    server_kinds_api_v1_media_servers_kinds_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string[];
+                };
+            };
+        };
+    };
+    remove_server_api_v1_media_servers__server_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description ETag from a previous read; 412 if stale */
+                "if-match"?: string | null;
+            };
+            path: {
+                server_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_server_api_v1_media_servers__server_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description ETag from a previous read; 412 if stale */
+                "if-match"?: string | null;
+            };
+            path: {
+                server_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MediaServerPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaServerOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    test_server_api_v1_media_servers__server_id__test_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                server_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaServerTestOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_templates_api_v1_naming_templates_get: {
         parameters: {
             query?: never;
@@ -8168,6 +9206,272 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Problem"];
                     "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    event_kinds_api_v1_notifications_events_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventKindOut"][];
+                };
+            };
+        };
+    };
+    target_kinds_api_v1_notifications_kinds_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string[];
+                };
+            };
+        };
+    };
+    list_targets_api_v1_notifications_targets_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TargetOut"][];
+                };
+            };
+        };
+    };
+    add_target_api_v1_notifications_targets_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TargetIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TargetOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    remove_target_api_v1_notifications_targets__target_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description ETag from a previous read; 412 if stale */
+                "if-match"?: string | null;
+            };
+            path: {
+                target_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_target_api_v1_notifications_targets__target_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description ETag from a previous read; 412 if stale */
+                "if-match"?: string | null;
+            };
+            path: {
+                target_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TargetPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TargetOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    test_target_api_v1_notifications_targets__target_id__test_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                target_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TestResult"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -8520,6 +9824,26 @@ export interface operations {
             };
         };
     };
+    list_mounts_api_v1_storage_mounts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MountOut"][];
+                };
+            };
+        };
+    };
     list_nodes_api_v1_storage_nodes_get: {
         parameters: {
             query?: never;
@@ -8679,6 +10003,26 @@ export interface operations {
             };
         };
     };
+    network_interfaces_api_v1_system_network_interfaces_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NetworkInterface"][];
+                };
+            };
+        };
+    };
     ping_api_v1_system_ping_get: {
         parameters: {
             query?: never;
@@ -8722,6 +10066,57 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["JobOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    shutdown_api_v1_system_shutdown_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-fetchbox-supervisor"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
                 };
             };
             /** @description Validation Error */

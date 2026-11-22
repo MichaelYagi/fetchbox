@@ -1027,6 +1027,44 @@
     "title": "Count",
     "type": "object"
    },
+   "CoverageOut": {
+    "properties": {
+     "folder": {
+      "description": "A Fetchbox library folder",
+      "title": "Folder",
+      "type": "string"
+     },
+     "library": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "The server's library holding it; null: none",
+      "title": "Library"
+     },
+     "local": {
+      "title": "Local",
+      "type": "string"
+     },
+     "remote": {
+      "description": "The same folder as the server sees it",
+      "title": "Remote",
+      "type": "string"
+     }
+    },
+    "required": [
+     "folder",
+     "local",
+     "remote",
+     "library"
+    ],
+    "title": "CoverageOut",
+    "type": "object"
+   },
    "DefinitionIn": {
     "properties": {
      "yaml": {
@@ -1275,6 +1313,18 @@
       "title": "Media Kind",
       "type": "string"
      },
+     "mount_point": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "The share or drive it lives on, watched for unmounting",
+      "title": "Mount Point"
+     },
      "name": {
       "title": "Name",
       "type": "string"
@@ -1303,7 +1353,7 @@
       "type": "boolean"
      },
      "status": {
-      "description": "online, degraded, low_space, offline, unknown",
+      "description": "online, degraded, low_space, offline, unmounted (its NAS share or drive is disconnected), unknown",
       "title": "Status",
       "type": "string"
      },
@@ -1877,6 +1927,29 @@
     "title": "EvaluationOut",
     "type": "object"
    },
+   "EventKindOut": {
+    "properties": {
+     "default": {
+      "title": "Default",
+      "type": "boolean"
+     },
+     "event": {
+      "title": "Event",
+      "type": "string"
+     },
+     "label": {
+      "title": "Label",
+      "type": "string"
+     }
+    },
+    "required": [
+     "event",
+     "label",
+     "default"
+    ],
+    "title": "EventKindOut",
+    "type": "object"
+   },
    "FieldError": {
     "properties": {
      "code": {
@@ -2049,6 +2122,37 @@
      "status_message"
     ],
     "title": "FolderOut",
+    "type": "object"
+   },
+   "ForgetIn": {
+    "properties": {
+     "file_ids": {
+      "items": {
+       "type": "string"
+      },
+      "minItems": 1,
+      "title": "File Ids",
+      "type": "array"
+     }
+    },
+    "required": [
+     "file_ids"
+    ],
+    "title": "ForgetIn",
+    "type": "object"
+   },
+   "ForgetOut": {
+    "properties": {
+     "forgotten": {
+      "description": "Records dropped; their items are wanted again",
+      "title": "Forgotten",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "forgotten"
+    ],
+    "title": "ForgetOut",
     "type": "object"
    },
    "FormatIn": {
@@ -2567,6 +2671,82 @@
      "downloads_root"
     ],
     "title": "HostInfo",
+    "type": "object"
+   },
+   "ImportIn": {
+    "properties": {
+     "destination_id": {
+      "title": "Destination Id",
+      "type": "string"
+     },
+     "items": {
+      "items": {
+       "$ref": "#/components/schemas/ImportItemIn"
+      },
+      "minItems": 1,
+      "title": "Items",
+      "type": "array"
+     }
+    },
+    "required": [
+     "destination_id",
+     "items"
+    ],
+    "title": "ImportIn",
+    "type": "object"
+   },
+   "ImportItemIn": {
+    "properties": {
+     "files": {
+      "description": "Paths relative to the library folder",
+      "items": {
+       "type": "string"
+      },
+      "minItems": 1,
+      "title": "Files",
+      "type": "array"
+     },
+     "folder": {
+      "description": "As the scan listed it",
+      "title": "Folder",
+      "type": "string"
+     },
+     "monitor_mode": {
+      "default": "all",
+      "description": "Series",
+      "enum": [
+       "all",
+       "future",
+       "missing",
+       "first_season",
+       "latest_season",
+       "none"
+      ],
+      "title": "Monitor Mode",
+      "type": "string"
+     },
+     "monitored": {
+      "default": true,
+      "description": "Movies",
+      "title": "Monitored",
+      "type": "boolean"
+     },
+     "profile_id": {
+      "title": "Profile Id",
+      "type": "string"
+     },
+     "tmdb_id": {
+      "title": "Tmdb Id",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "folder",
+     "files",
+     "tmdb_id",
+     "profile_id"
+    ],
+    "title": "ImportItemIn",
     "type": "object"
    },
    "ImportOut": {
@@ -3170,6 +3350,43 @@
     "title": "KindOut",
     "type": "object"
    },
+   "Library": {
+    "properties": {
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "kind": {
+      "enum": [
+       "movie",
+       "series",
+       "music",
+       "other"
+      ],
+      "title": "Kind",
+      "type": "string"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "paths": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Paths",
+      "type": "array"
+     }
+    },
+    "required": [
+     "id",
+     "name",
+     "kind",
+     "paths"
+    ],
+    "title": "Library",
+    "type": "object"
+   },
    "LimitsIO": {
     "properties": {
      "download": {
@@ -3359,6 +3576,251 @@
      "via"
     ],
     "title": "Me",
+    "type": "object"
+   },
+   "MediaServerIn": {
+    "properties": {
+     "enabled": {
+      "default": true,
+      "title": "Enabled",
+      "type": "boolean"
+     },
+     "kind": {
+      "description": "plex, jellyfin or emby",
+      "title": "Kind",
+      "type": "string"
+     },
+     "name": {
+      "maxLength": 100,
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+     },
+     "path_mappings": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/PathMapping-Input"
+      },
+      "title": "Path Mappings",
+      "type": "array"
+     },
+     "settings": {
+      "additionalProperties": true,
+      "title": "Settings",
+      "type": "object"
+     }
+    },
+    "required": [
+     "kind",
+     "name",
+     "settings"
+    ],
+    "title": "MediaServerIn",
+    "type": "object"
+   },
+   "MediaServerOut": {
+    "properties": {
+     "enabled": {
+      "title": "Enabled",
+      "type": "boolean"
+     },
+     "etag": {
+      "readOnly": true,
+      "title": "Etag",
+      "type": "string"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "kind": {
+      "title": "Kind",
+      "type": "string"
+     },
+     "last_error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "The last refresh's problem, if any",
+      "title": "Last Error"
+     },
+     "last_refresh_at": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Last Refresh At"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "path_mappings": {
+      "items": {
+       "$ref": "#/components/schemas/fetchbox__modules__integrations__service__PathMapping"
+      },
+      "title": "Path Mappings",
+      "type": "array"
+     },
+     "settings": {
+      "additionalProperties": true,
+      "description": "Secrets come back masked",
+      "title": "Settings",
+      "type": "object"
+     }
+    },
+    "required": [
+     "id",
+     "kind",
+     "name",
+     "enabled",
+     "settings",
+     "path_mappings",
+     "last_refresh_at",
+     "last_error",
+     "etag"
+    ],
+    "title": "MediaServerOut",
+    "type": "object"
+   },
+   "MediaServerPatch": {
+    "properties": {
+     "enabled": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Enabled"
+     },
+     "name": {
+      "anyOf": [
+       {
+        "maxLength": 100,
+        "minLength": 1,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Name"
+     },
+     "path_mappings": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/PathMapping-Input"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Path Mappings"
+     },
+     "settings": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Send the mask back to keep a secret",
+      "title": "Settings"
+     }
+    },
+    "title": "MediaServerPatch",
+    "type": "object"
+   },
+   "MediaServerTestOut": {
+    "properties": {
+     "coverage": {
+      "items": {
+       "$ref": "#/components/schemas/CoverageOut"
+      },
+      "title": "Coverage",
+      "type": "array"
+     },
+     "libraries": {
+      "items": {
+       "$ref": "#/components/schemas/Library"
+      },
+      "title": "Libraries",
+      "type": "array"
+     },
+     "message": {
+      "title": "Message",
+      "type": "string"
+     },
+     "ok": {
+      "title": "Ok",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "ok",
+     "message",
+     "libraries",
+     "coverage"
+    ],
+    "title": "MediaServerTestOut",
+    "type": "object"
+   },
+   "MountOut": {
+    "properties": {
+     "device": {
+      "title": "Device",
+      "type": "string"
+     },
+     "free": {
+      "title": "Free",
+      "type": "integer"
+     },
+     "fstype": {
+      "title": "Fstype",
+      "type": "string"
+     },
+     "network": {
+      "description": "A NAS / network share",
+      "title": "Network",
+      "type": "boolean"
+     },
+     "path": {
+      "title": "Path",
+      "type": "string"
+     },
+     "total": {
+      "title": "Total",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "path",
+     "device",
+     "fstype",
+     "network",
+     "total",
+     "free"
+    ],
+    "title": "MountOut",
     "type": "object"
    },
    "MovieDetail": {
@@ -3624,6 +4086,43 @@
      "samples"
     ],
     "title": "NamingOut",
+    "type": "object"
+   },
+   "NetworkInterface": {
+    "properties": {
+     "address": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Its current address; null: down or none",
+      "title": "Address"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "up": {
+      "title": "Up",
+      "type": "boolean"
+     },
+     "vpn": {
+      "description": "Looks like a VPN (tun, wg, utun, ProtonVPN, \u2026)",
+      "title": "Vpn",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "name",
+     "address",
+     "up",
+     "vpn"
+    ],
+    "title": "NetworkInterface",
     "type": "object"
    },
    "NodeOut": {
@@ -4006,24 +4505,24 @@
     "title": "ParsedRelease",
     "type": "object"
    },
-   "PathMapping": {
+   "PathMapping-Input": {
     "properties": {
-     "client": {
-      "description": "The same path as the client sees it",
-      "minLength": 1,
-      "title": "Client",
-      "type": "string"
-     },
      "local": {
       "description": "Path as Fetchbox sees it",
       "minLength": 1,
       "title": "Local",
       "type": "string"
+     },
+     "remote": {
+      "description": "The same path as the media server sees it",
+      "minLength": 1,
+      "title": "Remote",
+      "type": "string"
      }
     },
     "required": [
      "local",
-     "client"
+     "remote"
     ],
     "title": "PathMapping",
     "type": "object"
@@ -4102,7 +4601,7 @@
       "default": [],
       "description": "Where the client sees Fetchbox's folders differently (Docker, another machine): each maps a Fetchbox path prefix to the client's",
       "items": {
-       "$ref": "#/components/schemas/PathMapping"
+       "$ref": "#/components/schemas/fetchbox__modules__downloads__service__PathMapping"
       },
       "title": "Path Mappings",
       "type": "array"
@@ -5157,6 +5656,19 @@
     "title": "SampleOut",
     "type": "object"
    },
+   "ScanIn": {
+    "properties": {
+     "destination_id": {
+      "title": "Destination Id",
+      "type": "string"
+     }
+    },
+    "required": [
+     "destination_id"
+    ],
+    "title": "ScanIn",
+    "type": "object"
+   },
    "ScheduleOut": {
     "properties": {
      "default_interval_seconds": {
@@ -5820,6 +6332,183 @@
      "expires_in"
     ],
     "title": "StreamToken",
+    "type": "object"
+   },
+   "TargetIn": {
+    "properties": {
+     "enabled": {
+      "default": true,
+      "title": "Enabled",
+      "type": "boolean"
+     },
+     "events": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Null: the default set",
+      "title": "Events"
+     },
+     "kind": {
+      "description": "webhook or discord",
+      "title": "Kind",
+      "type": "string"
+     },
+     "name": {
+      "maxLength": 100,
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+     },
+     "settings": {
+      "additionalProperties": true,
+      "title": "Settings",
+      "type": "object"
+     }
+    },
+    "required": [
+     "kind",
+     "name",
+     "settings"
+    ],
+    "title": "TargetIn",
+    "type": "object"
+   },
+   "TargetOut": {
+    "properties": {
+     "enabled": {
+      "title": "Enabled",
+      "type": "boolean"
+     },
+     "etag": {
+      "readOnly": true,
+      "title": "Etag",
+      "type": "string"
+     },
+     "events": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Events",
+      "type": "array"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "kind": {
+      "title": "Kind",
+      "type": "string"
+     },
+     "last_error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Last Error"
+     },
+     "last_sent_at": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Last Sent At"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "settings": {
+      "additionalProperties": true,
+      "description": "Secrets come back masked",
+      "title": "Settings",
+      "type": "object"
+     }
+    },
+    "required": [
+     "id",
+     "kind",
+     "name",
+     "enabled",
+     "settings",
+     "events",
+     "last_sent_at",
+     "last_error",
+     "etag"
+    ],
+    "title": "TargetOut",
+    "type": "object"
+   },
+   "TargetPatch": {
+    "properties": {
+     "enabled": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Enabled"
+     },
+     "events": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Events"
+     },
+     "name": {
+      "anyOf": [
+       {
+        "maxLength": 100,
+        "minLength": 1,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Name"
+     },
+     "settings": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Settings"
+     }
+    },
+    "title": "TargetPatch",
     "type": "object"
    },
    "TemplateIn": {
@@ -6930,6 +7619,50 @@
      "ids"
     ],
     "title": "ReorderIn",
+    "type": "object"
+   },
+   "fetchbox__modules__downloads__service__PathMapping": {
+    "properties": {
+     "client": {
+      "description": "The same path as the client sees it",
+      "minLength": 1,
+      "title": "Client",
+      "type": "string"
+     },
+     "local": {
+      "description": "Path as Fetchbox sees it",
+      "minLength": 1,
+      "title": "Local",
+      "type": "string"
+     }
+    },
+    "required": [
+     "local",
+     "client"
+    ],
+    "title": "PathMapping",
+    "type": "object"
+   },
+   "fetchbox__modules__integrations__service__PathMapping": {
+    "properties": {
+     "local": {
+      "description": "Path as Fetchbox sees it",
+      "minLength": 1,
+      "title": "Local",
+      "type": "string"
+     },
+     "remote": {
+      "description": "The same path as the media server sees it",
+      "minLength": 1,
+      "title": "Remote",
+      "type": "string"
+     }
+    },
+    "required": [
+     "local",
+     "remote"
+    ],
+    "title": "PathMapping",
     "type": "object"
    },
    "fetchbox__modules__sources__router__ReorderIn": {
@@ -12755,6 +13488,179 @@
     ]
    }
   },
+  "/api/v1/library/check": {
+   "post": {
+    "description": "Look for missing files, duplicates (same size and quick hash) and video files no\nrecord points to. Changes nothing; the job's result is the report.",
+    "operationId": "check_library_api_v1_library_check_post",
+    "responses": {
+     "202": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/JobOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Conflict"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Check Library",
+    "tags": [
+     "library"
+    ]
+   }
+  },
+  "/api/v1/library/check/forget": {
+   "post": {
+    "description": "Drop records of files that are missing from disk; their movies and episodes are\nsearched for again. Files still on disk are left alone.",
+    "operationId": "forget_missing_api_v1_library_check_forget_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ForgetIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ForgetOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Forget Missing",
+    "tags": [
+     "library"
+    ]
+   }
+  },
+  "/api/v1/library/import": {
+   "post": {
+    "description": "Add the chosen titles (no search yet) and record their files where they are.",
+    "operationId": "import_existing_api_v1_library_import_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ImportIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "202": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/JobOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Conflict"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Unprocessable Content"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Import Existing",
+    "tags": [
+     "library"
+    ]
+   }
+  },
   "/api/v1/library/naming-options": {
    "get": {
     "description": "Naming presets, season folder choices and the tokens patterns can use.",
@@ -13143,6 +14049,480 @@
     ]
    }
   },
+  "/api/v1/library/scan": {
+   "post": {
+    "description": "Read a library folder and match what's in it on TMDB. Changes nothing: the job's\nresult lists every movie or show found, with its files, match and status.",
+    "operationId": "scan_library_api_v1_library_scan_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ScanIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "202": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/JobOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Conflict"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Scan Library",
+    "tags": [
+     "library"
+    ]
+   }
+  },
+  "/api/v1/media-servers": {
+   "get": {
+    "operationId": "list_servers_api_v1_media_servers_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/MediaServerOut"
+         },
+         "title": "Response List Servers Api V1 Media Servers Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "List Servers",
+    "tags": [
+     "integrations"
+    ]
+   },
+   "post": {
+    "description": "Plex, Jellyfin or Emby to tell about new and changed files.",
+    "operationId": "add_server_api_v1_media_servers_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/MediaServerIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/MediaServerOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Conflict"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Unprocessable Content"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Add Server",
+    "tags": [
+     "integrations"
+    ]
+   }
+  },
+  "/api/v1/media-servers/kinds": {
+   "get": {
+    "operationId": "server_kinds_api_v1_media_servers_kinds_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "type": "string"
+         },
+         "title": "Response Server Kinds Api V1 Media Servers Kinds Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Server Kinds",
+    "tags": [
+     "integrations"
+    ]
+   }
+  },
+  "/api/v1/media-servers/{server_id}": {
+   "delete": {
+    "operationId": "remove_server_api_v1_media_servers__server_id__delete",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "server_id",
+      "required": true,
+      "schema": {
+       "title": "Server Id",
+       "type": "string"
+      }
+     },
+     {
+      "description": "ETag from a previous read; 412 if stale",
+      "in": "header",
+      "name": "if-match",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "ETag from a previous read; 412 if stale",
+       "title": "If-Match"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "412": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Precondition Failed"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Remove Server",
+    "tags": [
+     "integrations"
+    ]
+   },
+   "patch": {
+    "operationId": "update_server_api_v1_media_servers__server_id__patch",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "server_id",
+      "required": true,
+      "schema": {
+       "title": "Server Id",
+       "type": "string"
+      }
+     },
+     {
+      "description": "ETag from a previous read; 412 if stale",
+      "in": "header",
+      "name": "if-match",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "ETag from a previous read; 412 if stale",
+       "title": "If-Match"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/MediaServerPatch"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/MediaServerOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Conflict"
+     },
+     "412": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Precondition Failed"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Unprocessable Content"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Update Server",
+    "tags": [
+     "integrations"
+    ]
+   }
+  },
+  "/api/v1/media-servers/{server_id}/test": {
+   "post": {
+    "description": "Connect, list the server's libraries, and show which one holds each Fetchbox\nlibrary folder (after path mappings).",
+    "operationId": "test_server_api_v1_media_servers__server_id__test_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "server_id",
+      "required": true,
+      "schema": {
+       "title": "Server Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/MediaServerTestOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Test Server",
+    "tags": [
+     "integrations"
+    ]
+   }
+  },
   "/api/v1/naming-templates": {
    "get": {
     "operationId": "list_templates_api_v1_naming_templates_get",
@@ -13396,6 +14776,441 @@
     "summary": "Update Template",
     "tags": [
      "library"
+    ]
+   }
+  },
+  "/api/v1/notifications/events": {
+   "get": {
+    "description": "What can be notified about, with the default selection.",
+    "operationId": "event_kinds_api_v1_notifications_events_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/EventKindOut"
+         },
+         "title": "Response Event Kinds Api V1 Notifications Events Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Event Kinds",
+    "tags": [
+     "notifications"
+    ]
+   }
+  },
+  "/api/v1/notifications/kinds": {
+   "get": {
+    "operationId": "target_kinds_api_v1_notifications_kinds_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "type": "string"
+         },
+         "title": "Response Target Kinds Api V1 Notifications Kinds Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Target Kinds",
+    "tags": [
+     "notifications"
+    ]
+   }
+  },
+  "/api/v1/notifications/targets": {
+   "get": {
+    "operationId": "list_targets_api_v1_notifications_targets_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/TargetOut"
+         },
+         "title": "Response List Targets Api V1 Notifications Targets Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "List Targets",
+    "tags": [
+     "notifications"
+    ]
+   },
+   "post": {
+    "operationId": "add_target_api_v1_notifications_targets_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/TargetIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TargetOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Conflict"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Unprocessable Content"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Add Target",
+    "tags": [
+     "notifications"
+    ]
+   }
+  },
+  "/api/v1/notifications/targets/{target_id}": {
+   "delete": {
+    "operationId": "remove_target_api_v1_notifications_targets__target_id__delete",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "target_id",
+      "required": true,
+      "schema": {
+       "title": "Target Id",
+       "type": "string"
+      }
+     },
+     {
+      "description": "ETag from a previous read; 412 if stale",
+      "in": "header",
+      "name": "if-match",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "ETag from a previous read; 412 if stale",
+       "title": "If-Match"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "412": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Precondition Failed"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Remove Target",
+    "tags": [
+     "notifications"
+    ]
+   },
+   "patch": {
+    "operationId": "update_target_api_v1_notifications_targets__target_id__patch",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "target_id",
+      "required": true,
+      "schema": {
+       "title": "Target Id",
+       "type": "string"
+      }
+     },
+     {
+      "description": "ETag from a previous read; 412 if stale",
+      "in": "header",
+      "name": "if-match",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "ETag from a previous read; 412 if stale",
+       "title": "If-Match"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/TargetPatch"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TargetOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Conflict"
+     },
+     "412": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Precondition Failed"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Unprocessable Content"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Update Target",
+    "tags": [
+     "notifications"
+    ]
+   }
+  },
+  "/api/v1/notifications/targets/{target_id}/test": {
+   "post": {
+    "description": "Send a test notification now.",
+    "operationId": "test_target_api_v1_notifications_targets__target_id__test_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "target_id",
+      "required": true,
+      "schema": {
+       "title": "Target Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TestResult"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Test Target",
+    "tags": [
+     "notifications"
     ]
    }
   },
@@ -13998,6 +15813,43 @@
     ]
    }
   },
+  "/api/v1/storage/mounts": {
+   "get": {
+    "description": "Drives and network shares mounted on this computer: candidates for library folders.",
+    "operationId": "list_mounts_api_v1_storage_mounts_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/MountOut"
+         },
+         "title": "Response List Mounts Api V1 Storage Mounts Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "List Mounts",
+    "tags": [
+     "storage"
+    ]
+   }
+  },
   "/api/v1/storage/nodes": {
    "get": {
     "operationId": "list_nodes_api_v1_storage_nodes_get",
@@ -14257,6 +16109,43 @@
     ]
    }
   },
+  "/api/v1/system/network-interfaces": {
+   "get": {
+    "description": "This computer's network interfaces, to bind the torrent engine to one (a VPN).",
+    "operationId": "network_interfaces_api_v1_system_network_interfaces_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/NetworkInterface"
+         },
+         "title": "Response Network Interfaces Api V1 System Network Interfaces Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Network Interfaces",
+    "tags": [
+     "system"
+    ]
+   }
+  },
   "/api/v1/system/ping": {
    "get": {
     "description": "Unauthenticated liveness probe for Docker/orchestrators. Reveals nothing else.",
@@ -14360,6 +16249,87 @@
      }
     ],
     "summary": "Selftest",
+    "tags": [
+     "system"
+    ]
+   }
+  },
+  "/api/v1/system/shutdown": {
+   "post": {
+    "description": "Stop the server gracefully (running jobs get up to 30 s, downloads save their\nstate). Needs ``system:write``, or the token the desktop tray gave the server it\nstarted (``X-Fetchbox-Supervisor``).",
+    "operationId": "shutdown_api_v1_system_shutdown_post",
+    "parameters": [
+     {
+      "in": "header",
+      "name": "x-fetchbox-supervisor",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Fetchbox-Supervisor"
+      }
+     }
+    ],
+    "responses": {
+     "202": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Unauthorized"
+     },
+     "403": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Forbidden"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Shutdown",
     "tags": [
      "system"
     ]

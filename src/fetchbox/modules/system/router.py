@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+import asyncio
+import hmac
+import os
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Header, Request, Response
 from pydantic import BaseModel, Field
 
 from fetchbox.core.concurrency import etag
-from fetchbox.core.errors import problem_responses
+from fetchbox.core.errors import ProblemError, problem_responses
 from fetchbox.core.health import HealthReport
 from fetchbox.core.idempotency import IdempotencyKey, idempotent
 from fetchbox.core.state import State
@@ -116,3 +119,65 @@ async def patch_config(
     """Partial update, merged per section, e.g. `{"tmdb": {"api_key": "..."}}`."""
     view = await _config(request).update(body, if_match=if_match, actor=p.actor())
     return _config_out(view, response)
+
+
+SUPERVISOR_ENV = "FETCHBOX_SUPERVISOR_TOKEN"
+
+
+@router.post(
+    "/shutdown",
+    status_code=202,
+    dependencies=[Depends(public())],
+    responses=problem_responses(401, 403),
+)
+async def shutdown(
+    request: Request,
+    x_fetchbox_supervisor: Annotated[str | None, Header()] = None,
+) -> Response:
+    """Stop the server gracefully (running jobs get up to 30 s, downloads save their
+    state). Needs ``system:write``, or the token the desktop tray gave the server it
+    started (``X-Fetchbox-Supervisor``)."""
+    expected = os.environ.get(SUPERVISOR_ENV)
+    if not (
+        expected
+        and x_fetchbox_supervisor
+        and hmac.compare_digest(expected.encode(), x_fetchbox_supervisor.encode())
+    ):
+        await require("system:write")(request)
+    stop = getattr(request.app.state, "request_shutdown", None)
+    if stop is None:
+        raise ProblemError(409, "Conflict", "this server can't stop itself", slug="conflict")
+    asyncio.get_running_loop().call_later(0.2, stop)  # after this response is sent
+    return Response(status_code=202)
+
+
+class NetworkInterface(BaseModel):
+    name: str
+    address: str | None = Field(description="Its current address; null: down or none")
+    up: bool
+    vpn: bool = Field(description="Looks like a VPN (tun, wg, utun, ProtonVPN, …)")
+
+
+_VPN_NAMES = ("tun", "tap", "wg", "utun", "ppp", "ipsec", "proton", "nord", "mullvad",
+              "wireguard", "vpn", "openvpn", "wintun", "tailscale", "zt")  # fmt: skip
+
+
+@router.get("/network-interfaces", response_model=list[NetworkInterface], dependencies=_read)
+async def network_interfaces() -> list[NetworkInterface]:
+    """This computer's network interfaces, to bind the torrent engine to one (a VPN)."""
+
+    def collect() -> list[NetworkInterface]:
+        import psutil
+
+        from fetchbox.providers.download_clients.builtin import interface_address
+
+        out = []
+        for name, st in psutil.net_if_stats().items():
+            low = name.lower()
+            vpn = low.startswith(_VPN_NAMES) or any(v in low for v in _VPN_NAMES[5:])
+            out.append(
+                NetworkInterface(name=name, address=interface_address(name), up=st.isup, vpn=vpn)
+            )
+        return sorted(out, key=lambda i: (not i.vpn, not i.up, i.name.lower()))
+
+    return await asyncio.to_thread(collect)

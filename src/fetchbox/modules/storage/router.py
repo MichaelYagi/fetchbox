@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime
 from typing import Annotated, Literal
 
@@ -10,7 +11,7 @@ from fetchbox.core.concurrency import etag
 from fetchbox.core.errors import problem_responses as pr
 from fetchbox.modules.auth.deps import CurrentPrincipal, require
 from fetchbox.modules.storage.models import Destination, StorageNode
-from fetchbox.modules.storage.service import StorageService
+from fetchbox.modules.storage.service import StorageService, mounts
 
 router = APIRouter(tags=["storage"])
 _read = [Depends(require("storage:read"))]
@@ -53,7 +54,13 @@ class DestinationOut(_Versioned):
     free_space_min: int | None = Field(description="Bytes; null = 5% / 20 GB default")
     recycle: bool
     is_default: bool
-    status: str = Field(description="online, degraded, low_space, offline, unknown")
+    status: str = Field(
+        description="online, degraded, low_space, offline, unmounted (its NAS share or "
+        "drive is disconnected), unknown"
+    )
+    mount_point: str | None = Field(
+        default=None, description="The share or drive it lives on, watched for unmounting"
+    )
     status_message: str | None
     checked_at: datetime | None
 
@@ -179,3 +186,18 @@ async def delete_destination(
 async def check_destination(dest_id: str, request: Request) -> DestinationOut:
     """Probe now: folder, write/delete, hardlinks from the torrent folder, free space."""
     return _dest(await _svc(request).check(dest_id))
+
+
+class MountOut(BaseModel):
+    path: str
+    device: str
+    fstype: str
+    network: bool = Field(description="A NAS / network share")
+    total: int
+    free: int
+
+
+@router.get("/storage/mounts", response_model=list[MountOut], dependencies=_read)
+async def list_mounts() -> list[MountOut]:
+    """Drives and network shares mounted on this computer: candidates for library folders."""
+    return [MountOut(**m) for m in await asyncio.to_thread(mounts)]

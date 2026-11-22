@@ -267,6 +267,64 @@ search:
     catalog.drop("xml-site")
 
 
+async def test_html_responses_with_css_selectors() -> None:
+    text = """
+schema: 1
+slug: html-site
+name: HTML Site
+version: "1"
+links: [https://html.example]
+rate_limit: 0
+search:
+  requests: [{path: /search, params: {q: "{{ query.term }}"}}]
+  response:
+    type: html
+    rows: "table#results tr.result"
+    error: "div.alert-error"
+    fields:
+      title: "{{ row.td.name a }}"
+      download_url: "{{ row.a.dl@href }}"
+      info_url: "{{ row.td.name a@href }}"
+      size: "{{ row.td:nth-child(3) | size }}"
+      seeders: "{{ row.td:nth-child(4) | int }}"
+      published_at: "{{ row.time@datetime }}"
+"""
+    d = parse_definition(text)
+    catalog.put(d, text)
+    pages = {
+        "ok": (
+            "<html><body><h1>Results<table id=results>"
+            "<tr><th>Name<th>Get<th>Size<th>Seeds</tr>"  # header: not a .result row
+            '<tr class="result"><td class=name><a href="/t/1">Dune.2021.1080p.WEB-DL-GRP</a>'
+            '<td><a class=dl href="/get/1.torrent">get</a><td>1.4 GiB<td> 42 '
+            '<td><time datetime="2024-03-01T10:00:00Z">Mar 1</time>'
+            '<tr class="result"><td class=name><a href="/t/2">No.Link.2021</a>'
+            "<td><td>1 GB<td>3"  # no download link: skipped
+            "</table></body></html>"
+        ),
+        "error": '<div class="alert-error">Too many requests, slow down</div>',
+    }
+    mode = ["ok"]
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, content=pages[mode[0]].encode(),
+                              headers={"content-type": "text/html"})  # fmt: skip
+
+    s = DefinitionSettings.model_validate({"definition": "html-site"})
+    p = DefinitionProvider(s, transport=httpx.MockTransport(handler))
+    [c] = await p.search(SearchQuery("movie", ("Dune",)))
+    assert c.title == "Dune.2021.1080p.WEB-DL-GRP"
+    assert c.download_url == "https://html.example/get/1.torrent"
+    assert c.info_url == "https://html.example/t/1"
+    assert c.size == int(1.4 * 1024**3) and c.seeders == 42
+    assert c.published_at is not None and c.published_at.year == 2024
+    mode[0] = "error"
+    with pytest.raises(IndexerError, match="Too many requests"):
+        await p.search(SearchQuery("movie", ("Dune",)))
+    await p.aclose()
+    catalog.drop("html-site")
+
+
 # ---- the API ------------------------------------------------------------------------------------
 
 

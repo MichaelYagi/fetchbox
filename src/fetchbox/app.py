@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from collections.abc import AsyncIterator, Callable, Sequence
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -32,10 +33,16 @@ from fetchbox.modules.discovery.service import DiscoveryService
 from fetchbox.modules.downloads import router as downloads_router
 from fetchbox.modules.downloads.service import DownloadsService
 from fetchbox.modules.events import router as events_router
+from fetchbox.modules.integrations import router as integrations_router
+from fetchbox.modules.integrations.service import IntegrationsService
 from fetchbox.modules.library import router as library_router
+from fetchbox.modules.library.existing import ExistingLibrary
+from fetchbox.modules.library.maintenance import LibraryCheck
 from fetchbox.modules.library.service import LibraryService
 from fetchbox.modules.media import router as media_router
 from fetchbox.modules.media.service import MediaService
+from fetchbox.modules.notifications import router as notifications_router
+from fetchbox.modules.notifications.service import NotificationsService
 from fetchbox.modules.profiles import router as profiles_router
 from fetchbox.modules.profiles.service import ProfilesService
 from fetchbox.modules.releases import router as releases_router
@@ -78,6 +85,8 @@ API_ROUTERS: tuple[APIRouter, ...] = (
     downloads_router.router,
     storage_router.router,
     library_router.router,
+    integrations_router.router,
+    notifications_router.router,
 )
 
 
@@ -201,6 +210,19 @@ def create_app(
         )
         app.state.storage = storage
         library = LibraryService(db, bus, jobs, storage, downloads, profiles, media)
+        storage.register_jobs(jobs, state.scheduler, lambda: config.current.storage.recycle_days)
+        integrations = IntegrationsService(db, bus, box, provider_registry)
+        notifications = NotificationsService(db, bus, box, provider_registry)
+        app.state.notifications = notifications
+        app.state.integrations = integrations
+        existing = ExistingLibrary(
+            db, jobs, storage=storage, media=media, discovery=discovery, library=library
+        )
+        existing.register_jobs()
+        library_check = LibraryCheck(db, bus, jobs, storage)
+        library_check.register_jobs()
+        app.state.library_check = library_check
+        app.state.existing = existing
         library.register_jobs()
         app.state.library = library
         app.state.unlock = UnlockService(
@@ -231,6 +253,10 @@ def create_app(
         await library.start()
         await autosearch.start()
         await state.scheduler.start()
+        if os.environ.get("FETCHBOX_DB_GUARD"):  # debug: report what blocks the loop
+            from fetchbox.core import watchdog
+
+            app.state.watchdog_stop = watchdog.start(asyncio.get_running_loop())
 
         log.info(
             "started",
@@ -244,6 +270,10 @@ def create_app(
             yield
         finally:
             await state.bus.emit("system.stopping")
+            if (stop := getattr(app.state, "watchdog_stop", None)) is not None:
+                stop.set()
+            await app.state.integrations.stop()
+            await app.state.notifications.stop()
             await state.scheduler.stop()
             await state.jobs.stop(timeout=30)
             await autosearch.stop()

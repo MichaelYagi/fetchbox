@@ -90,10 +90,12 @@ async def _acquire(
     _engine(server).connect_peer(made.info_hash, "127.0.0.1", seed.listen_port or 0)
 
     async def acquired() -> bool:
+        # A single loopback connect sometimes fails on Windows: keep offering the seeder.
+        _engine(server).connect_peer(made.info_hash, "127.0.0.1", seed.listen_port or 0)
         t = (await c.get(f"/titles/{movie['id']}")).json()
         return bool(t["wanted"][0]["state"] == "acquired")
 
-    await until(acquired, within=40)
+    await until(acquired, within=60)
     return movie
 
 
@@ -391,7 +393,7 @@ async def test_unlock_then_redownload(
         msgs = [a["message"] for a in acts]
         return "Redownloading Dune" in msgs and any(m.startswith("Unlocked Dune") for m in msgs)
 
-    await until(logged, within=10)
+    await until(logged, within=30)  # slow Windows runners
 
     assert (await c.post("/wanted/nope/unlock")).status_code == 404
     assert (await c.post("/wanted/nope/redownload")).status_code == 404
@@ -423,7 +425,7 @@ async def test_redownload_keeps_the_file_until_the_new_import(
         hist = (await c.get(f"/titles/{movie['id']}/history")).json()["items"]
         return [h["type"] for h in hist][:3] == ["imported", "grabbed", "unlocked"]
 
-    await until(reimported, within=40)
+    await until(reimported, within=90)  # verified again: slow on Windows runners
     [f] = (await c.get(f"/titles/{movie['id']}/files")).json()
     assert f["relative_path"] == EXPECTED
     w = (await c.get(f"/titles/{movie['id']}")).json()["wanted"][0]

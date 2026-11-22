@@ -1,10 +1,17 @@
 <script lang="ts">
 	import { ApiError, del, get, patch, post, type S } from '#lib/api.ts';
 	import LibraryCard from '#lib/LibraryCard.svelte';
+	import LibraryCheckCard from '#lib/LibraryCheckCard.svelte';
+	import MediaServersCard from '#lib/MediaServersCard.svelte';
+	import NotificationsCard from '#lib/NotificationsCard.svelte';
 	import Path from '#lib/Path.svelte';
 	import { session } from '#lib/session.svelte.ts';
 
-	type Cfg = { tmdb: { api_key: string | null; language: string }; search: Record<string, unknown> };
+	type Cfg = {
+		tmdb: { api_key: string | null; language: string };
+		tvdb?: { api_key: string | null; pin: string | null };
+		search: Record<string, unknown>;
+	};
 	let config = $state<{ config: Cfg; overridden: string[] } | null>(null);
 	let indexers = $state<S['IndexerOut'][]>([]);
 	let definitions = $state<S['DefinitionOut'][]>([]);
@@ -18,6 +25,8 @@
 	let busy = $state('');
 
 	let tmdbKey = $state('');
+	let tvdbKey = $state('');
+	let tvdbPin = $state('');
 	let newIndexer = $state({ kind: 'prowlarr', name: '', url: '', api_key: '', definition: '' });
 	let newClient = $state({ kind: 'qbittorrent', name: '', url: '', username: '', password: '' });
 	// Inline editing: one row at a time. Secrets left blank keep what is stored.
@@ -31,8 +40,11 @@
 		priority: 25,
 		local: '',
 		remote: '',
-		folder: ''
+		folder: '',
+		iface: '',
+		kill: true
 	});
+	let interfaces = $state<S['NetworkInterface'][]>([]);
 
 	function editIndexer(i: S['IndexerOut']) {
 		const st = i.settings as Record<string, unknown>;
@@ -45,7 +57,9 @@
 			priority: i.priority,
 			local: '',
 			remote: '',
-			folder: ''
+			folder: '',
+			iface: '',
+			kill: true
 		};
 		editing = i.id;
 	}
@@ -62,9 +76,12 @@
 			priority: c.priority,
 			local: map?.local ?? '',
 			remote: map?.client ?? '',
-			folder: c.policy.save_path ?? ''
+			folder: c.policy.save_path ?? '',
+			iface: (st.interface as string) ?? '',
+			kill: (st.kill_switch as boolean) ?? true
 		};
 		editing = c.id;
+		if (c.kind === 'builtin') get<S['NetworkInterface'][]>('/system/network-interfaces').then((x) => (interfaces = x));
 	}
 
 	// Torrent clients in the order they're tried; the first enabled, running one is used.
@@ -115,8 +132,15 @@
 				? [{ local: draft.local.trim(), client: draft.remote.trim() }]
 				: [];
 		const folder = draft.folder.trim() || null; // empty: back to the default
+		const st = c.settings as Record<string, unknown>;
+		// Only touch the engine's settings when they change: that restarts it.
+		const bindChanged =
+			c.kind === 'builtin' && ((st.interface ?? '') !== draft.iface || (st.kill_switch ?? true) !== draft.kill);
 		const body = builtIn
-			? { policy: { save_path: folder } }
+			? {
+					policy: { save_path: folder },
+					...(bindChanged ? { settings: { interface: draft.iface || null, kill_switch: draft.kill } } : {})
+				}
 			: { settings, policy: { path_mappings: mappings, save_path: folder } };
 		act(`save-${c.id}`, () => patch(`/download-clients/${c.id}`, body, c.etag), `${c.name} saved.`).then(
 			() => {
@@ -165,6 +189,16 @@
 		act('tmdb', () => patch('/system/config', { tmdb: { api_key: tmdbKey.trim() || null } }), 'TMDB key saved.').then(
 			() => (tmdbKey = '')
 		);
+	};
+
+	const saveTvdb = (e: SubmitEvent) => {
+		e.preventDefault();
+		const tvdb: Record<string, string | null> = { api_key: tvdbKey.trim() || null };
+		if (tvdbPin.trim()) tvdb.pin = tvdbPin.trim();
+		act('tvdb', () => patch('/system/config', { tvdb }), tvdb.api_key ? 'TVDB key saved.' : 'TVDB key removed.').then(() => {
+			tvdbKey = '';
+			tvdbPin = '';
+		});
 	};
 
 	const test = (kind: 'indexers' | 'download-clients', id: string) =>
@@ -263,7 +297,7 @@
 	</section>
 
 	<section id="tmdb">
-		<h2>Movie information (TMDB)</h2>
+		<h2>Movie and show information (TMDB)</h2>
 		<form class="card stack" onsubmit={saveTmdb}>
 			<p class="muted small">
 				Searching for movies needs a free API key from
@@ -279,6 +313,20 @@
 					<button class="primary" disabled={!tmdbKey.trim() || busy === 'tmdb'}>Save</button>
 				</div>
 			{/if}
+		</form>
+		<form class="card stack tvdb" onsubmit={saveTvdb}>
+			<p class="muted small">
+				<strong>Anime, optional:</strong> releases numbered by absolute episode (“Show - 1071”) need TheTVDB's numbering,
+				which TMDB doesn't have. Get an API key at
+				<a href="https://thetvdb.com/api-information" target="_blank" rel="noreferrer">thetvdb.com/api-information</a>
+				(a personal key also needs your subscriber PIN). Shows are updated at their next refresh.
+				{#if config?.config.tvdb?.api_key}A key is set.{/if}
+			</p>
+			<div class="row">
+				<input class="grow" type="password" placeholder={config?.config.tvdb?.api_key ? '••••••••  (replace)' : 'TVDB API key'} bind:value={tvdbKey} autocomplete="off" />
+				<input type="password" placeholder="PIN (if needed)" bind:value={tvdbPin} autocomplete="off" />
+				<button class="primary" disabled={!tvdbKey.trim() || busy === 'tvdb'}>Save</button>
+			</div>
 		</form>
 	</section>
 
@@ -429,6 +477,36 @@
 										</label>
 										<button class="primary" disabled={!!busy}>Save</button>
 									</form>
+									{#if c.kind === 'builtin'}
+										<div class="mapping">
+											<div class="row">
+												<label class="grow">
+													Only download through
+													<select bind:value={draft.iface}>
+														<option value="">Any network connection</option>
+														{#each interfaces as n (n.name)}
+															<option value={n.name}>
+																{n.name}{n.vpn ? ' (VPN)' : ''} — {n.address ?? 'down'}
+															</option>
+														{/each}
+														{#if draft.iface && !interfaces.some((n) => n.name === draft.iface)}
+															<option value={draft.iface}>{draft.iface} (not found now)</option>
+														{/if}
+													</select>
+												</label>
+												{#if draft.iface}
+													<label class="inline-check"
+														><input type="checkbox" bind:checked={draft.kill} /> Pause all torrents if it disconnects
+														(kill switch)</label
+													>
+												{/if}
+											</div>
+											<p class="muted small hint">
+												Pick your VPN's connection to keep torrent traffic on it. With the kill switch, every torrent pauses
+												while the VPN is down and resumes when it's back. Saving this restarts the engine briefly.
+											</p>
+										</div>
+									{/if}
 									{#if c.kind !== 'builtin' && c.kind !== 'direct'}
 									<div class="mapping">
 										<p class="muted small hint">
@@ -515,12 +593,29 @@
 				{#each ['movie', 'series'] as const as kind (kind)}
 					<LibraryCard {kind} dest={destinations.find((d) => d.media_kind === kind && d.is_default) ?? destinations.find((d) => d.media_kind === kind)} options={namingOptions} onChanged={load} />
 				{/each}
+				<LibraryCheckCard />
 			</div>
 		{/if}
+	</section>
+
+	<section id="media-servers">
+		<h2>Media servers</h2>
+		<MediaServersCard {destinations} />
+	</section>
+
+	<section id="notifications">
+		<h2>Notifications</h2>
+		<NotificationsCard />
 	</section>
 </main>
 
 <style>
+	.inline-check {
+		display: flex;
+		gap: 0.4rem;
+		align-items: center;
+		align-self: flex-end;
+	}
 	section {
 		margin-bottom: 1.5rem;
 	}
