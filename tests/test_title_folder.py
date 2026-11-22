@@ -75,7 +75,8 @@ async def test_the_default_folder_or_an_existing_one_is_not_added_again(
 async def test_a_folder_that_cant_be_used_adds_nothing(
     c: httpx.AsyncClient, tmp_path: Path
 ) -> None:
-    for bad in ("Movies/Kids", "~nobody-such-user/Movies"):
+    # (not "~someone/Movies": on Windows that expands to C:\\Users\\someone\\Movies, a full path)
+    for bad in ("Movies/Kids", "Kids"):
         r = await _add(c, bad)
         assert r.status_code == 422, (bad, r.text)
         assert r.json()["errors"][0]["field"] == "body.folder"

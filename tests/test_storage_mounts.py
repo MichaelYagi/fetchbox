@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -93,6 +94,7 @@ def test_native_folders_only() -> None:
     assert native_folder_problem("/mnt/c/x", wsl=False, windows=False) is None
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="WSL is Linux: /mnt/c isn't a path on Windows")
 async def test_in_wsl_windows_drives_are_fine_as_wsl_sees_them(
     c: httpx.AsyncClient, server: Running, monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -23,10 +23,11 @@ import structlog
 from sqlalchemy import delete, select
 
 from fetchbox.core.db import Base, Database
-from fetchbox.core.events import Actor, EventBus
+from fetchbox.core.events import Actor, Event, EventBus
 from fetchbox.modules.downloads.models import Download
 from fetchbox.modules.library.models import MediaFile
 from fetchbox.modules.storage.models import Destination
+from fetchbox.modules.system.activity import entry_for
 
 if TYPE_CHECKING:
     from fetchbox.modules.downloads.service import DownloadsService
@@ -147,18 +148,25 @@ class DataReset:
                 if table.name in DATA_TABLES:
                     await s.execute(delete(table))
             await s.execute(delete(Job).where(Job.status != "running"))
+            # The log starts afresh with the reset itself, written here rather than left to
+            # the background writer: in the same transaction, it can't be lost or wiped.
+            event = Event(
+                type="system.data_reset",
+                actor=actor,
+                data={
+                    "backup": result.backup,
+                    "downloads": result.downloads_stopped,
+                    "files": result.files_deleted,
+                    "kept_files": "no" if delete_files else "yes",
+                },
+            )
+            if (entry := entry_for(event)) is not None:
+                s.add(entry)
             await s.commit()
         self.downloads.live.clear()
         self.downloads._progress_pct.clear()
 
-        await self.bus.emit(
-            "system.data_reset",
-            actor=actor,
-            backup=result.backup,
-            downloads=result.downloads_stopped,
-            files=result.files_deleted,
-            kept_files="no" if delete_files else "yes",
-        )
+        await self.bus.publish(event)  # for live views; the writer merges it (same id)
         log.info(
             "system.data_reset",
             backup=result.backup,
