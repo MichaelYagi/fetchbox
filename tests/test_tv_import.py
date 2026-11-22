@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 from collections.abc import AsyncIterator
 from pathlib import Path
 from typing import Any
@@ -11,6 +12,7 @@ import pytest
 
 from fetchbox.modules.library.service import file_episodes, release_episodes
 from fetchbox.modules.releases.parser import parse_release
+from fetchbox.providers.download_clients import DownloadClientError
 from fetchbox.providers.download_clients.builtin import BuiltinClient
 from tests.conftest import Running
 from tests.fake_torznab import Item
@@ -91,7 +93,8 @@ async def test_season_pack_import(
 
     async def imported() -> bool:
         # A single loopback connect sometimes fails on Windows: keep offering the seeder.
-        engine.connect_peer(made.info_hash, "127.0.0.1", seed.listen_port or 0)
+        with contextlib.suppress(DownloadClientError):  # gone once filed (no seeding)
+            engine.connect_peer(made.info_hash, "127.0.0.1", seed.listen_port or 0)
         imports = (await c.get("/imports")).json()
         return bool(imports) and imports[0]["status"] == "imported"
 

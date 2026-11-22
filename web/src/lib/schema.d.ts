@@ -4491,12 +4491,18 @@ export interface components {
             path_mappings: components["schemas"]["fetchbox__modules__downloads__service__PathMapping"][];
             /**
              * Save Path
-             * @description Download folder as Fetchbox sees it. Built-in clients: default <downloads root>/Torrents; external clients: default is the client's own folder
+             * @description External clients: the download folder as Fetchbox sees it (default: the client's own). Built-in downloads always go into the library folders
              */
             save_path?: string | null;
             /**
+             * Seed
+             * @description Keep sharing a torrent after it's downloaded and filed. Off (the default): it stops as soon as it's in the library, and its file stays
+             * @default false
+             */
+            seed: boolean;
+            /**
              * Seed Action
-             * @description When a goal is met (whichever first, after import): remove the torrent and its downloaded data (library files are separate links or copies), or pause it
+             * @description When a goal is met (whichever first, after import): remove the torrent (a file filed in place stays; another client's download, already copied or linked into the library, is deleted), or pause it. With seeding off: always remove
              * @default remove
              * @enum {string}
              */

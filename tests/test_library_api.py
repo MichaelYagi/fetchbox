@@ -73,10 +73,17 @@ async def _acquire(
     seed: BuiltinClient,
     *,
     automatic: bool = False,
+    seeding: bool = False,
 ) -> dict[str, Any]:
     """Grab ``made`` and wait until it's imported. ``automatic``: no search or grab by
     hand, adding the movie is enough (search on add)."""
     await _indexer(c, fakes, "one", [Item(NAME, magnet=made.magnet, infohash=made.info_hash)])
+    if seeding:  # off by default: the torrent stops once it's filed
+        engine_row = next(
+            x for x in (await c.get("/download-clients")).json() if x["kind"] == "builtin"
+        )
+        r = await c.patch(f"/download-clients/{engine_row['id']}", json={"policy": {"seed": True}})
+        assert r.status_code == 200, r.text
     movie = await _movie(c, search=automatic)
     if not automatic:
         wid = movie["wanted"][0]["id"]
@@ -91,8 +98,10 @@ async def _acquire(
     _engine(server).connect_peer(made.info_hash, "127.0.0.1", seed.listen_port or 0)
 
     async def acquired() -> bool:
-        # A single loopback connect sometimes fails on Windows: keep offering the seeder.
-        _engine(server).connect_peer(made.info_hash, "127.0.0.1", seed.listen_port or 0)
+        # A single loopback connect sometimes fails on Windows: keep offering the seeder
+        # (until it's filed: not seeding, the torrent is then gone)
+        with contextlib.suppress(DownloadClientError):
+            _engine(server).connect_peer(made.info_hash, "127.0.0.1", seed.listen_port or 0)
         t = (await c.get(f"/titles/{movie['id']}")).json()
         return bool(t["wanted"][0]["state"] == "acquired")
 
@@ -116,7 +125,7 @@ async def test_gate_add_movie_get_named_file(
     seed: BuiltinClient,
     settings: Any,
 ) -> None:
-    movie = await _acquire(c, fakes, server, made, seed, automatic=True)
+    movie = await _acquire(c, fakes, server, made, seed, automatic=True, seeding=True)
     library = settings.downloads_dir / "Movies"
     placed = library / EXPECTED
     assert placed.is_file(), sorted(str(p) for p in library.rglob("*"))
@@ -483,7 +492,7 @@ async def test_seeding_goal_stops_the_torrent_after_import(
     settings: Any,
     action: str,
 ) -> None:
-    await _acquire(c, fakes, server, made, seed)
+    await _acquire(c, fakes, server, made, seed, seeding=True)
     client = (await c.get("/download-clients")).json()[0]
     sub = server.app.state.fb.bus.subscribe("download.seeded")
     r = await c.patch(
@@ -513,6 +522,27 @@ async def test_seeding_goal_stops_the_torrent_after_import(
         return any(a["message"].startswith(f"Finished seeding {NAME}") for a in acts)
 
     await until(logged, within=10)
+
+
+async def test_no_seeding_by_default_the_torrent_stops_once_filed(
+    c: httpx.AsyncClient,
+    fakes: Fakes,
+    server: Running,
+    made: Made,
+    seed: BuiltinClient,
+    settings: Any,
+) -> None:
+    clients = (await c.get("/download-clients")).json()
+    assert all(x["policy"]["seed"] is False for x in clients)  # off unless you turn it on
+    sub = server.app.state.fb.bus.subscribe("download.seeded")
+    await _acquire(c, fakes, server, made, seed)
+    ev = await asyncio.wait_for(sub.queue.get(), 20)
+    assert ev.data["action"] == "remove" and ev.data["deleted_data"] is False
+    [d] = (await c.get("/downloads")).json()
+    assert d["status"] == "completed" and d["seeded_at"]
+    assert (settings.downloads_dir / "Movies" / EXPECTED).is_file()  # the file stays
+    assert await _engine(server).status() == []  # nothing left sharing
+    assert not (settings.downloads_dir / "Movies" / ".incomplete" / NAME).exists()
 
 
 async def test_stop_seeding_keeps_files_that_were_not_imported(

@@ -4,6 +4,9 @@
 
 	let downloads = $state<Download[] | null>(null);
 	let imports = $state<S['ImportOut'][]>([]);
+	// Which clients keep seeding after download (off by default): the others' torrents stop
+	// on their own once filed, so there's nothing to stop by hand.
+	let seeds = $state<Set<string>>(new Set());
 	let error = $state('');
 	let notice = $state('');
 	let busy = $state('');
@@ -11,10 +14,13 @@
 
 	async function load() {
 		try {
-			[downloads, imports] = await Promise.all([
+			let clients: S['ClientOut'][];
+			[downloads, imports, clients] = await Promise.all([
 				get<Download[]>('/downloads'),
-				get<S['ImportOut'][]>('/imports')
+				get<S['ImportOut'][]>('/imports'),
+				get<S['ClientOut'][]>('/download-clients')
 			]);
+			seeds = new Set(clients.filter((c) => c.policy.seed).map((c) => c.id));
 			error = '';
 		} catch (e) {
 			error = e instanceof ApiError ? e.message : String(e);
@@ -78,12 +84,9 @@
 	const done = $derived((downloads ?? []).filter((d) => !['queued', 'downloading', 'paused'].includes(d.status)));
 	const attention = $derived(imports.filter((i) => i.status === 'needs_attention'));
 	// Finished is "Downloaded", whatever happened to the file since (it may have been moved).
+	const seeding = (d: Download) => d.status === 'completed' && !d.seeded_at && seeds.has(d.client_id ?? '');
 	const label = (d: Download) =>
-		d.completed_at
-			? d.status === 'completed' && !d.seeded_at
-				? 'Downloaded · seeding'
-				: 'Downloaded'
-			: (LABEL[d.status] ?? d.status);
+		d.completed_at ? (seeding(d) ? 'Downloaded · seeding' : 'Downloaded') : (LABEL[d.status] ?? d.status);
 </script>
 
 <main>
@@ -176,7 +179,7 @@
 							<td class="muted small">{ago(d.completed_at ?? d.removed_at)}</td>
 							<td>
 								<div class="row">
-									{#if d.status === 'completed' && !d.seeded_at}
+									{#if seeding(d)}
 										<button class="small" onclick={() => remove(d)} disabled={!!busy}>Stop seeding</button>
 									{/if}
 									{#if d.completed_at || d.status === 'failed'}

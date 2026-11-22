@@ -5358,12 +5358,18 @@
         "type": "null"
        }
       ],
-      "description": "Download folder as Fetchbox sees it. Built-in clients: default <downloads root>/Torrents; external clients: default is the client's own folder",
+      "description": "External clients: the download folder as Fetchbox sees it (default: the client's own). Built-in downloads always go into the library folders",
       "title": "Save Path"
+     },
+     "seed": {
+      "default": false,
+      "description": "Keep sharing a torrent after it's downloaded and filed. Off (the default): it stops as soon as it's in the library, and its file stays",
+      "title": "Seed",
+      "type": "boolean"
      },
      "seed_action": {
       "default": "remove",
-      "description": "When a goal is met (whichever first, after import): remove the torrent and its downloaded data (library files are separate links or copies), or pause it",
+      "description": "When a goal is met (whichever first, after import): remove the torrent (a file filed in place stays; another client's download, already copied or linked into the library, is deleted), or pause it. With seeding off: always remove",
       "enum": [
        "remove",
        "pause"
