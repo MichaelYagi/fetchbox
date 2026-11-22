@@ -554,6 +554,20 @@ class LibraryService:
             and (profile.cutoff_format_score is None or score >= profile.cutoff_format_score)
         )
         replaced: list[str] = []
+        # The files this one replaces: stop any torrent still seeding them first, before
+        # this transaction (stopping one writes too, and would wait on it)
+        async with self.db.sessionmaker() as s:
+            prior = (
+                await s.execute(
+                    select(MediaFile.relative_path, Destination.path)
+                    .join(MediaFileItem, MediaFileItem.media_file_id == MediaFile.id)
+                    .join(Destination, Destination.id == MediaFile.destination_id)
+                    .where(MediaFileItem.wanted_item_id.in_([w.id for w in items]))
+                )
+            ).all()
+        await self.downloads.release_files(
+            {str(Path(root) / r) for r, root in prior} - {str(Path(dest.path) / rel)}
+        )
         async with self.db.sessionmaker() as s:
             ids = [w.id for w in items]
             old_q = (
@@ -628,7 +642,6 @@ class LibraryService:
                 if old_dest is not None:
                     old_path = Path(old_dest.path) / old.relative_path
                     recycle = str(Path(old_dest.path) / RECYCLE_DIR) if old_dest.recycle else None
-                    await self.downloads.release_files({str(old_path)})  # a torrent seeding it
                     with contextlib.suppress(StorageError):
                         await self.storage.local.delete(str(old_path), recycle_dir=recycle)
                     replaced.append(old.relative_path)
