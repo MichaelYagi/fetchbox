@@ -432,7 +432,9 @@ class TorznabProvider(IndexerProvider):
 
     async def rss(self) -> list[ReleaseCandidate]:
         caps = await self.caps()
-        cats = dict.fromkeys([*self.cfg.movie_categories, *self.cfg.tv_categories])
+        cats = dict.fromkeys(
+            [*self.cfg.movie_categories, *self.cfg.tv_categories, *self.cfg.music_categories]
+        )
         return await self._items(t="search", cat=",".join(map(str, cats)), limit=self._limit(caps))
 
     async def resolve(self, c: ReleaseCandidate) -> TorrentSource:

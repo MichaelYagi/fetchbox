@@ -284,3 +284,36 @@ async def test_download_and_import_an_album(
     assert imported_ev["data"]["quality"] == "FLAC"
     queue = (await c.get("/downloads")).json()
     assert queue[0]["imported_to"].endswith("Portishead/Dummy (1994)")
+
+
+async def test_rss_grabs_a_wanted_album(
+    c: httpx.AsyncClient, server: Running, fakes: Fakes
+) -> None:
+    """The newest releases of a feed: the wanted album is grabbed; the rest is not."""
+    from fetchbox.modules.automation.rss import rss_sync
+
+    music = server.app.state.music
+    music.transport, music.interval = fake_mb(), 0
+    lossless = next(p["id"] for p in (await c.get("/quality-profiles")).json()
+                    if p["name"] == "Lossless")  # fmt: skip
+    body = {"mbid": ARTIST, "profile_id": lossless, "monitor_mode": "latest"}
+    artist = (await c.post("/music/artists", json=body)).json()
+    await music.fill_editions()
+    mb = 1_000_000
+    feed = [
+        Item("Portishead - Third (2008) [FLAC]", size=320 * mb, category=3040, infohash="a" * 40),
+        Item("Portishead - Dummy (1994) [FLAC]", size=300 * mb, category=3040, infohash="b" * 40),
+        Item("Massive Attack - Mezzanine (1998) [FLAC]", size=350 * mb, category=3040,
+             infohash="c" * 40),
+        Item("Some.Show.S01E01.1080p.WEB-DL", size=2000 * mb, category=5040, infohash="d" * 40),
+    ]  # fmt: skip
+    await _indexer(c, fakes, "musicfeed", feed)
+    out = await rss_sync(server.app.state.autosearch)
+    # Third is the only wanted album ("latest"); Dummy isn't wanted, Mezzanine isn't theirs
+    assert out["grabbed"] == ["Portishead - Third (2008) [FLAC]"], out
+    third = next(a for a in (await c.get(f"/titles/{artist['id']}/albums")).json()
+                 if a["name"] == "Third")  # fmt: skip
+    assert third["wanted"]["state"] in ("grabbed", "downloading")
+    # the feed asks for music too
+    req = fakes.torznab["musicfeed"].requests[-1]
+    assert "3000" in req.url.params["cat"].split(",")
