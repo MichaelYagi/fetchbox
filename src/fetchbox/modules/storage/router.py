@@ -12,7 +12,7 @@ from fetchbox.core.errors import problem_responses as pr
 from fetchbox.core.paths import native_folder_problem
 from fetchbox.modules.auth.deps import CurrentPrincipal, require
 from fetchbox.modules.storage.models import Destination, StorageNode
-from fetchbox.modules.storage.service import StorageService, mounts
+from fetchbox.modules.storage.service import StorageService, mounts, test_folder
 
 router = APIRouter(tags=["storage"])
 _read = [Depends(require("storage:read"))]
@@ -218,3 +218,22 @@ class MountOut(BaseModel):
 async def list_mounts() -> list[MountOut]:
     """Drives and network shares mounted on this computer: candidates for library folders."""
     return [MountOut(**m) for m in await asyncio.to_thread(mounts)]
+
+
+class FolderTestIn(BaseModel):
+    path: str = Field(max_length=4096)
+
+
+class FolderTestOut(BaseModel):
+    ok: bool = Field(description="The folder can be used as a library folder")
+    message: str
+    exists: bool
+    network: bool = Field(description="On a NAS / network share")
+    free: int | None = Field(description="Free bytes where it is (or will be)")
+
+
+@router.post("/storage/test-folder", response_model=FolderTestOut, dependencies=_write)
+async def test_folder_path(body: FolderTestIn) -> FolderTestOut:
+    """Check a folder before choosing it: usable here, writable, free space. Nothing is
+    created; a probe file is written and deleted in an existing folder."""
+    return FolderTestOut(**await asyncio.to_thread(test_folder, body.path))

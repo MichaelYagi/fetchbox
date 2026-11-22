@@ -165,3 +165,54 @@ async def test_fetchboxs_own_default_folders_on_the_other_system_move_while_empt
     assert now["Movies"] == str(settings.downloads_dir / "Movies")
     assert now["Music"] == str(settings.downloads_dir / "Music")
     assert now["TV"] == str(other / "TV")  # has a file in it: stays, for you to decide
+
+
+async def test_a_folder_can_be_tested_before_choosing_it(
+    c: httpx.AsyncClient, tmp_path: Path
+) -> None:
+    """The Test button: nothing is created, nothing is left behind."""
+    there = tmp_path / "Movies"
+    there.mkdir()
+    r = await c.post("/storage/test-folder", json={"path": str(there)})
+    assert r.status_code == 200, r.text
+    t = r.json()
+    assert t["ok"] and t["exists"] and not t["network"] and t["free"] > 0
+    assert "can write" in t["message"] and "GB free" in t["message"]
+    assert not list(there.iterdir())  # the probe file is gone
+
+    new = tmp_path / "Media" / "TV"
+    t = (await c.post("/storage/test-folder", json={"path": str(new)})).json()
+    assert t["ok"] and not t["exists"] and "will create it" in t["message"]
+    assert not (tmp_path / "Media").exists()  # only saving creates it
+
+    afile = tmp_path / "file.txt"
+    afile.write_text("x")
+    t = (await c.post("/storage/test-folder", json={"path": str(afile)})).json()
+    assert not t["ok"] and "is a file" in t["message"]
+
+    t = (await c.post("/storage/test-folder", json={"path": "Movies"})).json()
+    assert not t["ok"] and "full path" in t["message"]
+
+
+@pytest.mark.skipif(sys.platform == "win32" or os.geteuid() == 0, reason="POSIX permissions")
+async def test_a_read_only_folder_fails_the_test(c: httpx.AsyncClient, tmp_path: Path) -> None:
+    ro = tmp_path / "ro"
+    ro.mkdir()
+    ro.chmod(0o555)
+    try:
+        t = (await c.post("/storage/test-folder", json={"path": str(ro)})).json()
+        assert not t["ok"] and "can't write" in t["message"]
+        t = (await c.post("/storage/test-folder", json={"path": str(ro / "Movies")})).json()
+        assert not t["ok"] and "can't create it" in t["message"]
+    finally:
+        ro.chmod(0o755)
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX mount folders")
+def test_a_share_that_isnt_connected_is_named() -> None:
+    """macOS /Volumes/<share>, Linux /mnt/<share>: missing means not connected."""
+    from fetchbox.modules.storage.service import test_folder as probe
+
+    root = "/Volumes" if os.path.isdir("/Volumes") else "/mnt"
+    t = probe(f"{root}/NoSuchShare/Media/Movies")
+    assert not t["ok"] and f"Nothing is connected at {root}/NoSuchShare" in t["message"]

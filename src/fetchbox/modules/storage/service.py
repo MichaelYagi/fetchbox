@@ -11,6 +11,7 @@ deleted, hardlinks work from the torrent folder, and free space is above the flo
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import os
 import re
 import shutil
@@ -108,6 +109,67 @@ def mounts() -> list[dict[str, Any]]:
         out.append({"path": mp, "device": part.device, "fstype": part.fstype,
                     "network": network, "total": u.total, "free": u.free})  # fmt: skip
     return sorted(out, key=lambda m: m["path"])
+
+
+# where drives and shares are mounted (macOS, WSL / Linux)
+MOUNT_ROOTS = {"/Volumes", "/mnt", "/media", "/run/media"}
+
+
+def test_folder(path: str) -> dict[str, Any]:
+    """Can ``path`` be a library folder? Read-only, apart from a probe file written and
+    deleted in it: a folder that doesn't exist yet is not created (saving does that)."""
+    out: dict[str, Any] = {"ok": False, "exists": False, "network": False, "free": None}
+    raw = path.strip()
+    if not raw:
+        return out | {"message": "Enter a folder"}
+    p = Path(os.path.expanduser(raw))
+    if not p.is_absolute():
+        return out | {"message": "Must be a full path, like /home/you/Media/Movies"}
+    if why := native_folder_problem(str(p)):
+        return out | {"message": why[:1].upper() + why[1:]}
+    mount = mount_of(p)
+    if mount is not None and not _is_root(mount):
+        import psutil
+
+        with contextlib.suppress(Exception):
+            for part in psutil.disk_partitions(all=True):
+                if os.path.normcase(part.mountpoint) == os.path.normcase(mount):
+                    out["network"] = part.fstype in NETWORK_FS or part.device.startswith(
+                        ("//", "\\\\")
+                    )
+    where = " on a network share" if out["network"] else ""
+    if p.exists():
+        if not p.is_dir():
+            return out | {"message": f"{p} is a file, not a folder"}
+        out["exists"] = True
+        probe = p / ".fetchbox-write-test"
+        try:
+            probe.write_bytes(b"")
+            probe.unlink()
+        except OSError as exc:
+            return out | {"message": f"Fetchbox can't write to {p}: {exc.strerror or exc}"}
+        target = p
+        what = f"Folder found{where}, Fetchbox can write to it"
+    else:
+        target = p.parent
+        while not target.exists() and target != target.parent:
+            target = target.parent
+        if str(target) in MOUNT_ROOTS:
+            # /Volumes/Public missing: the share (or drive) isn't connected. Never create
+            # it: it would land on the local disk, under where the share goes.
+            gone = target / p.relative_to(target).parts[0]
+            return out | {
+                "message": f"Nothing is connected at {gone}: connect the share or drive first, "
+                "then test again"
+            }
+        if not target.is_dir() or not os.access(target, os.W_OK | os.X_OK):
+            return out | {"message": f"{p} doesn't exist, and Fetchbox can't create it in {target}"}
+        what = f"{p.name} doesn't exist yet{where}: Fetchbox will create it when you save"
+    with contextlib.suppress(OSError):
+        out["free"] = shutil.disk_usage(target).free
+    if out["free"] is not None:
+        what += f" ({out['free'] / GB:.1f} GB free)"
+    return out | {"ok": True, "message": what}
 
 
 def _norm_folder(path: str) -> str:

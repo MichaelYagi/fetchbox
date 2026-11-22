@@ -2670,6 +2670,63 @@
     "title": "FolderOut",
     "type": "object"
    },
+   "FolderTestIn": {
+    "properties": {
+     "path": {
+      "maxLength": 4096,
+      "title": "Path",
+      "type": "string"
+     }
+    },
+    "required": [
+     "path"
+    ],
+    "title": "FolderTestIn",
+    "type": "object"
+   },
+   "FolderTestOut": {
+    "properties": {
+     "exists": {
+      "title": "Exists",
+      "type": "boolean"
+     },
+     "free": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Free bytes where it is (or will be)",
+      "title": "Free"
+     },
+     "message": {
+      "title": "Message",
+      "type": "string"
+     },
+     "network": {
+      "description": "On a NAS / network share",
+      "title": "Network",
+      "type": "boolean"
+     },
+     "ok": {
+      "description": "The folder can be used as a library folder",
+      "title": "Ok",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "ok",
+     "message",
+     "exists",
+     "network",
+     "free"
+    ],
+    "title": "FolderTestOut",
+    "type": "object"
+   },
    "ForgetIn": {
     "properties": {
      "file_ids": {
@@ -18235,6 +18292,59 @@
      }
     ],
     "summary": "Get Node",
+    "tags": [
+     "storage"
+    ]
+   }
+  },
+  "/api/v1/storage/test-folder": {
+   "post": {
+    "description": "Check a folder before choosing it: usable here, writable, free space. Nothing is\ncreated; a probe file is written and deleted in an existing folder.",
+    "operationId": "test_folder_path_api_v1_storage_test_folder_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/FolderTestIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/FolderTestOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Test Folder Path",
     "tags": [
      "storage"
     ]

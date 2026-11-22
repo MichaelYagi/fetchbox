@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Path from './Path.svelte';
 	import { ApiError, get, patch, post, put, type S } from './api.ts';
+	import FolderTest from './FolderTest.svelte';
 
 	// Settings for one kind of library (movies or TV): where files go, how they're named
 	// (a preset, or custom patterns), a live preview, and renaming files already there.
@@ -207,6 +208,7 @@
 				<button class="primary" disabled={!!busy}>Save</button>
 				<button type="button" onclick={() => (editingFolder = false)}>Cancel</button>
 			</form>
+			<FolderTest path={folder} />
 			<div class="muted small">Checked when you save: it must exist or be creatable, be writable, and have free space.</div>
 		{/if}
 	</div>
