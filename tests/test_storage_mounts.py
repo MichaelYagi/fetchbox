@@ -111,3 +111,40 @@ async def test_crossing_folders_are_refused_in_wsl(
         await s.commit()
     d = (await c.post(f"/destinations/{movies['id']}/check")).json()
     assert d["status"] == "offline" and "WSL folder" in d["status_message"]
+
+
+async def test_fetchboxs_own_default_folders_on_the_other_system_move_while_empty(
+    c: httpx.AsyncClient,
+    server: Running,
+    settings: Any,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An earlier version under WSL made its default folders in the Windows Downloads
+    folder. At startup an empty one moves to this system's default; one with files in it
+    stays (flagged), since changing its path wouldn't bring the files along."""
+    from sqlalchemy import update
+
+    from fetchbox.modules.storage import service as storage_service
+    from fetchbox.modules.storage.models import Destination
+
+    other = tmp_path / "windows-side"  # stands in for /mnt/c/... under WSL
+    monkeypatch.setattr(
+        storage_service,
+        "native_folder_problem",
+        lambda p, **_: "the other system" if p.startswith(str(other)) else None,
+    )
+    dests = {d["name"]: d for d in (await c.get("/destinations")).json()}
+    (other / "TV" / "Show").mkdir(parents=True)
+    (other / "TV" / "Show" / "ep.mkv").write_bytes(b"x")  # someone's file: leave it
+    async with server.app.state.fb.db.sessionmaker() as s:
+        for name in ("Movies", "TV", "Music"):
+            await s.execute(update(Destination).where(Destination.id == dests[name]["id"])
+                            .values(path=str(other / name)))  # fmt: skip
+        await s.commit()
+
+    await server.app.state.storage.seed(None)  # what startup does
+    now = {d["name"]: d["path"] for d in (await c.get("/destinations")).json()}
+    assert now["Movies"] == str(settings.downloads_dir / "Movies")
+    assert now["Music"] == str(settings.downloads_dir / "Music")
+    assert now["TV"] == str(other / "TV")  # has a file in it: stays, for you to decide
