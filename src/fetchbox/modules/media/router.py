@@ -49,6 +49,7 @@ class WantedOut(_Versioned):
     id: str
     title_id: str
     episode_id: str | None
+    album_id: str | None = None
     state: str
     monitored: bool
     lock: str | None
@@ -64,9 +65,17 @@ class SeriesStats(BaseModel):
     missing: int = Field(description="Monitored, aired, no file yet")
 
 
+class AlbumStats(BaseModel):
+    albums: int
+    monitored: int
+    acquired: int
+    missing: int = Field(description="Monitored, released, no files yet")
+
+
 class TitleOut(_Versioned):
     id: str
     kind: str
+    mbid: str | None = Field(default=None, description="Music: the MusicBrainz artist id")
     tmdb_id: int | None
     imdb_id: str | None
     tvdb_id: int | None
@@ -98,16 +107,23 @@ class TitleOut(_Versioned):
     episodes: SeriesStats | None = Field(
         default=None, description="For a series: counts (see /titles/{id}/episodes for the list)"
     )
+    albums: AlbumStats | None = Field(
+        default=None, description="For an artist: counts (see /titles/{id}/albums for the list)"
+    )
 
 
 def title_out(
-    t: Title, wanted: list[WantedItem] | None = None, stats: dict[str, int] | None = None
+    t: Title,
+    wanted: list[WantedItem] | None = None,
+    stats: dict[str, int] | None = None,
+    album_stats: dict[str, int] | None = None,
 ) -> TitleOut:
     meta = t.meta or {}
     return TitleOut(
         id=t.id,
         version=t.version,
         kind=t.kind,
+        mbid=t.mbid,
         tmdb_id=t.tmdb_id,
         imdb_id=t.imdb_id,
         tvdb_id=t.tvdb_id,
@@ -134,6 +150,7 @@ def title_out(
         refreshed_at=t.refreshed_at,
         wanted=[WantedOut.model_validate(w) for w in wanted or []] if t.kind == "movie" else [],
         episodes=SeriesStats(**stats) if stats is not None else None,
+        albums=AlbumStats(**album_stats) if album_stats is not None else None,
     )
 
 
@@ -141,7 +158,8 @@ async def _many(svc: MediaService, titles: list[Title]) -> list[TitleOut]:
     movies = [t.id for t in titles if t.kind == "movie"]
     wanted = await svc.wanted_for(movies)
     stats = await svc.series_stats([t.id for t in titles if t.kind == "series"])
-    return [title_out(t, wanted.get(t.id, []), stats.get(t.id)) for t in titles]
+    albums = await svc.album_stats([t.id for t in titles if t.kind == "music"])
+    return [title_out(t, wanted.get(t.id, []), stats.get(t.id), albums.get(t.id)) for t in titles]
 
 
 def _future(d: date | None) -> date | None:
@@ -198,7 +216,7 @@ class TitlePatch(BaseModel):
 @router.get("/titles", response_model=TitlePage, dependencies=_read, responses=pr(422))
 async def list_titles(
     request: Request,
-    kind: Literal["movie", "series"] | None = Query(None, alias="filter[kind]"),
+    kind: Literal["movie", "series", "music"] | None = Query(None, alias="filter[kind]"),
     sort: str | None = Query(None, description=f"One of {', '.join(TITLE_SORT.options)}"),
     limit: int = Query(50, ge=1, le=500),
     cursor: str | None = None,

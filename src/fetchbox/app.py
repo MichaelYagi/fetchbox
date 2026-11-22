@@ -41,7 +41,9 @@ from fetchbox.modules.library.maintenance import LibraryCheck
 from fetchbox.modules.library.migrate import Migrator
 from fetchbox.modules.library.relocate import FolderMover
 from fetchbox.modules.library.service import LibraryService
+from fetchbox.modules.media import music_router
 from fetchbox.modules.media import router as media_router
+from fetchbox.modules.media.music import MusicService
 from fetchbox.modules.media.service import MediaService
 from fetchbox.modules.notifications import router as notifications_router
 from fetchbox.modules.notifications.service import NotificationsService
@@ -84,6 +86,7 @@ API_ROUTERS: tuple[APIRouter, ...] = (
     profiles_router.router,
     discovery_router.router,
     media_router.router,
+    music_router.router,
     sources_router.router,
     sources_router.definitions_router,
     releases_router.router,
@@ -189,6 +192,9 @@ def create_app(
         media = MediaService(db, bus, discovery, profiles)
         media.register_jobs(jobs, state.scheduler)
         app.state.media = media
+        music = MusicService(db, bus, jobs, media)
+        music.register_jobs(state.scheduler)
+        app.state.music = music
         sources = SourcesService(db, bus, box, provider_registry)
         await sources.sync_definitions(seed=settings.seed_indexers)
         app.state.sources = sources

@@ -1,6 +1,8 @@
-"""Titles (movies and series), seasons, episodes and wanted items.
+"""Titles (movies, series, music artists), seasons, episodes, albums, tracks and wanted
+items.
 
-The wanted item is the unit Fetchbox acquires: one per movie, one per episode.
+The wanted item is the unit Fetchbox acquires: one per movie, one per episode, one per
+album. All three go through the same states, queue, import and history.
 Seasons and episodes are created by the series pipeline (Phase 2); the tables exist
 now so the schema matches the spec.
 """
@@ -26,7 +28,8 @@ from sqlalchemy.orm import Mapped, mapped_column
 from fetchbox.core.concurrency import VersionMixin
 from fetchbox.core.db import Base, IdMixin, UTCDateTime, utcnow
 
-KINDS = ("movie", "series")
+KINDS = ("movie", "series", "music")
+ALBUM_KINDS = ("album", "ep", "single", "live", "compilation", "other")
 STATES = ("missing", "searching", "grabbed", "downloading", "importing", "acquired")
 LOCKS = ("acquired", "manual")
 
@@ -38,6 +41,8 @@ class Title(IdMixin, VersionMixin, Base):
     tmdb_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     tvdb_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     imdb_id: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    # MusicBrainz artist id (music)
+    mbid: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
     name: Mapped[str] = mapped_column(String(500))
     sort_name: Mapped[str] = mapped_column(String(500))
     year: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -54,7 +59,7 @@ class Title(IdMixin, VersionMixin, Base):
     refreshed_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
 
     __table_args__ = (
-        CheckConstraint("kind IN ('movie', 'series')", name="kind"),
+        CheckConstraint("kind IN ('movie', 'series', 'music')", name="kind"),
         UniqueConstraint("kind", "tmdb_id", name="uq_title_kind_tmdb_id"),
         Index("ix_title_sort_name", "sort_name"),
     )
@@ -82,12 +87,55 @@ class Episode(IdMixin, Base):
     __table_args__ = (UniqueConstraint("season_id", "number", name="uq_episode_season_id_number"),)
 
 
+class Album(IdMixin, Base):
+    """A release group of a music artist ("the album", whatever its editions)."""
+
+    __tablename__ = "album"
+
+    title_id: Mapped[str] = mapped_column(ForeignKey("title.id", ondelete="CASCADE"))
+    mbid: Mapped[str] = mapped_column(String(36))  # MusicBrainz release group
+    name: Mapped[str] = mapped_column(String(500))
+    kind: Mapped[str] = mapped_column(String(15), default="album")
+    secondary_types: Mapped[list[str]] = mapped_column(JSON, default=list)
+    release_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    # The edition (MusicBrainz release) whose track list is wanted; null until chosen
+    edition_mbid: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    meta: Mapped[dict[str, Any]] = mapped_column("metadata", JSON, default=dict)
+
+    __table_args__ = (
+        UniqueConstraint("title_id", "mbid", name="uq_album_title_id_mbid"),
+        CheckConstraint(
+            "kind IN ('album', 'ep', 'single', 'live', 'compilation', 'other')", name="kind"
+        ),
+    )
+
+
+class Track(IdMixin, Base):
+    """A track of an album's chosen edition."""
+
+    __tablename__ = "track"
+
+    album_id: Mapped[str] = mapped_column(ForeignKey("album.id", ondelete="CASCADE"))
+    disc: Mapped[int] = mapped_column(Integer, default=1)
+    number: Mapped[int] = mapped_column(Integer)
+    name: Mapped[str] = mapped_column(String(500))
+    length_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    recording_mbid: Mapped[str | None] = mapped_column(String(36), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("album_id", "disc", "number", name="uq_track_album_id_disc_number"),
+    )
+
+
 class WantedItem(IdMixin, VersionMixin, Base):
     __tablename__ = "wanted_item"
 
     title_id: Mapped[str] = mapped_column(ForeignKey("title.id", ondelete="CASCADE"))
     episode_id: Mapped[str | None] = mapped_column(
         ForeignKey("episode.id", ondelete="CASCADE"), nullable=True
+    )
+    album_id: Mapped[str | None] = mapped_column(
+        ForeignKey("album.id", ondelete="CASCADE"), nullable=True
     )
     state: Mapped[str] = mapped_column(String(20), default="missing")
     monitored: Mapped[bool] = mapped_column(Boolean, default=True)
@@ -104,6 +152,7 @@ class WantedItem(IdMixin, VersionMixin, Base):
         ),
         CheckConstraint("lock IS NULL OR lock IN ('acquired', 'manual')", name="lock"),
         UniqueConstraint("title_id", "episode_id", name="uq_wanted_item_title_id_episode_id"),
+        UniqueConstraint("title_id", "album_id", name="uq_wanted_item_title_id_album_id"),
         Index("ix_wanted_search", "monitored", "lock", "state", "next_search_at"),
         Index("ix_wanted_item_title_id", "title_id"),
     )

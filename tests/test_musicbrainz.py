@@ -3,6 +3,7 @@ their albums, and the editions of Dummy)."""
 
 from __future__ import annotations
 
+import itertools
 import json
 import time
 from datetime import date
@@ -90,7 +91,7 @@ async def test_one_request_a_second_and_busy_retries() -> None:
     mb = MusicBrainzClient(transport=httpx.MockTransport(handle), interval=0.2)
     await mb.artist(ARTIST)
     await mb.artist(ARTIST)  # 503 once, then answered
-    gaps = [b - a for a, b in zip(calls, calls[1:], strict=False)]
+    gaps = [b - a for a, b in itertools.pairwise(calls)]
     assert len(calls) == 3 and all(g >= 0.19 for g in gaps)
 
     gone = MusicBrainzClient(

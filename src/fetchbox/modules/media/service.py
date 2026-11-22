@@ -419,6 +419,32 @@ class MediaService:
         )
         return season
 
+    async def album_stats(self, title_ids: list[str]) -> dict[str, dict[str, int]]:
+        """Per artist: albums, monitored, acquired, missing (monitored, released, no files)."""
+        if not title_ids:
+            return {}
+        from fetchbox.modules.media.models import Album
+
+        today = utcnow().date()
+        out = {t: {"albums": 0, "monitored": 0, "acquired": 0, "missing": 0} for t in title_ids}
+        async with self.db.sessionmaker() as s:
+            rows = (
+                await s.execute(
+                    select(WantedItem.title_id, WantedItem.monitored, WantedItem.state,
+                           Album.release_date)
+                    .join(Album, Album.id == WantedItem.album_id)
+                    .where(WantedItem.title_id.in_(title_ids))
+                )
+            ).all()  # fmt: skip
+        for tid, monitored, state, released in rows:
+            st = out[tid]
+            st["albums"] += 1
+            st["monitored"] += int(monitored)
+            st["acquired"] += int(state == "acquired")
+            if monitored and state != "acquired" and released is not None and released <= today:
+                st["missing"] += 1
+        return out
+
     async def series_stats(self, title_ids: list[str]) -> dict[str, dict[str, int]]:
         """Per series: episodes, monitored, acquired, missing (monitored, aired, no file)."""
         if not title_ids:
