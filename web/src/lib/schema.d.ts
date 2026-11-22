@@ -839,6 +839,28 @@ export interface paths {
         patch: operations["patch_download_api_v1_downloads__download_id__patch"];
         trace?: never;
     };
+    "/api/v1/downloads/{download_id}/download-again": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Download Again
+         * @description Want what this download was for again (the movie, or each episode in it) and
+         *     search now. Nothing is deleted or blocklisted: you may have moved or deleted the
+         *     file since, and the same release may be grabbed again.
+         */
+        post: operations["download_again_api_v1_downloads__download_id__download_again_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/downloads/{download_id}/pause": {
         parameters: {
             query?: never;
@@ -2942,6 +2964,19 @@ export interface components {
             path?: string | null;
             /** Recycle */
             recycle?: boolean | null;
+        };
+        /** DownloadAgainOut */
+        DownloadAgainOut: {
+            /**
+             * Searching
+             * @description Items wanted again, with a search queued
+             */
+            searching: number;
+            /**
+             * Skipped
+             * @description Why some items weren't (e.g. already downloading)
+             */
+            skipped: string[];
         };
         /** DownloadOut */
         DownloadOut: {
@@ -8033,6 +8068,47 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Problem"];
                     "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    download_again_api_v1_downloads__download_id__download_again_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                download_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DownloadAgainOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

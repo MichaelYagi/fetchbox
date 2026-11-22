@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, Header, Query, Request, Response
 from pydantic import BaseModel, Field, computed_field
 
 from fetchbox.core.concurrency import etag
+from fetchbox.core.errors import ProblemError
 from fetchbox.core.errors import problem_responses as pr
 from fetchbox.core.providers import TestResult
 from fetchbox.modules.auth.deps import CurrentPrincipal, require
@@ -210,6 +211,34 @@ async def patch_download(
     svc = _svc(request)
     d = await svc.set_priority(download_id, body.queue_priority, if_match=if_match, actor=p.actor())
     return _out(svc, d, response)
+
+
+class DownloadAgainOut(BaseModel):
+    searching: int = Field(description="Items wanted again, with a search queued")
+    skipped: list[str] = Field(description="Why some items weren't (e.g. already downloading)")
+
+
+@router.post(
+    "/downloads/{download_id}/download-again",
+    response_model=DownloadAgainOut,
+    dependencies=[Depends(require("releases:write"))],
+    responses=pr(404),
+)
+async def download_again(
+    download_id: str, request: Request, p: CurrentPrincipal
+) -> DownloadAgainOut:
+    """Want what this download was for again (the movie, or each episode in it) and
+    search now. Nothing is deleted or blocklisted: you may have moved or deleted the
+    file since, and the same release may be grabbed again."""
+    unlock = request.app.state.unlock
+    searching, skipped = 0, []
+    for wid in await _svc(request).wanted_ids(download_id):
+        try:
+            await unlock.unlock(wid, delete_file=False, redownload=True, actor=p.actor())
+            searching += 1
+        except ProblemError as exc:
+            skipped.append(exc.problem.detail or "skipped")
+    return DownloadAgainOut(searching=searching, skipped=skipped)
 
 
 @router.delete("/downloads/{download_id}", status_code=204, dependencies=_write, responses=pr(404))

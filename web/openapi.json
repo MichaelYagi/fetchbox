@@ -1595,6 +1595,29 @@
     "title": "DestinationPatch",
     "type": "object"
    },
+   "DownloadAgainOut": {
+    "properties": {
+     "searching": {
+      "description": "Items wanted again, with a search queued",
+      "title": "Searching",
+      "type": "integer"
+     },
+     "skipped": {
+      "description": "Why some items weren't (e.g. already downloading)",
+      "items": {
+       "type": "string"
+      },
+      "title": "Skipped",
+      "type": "array"
+     }
+    },
+    "required": [
+     "searching",
+     "skipped"
+    ],
+    "title": "DownloadAgainOut",
+    "type": "object"
+   },
    "DownloadOut": {
     "properties": {
      "client_id": {
@@ -12462,6 +12485,71 @@
      }
     ],
     "summary": "Patch Download",
+    "tags": [
+     "downloads"
+    ]
+   }
+  },
+  "/api/v1/downloads/{download_id}/download-again": {
+   "post": {
+    "description": "Want what this download was for again (the movie, or each episode in it) and\nsearch now. Nothing is deleted or blocklisted: you may have moved or deleted the\nfile since, and the same release may be grabbed again.",
+    "operationId": "download_again_api_v1_downloads__download_id__download_again_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "download_id",
+      "required": true,
+      "schema": {
+       "title": "Download Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/DownloadAgainOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Download Again",
     "tags": [
      "downloads"
     ]

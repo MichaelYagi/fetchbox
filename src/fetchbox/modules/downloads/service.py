@@ -452,6 +452,12 @@ class DownloadsService:
         self._wake.set()
         return {"download_id": d.id, "client": row.name, "ref": ref}
 
+    async def wanted_ids(self, download_id: str) -> list[str]:
+        """The wanted items (a movie, or the episodes of a release) a download was for."""
+        d = await self.get(download_id)
+        async with self.db.sessionmaker() as s:
+            return [w.id for w in await self._items(s, d.grab_id)]
+
     async def _items(self, s: AsyncSession, grab_id: str) -> list[WantedItem]:
         q = (
             select(WantedItem)

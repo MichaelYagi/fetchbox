@@ -5,6 +5,7 @@
 	let downloads = $state<Download[] | null>(null);
 	let imports = $state<S['ImportOut'][]>([]);
 	let error = $state('');
+	let notice = $state('');
 	let busy = $state('');
 	let showDone = $state(false);
 
@@ -43,12 +44,22 @@
 		const msg = active
 			? `Stop and remove ${d.name}? Its data is deleted and the release is blocklisted, so another one is searched for.`
 			: d.imported_to
-				? `Stop seeding ${d.name}?\n\nThe torrent's files in ${d.save_path ?? 'the download folder'} are deleted.\n\n` +
-					`Your library keeps its file:\n${d.imported_to}` +
-					(d.imported_as === 'hardlink' ? '\n(the same file, so no space is freed)' : '')
+				? `Stop seeding ${d.name}?\n\nThe torrent's files in ${d.save_path ?? 'the download folder'} are deleted. ` +
+					`The file Fetchbox imported into your library isn't touched${d.imported_to ? ` (imported to ${d.imported_to})` : ''}.` +
+					(d.imported_as === 'hardlink' ? ' (It was the same file, so no space is freed.)' : '')
 				: `Stop seeding ${d.name}? It hasn't been imported into your library, so its files are kept.`;
 		if (!confirm(msg)) return;
 		act(d.id, () => del(`/downloads/${d.id}`, { delete_data: true, blocklist: active }));
+	}
+
+	function again(d: Download) {
+		if (!confirm(`Download ${d.name} again? Fetchbox searches for it now and may grab the same release. Nothing is deleted.`)) return;
+		act(d.id, async () => {
+			const r = await post<{ searching: number; skipped: string[] }>(`/downloads/${d.id}/download-again`);
+			notice = r.searching
+				? `Searching for ${d.name} again.`
+				: `Not searched: ${r.skipped.join('; ') || 'nothing to search for'}`;
+		});
 	}
 
 	const LABEL: Record<string, string> = {
@@ -64,7 +75,13 @@
 	const active = $derived((downloads ?? []).filter((d) => ['queued', 'downloading', 'paused'].includes(d.status)));
 	const done = $derived((downloads ?? []).filter((d) => !['queued', 'downloading', 'paused'].includes(d.status)));
 	const attention = $derived(imports.filter((i) => i.status === 'needs_attention'));
-	const label = (d: Download) => (d.status === 'completed' && d.seeded_at ? 'Done' : LABEL[d.status] ?? d.status);
+	// Finished is "Downloaded", whatever happened to the file since (it may have been moved).
+	const label = (d: Download) =>
+		d.completed_at
+			? d.status === 'completed' && !d.seeded_at
+				? 'Downloaded · seeding'
+				: 'Downloaded'
+			: (LABEL[d.status] ?? d.status);
 </script>
 
 <main>
@@ -76,6 +93,7 @@
 		</div>
 	</div>
 	{#if error}<p class="notice error">{error}</p>{/if}
+	{#if notice}<p class="notice">{notice}</p>{/if}
 
 	{#each attention as i (i.download_id)}
 		<div class="notice warn spread">
@@ -137,12 +155,17 @@
 						<tr>
 							<td class="name">
 								{d.name}
+								{#if d.save_path}<div class="small muted">Downloaded to <Path path={d.save_path} /></div>{/if}
 								{#if d.imported_to}
-									<div class="small">
-										In your library: <Path path={d.imported_to} />
-										{#if d.imported_as === 'copy'}<span class="badge warn" title="A second full copy: the library and the download folder are on different drives">copy</span>{/if}
+									<div class="small muted">
+										Imported to <Path path={d.imported_to} />
+										{#if d.imported_as === 'copy'}<span
+												class="badge warn"
+												title="A second full copy: the library folder and the download folder are on different drives"
+												>copy</span
+											>{/if}
 									</div>
-								{:else if d.save_path}<div class="small muted"><Path path={d.save_path} /></div>{/if}
+								{/if}
 								{#if d.error}<div class="small err">{d.error}</div>{/if}
 							</td>
 							<td><span class="badge {tone(d)}">{label(d)}</span></td>
@@ -150,9 +173,14 @@
 							<td>{d.ratio?.toFixed(2) ?? '—'}</td>
 							<td class="muted small">{ago(d.completed_at ?? d.removed_at)}</td>
 							<td>
-								{#if d.status === 'completed' && !d.seeded_at}
-									<button class="small" onclick={() => remove(d)} disabled={!!busy}>Stop seeding</button>
-								{/if}
+								<div class="row">
+									{#if d.status === 'completed' && !d.seeded_at}
+										<button class="small" onclick={() => remove(d)} disabled={!!busy}>Stop seeding</button>
+									{/if}
+									{#if d.completed_at || d.status === 'failed'}
+										<button class="small" onclick={() => again(d)} disabled={!!busy}>Download again</button>
+									{/if}
+								</div>
 							</td>
 						</tr>
 					{/each}
