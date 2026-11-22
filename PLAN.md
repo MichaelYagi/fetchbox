@@ -435,6 +435,25 @@ Artists, albums and tracks next to movies and TV: a Lidarr replacement in the sa
 Shared with video and reused unchanged: indexers and Prowlarr, download clients, queue,
 library folders and naming UI, RSS, jobs and schedules, calendar, history.
 
+Progress (branch `phase5`, PR #7):
+- [x] MusicBrainz client (1 req/s for the whole app, 503 retries, User-Agent), Cover Art
+      Archive covers; recorded responses as fixtures, checked against the real service
+- [x] Model: kind `music` (artist = title, album = wanted item, tracks of the chosen
+      edition), migration 0019; profiles have a media type (video / music)
+- [x] Add artist (monitor modes, album kinds), background edition / track lists, daily
+      refresh for new albums, edition chooser
+- [x] Audio quality ladder + Lossless / High-quality lossy / Any audio profiles
+- [x] Release names: format, source, "is this the album" (944 real names as corpus)
+- [x] Search (Torznab / Prowlarr category 3000) and decisions in the shared engine
+- [x] Import: every track matched, named, tagged (mutagen, GPL; never into a file still
+      shared with a seeding torrent), upgrades recycle the old album
+- [x] Web: Add > Music, artist page (albums by kind, tracks, editions), library cards
+- [ ] RSS for music
+- [ ] Write the tags deferred while a hardlinked album was seeding
+- [ ] Import an existing music folder (by tags)
+- [ ] Music naming presets in Settings
+- [ ] Album release dates on the calendar
+
 **Until then:** keep Phases 3-4 generic about media kind where it is cheap (library
 import, naming, destinations, the kind check constraints), so music adds a kind rather
 than reworking these.
