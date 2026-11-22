@@ -8,6 +8,7 @@ appear under Downloads/Fetchbox/Movies.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import os
 from collections.abc import AsyncIterator
 from pathlib import Path
@@ -18,7 +19,7 @@ import pytest
 
 from fetchbox.modules.library.naming import DEFAULT_PATTERNS, movie_path, parse, render
 from fetchbox.modules.library.service import pick_video
-from fetchbox.providers.download_clients import ClientFile
+from fetchbox.providers.download_clients import ClientFile, DownloadClientError
 from fetchbox.providers.download_clients.builtin import BuiltinClient
 from fetchbox.providers.storage.local import LocalStorage, cleanup_partials
 from tests.conftest import Running
@@ -546,3 +547,78 @@ async def test_stop_seeding_keeps_files_that_were_not_imported(
         assert calls == [False, True]  # imported (hardlink/copy): the torrent's copy may go
     finally:
         svc.clients[builtin["id"]] = real
+
+
+async def test_removed_and_readded_title_imports_again(
+    c: httpx.AsyncClient, fakes: Fakes, server: Running, made: Made, seed: BuiltinClient,
+    settings: Any,
+) -> None:  # fmt: skip
+    """Removing a title keeps its files and used to leave their records behind; the same
+    release imported again for the re-added title then crashed on the old record, and
+    the item stayed "downloading" for good."""
+    movie = await _acquire(c, fakes, server, made, seed)
+    [first] = (await c.get(f"/titles/{movie['id']}/files")).json()
+    [dl] = (await c.get("/downloads")).json()
+    assert (await c.delete(f"/downloads/{dl['id']}")).status_code == 204  # keep its data
+    assert (await c.delete(f"/titles/{movie['id']}")).status_code == 204
+
+    again = await _movie(c)
+    wid = again["wanted"][0]["id"]
+    rel = (await c.get("/releases", params={"wanted_item_id": wid})).json()["releases"][0]
+    assert (await c.post("/grabs", json={"release_id": rel["release_id"]})).status_code == 201
+
+    async def acquired() -> bool:
+        with contextlib.suppress(DownloadClientError):  # not in the engine yet
+            _engine(server).connect_peer(made.info_hash, "127.0.0.1", seed.listen_port or 0)
+        t = (await c.get(f"/titles/{again['id']}")).json()
+        return bool(t["wanted"][0]["state"] == "acquired")
+
+    await until(acquired, within=60)
+    [f] = (await c.get(f"/titles/{again['id']}/files")).json()
+    assert f["relative_path"] == first["relative_path"]
+    assert f["wanted_item_ids"] == [wid]
+
+
+async def test_an_unexpected_import_error_is_shown_not_stuck(
+    c: httpx.AsyncClient, fakes: Fakes, server: Running, made: Made, seed: BuiltinClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:  # fmt: skip
+    async def boom(d: Any) -> Any:
+        raise RuntimeError("disk exploded")
+
+    monkeypatch.setattr(server.app.state.library, "_import", boom)
+    await _indexer(c, fakes, "one", [Item(NAME, magnet=made.magnet, infohash=made.info_hash)])
+    movie = await _movie(c)
+    wid = movie["wanted"][0]["id"]
+    rel = (await c.get("/releases", params={"wanted_item_id": wid})).json()["releases"][0]
+    assert (await c.post("/grabs", json={"release_id": rel["release_id"]})).status_code == 201
+
+    async def flagged() -> bool:
+        with contextlib.suppress(DownloadClientError):  # not in the engine yet
+            _engine(server).connect_peer(made.info_hash, "127.0.0.1", seed.listen_port or 0)
+        return any(i["status"] == "needs_attention" for i in (await c.get("/imports")).json())
+
+    await until(flagged, within=60)
+    [imp] = (await c.get("/imports")).json()
+    assert "unexpectedly" in imp["error"] and "disk exploded" in imp["error"]
+
+    # removing it now gives the movie back to "wanted", not "downloading" forever
+    [dl] = (await c.get("/downloads")).json()
+    assert (await c.delete(f"/downloads/{dl['id']}")).status_code == 204
+    w = (await c.get(f"/titles/{movie['id']}")).json()["wanted"][0]
+    assert w["state"] == "missing"
+
+
+async def test_stuck_items_are_repaired_at_startup(c: httpx.AsyncClient, server: Running) -> None:
+    from sqlalchemy import update
+
+    from fetchbox.modules.media.models import WantedItem
+
+    movie = await _movie(c)
+    wid = movie["wanted"][0]["id"]
+    async with server.app.state.fb.db.sessionmaker() as s:  # what a crash left behind
+        await s.execute(update(WantedItem).where(WantedItem.id == wid).values(state="downloading"))
+        await s.commit()
+    assert await server.app.state.downloads.repair_stuck() == 1
+    w = (await c.get(f"/titles/{movie['id']}")).json()["wanted"][0]
+    assert w["state"] == "missing"

@@ -27,7 +27,7 @@ from typing import Any, Literal
 
 import structlog
 from pydantic import BaseModel, Field, ValidationError, field_validator
-from sqlalchemy import case, exists, select, update
+from sqlalchemy import case, exists, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
@@ -218,7 +218,59 @@ class DownloadsService:
         async def add(ctx: JobContext) -> dict[str, Any]:
             return await self._add_job(ctx.payload["grab_id"], final=ctx.attempt >= ADD_ATTEMPTS)
 
+    async def repair_stuck(self) -> int:
+        """At startup: items still "grabbed / downloading / importing" with no download
+        that will finish them (it was removed or failed, or Fetchbox stopped mid-import)
+        go back to wanting a file; an import cut off mid-way is tried again."""
+        fixed = 0
+        async with self.db.sessionmaker() as s:
+            await s.execute(
+                update(Download)
+                .where(Download.status == "completed", Download.import_status == "importing")
+                .values(import_status="pending")
+                .execution_options(synchronize_session=False)
+            )
+            busy = list(
+                (
+                    await s.execute(
+                        select(WantedItem).where(
+                            WantedItem.state.in_(("grabbed", "downloading", "importing"))
+                        )
+                    )
+                ).scalars()
+            )
+            for w in busy:
+                live = await s.scalar(
+                    select(Download.id)
+                    .join(GrabItem, GrabItem.grab_id == Download.grab_id)
+                    .where(
+                        GrabItem.wanted_item_id == w.id,
+                        or_(
+                            Download.status.in_(ACTIVE),
+                            (Download.status == "completed")
+                            & (Download.import_status != "imported"),
+                        ),
+                    )
+                    .limit(1)
+                )
+                pending_grab = await s.scalar(
+                    select(Grab.id)
+                    .join(GrabItem, GrabItem.grab_id == Grab.id)
+                    .outerjoin(Download, Download.grab_id == Grab.id)
+                    .where(GrabItem.wanted_item_id == w.id, Download.id.is_(None))
+                    .limit(1)
+                )  # fmt: skip
+                if live is None and pending_grab is None:
+                    w.state = "acquired" if w.lock == "acquired" else "missing"
+                    w.version += 1
+                    fixed += 1
+            await s.commit()
+        if fixed:
+            log.warning("downloads.repaired_stuck_items", count=fixed)
+        return fixed
+
     async def start(self) -> None:
+        await self.repair_stuck()
         await self._seed_builtin()
         async with self.db.sessionmaker() as s:
             rows = list((await s.execute(select(DownloadClient))).scalars())
@@ -870,12 +922,17 @@ class DownloadsService:
             grab = await s.get(Grab, d.grab_id)
             assert row is not None and grab is not None
             was_active = row.status in ACTIVE
+            unimported = row.status == "completed" and row.import_status != "imported"
             row.status, row.removed_at = "removed", utcnow()
-            if was_active:  # the items still want a file
+            if was_active or unimported:  # the items still want a file
                 items = [w.id for w in await self._items(s, grab.id)]
                 await self._release_items(
-                    s, items, grab, "removed by user", block=blocklist, search_soon=False
-                )
+                    s, items, grab,
+                    "removed by user" if was_active else "removed before it was imported",
+                    block=blocklist and was_active, search_soon=False,
+                )  # fmt: skip
+            if unimported and row.import_status == "importing":
+                row.import_status = "skipped"
             await s.commit()
         self.live.pop(d.id, None)
         await self._emit("download.removed", d, actor=actor, name=d.name, delete_data=delete_data)
