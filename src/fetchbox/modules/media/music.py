@@ -14,6 +14,7 @@ pace, only for albums that are wanted.
 
 from __future__ import annotations
 
+import asyncio
 from datetime import date, datetime, timedelta
 from typing import Any, Literal
 
@@ -88,6 +89,7 @@ class MusicService:
         self.media = media
         self.transport: Any = None  # tests: a fake MusicBrainz
         self.interval: float | None = None  # tests: no 1 s spacing
+        self._locks: dict[str, asyncio.Lock] = {}
 
     def client(self) -> MusicBrainzClient:
         kw: dict[str, Any] = {"transport": self.transport}
@@ -287,7 +289,7 @@ class MusicService:
         done = 0
         for n, album_id in enumerate(todo, 1):
             try:
-                await self.choose_edition(album_id)
+                await self.choose_edition(album_id, only_if_unset=True)
                 done += 1
             except MusicBrainzError as exc:
                 log.warning("music.editions_failed", album_id=album_id, error=exc.message)
@@ -303,8 +305,18 @@ class MusicService:
         finally:
             await mb.aclose()
 
-    async def choose_edition(self, album_id: str, edition_mbid: str | None = None) -> Album:
-        """Use ``edition_mbid`` (or the standard edition) as the album's track list."""
+    async def choose_edition(
+        self, album_id: str, edition_mbid: str | None = None, *, only_if_unset: bool = False
+    ) -> Album:
+        """Use ``edition_mbid`` (or the standard edition) as the album's track list.
+        ``only_if_unset``: the background pick, which never replaces a chosen edition."""
+        lock = self._locks.setdefault(album_id, asyncio.Lock())
+        async with lock:  # one change at a time per album: track lists never interleave
+            return await self._choose(album_id, edition_mbid, only_if_unset)
+
+    async def _choose(self, album_id: str, edition_mbid: str | None, only_if_unset: bool) -> Album:
+        if only_if_unset and (await self._album(album_id)).edition_mbid:
+            return await self._album(album_id)
         eds = await self.editions(album_id)
         if edition_mbid is None:
             chosen = pick_edition(eds)
@@ -315,6 +327,8 @@ class MusicService:
         async with self.db.sessionmaker() as s:
             album = await s.get(Album, album_id)
             assert album is not None
+            if only_if_unset and album.edition_mbid:
+                return album  # chosen meanwhile (by the user): keep it
             album.meta = {
                 **(album.meta or {}),
                 # every edition's shape, to tell which one a download is

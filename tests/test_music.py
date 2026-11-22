@@ -95,6 +95,13 @@ async def test_add_an_artist(c: httpx.AsyncClient, server: Running) -> None:
         a for a in (await c.get(f"/titles/{artist['id']}/albums")).json() if a["id"] == dummy["id"]
     )
     assert dummy["edition_mbid"] == ten["mbid"] and len(dummy["tracks"]) == 10
+    # the background pick (still running after an add) never overrides a chosen edition
+    await music.fill_editions()
+    await music.choose_edition(dummy["id"], only_if_unset=True)
+    dummy = next(
+        a for a in (await c.get(f"/titles/{artist['id']}/albums")).json() if a["id"] == dummy["id"]
+    )
+    assert dummy["edition_mbid"] == ten["mbid"] and len(dummy["tracks"]) == 10
 
     cal = (await c.get("/calendar", params={"start": "1994-08-01", "end": "1994-09-30"})).json()
     assert [(e["kind"], e["name"], e["album"]) for e in cal] == [("album", "Portishead", "Dummy")]
