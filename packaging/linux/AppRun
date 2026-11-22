@@ -1,0 +1,6 @@
+#!/bin/sh
+# Started with no arguments (double-clicked): run the server. Otherwise the full
+# fetchbox command line, e.g.  ./Fetchbox.AppImage reset-password
+HERE="$(dirname "$(readlink -f "$0")")"
+[ $# -eq 0 ] && set -- serve
+exec "$HERE/usr/bin/fetchbox" "$@"

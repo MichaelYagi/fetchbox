@@ -338,6 +338,13 @@ Release pipeline (pulled forward from Phase 4, same flow as roast-telemetry):
       code leaves the address bar). Pause / resume all downloads. "Start at login" toggle
       (HKCU Run key, macOS LaunchAgent, XDG autostart). Remaining: installing updates
       from the tray, keyring-stored secrets key
+- [x] Installers, built and tested by the release workflow (install, check, run the
+      installed copy, uninstall): Windows Inno Setup (per user, no admin prompt, Start
+      menu, optional start at sign-in using the tray's own Run entry, uninstaller asks
+      before deleting data), macOS .dmg (drag to Applications), Linux .deb (systemd
+      service as user `fetchbox`, data in /var/lib/fetchbox, settings in
+      /etc/default/fetchbox, data kept on purge) and AppImage (pinned appimagetool
+      1.9.1 + static type2 runtime, SHA-256 checked; no libfuse2 needed)
 
 ### Phase 4 — Operability + release (v1.0)
 Backups/restore, config export/import, pre-migration backups, diagnostics zip, updates;

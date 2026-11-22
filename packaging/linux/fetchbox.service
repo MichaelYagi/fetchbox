@@ -1,0 +1,24 @@
+# Installed by the Fetchbox .deb. Settings: /etc/default/fetchbox.
+[Unit]
+Description=Fetchbox (movies and TV, found and downloaded)
+Documentation=https://github.com/MichaelYagi/fetchbox
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=fetchbox
+Group=fetchbox
+# Downloads default to $HOME/Downloads/Fetchbox: /var/lib/fetchbox/Downloads/Fetchbox
+Environment=HOME=/var/lib/fetchbox
+EnvironmentFile=-/etc/default/fetchbox
+ExecStart=/usr/bin/fetchbox --data /var/lib/fetchbox/data serve
+Restart=on-failure
+RestartSec=5
+# Running jobs get 30 s and the torrent engine saves its state on stop
+TimeoutStopSec=60
+# New files are group-writable, so a shared media group works
+UMask=0002
+
+[Install]
+WantedBy=multi-user.target
