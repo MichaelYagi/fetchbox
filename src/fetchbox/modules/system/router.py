@@ -279,3 +279,23 @@ async def diagnostics(request: Request, state: State) -> Response:
     name = f"fetchbox-diagnostics-{datetime.now(UTC):%Y%m%d-%H%M%S}.zip"
     return Response(buf.getvalue(), media_type="application/zip",
                     headers={"Content-Disposition": f'attachment; filename="{name}"'})  # fmt: skip
+
+
+class UpdateOut(BaseModel):
+    current: str
+    latest: str | None
+    update_available: bool
+    url: str | None = Field(description="The release page")
+    published_at: str | None
+    checked: bool = Field(description="False: checking is off, or GitHub couldn't be reached")
+    error: str | None = None
+
+
+@router.get("/updates", response_model=UpdateOut, dependencies=_read)
+async def check_updates(request: Request, fresh: bool = False) -> UpdateOut:
+    """Is a newer Fetchbox released? (Settings: updates.check; nothing is installed.)"""
+    from dataclasses import asdict
+
+    checker = request.app.state.updates
+    info = await checker.check(enabled=_config(request).current.updates.check, fresh=fresh)
+    return UpdateOut(**asdict(info))

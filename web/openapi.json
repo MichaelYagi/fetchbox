@@ -7347,6 +7347,78 @@
     "title": "UnlockOut",
     "type": "object"
    },
+   "UpdateOut": {
+    "properties": {
+     "checked": {
+      "description": "False: checking is off, or GitHub couldn't be reached",
+      "title": "Checked",
+      "type": "boolean"
+     },
+     "current": {
+      "title": "Current",
+      "type": "string"
+     },
+     "error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Error"
+     },
+     "latest": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Latest"
+     },
+     "published_at": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Published At"
+     },
+     "update_available": {
+      "title": "Update Available",
+      "type": "boolean"
+     },
+     "url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "The release page",
+      "title": "Url"
+     }
+    },
+    "required": [
+     "current",
+     "latest",
+     "update_available",
+     "url",
+     "published_at",
+     "checked"
+    ],
+    "title": "UpdateOut",
+    "type": "object"
+   },
    "ValidationError": {
     "properties": {
      "ctx": {
@@ -17118,6 +17190,61 @@
      }
     ],
     "summary": "Get Status",
+    "tags": [
+     "system"
+    ]
+   }
+  },
+  "/api/v1/system/updates": {
+   "get": {
+    "description": "Is a newer Fetchbox released? (Settings: updates.check; nothing is installed.)",
+    "operationId": "check_updates_api_v1_system_updates_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "fresh",
+      "required": false,
+      "schema": {
+       "default": false,
+       "title": "Fresh",
+       "type": "boolean"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/UpdateOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Check Updates",
     "tags": [
      "system"
     ]

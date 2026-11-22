@@ -357,6 +357,10 @@ Progress:
       apply in one transaction: rows match by id then name (a fresh install's defaults
       are updated, references remapped to local ids), secrets re-sealed with this
       install's key, nothing deleted, restart after. Settings > Move settings
+- [x] Update check: `GET /system/updates` asks GitHub for the latest release (6 h cache;
+      `updates.check`, on by default, off = no contact); Settings > This computer shows
+      the version and "Update available" with a link. Installing updates from the tray
+      is still to do
 
 **Gate:** migrate a real Sonarr+Radarr install and run side by side; installers work on all
 three OSes; a backup restores on a fresh machine.

@@ -79,11 +79,19 @@ class StorageConfig(BaseModel):
     )
 
 
+class UpdatesConfig(BaseModel):
+    check: bool = Field(
+        default=True,
+        description="Check GitHub for a newer Fetchbox release (every 6 hours at most)",
+    )
+
+
 class SystemConfig(BaseModel):
     tmdb: TmdbConfig = TmdbConfig()
     tvdb: TvdbConfig = TvdbConfig()
     search: SearchConfig = SearchConfig()
     storage: StorageConfig = StorageConfig()
+    updates: UpdatesConfig = UpdatesConfig()
 
 
 SECRETS: tuple[tuple[str, str], ...] = (("tmdb", "api_key"), ("tvdb", "api_key"), ("tvdb", "pin"))

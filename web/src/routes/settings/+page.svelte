@@ -11,6 +11,7 @@
 
 	type Cfg = {
 		tmdb: { api_key: string | null; language: string };
+		updates?: { check: boolean };
 		tvdb?: { api_key: string | null; pin: string | null };
 		search: Record<string, unknown>;
 	};
@@ -28,6 +29,7 @@
 
 	let tmdbKey = $state('');
 	let tvdbKey = $state('');
+	let update = $state<S['UpdateOut'] | null>(null);
 	let tvdbPin = $state('');
 	let newIndexer = $state({ kind: 'prowlarr', name: '', url: '', api_key: '', definition: '' });
 	let newClient = $state({ kind: 'qbittorrent', name: '', url: '', username: '', password: '' });
@@ -169,6 +171,7 @@
 	$effect(() => {
 		load();
 		get<S['NamingOptionsOut']>('/library/naming-options').then((o) => (namingOptions = o));
+		get<S['UpdateOut']>('/system/updates').then((u) => (update = u)).catch(() => {});
 	});
 
 	async function act(key: string, fn: () => Promise<unknown>, done = '') {
@@ -192,6 +195,12 @@
 			() => (tmdbKey = '')
 		);
 	};
+
+	const setUpdates = (on: boolean) =>
+		act('updates', async () => {
+			await patch('/system/config', { updates: { check: on } });
+			update = await get<S['UpdateOut']>('/system/updates', { fresh: true });
+		});
 
 	const saveTvdb = (e: SubmitEvent) => {
 		e.preventDefault();
@@ -273,6 +282,23 @@
 						</tr>
 						<tr><td class="w muted">Downloads</td><td><Path path={session.host.downloads_root} /></td></tr>
 						<tr><td class="w muted">Fetchbox data</td><td><Path path={session.host.data_dir} /></td></tr>
+						<tr>
+							<td class="w muted">Version</td>
+							<td>
+								{update?.current ?? ''}
+								{#if update?.update_available}
+									<a class="badge warn" href={update.url} target="_blank" rel="noreferrer">Update available: {update.latest}</a>
+								{:else if update?.checked}
+									<span class="muted small">· up to date</span>
+								{:else if update?.error}
+									<span class="muted small">· {update.error}</span>
+								{/if}
+								<label class="muted small inline-check"
+									><input type="checkbox" checked={config?.config.updates?.check ?? true}
+										onchange={(e) => setUpdates(e.currentTarget.checked)} /> Check for updates (asks GitHub)</label
+								>
+							</td>
+						</tr>
 						<tr>
 							<td class="w muted">Problems?</td>
 							<td>

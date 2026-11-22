@@ -1970,6 +1970,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system/updates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Check Updates
+         * @description Is a newer Fetchbox released? (Settings: updates.check; nothing is installed.)
+         */
+        get: operations["check_updates_api_v1_system_updates_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/system/version": {
         parameters: {
             query?: never;
@@ -5043,6 +5063,29 @@ export interface components {
              */
             search_job_id: string | null;
             wanted: components["schemas"]["WantedOut"];
+        };
+        /** UpdateOut */
+        UpdateOut: {
+            /**
+             * Checked
+             * @description False: checking is off, or GitHub couldn't be reached
+             */
+            checked: boolean;
+            /** Current */
+            current: string;
+            /** Error */
+            error?: string | null;
+            /** Latest */
+            latest: string | null;
+            /** Published At */
+            published_at: string | null;
+            /** Update Available */
+            update_available: boolean;
+            /**
+             * Url
+             * @description The release page
+             */
+            url: string | null;
         };
         /** ValidationError */
         ValidationError: {
@@ -10735,6 +10778,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StatusInfo"];
+                };
+            };
+        };
+    };
+    check_updates_api_v1_system_updates_get: {
+        parameters: {
+            query?: {
+                fresh?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

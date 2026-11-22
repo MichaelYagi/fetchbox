@@ -60,6 +60,7 @@ from fetchbox.modules.system.backups import Backups, sqlite_path
 from fetchbox.modules.system.config import ConfigService
 from fetchbox.modules.system.portable import Portable
 from fetchbox.modules.system.service import register_core_checks
+from fetchbox.modules.system.updates import UpdateChecker
 from fetchbox.providers import builtin as _builtin_providers  # noqa: F401 (registers them)
 from fetchbox.ui import STATIC_DIR, install_ui
 
@@ -233,6 +234,7 @@ def create_app(
         app.state.notifications = notifications
         app.state.integrations = integrations
         app.state.portable = Portable(db, box, provider_registry, config)
+        app.state.updates = UpdateChecker()
         existing = ExistingLibrary(
             db, jobs, storage=storage, media=media, discovery=discovery, library=library
         )
