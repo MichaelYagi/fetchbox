@@ -284,7 +284,7 @@ async def test_download_and_import_an_album(
         assert mutagen.File(folder / "01 - Mysterons.flac")["title"] == ["Mysterons"]
     assert imported_ev["data"]["quality"] == "FLAC"
     queue = (await c.get("/downloads")).json()
-    assert queue[0]["imported_to"].endswith("Portishead/Dummy (1994)")
+    assert queue[0]["imported_to"].replace("\\", "/").endswith("Portishead/Dummy (1994)")
 
 
 async def test_rss_grabs_a_wanted_album(

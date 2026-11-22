@@ -92,7 +92,8 @@ async def test_one_request_a_second_and_busy_retries() -> None:
     await mb.artist(ARTIST)
     await mb.artist(ARTIST)  # 503 once, then answered
     gaps = [b - a for a, b in itertools.pairwise(calls)]
-    assert len(calls) == 3 and all(g >= 0.19 for g in gaps)
+    # spaced by the interval (Windows' timer is coarse: a little slack)
+    assert len(calls) == 3 and all(g >= 0.15 for g in gaps), gaps
 
     gone = MusicBrainzClient(
         transport=httpx.MockTransport(lambda r: httpx.Response(404)), interval=0

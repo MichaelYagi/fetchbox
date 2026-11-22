@@ -16,9 +16,13 @@ jobs:
       - run: uv run ruff format --check .
       - run: uv run mypy
       - run: uv run lint-imports
-      - name: License check (fail on GPL/AGPL)
+      # No GPL/AGPL dependencies, with one deliberate exception: mutagen (GPL-2.0-or-later)
+      # writes music tags. Fetchbox's own code stays MIT; packaged builds that include
+      # mutagen carry its license in THIRD-PARTY-NOTICES (packaging/README.md). Any other
+      # GPL package still fails this check.
+      - name: License check (fail on GPL/AGPL, mutagen excepted)
         run: >
-          uv run pip-licenses --partial-match
+          uv run pip-licenses --partial-match --ignore-packages mutagen
           --fail-on="GNU General Public License;GNU Affero General Public License;GPL-2.0;GPL-3.0;AGPL"
 
   web:
