@@ -283,7 +283,7 @@
 						<label class="inline">
 							Quality
 							<select value={title.profile_id} onchange={(e) => setProfile(e.currentTarget.value)} disabled={!!busy}>
-								{#each profiles.filter((x) => x.media === (title?.kind === 'music' ? 'music' : 'video')) as p (p.id)}<option value={p.id}>{p.name}</option>{/each}
+								{#each profiles.filter((x) => x.media === (title?.kind === 'music' ? 'music' : 'video')) as p (p.id)}<option value={p.id} selected={p.id === title.profile_id}>{p.name}</option>{/each}
 							</select>
 						</label>
 						<label class="inline">
@@ -304,7 +304,7 @@
 						<label class="inline">
 							Start searching
 							<select value={title.minimum_availability} onchange={(e) => setAvailability(e.currentTarget.value)} disabled={!!busy}>
-								{#each AVAIL as [v, l] (v)}<option value={v}>{l}</option>{/each}
+								{#each AVAIL as [v, l] (v)}<option value={v} selected={v === title.minimum_availability}>{l}</option>{/each}
 							</select>
 						</label>
 						{#if title.available_from && wanted.state !== 'acquired'}
@@ -330,13 +330,13 @@
 						<label class="inline">
 							Quality
 							<select value={title.profile_id} onchange={(e) => setProfile(e.currentTarget.value)} disabled={!!busy}>
-								{#each profiles.filter((x) => x.media === 'music') as p (p.id)}<option value={p.id}>{p.name}</option>{/each}
+								{#each profiles.filter((x) => x.media === 'music') as p (p.id)}<option value={p.id} selected={p.id === title.profile_id}>{p.name}</option>{/each}
 							</select>
 						</label>
 						<label class="inline">
 							Download
 							<select value={title.monitor_mode} onchange={(e) => setMode(e.currentTarget.value)} disabled={!!busy}>
-								{#each ARTIST_MODES as [v, l] (v)}<option value={v}>{l}</option>{/each}
+								{#each ARTIST_MODES as [v, l] (v)}<option value={v} selected={v === title.monitor_mode}>{l}</option>{/each}
 							</select>
 						</label>
 					</div>
@@ -357,13 +357,13 @@
 						<label class="inline">
 							Quality
 							<select value={title.profile_id} onchange={(e) => setProfile(e.currentTarget.value)} disabled={!!busy}>
-								{#each profiles.filter((x) => x.media === (title?.kind === 'music' ? 'music' : 'video')) as p (p.id)}<option value={p.id}>{p.name}</option>{/each}
+								{#each profiles.filter((x) => x.media === (title?.kind === 'music' ? 'music' : 'video')) as p (p.id)}<option value={p.id} selected={p.id === title.profile_id}>{p.name}</option>{/each}
 							</select>
 						</label>
 						<label class="inline">
 							Download
 							<select value={title.monitor_mode} onchange={(e) => setMode(e.currentTarget.value)} disabled={!!busy}>
-								{#each MODES as [v, l] (v)}<option value={v}>{l}</option>{/each}
+								{#each MODES as [v, l] (v)}<option value={v} selected={v === title.monitor_mode}>{l}</option>{/each}
 							</select>
 						</label>
 					</div>
@@ -409,7 +409,7 @@
 									<label class="inline small edition">
 										Edition
 										<select value={a.edition_mbid ?? ''} onchange={(e) => chooseEdition(a, e.currentTarget.value)} disabled={!!busy}>
-											{#each editions[a.id] as e (e.mbid)}<option value={e.mbid}>{editionLabel(e)}</option>{/each}
+											{#each editions[a.id] as e (e.mbid)}<option value={e.mbid} selected={e.mbid === a.edition_mbid}>{editionLabel(e)}</option>{/each}
 										</select>
 									</label>
 								{/if}

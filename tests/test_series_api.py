@@ -173,3 +173,22 @@ async def test_movies_and_series_listed_together(
     sid = by_kind["series"]["id"]
     assert (await c.delete(f"/titles/{sid}")).status_code == 204  # episodes cascade
     assert len((await c.get("/wanted", params={"limit": 500})).json()["items"]) == 1
+
+
+async def test_what_you_choose_when_adding_is_what_the_show_keeps(
+    c: httpx.AsyncClient, fakes: Fakes
+) -> None:
+    """The Add dialog's choices (quality, which episodes) are what the show's page shows
+    afterwards: stored on the title, not just used once."""
+    profiles = (await c.get("/quality-profiles")).json()
+    four_k = next(p["id"] for p in profiles if p["name"] != "1080p" and p["media"] == "video")
+    r = await c.post(
+        "/titles",
+        json={"kind": "series", "tmdb_id": 95396, "profile_id": four_k,
+              "monitor_mode": "future", "search": True},
+    )  # fmt: skip
+    assert r.status_code == 201, r.text
+    t = (await c.get(f"/titles/{r.json()['id']}")).json()
+    assert t["monitor_mode"] == "future" and t["profile_id"] == four_k
+    # only what hasn't aired is wanted
+    assert t["episodes"]["monitored"] < t["episodes"]["episodes"]

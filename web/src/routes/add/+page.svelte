@@ -9,7 +9,7 @@
 	let searchNow = $state(true);
 	let kind = $state<'movie' | 'series' | 'music'>('movie');
 	let artists = $state<S['ArtistHit'][] | null>(null);
-	let artistMode = $state('all');
+	let artistMode = $state('future');
 	let albumKinds = $state<string[]>(['album']);
 	let addingArtist = $state<string | null>(null);
 	const ARTIST_MODES: [string, string][] = [
@@ -26,7 +26,7 @@
 		['compilation', 'Compilations'],
 		['other', 'Remixes, soundtracks…']
 	];
-	let monitorMode = $state('all');
+	let monitorMode = $state('future');
 	let availability = $state('released');
 	const MODES: [string, string][] = [
 		['all', 'All episodes'],
@@ -46,6 +46,37 @@
 	let busy = $state(false);
 	let adding = $state<number | null>(null);
 	let owned = $state(new Map<number, string>());
+	// What "Add" was clicked on: the dialog asks how before anything is added or downloaded.
+	let pending = $state<
+		{ kind: 'movie' | 'series'; r: S['TitleSummary'] } | { kind: 'music'; a: S['ArtistHit'] } | null
+	>(null);
+	let dialog = $state<HTMLDialogElement | null>(null);
+	$effect(() => {
+		if (pending && dialog && !dialog.open) dialog.showModal();
+	});
+
+	function ask(p: NonNullable<typeof pending>) {
+		error = null;
+		// each time: only what's new, unless you choose otherwise
+		monitorMode = 'future';
+		artistMode = 'future';
+		searchNow = true;
+		pending = p;
+	}
+
+	function close() {
+		dialog?.close();
+		pending = null;
+	}
+
+	async function confirmAdd(e: SubmitEvent) {
+		e.preventDefault();
+		const p = pending;
+		if (!p) return;
+		if (p.kind === 'music') await addArtist(p.a);
+		else await add(p.r);
+		if (!error) close();
+	}
 
 	$effect(() => {
 		const media = kind === 'music' ? 'music' : 'video';
@@ -149,57 +180,8 @@
 			/>
 			<button class="primary" disabled={busy || !q.trim()}>{busy ? 'Searching…' : 'Search'}</button>
 		</div>
-		<div class="row">
-			<label class="inline">
-				Quality
-				<select bind:value={profile}>
-					{#each profiles as p (p.id)}<option value={p.id}>{p.name}</option>{/each}
-				</select>
-			</label>
-			{#if kind === 'music'}
-				<label class="inline">
-					Download
-					<select bind:value={artistMode}>
-						{#each ARTIST_MODES as [v, l] (v)}<option value={v}>{l}</option>{/each}
-					</select>
-				</label>
-			{:else if kind === 'series'}
-				<label class="inline">
-					Download
-					<select bind:value={monitorMode}>
-						{#each MODES as [v, l] (v)}<option value={v}>{l}</option>{/each}
-					</select>
-				</label>
-			{:else}
-				<label class="inline">
-					Start searching
-					<select bind:value={availability}>
-						{#each AVAIL as [v, l] (v)}<option value={v}>{l}</option>{/each}
-					</select>
-				</label>
-			{/if}
-			<label class="inline check">
-				<input type="checkbox" bind:checked={searchNow} /> Search for it right away
-			</label>
-		</div>
 		{#if kind === 'music'}
-			<fieldset class="row kinds">
-				<legend class="small">Which kinds</legend>
-				{#each KINDS as [v, l] (v)}
-					<label class="inline check small"
-						><input type="checkbox" value={v} bind:group={albumKinds} /> {l}</label
-					>
-				{/each}
-			</fieldset>
-			<p class="muted small hint">
-				Artists, albums and track lists come from MusicBrainz. Lossless prefers FLAC; High-quality
-				lossy takes MP3 320 / V0 and AAC.
-			</p>
-		{:else}
-			<p class="muted small hint">
-				“Any” also accepts releases that don't name their quality, such as the public-domain
-				films from Internet Archive.
-			</p>
+			<p class="muted small hint">Artists, albums and track lists come from MusicBrainz.</p>
 		{/if}
 	</form>
 
@@ -231,10 +213,10 @@
 								{:else}
 									<button
 										class="primary"
-										disabled={addingArtist !== null || !profile || albumKinds.length === 0}
-										onclick={() => addArtist(a)}
+										disabled={addingArtist !== null || !profile}
+										onclick={() => ask({ kind: 'music', a })}
 									>
-										{addingArtist === a.mbid ? 'Adding… (asking MusicBrainz)' : 'Add'}
+										Add…
 									</button>
 								{/if}
 							</div>
@@ -272,9 +254,9 @@
 									<button
 										class="primary"
 										disabled={adding !== null || !profile}
-										onclick={() => add(r)}
+										onclick={() => ask({ kind: kind as 'movie' | 'series', r })}
 									>
-										{adding === r.tmdb_id ? 'Adding…' : 'Add'}
+										Add…
 									</button>
 								{/if}
 							</div>
@@ -288,9 +270,131 @@
 			</div>
 		{/if}
 	{/if}
+	<dialog bind:this={dialog} onclose={() => (pending = null)} aria-labelledby="add-title">
+		{#if pending}
+			{@const isMusic = pending.kind === 'music'}
+			{@const name = pending.kind === 'music' ? pending.a.name : `${pending.r.name}${pending.r.year ? ` (${pending.r.year})` : ''}`}
+			<form method="dialog" class="stack" onsubmit={confirmAdd}>
+				<div class="head">
+					{#if pending.kind !== 'music' && pending.r.poster_url}
+						<img src={pending.r.poster_url} alt="" />
+					{/if}
+					<div>
+						<h2 id="add-title">Add {name}</h2>
+						<p class="muted small">
+							{pending.kind === 'movie' ? 'Movie' : pending.kind === 'series' ? 'TV show' : 'Music artist'} · nothing is
+							added or downloaded until you confirm
+						</p>
+					</div>
+				</div>
+
+				<label class="field">
+					Quality
+					<select bind:value={profile} required>
+						{#each profiles as p (p.id)}<option value={p.id}>{p.name}</option>{/each}
+					</select>
+				</label>
+
+				{#if pending.kind === 'series'}
+					<label class="field">
+						Download
+						<select bind:value={monitorMode}>
+							{#each MODES as [v, l] (v)}<option value={v}>{l}</option>{/each}
+						</select>
+					</label>
+				{:else if pending.kind === 'music'}
+					<label class="field">
+						Download
+						<select bind:value={artistMode}>
+							{#each ARTIST_MODES as [v, l] (v)}<option value={v}>{l}</option>{/each}
+						</select>
+					</label>
+					<fieldset class="kinds">
+						<legend class="small">Which kinds</legend>
+						{#each KINDS as [v, l] (v)}
+							<label class="inline check small"><input type="checkbox" value={v} bind:group={albumKinds} /> {l}</label>
+						{/each}
+					</fieldset>
+				{:else}
+					<label class="field">
+						Start searching
+						<select bind:value={availability}>
+							{#each AVAIL as [v, l] (v)}<option value={v}>{l}</option>{/each}
+						</select>
+					</label>
+				{/if}
+
+				{#if !(pending.kind !== 'movie' && (isMusic ? artistMode : monitorMode) === 'none')}
+					<label class="inline check">
+						<input type="checkbox" bind:checked={searchNow} /> Search for it right away
+					</label>
+				{/if}
+				<p class="muted small hint">
+					{#if pending.kind === 'series' && monitorMode === 'future'}
+						Episodes that have already aired aren't downloaded; new ones are, as they air.
+					{:else if pending.kind === 'music' && artistMode === 'future'}
+						Albums already out aren't downloaded; new ones are, when they're released.
+					{:else if pending.kind === 'movie'}
+						“Any” quality also accepts releases that don't name theirs, such as public-domain films from Internet
+						Archive.
+					{:else}
+						You can change this later on its page.
+					{/if}
+				</p>
+
+				{#if error}<p class="notice error">{error.message}</p>{/if}
+				<div class="row end">
+					<button type="button" onclick={close} disabled={adding !== null || addingArtist !== null}>Cancel</button>
+					<button
+						class="primary"
+						disabled={adding !== null || addingArtist !== null || !profile || (isMusic && albumKinds.length === 0)}
+					>
+						{#if adding !== null || addingArtist !== null}
+							{isMusic ? 'Adding… (asking MusicBrainz)' : 'Adding…'}
+						{:else}
+							Add
+						{/if}
+					</button>
+				</div>
+			</form>
+		{/if}
+	</dialog>
 </main>
 
 <style>
+	dialog {
+		width: min(32rem, calc(100vw - 2rem));
+		border: 1px solid var(--border);
+		border-radius: var(--radius);
+		background: var(--surface);
+		color: var(--text);
+		padding: 1.25rem;
+	}
+	dialog::backdrop {
+		background: rgb(0 0 0 / 0.5);
+	}
+	.head {
+		display: flex;
+		gap: 1rem;
+		align-items: flex-start;
+	}
+	.head h2 {
+		margin: 0 0 0.25rem;
+		font-size: 1.15rem;
+	}
+	.head p {
+		margin: 0;
+	}
+	.head img {
+		width: 56px;
+	}
+	.field {
+		display: grid;
+		gap: 0.3rem;
+	}
+	.end {
+		justify-content: flex-end;
+	}
 	.tabs {
 		display: flex;
 		gap: 0.25rem;
