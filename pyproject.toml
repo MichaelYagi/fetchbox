@@ -64,6 +64,10 @@ packages = ["src/fetchbox"]
 # The web UI build (web/ -> src/fetchbox/static) is gitignored but ships in the wheel.
 artifacts = ["src/fetchbox/static/**"]
 
+[tool.hatch.build.targets.sdist]
+# The wheel is built from the sdist (uv build), so the web UI must be in it too
+artifacts = ["src/fetchbox/static/**"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"

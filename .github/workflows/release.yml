@@ -59,7 +59,18 @@ jobs:
         working-directory: web
         run: npm ci && npm run build
       - name: Wheel and sdist
-        run: uv build --python 3.12 --out-dir release
+        run: |
+          uv build --python 3.12 --out-dir release
+          rm -f release/.gitignore   # uv writes one; it isn't a release file
+      - name: Both packages contain the web interface
+        run: |
+          python3 - <<'PY'
+          import glob, tarfile, zipfile
+          whl = zipfile.ZipFile(glob.glob("release/*.whl")[0]).namelist()
+          assert "fetchbox/static/index.html" in whl, "the wheel has no web interface"
+          sdist = tarfile.open(glob.glob("release/*.tar.gz")[0]).getnames()
+          assert any(n.endswith("src/fetchbox/static/index.html") for n in sdist), "nor the sdist"
+          PY
       - name: Source zip (with the built web interface)
         run: |
           STAGE="fetchbox-${GITHUB_REF_NAME}"
