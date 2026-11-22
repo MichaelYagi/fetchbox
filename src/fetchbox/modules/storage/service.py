@@ -28,6 +28,7 @@ from fetchbox.core.db import Database, utcnow
 from fetchbox.core.errors import ConflictError, FieldError, NotFoundError, ProblemError
 from fetchbox.core.events import Actor, EventBus, Subject
 from fetchbox.core.jobs import JobContext, JobRunner
+from fetchbox.core.paths import native_folder_problem
 from fetchbox.core.providers import HealthStatus
 from fetchbox.core.schedules import ScheduleDef, Scheduler
 from fetchbox.modules.storage.models import LINK_MODES, Destination, StorageNode
@@ -262,12 +263,10 @@ class StorageService:
 
     # ---- health -----------------------------------------------------------------------------
 
-    def _prepare(self, path: Path, is_default: bool) -> Path:
-        """Create the zero-config default folder and the torrent folder if missing."""
+    def _prepare(self, path: Path, is_default: bool) -> None:
+        """Create the zero-config default folder if missing."""
         if is_default and not path.exists():
             path.mkdir(parents=True, exist_ok=True)
-        self.torrents_dir.mkdir(parents=True, exist_ok=True)
-        return self.torrents_dir
 
     async def check(self, dest_id: str) -> Destination:
         """Probe one destination and record its status. Returns the updated row."""
@@ -276,6 +275,8 @@ class StorageService:
         status, message = "online", "ok"
         learned: str | None = None
         try:
+            if why := native_folder_problem(d.path):  # e.g. a Windows folder while in WSL
+                raise StorageError("config", why)
             if d.mount_point and not await asyncio.to_thread(os.path.ismount, d.mount_point):
                 # Never create or write anything here: it would land on the local disk
                 # underneath, and vanish from view once the share is back.
@@ -284,8 +285,8 @@ class StorageService:
                 current = await asyncio.to_thread(mount_of, path)
                 if current is not None and not _is_root(current):
                     learned = current
-            link_from = await asyncio.to_thread(self._prepare, path, d.is_default)
-            r = await self.local.check_access(str(path), link_source=str(link_from))
+            await asyncio.to_thread(self._prepare, path, d.is_default)
+            r = await self.local.check_access(str(path))
             if not r.exists:
                 status, message = "offline", "folder does not exist"
             elif not r.is_dir or not r.writable or not r.deletable:
@@ -298,15 +299,8 @@ class StorageService:
                 if usage.free < floor:
                     status = "low_space"
                     message = f"{usage.free / GB:.1f} GB free, below the {floor / GB:.1f} GB floor"
-                elif d.link_mode in ("hardlink_only",) and r.hardlink_with is False:
-                    status, message = (
-                        "degraded",
-                        "hardlinks from the torrent folder are not possible",
-                    )
                 else:
-                    message = f"{usage.free / GB:.1f} GB free" + (
-                        "" if r.hardlink_with else "; files will be copied (no hardlinks)"
-                    )
+                    message = f"{usage.free / GB:.1f} GB free"
         except _Unmounted as exc:
             status = "unmounted"
             message = (

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import Any
 
@@ -88,8 +87,9 @@ async def test_rename_an_imported_movie(
     new = library / "Dune (2021)" / "Dune (2021).mkv"
     assert new.exists() and not (library / EXPECTED).exists()
     assert not (library / EXPECTED).parent.exists()  # the emptied folder went too
-    seeding = settings.downloads_dir / "Torrents" / "fetchbox-movies" / NAME / f"{NAME}.mkv"
-    assert os.stat(new).st_ino == os.stat(seeding).st_ino  # still the same hardlinked file
+    # the torrent seeds from the file where it is now: renamed through the engine
+    engine = next(x for x in server.app.state.downloads.clients.values() if x.kind == "builtin")
+    assert str(new) in [f.path for f in await engine.files(made.info_hash)]
     [f] = (await c.get(f"/titles/{movie['id']}/files")).json()
     assert f["relative_path"] == step["new"]
     assert (await c.get("/library/rename/movie")).json() == []

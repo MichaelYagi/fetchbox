@@ -65,3 +65,49 @@ async def test_recycle_retention(server: Running, settings: Any) -> None:
 async def test_mounts_listed(c: httpx.AsyncClient) -> None:
     r = await c.get("/storage/mounts")
     assert r.status_code == 200 and isinstance(r.json(), list)
+
+
+def test_native_folders_only() -> None:
+    """In WSL only WSL folders; on Windows only Windows folders."""
+    from fetchbox.core.paths import native_folder_problem
+
+    wsl = {"wsl": True, "windows": False}
+    for path in (r"C:\Users\me\Media", "D:/TV", "/mnt/c/Users/me/Media", "/mnt/d", r"\\nas\media"):
+        assert native_folder_problem(path, **wsl), path
+    for path in ("/home/me/Media", "/srv/media", "/mnt/nas/media", "/mnt/media2"):
+        assert native_folder_problem(path, **wsl) is None, path
+    win = {"wsl": False, "windows": True}
+    for path in (r"\\wsl.localhost\Debian\home\me", r"\\wsl$\Ubuntu\srv", "//wsl.localhost/x"):
+        assert native_folder_problem(path, **win), path
+    assert native_folder_problem(r"C:\Media", **win) is None
+    assert native_folder_problem(r"\\nas\media", **win) is None
+    # neither: anything goes (Linux, macOS)
+    assert native_folder_problem("/mnt/c/x", wsl=False, windows=False) is None
+
+
+async def test_crossing_folders_are_refused_in_wsl(
+    c: httpx.AsyncClient, server: Running, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from fetchbox.core import paths
+
+    monkeypatch.setattr(paths, "under_wsl", lambda: True)
+    movies = next(d for d in (await c.get("/destinations")).json() if d["media_kind"] == "movie")
+    r = await c.patch(f"/destinations/{movies['id']}", json={"path": "/mnt/c/Users/me/Movies"},
+                      headers={"If-Match": movies["etag"]})  # fmt: skip
+    assert r.status_code == 422 and "WSL folder" in r.text
+    clients = (await c.get("/download-clients")).json()
+    builtin = next(x for x in clients if x["kind"] == "builtin")
+    r = await c.patch(f"/download-clients/{builtin['id']}",
+                      json={"policy": {"save_path": "/home/me/torrents"}})  # fmt: skip
+    assert r.status_code == 422 and "library folders" in r.text  # no separate folder at all
+    # one already stored (from before): flagged, nothing goes there
+    from sqlalchemy import update
+
+    from fetchbox.modules.storage.models import Destination
+
+    async with server.app.state.fb.db.sessionmaker() as s:
+        await s.execute(update(Destination).where(Destination.id == movies["id"])
+                        .values(path="/mnt/c/Users/me/Movies"))  # fmt: skip
+        await s.commit()
+    d = (await c.post(f"/destinations/{movies['id']}/check")).json()
+    assert d["status"] == "offline" and "WSL folder" in d["status_message"]

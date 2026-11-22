@@ -97,5 +97,14 @@ class DownloadClientProvider(Provider):
     async def remove(self, ref: ClientRef, delete_data: bool) -> None:
         raise NotImplementedError
 
+    # Clients that can move a finished torrent's files into the library and keep seeding
+    # them from there (the built-in engine): one file, in the library, no copies.
+    can_relocate: bool = False
+
+    async def relocate(self, ref: ClientRef, moves: dict[str, str]) -> None:
+        """Move files of the torrent (its paths, as ``files`` lists them) to absolute
+        paths; seeding continues from there."""
+        raise NotImplementedError
+
     async def recheck(self, ref: ClientRef) -> None:
         raise NotImplementedError

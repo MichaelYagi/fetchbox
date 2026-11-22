@@ -150,6 +150,7 @@
 			onChanged();
 		}, 'Saved.');
 
+
 	const saveFolder = (e: SubmitEvent) => {
 		e.preventDefault();
 		act('folder', async () => {
@@ -157,7 +158,7 @@
 			editingFolder = false;
 			onChanged();
 			await load();
-		}, 'Folder saved. New files go there; files already in the old folder stay.');
+		}, 'Folder saved. New files go there; files already in the old folder stay (they aren\'t moved).');
 	};
 
 	// the preview as a folder tree, under the library folder
@@ -211,8 +212,12 @@
 	</div>
 
 	{#if dest}
+		<p class="muted small">
+			Downloads go straight into this folder (a hidden .incomplete folder while they download), are filed here when
+			finished, and seed from where they're filed: one file each, nowhere else.
+		</p>
 		<div class="field">
-			<label class="label" for="linkmode-{kind}">How finished downloads get here</label>
+			<label class="label" for="linkmode-{kind}">Downloads from other clients (qBittorrent, Transmission, Deluge)</label>
 			<select id="linkmode-{kind}" value={dest.link_mode} onchange={(e) => setLinkMode(e.currentTarget.value)} disabled={!!busy}>
 				{#each LINK_MODES as [v, l] (v)}<option value={v}>{l}</option>{/each}
 			</select>

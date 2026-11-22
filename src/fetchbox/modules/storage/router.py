@@ -5,10 +5,11 @@ from datetime import datetime
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Header, Request, Response
-from pydantic import BaseModel, Field, computed_field
+from pydantic import BaseModel, Field, computed_field, field_validator
 
 from fetchbox.core.concurrency import etag
 from fetchbox.core.errors import problem_responses as pr
+from fetchbox.core.paths import native_folder_problem
 from fetchbox.modules.auth.deps import CurrentPrincipal, require
 from fetchbox.modules.storage.models import Destination, StorageNode
 from fetchbox.modules.storage.service import StorageService, mounts
@@ -76,6 +77,14 @@ class DestinationIn(BaseModel):
     recycle: bool = True
     is_default: bool = False
 
+    @field_validator("path", mode="before")
+    @classmethod
+    def _native(cls, v: object) -> object:
+        """In WSL only WSL folders; on Windows only Windows folders."""
+        if isinstance(v, str) and (why := native_folder_problem(v)):
+            raise ValueError(why)
+        return v
+
 
 class DestinationPatch(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=100)
@@ -85,6 +94,14 @@ class DestinationPatch(BaseModel):
     free_space_min: int | None = Field(default=None, ge=0)
     recycle: bool | None = None
     is_default: bool | None = None
+
+    @field_validator("path", mode="before")
+    @classmethod
+    def _native(cls, v: object) -> object:
+        """In WSL only WSL folders; on Windows only Windows folders."""
+        if isinstance(v, str) and (why := native_folder_problem(v)):
+            raise ValueError(why)
+        return v
 
 
 def _node(n: StorageNode) -> NodeOut:

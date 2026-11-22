@@ -25,9 +25,10 @@ docker run -d --name fetchbox -p 8787:8787 -p 6881:6881 -p 6881:6881/udp \
   -v fetchbox-config:/config -v /srv/media:/data ghcr.io/michaelyagi/fetchbox
 ```
 
-`/config` holds the database and settings. `/data` is one folder for downloads and the
-library (`Torrents/`, `Movies/`, `TV/`), so finished downloads are hardlinked into the
-library instead of copied. Set `PUID`/`PGID` to the owner of your media folder. The
+`/config` holds the database and settings. `/data` is the library (`Movies/`, `TV/`,
+`Music/`). Downloads go straight into the folder they're for (a hidden `.incomplete`
+folder there), are filed in place when finished, and seed from where they're filed: one
+file each, no copies. Set `PUID`/`PGID` to the owner of your media folder. The
 password is only used on first start; change it in the web UI. A compose file is in
 `docker/compose.yaml`.
 
