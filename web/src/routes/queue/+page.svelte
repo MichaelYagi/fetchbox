@@ -87,6 +87,56 @@
 	const seeding = (d: Download) => d.status === 'completed' && !d.seeded_at && seeds.has(d.client_id ?? '');
 	const label = (d: Download) =>
 		d.completed_at ? (seeding(d) ? 'Downloaded · seeding' : 'Downloaded') : (LABEL[d.status] ?? d.status);
+
+	// Ticked downloads (the active list), for pausing, resuming or removing several at once.
+	let picked = $state<Set<string>>(new Set());
+	$effect(() => {
+		// a download that finished or went away drops out of the selection
+		const live = new Set(active.map((d) => d.id));
+		if ([...picked].some((id) => !live.has(id))) picked = new Set([...picked].filter((id) => live.has(id)));
+	});
+	const chosen = $derived(active.filter((d) => picked.has(d.id)));
+	const allPicked = $derived(active.length > 0 && chosen.length === active.length);
+
+	function pick(id: string, on: boolean) {
+		const next = new Set(picked);
+		if (on) next.add(id);
+		else next.delete(id);
+		picked = next;
+	}
+
+	async function batch(what: 'pause' | 'resume' | 'remove') {
+		const list = chosen.filter((d) =>
+			what === 'pause' ? d.status !== 'paused' : what === 'resume' ? d.status === 'paused' : true
+		);
+		if (list.length === 0) return;
+		const n = list.length === 1 ? '1 download' : `${list.length} downloads`;
+		if (
+			what === 'remove' &&
+			!confirm(
+				`Stop and remove ${n}?\n\nTheir data is deleted and each release is blocklisted, so another one is searched for.`
+			)
+		)
+			return;
+		busy = 'batch';
+		const failed: string[] = [];
+		try {
+			for (const d of list) {
+				try {
+					if (what === 'remove') await del(`/downloads/${d.id}`, { delete_data: true, blocklist: true });
+					else await post(`/downloads/${d.id}/${what}`);
+				} catch (e) {
+					failed.push(`${d.name}: ${e instanceof ApiError ? e.message : String(e)}`);
+				}
+			}
+			error = failed.length ? `Not done for ${failed.length}: ${failed.join('; ')}` : '';
+			notice = failed.length ? '' : `${what === 'pause' ? 'Paused' : what === 'resume' ? 'Resumed' : 'Removed'} ${n}.`;
+			if (what === 'remove') picked = new Set();
+			await load();
+		} finally {
+			busy = '';
+		}
+	}
 </script>
 
 <main>
@@ -112,11 +162,38 @@
 	{:else if active.length === 0}
 		<p class="empty card">Nothing downloading. Movies you add are searched for and appear here.</p>
 	{:else}
+		<div class="row selectbar">
+			<label class="inline check">
+				<input
+					type="checkbox"
+					checked={allPicked}
+					indeterminate={chosen.length > 0 && !allPicked}
+					onchange={(e) => (picked = e.currentTarget.checked ? new Set(active.map((d) => d.id)) : new Set())}
+					disabled={!!busy}
+				/>
+				{chosen.length ? `${chosen.length} selected` : 'Select all'}
+			</label>
+			{#if chosen.length}
+				<button onclick={() => batch('pause')} disabled={!!busy || !chosen.some((d) => d.status !== 'paused')}>Pause</button>
+				<button onclick={() => batch('resume')} disabled={!!busy || !chosen.some((d) => d.status === 'paused')}>Resume</button>
+				<button class="danger" onclick={() => batch('remove')} disabled={!!busy}>Remove</button>
+				<button class="link small" onclick={() => (picked = new Set())} disabled={!!busy}>Clear</button>
+			{/if}
+		</div>
 		<div class="stack">
 			{#each active as d (d.id)}
-				<div class="card stack item">
+				<div class="card stack item" class:picked={picked.has(d.id)}>
 					<div class="spread">
-						<strong class="name">{d.name}</strong>
+						<label class="inline check name">
+							<input
+								type="checkbox"
+								aria-label="Select {d.name}"
+								checked={picked.has(d.id)}
+								onchange={(e) => pick(d.id, e.currentTarget.checked)}
+								disabled={!!busy}
+							/>
+							<strong>{d.name}</strong>
+						</label>
 						<div class="row">
 							<span class="badge {tone(d)}">{label(d)}</span>
 							{#if d.status === 'paused'}
@@ -201,6 +278,20 @@
 	}
 	.item {
 		gap: 0.5rem;
+	}
+	.item.picked {
+		outline: 2px solid var(--accent, var(--ok));
+		outline-offset: -1px;
+	}
+	.selectbar {
+		align-items: center;
+		gap: 0.5rem;
+		margin-bottom: 0.6rem;
+	}
+	.check {
+		display: inline-flex;
+		gap: 0.5rem;
+		align-items: center;
 	}
 	.err {
 		color: var(--error);
