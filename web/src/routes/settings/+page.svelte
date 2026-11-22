@@ -2,6 +2,7 @@
 	import { ApiError, del, get, patch, post, type S } from '#lib/api.ts';
 	import BackupsCard from '#lib/BackupsCard.svelte';
 	import ConfigTransferCard from '#lib/ConfigTransferCard.svelte';
+	import ResetDataCard from '#lib/ResetDataCard.svelte';
 	import LibraryCard from '#lib/LibraryCard.svelte';
 	import LibraryCheckCard from '#lib/LibraryCheckCard.svelte';
 	import MediaServersCard from '#lib/MediaServersCard.svelte';
@@ -48,9 +49,11 @@
 		remote: '',
 		folder: '',
 		iface: '',
-		kill: true
+		kill: true,
+		seed: false
 	});
 	let interfaces = $state<S['NetworkInterface'][]>([]);
+	let resets = $state(0); // a reset makes a backup: show it
 
 	function editIndexer(i: S['IndexerOut']) {
 		const st = i.settings as Record<string, unknown>;
@@ -65,7 +68,8 @@
 			remote: '',
 			folder: '',
 			iface: '',
-			kill: true
+			kill: true,
+			seed: false
 		};
 		editing = i.id;
 	}
@@ -84,7 +88,8 @@
 			remote: map?.client ?? '',
 			folder: c.policy.save_path ?? '',
 			iface: (st.interface as string) ?? '',
-			kill: (st.kill_switch as boolean) ?? true
+			kill: (st.kill_switch as boolean) ?? true,
+			seed: c.policy.seed ?? false
 		};
 		editing = c.id;
 		if (c.kind === 'builtin') get<S['NetworkInterface'][]>('/system/network-interfaces').then((x) => (interfaces = x));
@@ -142,9 +147,13 @@
 		// Only touch the engine's settings when they change: that restarts it.
 		const bindChanged =
 			c.kind === 'builtin' && ((st.interface ?? '') !== draft.iface || (st.kill_switch ?? true) !== draft.kill);
+		const seed = c.kind === 'direct' ? {} : { seed: draft.seed };
 		const body = builtIn
-			? { ...(bindChanged ? { settings: { interface: draft.iface || null, kill_switch: draft.kill } } : {}) }
-			: { settings, policy: { path_mappings: mappings, save_path: folder } };
+			? {
+					...(bindChanged ? { settings: { interface: draft.iface || null, kill_switch: draft.kill } } : {}),
+					...(c.kind === 'builtin' ? { policy: seed } : {})
+				}
+			: { settings, policy: { path_mappings: mappings, save_path: folder, ...seed } };
 		act(`save-${c.id}`, () => patch(`/download-clients/${c.id}`, body, c.etag), `${c.name} saved.`).then(
 			() => {
 				if (!error) editing = null;
@@ -472,8 +481,8 @@
 									{#if c.id === inUse}<span class="badge info">Used for torrents</span>{/if}
 								</div>
 								<div class="muted small where">
-									{#if c.kind === 'builtin'}Saves into each library folder, and seeds from where it's filed
-									{:else if c.saves_to}Saves to <Path path={c.saves_to} />{:else}Saves to {c.name}'s own download folder{/if}
+									{#if c.kind === 'builtin'}Saves into each library folder{:else if c.saves_to}Saves to <Path path={c.saves_to} />{:else}Saves to {c.name}'s own download folder{/if}
+									· {c.policy.seed ? 'keeps seeding after download' : 'stops when downloaded (no seeding)'}
 								</div>
 							</td>
 							<td class="muted">{c.kind}</td>
@@ -509,6 +518,9 @@
 												<input bind:value={draft.folder} placeholder="empty: {c.name}'s own folder" />
 											</label>
 										{/if}
+										<label class="inline-check" title="Off: each torrent stops as soon as it's downloaded and filed; the file stays.">
+											<input type="checkbox" bind:checked={draft.seed} /> Keep seeding after download
+										</label>
 										<button class="primary" disabled={!!busy}>Save</button>
 									</form>
 									{#if c.kind === 'builtin'}
@@ -554,9 +566,9 @@
 									</div>
 									{/if}
 									{#if c.kind === 'builtin'}
-										<p class="muted small hint">Downloads go into the library folder of what they're for (a hidden .incomplete folder there), and are seeded from where they're filed: one file, nowhere else.</p>
+										<p class="muted small hint">Downloads go into the library folder of what they're for (a hidden .incomplete folder there) and are filed there: one file, nowhere else. With <strong>Keep seeding</strong> on, torrents go on sharing from where they're filed; off, each stops as soon as it's filed, and the file stays.</p>
 									{:else}
-										<p class="muted small hint">The download folder applies to new downloads; ones in progress stay where they are.</p>
+										<p class="muted small hint">The download folder applies to new downloads; ones in progress stay where they are. With <strong>Keep seeding</strong> off, each torrent is removed from {c.name} once it's in your library, with its download (the library has its own copy or link).</p>
 									{/if}
 								</td>
 							</tr>
@@ -656,12 +668,17 @@
 
 	<section id="backups">
 		<h2>Backups</h2>
-		<BackupsCard />
+		{#key resets}<BackupsCard />{/key}
 	</section>
 
 	<section id="move-settings">
 		<h2>Move settings</h2>
 		<ConfigTransferCard />
+	</section>
+
+	<section id="delete-all-data">
+		<h2 class="danger-title">Delete all data</h2>
+		<ResetDataCard ondone={() => (resets++, load())} />
 	</section>
 </main>
 
@@ -734,6 +751,9 @@
 		color: var(--ok);
 	}
 	.errt {
+		color: var(--error);
+	}
+	.danger-title {
 		color: var(--error);
 	}
 </style>

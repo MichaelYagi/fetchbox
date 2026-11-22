@@ -214,7 +214,7 @@
 	{#if dest}
 		<p class="muted small">
 			Downloads go straight into this folder (a hidden .incomplete folder while they download), are filed here when
-			finished, and seed from where they're filed: one file each, nowhere else.
+			finished (and seed from there, if seeding is on): one file each, nowhere else.
 		</p>
 		<div class="field">
 			<label class="label" for="linkmode-{kind}">Downloads from other clients (qBittorrent, Transmission, Deluge)</label>

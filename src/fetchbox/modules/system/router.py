@@ -137,6 +137,56 @@ async def shutdown(request: Request) -> Response:
     return Response(status_code=202)
 
 
+CONFIRM_RESET = "delete all data"
+
+
+class ResetIn(BaseModel):
+    confirm: str = Field(description=f'Must be "{CONFIRM_RESET}": a guard against a stray call')
+    delete_files: bool = Field(
+        default=False,
+        description="Also delete the media files in the library folders (into each folder's "
+        "recycle folder when it has one). Off: the files stay, ready to import again",
+    )
+
+
+class ResetOut(BaseModel):
+    backup: str = Field(description="The backup made first: restore it to undo the reset")
+    downloads_stopped: int
+    files_deleted: int
+    not_stopped: list[str] = Field(description="Downloads a client couldn't stop (offline?)")
+    not_deleted: list[str] = Field(description="Media files that couldn't be deleted")
+
+
+@router.post(
+    "/reset-data",
+    response_model=ResetOut,
+    dependencies=[Depends(require("system:write"))],
+    responses=problem_responses(401, 403, 409, 422),
+)
+async def reset_data(body: ResetIn, request: Request, p: CurrentPrincipal) -> ResetOut:
+    """Delete all data and keep the settings. Titles, the wanted list, history, the queue,
+    grabs, the blocklist, activity and jobs go; indexers, clients, library folders,
+    profiles, naming, notifications, users and keys stay. A backup is made first.
+    Downloads are stopped (unfinished data deleted); media files stay unless asked."""
+    from fetchbox.modules.system.reset import ResetError
+
+    if body.confirm.strip().lower() != CONFIRM_RESET:
+        raise ProblemError(
+            422, "Validation Failed", f'confirm must be "{CONFIRM_RESET}"', slug="validation"
+        )
+    try:
+        r = await request.app.state.reset.run(delete_files=body.delete_files, actor=p.actor())
+    except ResetError as exc:
+        raise ProblemError(409, "Conflict", exc.message, slug="conflict") from None
+    return ResetOut(
+        backup=r.backup,
+        downloads_stopped=r.downloads_stopped,
+        files_deleted=r.files_deleted,
+        not_stopped=r.not_stopped,
+        not_deleted=r.not_deleted,
+    )
+
+
 class NetworkInterface(BaseModel):
     name: str
     address: str | None = Field(description="Its current address; null: down or none")

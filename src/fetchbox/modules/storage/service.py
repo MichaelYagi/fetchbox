@@ -110,6 +110,14 @@ def mounts() -> list[dict[str, Any]]:
     return sorted(out, key=lambda m: m["path"])
 
 
+def _has_files(folder: Path) -> bool:
+    """Any file in ``folder`` (its recycle folder included); a missing folder has none."""
+    try:
+        return any(p.is_file() for p in folder.rglob("*"))
+    except OSError:
+        return True  # can't tell: leave it alone
+
+
 def default_floor(total: int) -> int:
     return min(max(int(total * FLOOR_SHARE), FLOOR_MIN), total // 2)
 
@@ -173,6 +181,49 @@ class StorageService:
                     )
                 )
             await s.commit()
+        await self._repoint_crossing_defaults()
+
+    async def _repoint_crossing_defaults(self) -> None:
+        """A default folder Fetchbox chose itself on the other system (an earlier version
+        under WSL picked the Windows Downloads folder) moves to this system's default,
+        but only while nothing is in it: no files filed there, nothing downloading into
+        it, nothing on disk. A folder with files in it stays, flagged for you to change."""
+        from fetchbox.modules.downloads.models import Download
+        from fetchbox.modules.library.models import MediaFile
+
+        async with self.db.sessionmaker() as s:
+            defaults = list(
+                (
+                    await s.execute(select(Destination).where(Destination.is_default.is_(True)))
+                ).scalars()
+            )
+            taken = {d.path for d in (await s.execute(select(Destination))).scalars()}
+            changed = False
+            for d in defaults:
+                if not native_folder_problem(d.path):
+                    continue
+                target = str(self.downloads_root / Path(d.path).name)
+                if target in taken or native_folder_problem(target):
+                    continue
+                if await s.scalar(
+                    select(MediaFile.id).where(MediaFile.destination_id == d.id).limit(1)
+                ):
+                    continue
+                if await s.scalar(
+                    select(Download.id)
+                    .where(Download.status != "removed", Download.save_path.startswith(d.path))
+                    .limit(1)
+                ):
+                    continue
+                if await asyncio.to_thread(_has_files, Path(d.path)):
+                    continue
+                log.info("storage.default_folder_moved", folder=d.name, old=d.path, new=target)
+                taken.discard(d.path)
+                taken.add(target)
+                d.path = target
+                changed = True
+            if changed:
+                await s.commit()
 
     async def recover(self) -> list[str]:
         """Roll back file operations a crash interrupted (partial files)."""

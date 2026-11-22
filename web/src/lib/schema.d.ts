@@ -2093,6 +2093,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system/reset-data": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reset Data
+         * @description Delete all data and keep the settings. Titles, the wanted list, history, the queue,
+         *     grabs, the blocklist, activity and jobs go; indexers, clients, library folders,
+         *     profiles, naming, notifications, users and keys stay. A backup is made first.
+         *     Downloads are stopped (unfinished data deleted); media files stay unless asked.
+         */
+        post: operations["reset_data_api_v1_system_reset_data_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/system/selftest": {
         parameters: {
             query?: never;
@@ -4491,12 +4514,18 @@ export interface components {
             path_mappings: components["schemas"]["fetchbox__modules__downloads__service__PathMapping"][];
             /**
              * Save Path
-             * @description Download folder as Fetchbox sees it. Built-in clients: default <downloads root>/Torrents; external clients: default is the client's own folder
+             * @description External clients: the download folder as Fetchbox sees it (default: the client's own). Built-in downloads always go into the library folders
              */
             save_path?: string | null;
             /**
+             * Seed
+             * @description Keep sharing a torrent after it's downloaded and filed. Off (the default): it stops as soon as it's in the library, and its file stays
+             * @default false
+             */
+            seed: boolean;
+            /**
              * Seed Action
-             * @description When a goal is met (whichever first, after import): remove the torrent and its downloaded data (library files are separate links or copies), or pause it
+             * @description When a goal is met (whichever first, after import): remove the torrent (a file filed in place stays; another client's download, already copied or linked into the library, is deleted), or pause it. With seeding off: always remove
              * @default remove
              * @enum {string}
              */
@@ -4948,6 +4977,42 @@ export interface components {
             title: string;
             /** Title Id */
             title_id: string;
+        };
+        /** ResetIn */
+        ResetIn: {
+            /**
+             * Confirm
+             * @description Must be "delete all data": a guard against a stray call
+             */
+            confirm: string;
+            /**
+             * Delete Files
+             * @description Also delete the media files in the library folders (into each folder's recycle folder when it has one). Off: the files stay, ready to import again
+             * @default false
+             */
+            delete_files: boolean;
+        };
+        /** ResetOut */
+        ResetOut: {
+            /**
+             * Backup
+             * @description The backup made first: restore it to undo the reset
+             */
+            backup: string;
+            /** Downloads Stopped */
+            downloads_stopped: number;
+            /** Files Deleted */
+            files_deleted: number;
+            /**
+             * Not Deleted
+             * @description Media files that couldn't be deleted
+             */
+            not_deleted: string[];
+            /**
+             * Not Stopped
+             * @description Downloads a client couldn't stop (offline?)
+             */
+            not_stopped: string[];
         };
         /** RestoreIn */
         RestoreIn: {
@@ -11571,6 +11636,70 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Ping"];
+                };
+            };
+        };
+    };
+    reset_data_api_v1_system_reset_data_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResetIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResetOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
                 };
             };
         };

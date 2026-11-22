@@ -168,7 +168,10 @@ async def test_add_client_and_download_through_it(
         "kind": "qbittorrent",
         "name": "NAS qBittorrent",
         "settings": {"url": "http://client:8080", "username": "admin", "password": "pw"},
-        "policy": {"path_mappings": [{"local": str(torrents_local), "client": "/data/torrents"}]},
+        "policy": {
+            "path_mappings": [{"local": str(torrents_local), "client": "/data/torrents"}],
+            "seed": True,
+        },
     }
     assert (await c.post("/download-clients", json={**body, "kind": "nope"})).status_code == 422
     r = await c.post("/download-clients", json=body)

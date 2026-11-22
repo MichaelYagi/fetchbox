@@ -142,8 +142,8 @@
 			</div>
 		</div>
 		<p class="muted small">
-			Albums download straight into this folder and are filed here, seeded from where they're filed. Tags come from
-			MusicBrainz and are written once seeding ends (changing a file a torrent shares would break it).
+			Albums download straight into this folder and are filed here (and seed from there, if seeding is on). Tags come from
+			MusicBrainz and are written once the torrent stops (straight away, unless seeding is on: changing a file a torrent shares would break it).
 		</p>
 	{/if}
 </div>

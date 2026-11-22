@@ -65,6 +65,7 @@ from fetchbox.modules.system.activity import ActivityWriter
 from fetchbox.modules.system.backups import Backups, sqlite_path
 from fetchbox.modules.system.config import ConfigService
 from fetchbox.modules.system.portable import Portable
+from fetchbox.modules.system.reset import DataReset
 from fetchbox.modules.system.service import register_core_checks
 from fetchbox.modules.system.updates import UpdateChecker
 from fetchbox.providers import builtin as _builtin_providers  # noqa: F401 (registers them)
@@ -281,6 +282,10 @@ def create_app(
         activity_writer = ActivityWriter(db, bus)
         activity_writer.start()  # before anything else emits, so startup is logged
         app.state.activity = activity_writer
+        app.state.reset = DataReset(
+            db, bus, backups=backups, downloads=downloads, library=library,
+            activity=activity_writer,
+        )  # fmt: skip
 
         plugins = state.providers.load_entry_points()
         register_core_checks(state)

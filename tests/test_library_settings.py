@@ -71,7 +71,7 @@ async def test_rename_an_imported_movie(
     seed: BuiltinClient,  # noqa: F811
     settings: Any,
 ) -> None:
-    movie = await _acquire(c, fakes, server, made, seed)
+    movie = await _acquire(c, fakes, server, made, seed, seeding=True)  # renamed while seeding
     assert (await c.get("/library/rename/movie")).json() == []  # already named this way
 
     simple = next(p for p in (await _options(c))["presets"] if p["id"] == "simple")["patterns"]

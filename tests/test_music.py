@@ -10,8 +10,10 @@ from pathlib import Path
 from typing import Any
 
 import httpx
+import pytest
 
 from fetchbox.modules.media.music import wanted_flags
+from fetchbox.providers.download_clients import DownloadClientError
 from fetchbox.providers.metadata.musicbrainz import AlbumResult
 from tests.conftest import Running
 from tests.fake_torznab import Item
@@ -197,8 +199,9 @@ def _album_torrent(root: Path, name: str, files: dict[str, bytes]) -> Made:
     return Made(torrent, str(ti.info_hashes().v1), root, name, files)
 
 
+@pytest.mark.parametrize("seeding", [True, False])
 async def test_download_and_import_an_album(
-    c: httpx.AsyncClient, server: Running, fakes: Fakes, tmp_path: Path
+    c: httpx.AsyncClient, server: Running, fakes: Fakes, tmp_path: Path, seeding: bool
 ) -> None:
     """Gate: an album downloads as FLAC, and every track is matched, named and tagged.
     A hardlinked file is the torrent's own while it seeds: its tags aren't touched."""
@@ -217,6 +220,11 @@ async def test_download_and_import_an_album(
     music_dest = next(
         d for d in (await c.get("/destinations")).json() if d["media_kind"] == "music"
     )
+    engine_row = next(
+        x for x in (await c.get("/download-clients")).json() if x["kind"] == "builtin"
+    )
+    r = await c.patch(f"/download-clients/{engine_row['id']}", json={"policy": {"seed": seeding}})
+    assert r.status_code == 200, r.text
 
     artist = (
         await c.post("/music/artists", json={"mbid": ARTIST, "profile_id": lossless["id"]})
@@ -264,17 +272,26 @@ async def test_download_and_import_an_album(
     hist = (await c.get(f"/titles/{artist['id']}/history")).json()["items"]
     imported_ev = next(h for h in hist if h["type"] == "imported")
     assert imported_ev["data"]["tracks"] == 11
-    # filed in place: the tracks ARE the seeding torrent's files, left as downloaded
+    # filed in place: the tracks are the torrent's own files, so tags wait until it stops
     assert imported_ev["data"]["link_mode"] == "in_place"
-    assert imported_ev["data"]["tagged"] == 0 and not (first.tags or {}).get("title")
-    engine = next(x for x in server.app.state.downloads.clients.values() if x.kind == "builtin")
-    engine_files = [f.path for f in await engine.files(made.info_hash)]
-    assert str(folder / "01 - Mysterons.flac") in engine_files
+    assert imported_ev["data"]["tagged"] == 0
     assert not list((Path(music_dest["path"]) / ".incomplete").rglob("*.flac"))
-    # stop seeding: the torrent stops, the album stays, and its tags are written
-    [dl] = (await c.get("/downloads")).json()
-    r = await c.delete(f"/downloads/{dl['id']}", params={"delete_data": True})
-    assert r.status_code == 204
+    engine = next(x for x in server.app.state.downloads.clients.values() if x.kind == "builtin")
+    if seeding:  # it shares from the library: untouched until you stop seeding
+        assert not (first.tags or {}).get("title")
+        engine_files = [f.path for f in await engine.files(made.info_hash)]
+        assert str(folder / "01 - Mysterons.flac") in engine_files
+        [dl] = (await c.get("/downloads")).json()
+        r = await c.delete(f"/downloads/{dl['id']}", params={"delete_data": True})
+        assert r.status_code == 204
+    else:  # not seeding (the default): the torrent stops as soon as the album is filed
+
+        async def stopped() -> bool:
+            return bool((await c.get("/downloads")).json()[0]["seeded_at"])
+
+        await until(stopped, within=10)
+        with pytest.raises(DownloadClientError):
+            await engine.files(made.info_hash)
 
     async def tagged() -> bool:  # every track, whatever order the job takes them in
         return all((f := mutagen.File(p)).tags and f.tags.get("title") for p in folder.iterdir())

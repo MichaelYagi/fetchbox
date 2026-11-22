@@ -156,8 +156,8 @@ class Policy(BaseModel):
     stall_limit: int = Field(default=3, ge=1, le=20, description="Stalls before failing")
     save_path: str | None = Field(
         default=None,
-        description="Download folder as Fetchbox sees it. Built-in clients: default "
-        "<downloads root>/Torrents; external clients: default is the client's own folder",
+        description="External clients: the download folder as Fetchbox sees it (default: the "
+        "client's own). Built-in downloads always go into the library folders",
     )
 
     @field_validator("save_path", mode="before")
@@ -172,6 +172,11 @@ class Policy(BaseModel):
                 raise ValueError("must be an absolute folder path")
         return v
 
+    seed: bool = Field(
+        default=False,
+        description="Keep sharing a torrent after it's downloaded and filed. Off (the "
+        "default): it stops as soon as it's in the library, and its file stays",
+    )
     seed_ratio: float | None = Field(
         default=None, ge=0, description="Stop seeding at this upload ratio; null: no limit"
     )
@@ -181,7 +186,8 @@ class Policy(BaseModel):
     seed_action: Literal["remove", "pause"] = Field(
         default="remove",
         description="When a goal is met (whichever first, after import): remove the torrent "
-        "and its downloaded data (library files are separate links or copies), or pause it",
+        "(a file filed in place stays; another client's download, already copied or linked "
+        "into the library, is deleted), or pause it. With seeding off: always remove",
     )
 
     path_mappings: list[PathMapping] = Field(
@@ -209,6 +215,8 @@ class Policy(BaseModel):
         return path
 
     def seeding_done(self, ratio: float | None, seed_seconds: int | None) -> bool:
+        if not self.seed:
+            return True  # not seeding: done as soon as it's imported
         if self.seed_ratio is not None and (ratio or 0.0) >= self.seed_ratio:
             return True
         return self.seed_minutes is not None and (seed_seconds or 0) >= self.seed_minutes * 60
@@ -865,13 +873,14 @@ class DownloadsService:
         policy = self.policy(row)
         if d.import_status != "imported" or not policy.seeding_done(t.ratio, t.seed_seconds):
             return
-        delete_data = policy.seed_action == "remove" and not await self._symlinked(d)
+        action = policy.seed_action if policy.seed else "remove"  # not seeding: stop it for good
+        delete_data = action == "remove" and not await self._symlinked(d)
         leftovers: list[Path] = []
         if in_library(d):  # its files are the library's: keep them
             delete_data = False
-            leftovers = await self._leftovers(d) if policy.seed_action == "remove" else []
+            leftovers = await self._leftovers(d) if action == "remove" else []
         try:
-            if policy.seed_action == "remove":
+            if action == "remove":
                 await client.remove(d.client_ref, delete_data)
                 await asyncio.to_thread(_remove_leftovers, leftovers, d.save_path)
             else:
@@ -880,7 +889,7 @@ class DownloadsService:
             log.warning("downloads.seed_stop_failed", download=d.id, error=exc.message)
             return
         await self._update(d.id, {"seeded_at": utcnow()})
-        if policy.seed_action == "remove":
+        if action == "remove":
             self.live.pop(d.id, None)
         await self._emit(
             "download.seeded",
@@ -888,7 +897,7 @@ class DownloadsService:
             name=d.name,
             ratio=round(t.ratio or 0.0, 2),
             hours=round((t.seed_seconds or 0) / 3600, 1),
-            action=policy.seed_action,
+            action=action,
             deleted_data=delete_data,
         )
 
