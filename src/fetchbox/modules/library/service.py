@@ -257,6 +257,24 @@ def movie_context(
     }
 
 
+async def _cover(meta: dict[str, Any]) -> bytes | None:
+    """The album's front cover (Cover Art Archive), for embedding; None if unavailable."""
+    url = meta.get("cover")
+    if not url:
+        return None
+    import httpx
+
+    url = str(url).replace("front-250", "front-500")
+    try:
+        async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as http:
+            r = await http.get(url, headers={"User-Agent": "Fetchbox"})
+        if r.status_code == 200 and r.content[:3] == b"\xff\xd8\xff":  # a JPEG
+            return r.content
+    except httpx.HTTPError:
+        pass
+    return None
+
+
 def _quality_json(
     parsed: ParsedRelease, quality: str, info: MediaInfo | None = None
 ) -> dict[str, Any]:
@@ -460,6 +478,8 @@ class LibraryService:
         )
         quality = release.get("quality") or parsed.quality
         score = int(release.get("format_score") or 0)
+        if title.kind == "music":
+            return await self._import_album(d, grab, title, waiting, dest)
         if title.kind == "series":
             return await self._import_episodes(
                 d, grab, title, waiting, dest, parsed, quality, score
@@ -483,6 +503,179 @@ class LibraryService:
             "media_file_id": mf.id,
             "path": str(dst),
             "link_mode": mode,
+            "cutoff_met": cutoff_met,
+        }
+
+    async def _import_album(
+        self, d: Download, grab: Grab, title: Title, waiting: list[WantedItem], dest: Destination
+    ) -> dict[str, Any]:
+        """Every track of the wanted edition gets its file, or nothing is imported."""
+        from fetchbox.modules.library import music_files as mfiles
+        from fetchbox.modules.media.models import Album, Track
+
+        w = waiting[0]
+        async with self.db.sessionmaker() as s:
+            album = await s.get(Album, w.album_id) if w.album_id else None
+            if album is None:
+                raise ImportProblem("the album was removed", retry=False)
+            rows = list(
+                (
+                    await s.execute(
+                        select(Track)
+                        .where(Track.album_id == album.id)
+                        .order_by(Track.disc, Track.number)
+                    )
+                ).scalars()
+            )
+            old = list(
+                (
+                    await s.execute(
+                        select(MediaFile)
+                        .join(MediaFileItem, MediaFileItem.media_file_id == MediaFile.id)
+                        .where(MediaFileItem.wanted_item_id == w.id)
+                    )
+                ).scalars()
+            )
+        if not rows:
+            raise ImportProblem("the album's track list isn't known yet (asking MusicBrainz)")
+        audio_files = [f for f in await self._files(d) if mfiles.is_audio(f.path)]
+        if not audio_files:
+            raise ImportProblem("no audio files in the download", retry=False)
+        audio = []
+        for f in audio_files:
+            src = await self._on_disk(d, f)
+            audio.append(await asyncio.to_thread(mfiles.read, src, f.path))
+        tracks = [mfiles.WantedTrack(t.id, t.disc, t.number, t.name, t.length_ms) for t in rows]
+        m = mfiles.match(audio, tracks)
+        if m.missing:
+            names = ", ".join(f"{t.number}. {t.name}" for t in m.missing[:5])
+            more = f" and {len(m.missing) - 5} more" if len(m.missing) > 5 else ""
+            raise ImportProblem(
+                f"{len(m.missing)} of {len(tracks)} tracks have no file ({names}{more}). "
+                "Another edition of the album? Choose the edition this download is, or "
+                "download again",
+                retry=False,
+            )
+        quality = mfiles.album_quality(list(m.pairs.values()))
+        discs = max(t.disc for t in tracks)
+        year = album.release_date.year if album.release_date else None
+        old_paths = {
+            str(Path(dest.path) / of.relative_path): of
+            for of in old
+            if of.destination_id == dest.id
+        }
+        recycle = str(Path(dest.path) / RECYCLE_DIR) if dest.recycle else None
+        placed: list[tuple[mfiles.WantedTrack, str, Path, str, mfiles.AudioFile]] = []
+        for t in tracks:
+            af = m.pairs[t.id]
+            rel = mfiles.track_path(title.name, album.name, year, t, discs, af.path.suffix)
+            dst = Path(dest.path) / rel
+            if str(dst) in old_paths and await asyncio.to_thread(dst.exists):
+                # an upgrade at the same path (FLAC over FLAC): the old file is recycled
+                with contextlib.suppress(StorageError):
+                    await self.storage.local.delete(str(dst), recycle_dir=recycle)
+            placed.append((t, rel, dst, await self._place(af.path, dst, dest), af))
+
+        # Tags change the file's bytes: never in a file the torrent still seeds from
+        # (a hardlink or the download itself), only in the library's own copy.
+        cover = await _cover(album.meta or {})
+        tagged = 0
+        for t, _rel, dst, mode, _af in placed:
+            if mode not in ("copy", "move"):
+                continue
+            values = mfiles.TagValues(
+                artist=title.name,
+                album=album.name,
+                year=year,
+                title=t.name,
+                track=t.number,
+                tracks=sum(1 for x in tracks if x.disc == t.disc),
+                disc=t.disc,
+                discs=discs,
+                artist_mbid=title.mbid,
+                album_mbid=album.mbid,
+                release_mbid=album.edition_mbid,
+                recording_mbid=next((r.recording_mbid for r in rows if r.id == t.id), None),
+            )
+            try:
+                await asyncio.to_thread(mfiles.write_tags, dst, values, cover)
+                tagged += 1
+            except Exception as exc:  # a tag problem never fails an import
+                log.warning("music.tags_failed", path=str(dst), error=repr(exc))
+
+        profile = to_spec(await self.profiles.get_profile(title.profile_id))
+        tier = profile.tier_index(quality)
+        cutoff_met = tier is not None and tier >= profile.cutoff_index
+        new_paths = {str(dst) for _, _, dst, _, _ in placed}
+        replaced: list[str] = []
+        async with self.db.sessionmaker() as s:
+            for of in old:
+                full = str(Path(dest.path) / of.relative_path)
+                if full not in new_paths:  # an old track the new files don't replace in place
+                    with contextlib.suppress(StorageError):
+                        await self.storage.local.delete(full, recycle_dir=recycle)
+                    replaced.append(of.relative_path)
+                await s.delete(await s.merge(of))
+            await s.flush()
+            first: MediaFile | None = None
+            for t, rel, dst, mode, af in placed:
+                st = await asyncio.to_thread(dst.stat)
+                row = MediaFile(
+                    storage_node_id=dest.node_id,
+                    destination_id=dest.id,
+                    relative_path=rel,
+                    size=st.st_size,
+                    mtime=utcnow(),
+                    quality={"name": af.quality, "codec": af.codec},
+                    original_name=af.rel,
+                    link_mode=mode,
+                    track_id=t.id,
+                    mediainfo={"length_s": af.length_s, "tags_written": mode in ("copy", "move")},
+                )
+                s.add(row)
+                await s.flush()
+                s.add(MediaFileItem(media_file_id=row.id, wanted_item_id=w.id))
+                first = first or row
+            await s.execute(
+                update(WantedItem)
+                .where(WantedItem.id == w.id)
+                .values(
+                    state="acquired",
+                    lock="acquired",
+                    cutoff_met=cutoff_met,
+                    version=WantedItem.version + 1,
+                )
+                .execution_options(synchronize_session=False)
+            )
+            folder = str(PurePosixPath(placed[0][1]).parent)
+            mode = placed[0][3]
+            s.add(
+                HistoryEvent(
+                    wanted_item_id=w.id,
+                    title_id=w.title_id,
+                    type="upgraded" if old else "imported",
+                    data={
+                        "path": folder,
+                        "destination": dest.name,
+                        "quality": quality,
+                        "link_mode": mode,
+                        "download_id": d.id,
+                        "release_title": grab.release_title,
+                        "replaced": replaced,
+                        "tracks": len(placed),
+                        "tagged": tagged,
+                    },
+                )
+            )
+            await s.commit()
+        assert first is not None
+        await self._announce(title, dest, first, placed[0][1], quality, mode, replaced)
+        return {
+            "album": album.name,
+            "tracks": len(placed),
+            "quality": quality,
+            "link_mode": mode,
+            "tagged": tagged,
             "cutoff_met": cutoff_met,
         }
 
@@ -722,17 +915,33 @@ class LibraryService:
             file_quality = file_parsed.quality if file_parsed.resolution else quality
             info = await asyncio.to_thread(probe, src)
             eps = [by_key[k][0] for k in matched]
-            ctx = episode_context(title, file_parsed if file_parsed.resolution else parsed,
-                                  file_quality, info, matched[0][0], eps)  # fmt: skip
+            ctx = episode_context(
+                title,
+                file_parsed if file_parsed.resolution else parsed,
+                file_quality,
+                info,
+                matched[0][0],
+                eps,
+            )
             rel = episode_path(patterns, ctx, src.suffix)
             dst = Path(dest.path) / rel
             mode = await self._place(src, dst, dest)
             items = [by_key[k][1] for k in matched]
             mf, replaced, _ = await self._record(
-                d, grab, title, dest, items, rel, dst, mode,
-                file_parsed if file_parsed.resolution else parsed, file_quality, score, info,
+                d,
+                grab,
+                title,
+                dest,
+                items,
+                rel,
+                dst,
+                mode,
+                file_parsed if file_parsed.resolution else parsed,
+                file_quality,
+                score,
+                info,
                 video.path,
-            )  # fmt: skip
+            )
             await self._announce(title, dest, mf, rel, file_quality, mode, replaced)
             done.update(w.id for w in items)
             imported.append({"media_file_id": mf.id, "path": str(dst), "episodes": matched})
@@ -1109,8 +1318,9 @@ class LibraryService:
             try:
                 src, dst = inside(root, p["current"]), inside(root, p["new"])
             except StorageError as exc:
-                failed.append({"file_id": p["file_id"], "current": p["current"],
-                               "error": exc.message})  # fmt: skip
+                failed.append(
+                    {"file_id": p["file_id"], "current": p["current"], "error": exc.message}
+                )
                 continue
             try:
                 await asyncio.to_thread(_move, src, dst, root)

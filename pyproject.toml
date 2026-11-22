@@ -24,6 +24,7 @@ dependencies = [
     "beautifulsoup4>=4.12",
     "lxml>=5.3",
     "python-multipart>=0.0.9",
+    "mutagen>=1.47",
 ]
 
 [project.optional-dependencies]
@@ -106,6 +107,11 @@ ignore_missing_imports = true
 [[tool.mypy.overrides]]
 module = ["libtorrent"]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# mutagen's tag frames and pictures are untyped classes
+module = ["fetchbox.modules.library.music_files"]
+disallow_untyped_calls = false
 
 [tool.importlinter]
 root_package = "fetchbox"
