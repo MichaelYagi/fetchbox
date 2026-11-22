@@ -1782,6 +1782,28 @@ export interface paths {
         patch: operations["patch_config_api_v1_system_config_patch"];
         trace?: never;
     };
+    "/api/v1/system/diagnostics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Diagnostics
+         * @description A zip to attach to a bug report: settings (secrets masked), recent logs (keys
+         *     scrubbed), the health report, versions and a summary of indexers, clients and folders
+         *     (kinds and statuses, no addresses or credentials).
+         */
+        get: operations["diagnostics_api_v1_system_diagnostics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/system/health": {
         parameters: {
             query?: never;
@@ -10334,6 +10356,26 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Problem"];
                     "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    diagnostics_api_v1_system_diagnostics_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/zip": unknown;
                 };
             };
         };

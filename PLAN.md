@@ -348,6 +348,10 @@ Progress:
       before-restore backup) and migrates it forward; newer-schema backups refused.
       API `/backups` (list, create, download, delete, upload, restore), CLI
       `fetchbox backup` / `fetchbox restore <zip>`, Settings > Backups
+- [x] Diagnostics: `GET /system/diagnostics` zip (versions incl. schema revision, health,
+      settings with secrets masked, last 2000 log lines with keys / tokens / passwords
+      scrubbed, indexer / client / folder summary without addresses or credentials);
+      "Download diagnostics" in Settings > This computer
 
 **Gate:** migrate a real Sonarr+Radarr install and run side by side; installers work on all
 three OSes; a backup restores on a fresh machine.

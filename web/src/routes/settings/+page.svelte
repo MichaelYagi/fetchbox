@@ -272,6 +272,13 @@
 						</tr>
 						<tr><td class="w muted">Downloads</td><td><Path path={session.host.downloads_root} /></td></tr>
 						<tr><td class="w muted">Fetchbox data</td><td><Path path={session.host.data_dir} /></td></tr>
+						<tr>
+							<td class="w muted">Problems?</td>
+							<td>
+								<a class="button small" href="/api/v1/system/diagnostics" download>Download diagnostics</a>
+								<span class="muted small">a zip for bug reports: versions, health, settings and recent logs, with keys and passwords removed</span>
+							</td>
+						</tr>
 					</tbody>
 				</table>
 			</div>
