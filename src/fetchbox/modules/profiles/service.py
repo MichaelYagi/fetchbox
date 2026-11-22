@@ -81,6 +81,19 @@ class ProfilesService:
             # them once, next to the old ones (titles may use those); a later deletion of a
             # new one isn't undone, since this only runs while none of them exist.
             upgrade = bool(names & OLD_DEFAULTS) and not names & set(NEW_DEFAULTS)
+            # Music profiles, while there's none (also on databases from before music).
+            has_music = await s.scalar(
+                select(func.count())
+                .select_from(QualityProfile)
+                .where(QualityProfile.media == "music")
+            )
+            if not has_music:
+                for p in defaults.MUSIC_PROFILES:
+                    if p["name"] in names:
+                        continue
+                    profile = QualityProfile()
+                    _apply(profile, ProfileSpec.model_validate(p))
+                    s.add(profile)
             if not names or upgrade:
                 for p in defaults.PROFILES:
                     if p["name"] in names:

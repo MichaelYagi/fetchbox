@@ -48,6 +48,43 @@ FORMATS: dict[str, dict[str, Any]] = {
     },
 }
 
+# Music profiles: offered only when adding an artist. Seeded while none exists.
+LOSSY_HQ = ["MP3-VBR-V0", "MP3-320", "AAC"]
+MUSIC_PROFILES: list[dict[str, Any]] = [
+    {
+        "name": "Lossless",
+        "media": "music",
+        "ladder": [
+            {"name": "FLAC", "qualities": ["FLAC", "ALAC"]},
+            {"name": "FLAC 24-bit", "qualities": ["FLAC-24bit"]},
+        ],
+        "cutoff": "FLAC",
+        "format_scores": {},
+        "languages": [],
+    },
+    {
+        "name": "High-quality lossy",
+        "media": "music",
+        "ladder": [{"name": "MP3 320 / V0", "qualities": LOSSY_HQ}],
+        "cutoff": "MP3 320 / V0",
+        "format_scores": {},
+        "languages": [],
+    },
+    {
+        "name": "Any audio",
+        "media": "music",
+        "ladder": [
+            {"name": "Unknown", "qualities": ["Unknown-Audio"]},
+            {"name": "Lossy", "qualities": ["MP3-128", "MP3-192", "MP3-256", "MP3-VBR-V2"]},
+            {"name": "High-quality lossy", "qualities": LOSSY_HQ},
+            {"name": "Lossless", "qualities": ["FLAC", "ALAC", "FLAC-24bit"]},
+        ],
+        "cutoff": "High-quality lossy",
+        "format_scores": {},
+        "languages": [],
+    },
+]
+
 # format_scores here use FORMATS slugs; seeding maps them to ids.
 # Named by resolution: each takes only that resolution (sources ranked within it), so
 # what you pick is what you get. "Any" also takes releases that don't state a quality.

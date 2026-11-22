@@ -28,7 +28,10 @@ async def test_defaults_are_seeded_once(server: Running, settings: Any) -> None:
     async with server.client() as c:
         profiles = (await c.get("/quality-profiles")).json()
         formats = (await c.get("/custom-formats")).json()
-    assert [p["name"] for p in profiles] == ["1080p", "2160p", "480p", "720p", "Any"]
+    video = [p["name"] for p in profiles if p["media"] == "video"]
+    assert video == ["1080p", "2160p", "480p", "720p", "Any"]
+    music = [p["name"] for p in profiles if p["media"] == "music"]
+    assert music == ["Any audio", "High-quality lossy", "Lossless"]
     hd = next(p for p in profiles if p["name"] == "1080p")
     assert hd["cutoff"] == "WEB 1080p" and hd["languages"] == ["original"]
     assert {f["name"] for f in formats} >= {"Hardcoded subtitles", "3D", "Dolby Vision"}
@@ -56,7 +59,8 @@ async def test_seed_does_not_overwrite_edits(settings: Any) -> None:
         LifespanManager(app, startup_timeout=60, shutdown_timeout=60),
         Running(app, key).client() as c,
     ):
-        names = {p["name"]: p for p in (await c.get("/quality-profiles")).json()}
+        got = (await c.get("/quality-profiles", params={"media": "video"})).json()
+        names = {p["name"]: p for p in got}
     assert set(names) == {"1080p", "480p", "720p", "Any"}  # a deleted default stays deleted
     assert names["1080p"]["cutoff"] == "Bluray-1080p"
 
@@ -211,7 +215,7 @@ async def test_old_defaults_get_the_new_ones_once(server: Running) -> None:
         await s.commit()
     svc = server.app.state.profiles
     await svc.seed_defaults()
-    names = sorted(p.name for p in await svc.list_profiles())
+    names = sorted(p.name for p in await svc.list_profiles() if p.media == "video")
     assert names == ["1080p", "2160p", "480p", "4K", "720p", "Any", "Standard HD"]
     # once: deleting a new one afterwards sticks
     async with db.sessionmaker() as s:

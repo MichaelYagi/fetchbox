@@ -158,11 +158,14 @@ class MediaService:
 
     # ---- titles -----------------------------------------------------------------------------
 
-    async def _check_profile(self, profile_id: str) -> None:
+    async def _check_profile(self, profile_id: str, media: str = "video") -> None:
         try:
-            await self.profiles.get_profile(profile_id)
+            p = await self.profiles.get_profile(profile_id)
         except NotFoundError:
             raise _invalid("body.profile_id", f"no quality profile {profile_id!r}") from None
+        if p.media != media:
+            what = "an artist" if media == "music" else "a movie or series"
+            raise _invalid("body.profile_id", f"{p.name!r} is a {p.media} profile, not for {what}")
 
     async def _existing(self, s: AsyncSession, kind: str, tmdb_id: int) -> Title | None:
         q = select(Title).where(Title.kind == kind, Title.tmdb_id == tmdb_id)
@@ -419,6 +422,53 @@ class MediaService:
         )
         return season
 
+    async def _remonitor_albums(self, s: AsyncSession, title: Title, mode: str) -> None:
+        """An artist's new monitor mode, applied to their albums of the chosen kinds."""
+        from fetchbox.modules.media.models import Album
+        from fetchbox.modules.media.music import DEFAULT_KINDS, monitor_flags
+
+        rows = (
+            await s.execute(
+                select(Album, WantedItem)
+                .join(WantedItem, WantedItem.album_id == Album.id)
+                .where(Album.title_id == title.id)
+            )
+        ).all()
+        kinds = (title.meta or {}).get("album_kinds") or DEFAULT_KINDS
+        flags = monitor_flags(
+            mode, kinds, [(a.id, a.kind, a.release_date) for a, _ in rows], utcnow().date()
+        )
+        for a, w in rows:
+            if w.monitored != flags[a.id]:
+                w.monitored = flags[a.id]
+                w.version += 1
+
+    async def album_stats(self, title_ids: list[str]) -> dict[str, dict[str, int]]:
+        """Per artist: albums, monitored, acquired, missing (monitored, released, no files)."""
+        if not title_ids:
+            return {}
+        from fetchbox.modules.media.models import Album
+
+        today = utcnow().date()
+        out = {t: {"albums": 0, "monitored": 0, "acquired": 0, "missing": 0} for t in title_ids}
+        async with self.db.sessionmaker() as s:
+            rows = (
+                await s.execute(
+                    select(WantedItem.title_id, WantedItem.monitored, WantedItem.state,
+                           Album.release_date)
+                    .join(Album, Album.id == WantedItem.album_id)
+                    .where(WantedItem.title_id.in_(title_ids))
+                )
+            ).all()  # fmt: skip
+        for tid, monitored, state, released in rows:
+            st = out[tid]
+            st["albums"] += 1
+            st["monitored"] += int(monitored)
+            st["acquired"] += int(state == "acquired")
+            if monitored and state != "acquired" and released is not None and released <= today:
+                st["missing"] += 1
+        return out
+
     async def series_stats(self, title_ids: list[str]) -> dict[str, dict[str, int]]:
         """Per series: episodes, monitored, acquired, missing (monitored, aired, no file)."""
         if not title_ids:
@@ -486,8 +536,12 @@ class MediaService:
     async def update_title(
         self, title_id: str, changes: dict[str, Any], *, if_match: str | None, actor: Actor
     ) -> Title:
+        async with self.db.sessionmaker() as s:
+            kind = (await self._title(s, title_id)).kind
         if "profile_id" in changes:
-            await self._check_profile(changes["profile_id"])
+            await self._check_profile(
+                changes["profile_id"], "music" if kind == "music" else "video"
+            )
         async with self.db.sessionmaker() as s:
             row = await self._title(s, title_id)
             check_if_match(row, if_match)
@@ -496,6 +550,14 @@ class MediaService:
                 raise _invalid(
                     "body.monitor_mode",
                     f"a movie's monitor mode is one of {', '.join(MOVIE_MONITOR_MODES)}",
+                )
+            if (
+                mode is not None
+                and row.kind == "music"
+                and mode not in ("all", "future", "latest", "none")
+            ):
+                raise _invalid(
+                    "body.monitor_mode", "an artist's monitor mode is all, future, latest or none"
                 )
             if mode is not None and row.kind == "series" and mode not in SERIES_MODES:
                 raise _invalid(
@@ -521,6 +583,8 @@ class MediaService:
                     w.monitored = mode == "all"
             elif mode is not None and row.kind == "series":
                 await self._remonitor(s, row.id, mode)
+            elif mode is not None and row.kind == "music":
+                await self._remonitor_albums(s, row, mode)
             await s.commit()
         await self._emit("title.updated", row, actor, fields=sorted(changes))
         return row
@@ -750,6 +814,37 @@ async def calendar(db: Database, start: date, end: date) -> list[dict[str, Any]]
             .where(Title.kind == "movie")
         )
         movies = (await s.execute(mq)).all()
+        from fetchbox.modules.media.models import Album
+
+        albums = (
+            await s.execute(
+                select(Album, Title, WantedItem)
+                .join(Title, Title.id == Album.title_id)
+                .join(WantedItem, WantedItem.album_id == Album.id)
+                .where(
+                    Album.release_date >= start,
+                    Album.release_date <= end,
+                    WantedItem.monitored.is_(True),
+                )
+            )
+        ).all()
+    for album, title, w in albums:
+        out.append(
+            {
+                "date": album.release_date,
+                "kind": "album",
+                "title_id": title.id,
+                "name": title.name,
+                "poster_url": (album.meta or {}).get("cover"),
+                "season": None,
+                "episode": None,
+                "episode_name": None,
+                "release": None,
+                "state": w.state,
+                "monitored": w.monitored,
+                "album": album.name,
+            }
+        )
     for title, w in movies:
         meta = title.meta or {}
         for key, label in MOVIE_DATES:

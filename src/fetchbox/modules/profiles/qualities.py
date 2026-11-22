@@ -63,7 +63,30 @@ CATALOG: tuple[Quality, ...] = (
     _q("Bluray-2160p", 2160, 35, 400),
     _q("Remux-2160p", 2160, 35, None),
     _q("BR-DISK", None, 20, None),
+    # Music, worst first. Size bounds are MB per minute of the album's running time.
+    _q("Unknown-Audio", None, 0, None),
+    _q("MP3-128", None, 0.6, 1.4),
+    _q("MP3-192", None, 0.9, 2.0),
+    _q("MP3-256", None, 1.2, 2.6),
+    _q("MP3-VBR-V2", None, 0.8, 2.2),
+    _q("AAC", None, 0.5, 3.2),
+    _q("MP3-VBR-V0", None, 1.1, 2.8),
+    _q("MP3-320", None, 1.8, 3.4),
+    _q("ALAC", None, 2.5, 16),
+    _q("FLAC", None, 2.5, 16),
+    _q("FLAC-24bit", None, 5, 70),
 )
+AUDIO: frozenset[str] = frozenset(
+    {"Unknown-Audio", "MP3-128", "MP3-192", "MP3-256", "MP3-VBR-V2", "AAC", "MP3-VBR-V0",
+     "MP3-320", "ALAC", "FLAC", "FLAC-24bit"}
+)  # fmt: skip
+
+
+def media_of(quality: str) -> str:
+    """'music' for audio qualities, 'video' for the rest."""
+    return "music" if quality in AUDIO else "video"
+
+
 BY_NAME: dict[str, Quality] = {q.name: q for q in CATALOG}
 RANK: dict[str, int] = {q.name: i for i, q in enumerate(CATALOG)}
 

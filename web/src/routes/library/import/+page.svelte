@@ -4,7 +4,17 @@
 	import { ApiError, bytes, get, post, type S } from '#lib/api.ts';
 
 	// Import what's already in a library folder: scan (changes nothing), review, import.
-	type Match = { tmdb_id: number; name: string; year: number | null; poster_url: string | null };
+	type Match = {
+		tmdb_id?: number;
+		name?: string;
+		year: number | null;
+		poster_url?: string | null;
+		// music
+		artist?: string;
+		album?: string;
+		artist_mbid?: string;
+		album_mbid?: string;
+	};
 	type Item = {
 		folder: string;
 		files: { path: string; size: number }[];
@@ -12,10 +22,10 @@
 		confidence: 'exact' | 'high' | 'low' | 'none';
 		status: 'new' | 'in_library' | 'imported';
 		size: number;
-		quality: string;
+		quality?: string;
 		error?: string;
 	};
-	type Scan = { destination_id: string; kind: 'movie' | 'series'; path: string; items: Item[] };
+	type Scan = { destination_id: string; kind: 'movie' | 'series' | 'music'; path: string; items: Item[] };
 
 	const destId = $derived(page.url.searchParams.get('dest') ?? '');
 	let dest = $state<S['DestinationOut'] | null>(null);
@@ -34,7 +44,11 @@
 	let error = $state('');
 
 	const tv = $derived(dest?.media_kind === 'series');
-	const noun = $derived(tv ? 'shows' : 'movies');
+	const isMusic = $derived(dest?.media_kind === 'music');
+	const noun = $derived(tv ? 'shows' : isMusic ? 'albums' : 'movies');
+	const matchName = (m: Match) => (m.album ? `${m.artist} – ${m.album}` : (m.name ?? ''));
+	const matchImage = (m: Match | null) =>
+		m?.album_mbid ? `https://coverartarchive.org/release-group/${m.album_mbid}/front-250` : (m?.poster_url ?? null);
 	const MODES: [string, string][] = [
 		['all', 'All episodes'],
 		['future', 'Only new episodes'],
@@ -45,9 +59,13 @@
 	$effect(() => {
 		if (!destId) return;
 		get<S['DestinationOut'][]>('/destinations').then((d) => (dest = d.find((x) => x.id === destId) ?? null));
-		get<S['ProfileOut'][]>('/quality-profiles').then((p) => {
+	});
+	$effect(() => {
+		if (!dest) return;
+		const media = dest.media_kind === 'music' ? 'music' : 'video';
+		get<S['ProfileOut'][]>('/quality-profiles', { media }).then((p) => {
 			profiles = p;
-			profile = (p.find((x) => x.name === '1080p') ?? p[0])?.id ?? '';
+			profile = (p.find((x) => x.name === (media === 'music' ? 'Lossless' : '1080p')) ?? p[0])?.id ?? '';
 		});
 	});
 
@@ -103,7 +121,9 @@
 				items: picked.map((i) => ({
 					folder: i.folder,
 					files: i.files.map((f) => f.path),
-					tmdb_id: i.match!.tmdb_id,
+					...(isMusic
+						? { artist_mbid: i.match!.artist_mbid, album_mbid: i.match!.album_mbid }
+						: { tmdb_id: i.match!.tmdb_id }),
 					profile_id: profile,
 					monitored,
 					monitor_mode: monitorMode
@@ -124,7 +144,7 @@
 		found = await get<S['TitleSummary'][]>('/discovery/search', { q: query.trim(), kind: dest!.media_kind });
 	}
 	function pick(item: Item, m: S['TitleSummary']) {
-		item.match = { tmdb_id: m.tmdb_id, name: m.name, year: m.year ?? null, poster_url: m.poster_url ?? null };
+		item.match = { tmdb_id: m.tmdb_id, name: m.name, year: m.year ?? null, poster_url: m.poster_url ?? null } as Match;
 		item.confidence = 'exact'; // chosen by the user
 		chosen[item.folder] = true;
 		fixing = null;
@@ -152,7 +172,7 @@
 	{:else if dest}
 		<p class="muted">From <Path path={dest.path} /></p>
 		<p class="muted small">
-			Scanning only reads the folder: each folder inside it is one {tv ? 'show' : 'movie'}. Nothing is
+			Scanning only reads the folder: {isMusic ? 'albums are found by their tags (or Artist/Album folders) and looked up on MusicBrainz' : `each folder inside it is one ${tv ? 'show' : 'movie'}`}. Nothing is
 			added, moved or renamed until you click Import, and even then files stay exactly where they are.
 		</p>
 	{/if}
@@ -201,22 +221,22 @@
 						bind:checked={chosen[item.folder]}
 						disabled={item.status === 'imported' || !item.match}
 					/>
-					{#if item.match?.poster_url}<img src={item.match.poster_url} alt="" loading="lazy" />{:else}<div class="noposter"></div>{/if}
+					{#if matchImage(item.match)}<img src={matchImage(item.match)} alt="" loading="lazy" />{:else}<div class="noposter"></div>{/if}
 					<div class="body">
 						<div class="folder" title={item.folder}>{item.folder}</div>
 						<div class="muted small">
-							{item.files.length} file{item.files.length === 1 ? '' : 's'} · {bytes(item.size)} · {item.quality}
+							{item.files.length} file{item.files.length === 1 ? '' : 's'} · {bytes(item.size)}{item.quality ? ` · ${item.quality}` : ''}
 						</div>
 						<div class="row match">
 							{#if item.match}
-								<span>→ <strong>{item.match.name}</strong> {item.match.year ?? ''}</span>
+								<span>→ <strong>{matchName(item.match)}</strong> {item.match.year ?? ''}</span>
 							{:else}
-								<span class="muted">Not found on TMDB</span>
+								<span class="muted">Not found on {isMusic ? 'MusicBrainz' : 'TMDB'}</span>
 							{/if}
 							<span class="badge {CONF[item.confidence][0]}">{CONF[item.confidence][1]}</span>
 							{#if item.status === 'in_library'}<span class="badge">Already in Fetchbox: files are added to it</span>{/if}
 							{#if item.status === 'imported'}<span class="badge ok">Already imported</span>{/if}
-							{#if item.status !== 'imported'}<button class="small" onclick={() => startFix(item)}>Change</button>{/if}
+							{#if item.status !== 'imported' && !isMusic}<button class="small" onclick={() => startFix(item)}>Change</button>{/if}
 						</div>
 						{#if fixing === item.folder}
 							<form class="row" onsubmit={search}>
@@ -250,7 +270,7 @@
 						{#each MODES as [v, l] (v)}<option value={v}>{l}</option>{/each}
 					</select>
 				</label>
-			{:else}
+			{:else if !isMusic}
 				<label class="inline"><input type="checkbox" bind:checked={monitored} /> Look for upgrades</label>
 			{/if}
 			<button class="primary" onclick={runImport} disabled={picked.length === 0 || !!job || !profile}>

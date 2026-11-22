@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, Header, Query, Request, Response
 from pydantic import BaseModel, Field, computed_field
 
 from fetchbox.core.concurrency import etag
+from fetchbox.core.errors import ProblemError
 from fetchbox.core.errors import problem_responses as pr
 from fetchbox.modules.auth.deps import CurrentPrincipal, require
 from fetchbox.modules.downloads.models import Download
@@ -445,7 +446,9 @@ class ScanIn(BaseModel):
 class ImportItemIn(BaseModel):
     folder: str = Field(description="As the scan listed it")
     files: list[str] = Field(min_length=1, description="Paths relative to the library folder")
-    tmdb_id: int
+    tmdb_id: int | None = Field(default=None, description="Movies and series")
+    artist_mbid: str | None = Field(default=None, description="Music: the MusicBrainz artist")
+    album_mbid: str | None = Field(default=None, description="Music: the release group")
     profile_id: str
     monitored: bool = Field(default=True, description="Movies")
     monitor_mode: SeriesMode = Field(default="all", description="Series")
@@ -483,8 +486,14 @@ async def scan_library(body: ScanIn, request: Request) -> Response:
 )
 async def import_existing(body: ImportIn, request: Request, p: CurrentPrincipal) -> Response:
     """Add the chosen titles (no search yet) and record their files where they are."""
+    dest = await request.app.state.storage.destination(body.destination_id)
     for item in body.items:
         await request.app.state.profiles.get_profile(item.profile_id)  # 404 if unknown
+        if dest.media_kind == "music" and not (item.artist_mbid and item.album_mbid):
+            raise ProblemError(422, "Validation Failed", "music needs artist_mbid and album_mbid",
+                               slug="validation")  # fmt: skip
+        if dest.media_kind != "music" and not item.tmdb_id:
+            raise ProblemError(422, "Validation Failed", "tmdb_id is needed", slug="validation")
     job = await _existing(request).start_apply(
         body.destination_id, [i.model_dump() for i in body.items], actor=p.actor()
     )

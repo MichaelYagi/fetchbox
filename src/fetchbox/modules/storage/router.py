@@ -19,7 +19,7 @@ _read = [Depends(require("storage:read"))]
 _write = [Depends(require("storage:write"))]
 IfMatch = Annotated[str | None, Header(description="ETag from a previous read; 412 if stale")]
 LinkMode = Literal["hardlink_or_copy", "hardlink_only", "copy", "move", "symlink"]
-Kind = Literal["movie", "series"]
+Kind = Literal["movie", "series", "music"]
 
 
 def _svc(request: Request) -> StorageService:

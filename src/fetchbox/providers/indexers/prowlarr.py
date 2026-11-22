@@ -41,6 +41,7 @@ class ProwlarrSettings(BaseModel):
     api_key: SecretStr = Field(description="Prowlarr: Settings > General > Security > API Key")
     movie_categories: list[int] = Field(default=[2000], description="Newznab categories")
     tv_categories: list[int] = Field(default=[5000])
+    music_categories: list[int] = Field(default=[3000])
 
     @field_validator("api_key", mode="before")
     @classmethod
@@ -151,6 +152,7 @@ class ProwlarrProvider(IndexerProvider):
                         api_key=self.cfg.api_key,
                         movie_categories=self.cfg.movie_categories,
                         tv_categories=self.cfg.tv_categories,
+                        music_categories=self.cfg.music_categories,
                     ),
                     transport=self._transport,
                 )

@@ -39,6 +39,10 @@ class MediaFile(IdMixin, Base):
     release_group: Mapped[str | None] = mapped_column(String(100), nullable=True)
     original_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     link_mode: Mapped[str | None] = mapped_column(String(20), nullable=True)  # how it got here
+    # Music: the track this file is (one file per track); null for video
+    track_id: Mapped[str | None] = mapped_column(
+        ForeignKey("track.id", ondelete="SET NULL"), nullable=True
+    )
     imported_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
 
     __table_args__ = (

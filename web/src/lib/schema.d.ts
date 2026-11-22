@@ -24,6 +24,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/albums/{album_id}/edition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Choose Edition
+         * @description Want this edition's track list (e.g. the deluxe one).
+         */
+        put: operations["choose_edition_api_v1_albums__album_id__edition_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/albums/{album_id}/editions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Editions
+         * @description The album's official editions (asks MusicBrainz).
+         */
+        get: operations["list_editions_api_v1_albums__album_id__editions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/keys": {
         parameters: {
             query?: never;
@@ -426,7 +466,8 @@ export interface paths {
         };
         /**
          * Get Calendar
-         * @description Episodes airing and movie release dates between two days (at most 100 days).
+         * @description Episodes airing, movie release dates and wanted albums' release dates between two
+         *     days (at most 100 days).
          */
         get: operations["get_calendar_api_v1_calendar_get"];
         put?: never;
@@ -1608,6 +1649,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/music/artists": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add Artist
+         * @description Add an artist with all their albums; the chosen kinds are wanted per the mode.
+         */
+        post: operations["add_artist_api_v1_music_artists_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/music/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search Artists
+         * @description Find an artist on MusicBrainz.
+         */
+        get: operations["search_artists_api_v1_music_search_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/naming-templates": {
         parameters: {
             query?: never;
@@ -2157,6 +2238,26 @@ export interface paths {
         patch: operations["update_title_api_v1_titles__title_id__patch"];
         trace?: never;
     };
+    "/api/v1/titles/{title_id}/albums": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Albums
+         * @description An artist's albums, newest first, each with its wanted item and tracks.
+         */
+        get: operations["list_albums_api_v1_titles__title_id__albums_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/titles/{title_id}/episodes": {
         parameters: {
             query?: never;
@@ -2433,6 +2534,53 @@ export interface components {
             /** Next Cursor */
             next_cursor: string | null;
         };
+        /** AlbumOut */
+        AlbumOut: {
+            /** Cover Url */
+            cover_url: string | null;
+            /**
+             * Edition Mbid
+             * @description The edition whose track list is wanted
+             */
+            edition_mbid: string | null;
+            /**
+             * Editions
+             * @description How many editions MusicBrainz knows (0: not looked up)
+             */
+            editions: number;
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "album" | "ep" | "single" | "live" | "compilation" | "other";
+            /** Mbid */
+            mbid: string;
+            /** Name */
+            name: string;
+            /** Release Date */
+            release_date: string | null;
+            /** Secondary Types */
+            secondary_types: string[];
+            /** Tracks */
+            tracks: components["schemas"]["TrackOut"][];
+            wanted: components["schemas"]["WantedOut"];
+        };
+        /** AlbumStats */
+        AlbumStats: {
+            /** Acquired */
+            acquired: number;
+            /** Albums */
+            albums: number;
+            /**
+             * Missing
+             * @description Monitored, released, no files yet
+             */
+            missing: number;
+            /** Monitored */
+            monitored: number;
+        };
         /** ApiKeyCreate */
         ApiKeyCreate: {
             /** Expires At */
@@ -2515,6 +2663,65 @@ export interface components {
             name?: string | null;
             /** Scopes */
             scopes?: string[] | null;
+        };
+        /** ArtistHit */
+        ArtistHit: {
+            /** Begin Year */
+            begin_year: number | null;
+            /** Country */
+            country: string | null;
+            /**
+             * Disambiguation
+             * @description What tells same-named artists apart: "UK band"
+             */
+            disambiguation: string;
+            /**
+             * In Library
+             * @description The title id, when already added
+             */
+            in_library: string | null;
+            /** Mbid */
+            mbid: string;
+            /** Name */
+            name: string;
+            /** Sort Name */
+            sort_name: string;
+            /**
+             * Type
+             * @description Person, Group, Orchestra, ...
+             */
+            type: string | null;
+        };
+        /** ArtistIn */
+        ArtistIn: {
+            /**
+             * Album Kinds
+             * @description Which kinds are wanted (studio albums by default)
+             * @default [
+             *       "album"
+             *     ]
+             */
+            album_kinds: ("album" | "ep" | "single" | "live" | "compilation" | "other")[];
+            /**
+             * Mbid
+             * @description MusicBrainz artist id
+             */
+            mbid: string;
+            /**
+             * Monitor Mode
+             * @description all; future: released after adding; latest: the newest and future ones
+             * @default all
+             * @enum {string}
+             */
+            monitor_mode: "all" | "future" | "latest" | "none";
+            /** Profile Id */
+            profile_id: string;
+            /**
+             * Search
+             * @description Search for wanted albums now
+             * @default false
+             */
+            search: boolean;
         };
         /** AuthStatus */
         AuthStatus: {
@@ -2603,6 +2810,11 @@ export interface components {
         /** CalendarEntry */
         CalendarEntry: {
             /**
+             * Album
+             * @description Music: the album (name is the artist)
+             */
+            album?: string | null;
+            /**
              * Date
              * Format: date
              */
@@ -2615,7 +2827,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "episode" | "movie";
+            kind: "episode" | "movie" | "album";
             /** Monitored */
             monitored: boolean;
             /** Name */
@@ -2668,7 +2880,7 @@ export interface components {
              * @description Empty = all
              * @default []
              */
-            media_kinds: ("movie" | "series")[];
+            media_kinds: ("movie" | "series" | "music")[];
             /** Name */
             name: string;
             /**
@@ -2745,7 +2957,7 @@ export interface components {
             /** Enabled */
             enabled?: boolean | null;
             /** Media Kinds */
-            media_kinds?: ("movie" | "series")[] | null;
+            media_kinds?: ("movie" | "series" | "music")[] | null;
             /** Policy */
             policy?: {
                 [key: string]: unknown;
@@ -2882,7 +3094,7 @@ export interface components {
              * Media Kind
              * @enum {string}
              */
-            media_kind: "movie" | "series";
+            media_kind: "movie" | "series" | "music";
             /** Name */
             name: string;
             /** Naming Template Id */
@@ -2924,7 +3136,7 @@ export interface components {
              * Media Kind
              * @enum {string}
              */
-            media_kind: "movie" | "series";
+            media_kind: "movie" | "series" | "music";
             /**
              * Mount Point
              * @description The share or drive it lives on, watched for unmounting
@@ -3046,6 +3258,28 @@ export interface components {
              * @enum {string}
              */
             status: "queued" | "downloading" | "paused" | "completed" | "failed" | "removed";
+        };
+        /** EditionIn */
+        EditionIn: {
+            /** Edition Mbid */
+            edition_mbid: string;
+        };
+        /** EditionOut */
+        EditionOut: {
+            /** Country */
+            country: string | null;
+            /** Date */
+            date: string | null;
+            /** Formats */
+            formats: string[];
+            /** Length Ms */
+            length_ms: number;
+            /** Mbid */
+            mbid: string;
+            /** Title */
+            title: string;
+            /** Tracks */
+            tracks: number;
         };
         /** EpisodeDetail */
         EpisodeDetail: {
@@ -3372,6 +3606,16 @@ export interface components {
         /** ImportItemIn */
         ImportItemIn: {
             /**
+             * Album Mbid
+             * @description Music: the release group
+             */
+            album_mbid?: string | null;
+            /**
+             * Artist Mbid
+             * @description Music: the MusicBrainz artist
+             */
+            artist_mbid?: string | null;
+            /**
              * Files
              * @description Paths relative to the library folder
              */
@@ -3396,8 +3640,11 @@ export interface components {
             monitored: boolean;
             /** Profile Id */
             profile_id: string;
-            /** Tmdb Id */
-            tmdb_id: number;
+            /**
+             * Tmdb Id
+             * @description Movies and series
+             */
+            tmdb_id?: number | null;
         };
         /** ImportOut */
         ImportOut: {
@@ -4383,6 +4630,13 @@ export interface components {
              */
             languages?: string[];
             /**
+             * Media
+             * @description video: movies and TV; music: artists
+             * @default video
+             * @enum {string}
+             */
+            media: "video" | "music";
+            /**
              * Min Format Score
              * @description Releases scoring below are rejected
              * @default 0
@@ -4477,6 +4731,13 @@ export interface components {
              */
             languages?: string[];
             /**
+             * Media
+             * @description video: movies and TV; music: artists
+             * @default video
+             * @enum {string}
+             */
+            media: "video" | "music";
+            /**
              * Min Format Score
              * @description Releases scoring below are rejected
              * @default 0
@@ -4532,7 +4793,7 @@ export interface components {
              * Code
              * @enum {string}
              */
-            code: "blocklisted" | "already_grabbed" | "wrong_title" | "wrong_year" | "wrong_media_type" | "wrong_episode" | "season_not_finished" | "season_pack_not_wanted" | "size_too_small" | "size_too_large" | "sample" | "too_few_seeders" | "quality_not_allowed" | "format_score_too_low" | "language" | "upgrades_disabled" | "cutoff_met" | "not_an_upgrade" | "rule";
+            code: "blocklisted" | "already_grabbed" | "wrong_title" | "wrong_year" | "wrong_media_type" | "wrong_episode" | "season_not_finished" | "season_pack_not_wanted" | "size_too_small" | "size_too_large" | "sample" | "too_few_seeders" | "quality_not_allowed" | "format_score_too_low" | "language" | "upgrades_disabled" | "cutoff_met" | "not_an_upgrade" | "rule" | "wrong_album" | "disc_image";
             /** Message */
             message: string;
         };
@@ -5157,6 +5418,8 @@ export interface components {
              * Format: date-time
              */
             added_at: string;
+            /** @description For an artist: counts (see /titles/{id}/albums for the list) */
+            albums?: components["schemas"]["AlbumStats"] | null;
             /**
              * Alt Titles
              * @default []
@@ -5186,6 +5449,11 @@ export interface components {
             imdb_id: string | null;
             /** Kind */
             kind: string;
+            /**
+             * Mbid
+             * @description Music: the MusicBrainz artist id
+             */
+            mbid?: string | null;
             /** Minimum Availability */
             minimum_availability: string;
             /** Monitor Mode */
@@ -5270,6 +5538,19 @@ export interface components {
             tmdb_id: number;
             /** Year */
             year?: number | null;
+        };
+        /** TrackOut */
+        TrackOut: {
+            /** Disc */
+            disc: number;
+            /** Id */
+            id: string;
+            /** Length Ms */
+            length_ms: number | null;
+            /** Name */
+            name: string;
+            /** Number */
+            number: number;
         };
         /** UnlockIn */
         UnlockIn: {
@@ -5372,6 +5653,8 @@ export interface components {
         };
         /** WantedOut */
         WantedOut: {
+            /** Album Id */
+            album_id?: string | null;
             /** Cutoff Met */
             cutoff_met: boolean;
             /** Episode Id */
@@ -5409,6 +5692,8 @@ export interface components {
         WantedRow: {
             /** Air Date */
             air_date?: string | null;
+            /** Album Id */
+            album_id?: string | null;
             /** Cutoff Met */
             cutoff_met: boolean;
             /** Episode Id */
@@ -5544,6 +5829,101 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ActivityPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    choose_edition_api_v1_albums__album_id__edition_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                album_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EditionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    list_editions_api_v1_albums__album_id__editions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                album_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EditionOut"][];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
                 };
             };
             /** @description Validation Error */
@@ -7021,7 +7401,7 @@ export interface operations {
     list_destinations_api_v1_destinations_get: {
         parameters: {
             query?: {
-                media_kind?: ("movie" | "series") | null;
+                media_kind?: ("movie" | "series" | "music") | null;
             };
             header?: never;
             path?: never;
@@ -10088,6 +10468,91 @@ export interface operations {
             };
         };
     };
+    add_artist_api_v1_music_artists_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ArtistIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TitleOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    search_artists_api_v1_music_search_get: {
+        parameters: {
+            query: {
+                q: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArtistHit"][];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_templates_api_v1_naming_templates_get: {
         parameters: {
             query?: never;
@@ -10533,7 +10998,10 @@ export interface operations {
     };
     list_profiles_api_v1_quality_profiles_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Only profiles for movies and TV (video) or for music */
+                media?: ("video" | "music") | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -10547,6 +11015,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProfileOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -11258,7 +11735,7 @@ export interface operations {
     list_titles_api_v1_titles_get: {
         parameters: {
             query?: {
-                "filter[kind]"?: ("movie" | "series") | null;
+                "filter[kind]"?: ("movie" | "series" | "music") | null;
                 /** @description One of -added_at, -id, -sort_name, -year, added_at, id, sort_name, year */
                 sort?: string | null;
                 limit?: number;
@@ -11513,6 +11990,47 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Problem"];
                     "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    list_albums_api_v1_titles__title_id__albums_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                title_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlbumOut"][];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

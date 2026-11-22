@@ -435,6 +435,31 @@ Artists, albums and tracks next to movies and TV: a Lidarr replacement in the sa
 Shared with video and reused unchanged: indexers and Prowlarr, download clients, queue,
 library folders and naming UI, RSS, jobs and schedules, calendar, history.
 
+Progress (branch `phase5`, PR #7):
+- [x] MusicBrainz client (1 req/s for the whole app, 503 retries, User-Agent), Cover Art
+      Archive covers; recorded responses as fixtures, checked against the real service
+- [x] Model: kind `music` (artist = title, album = wanted item, tracks of the chosen
+      edition), migration 0019; profiles have a media type (video / music)
+- [x] Add artist (monitor modes, album kinds), background edition / track lists, daily
+      refresh for new albums, edition chooser
+- [x] Audio quality ladder + Lossless / High-quality lossy / Any audio profiles
+- [x] Release names: format, source, "is this the album" (944 real names as corpus)
+- [x] Search (Torznab / Prowlarr category 3000) and decisions in the shared engine
+- [x] Import: every track matched, named, tagged (mutagen, GPL; never into a file still
+      shared with a seeding torrent), upgrades recycle the old album
+- [x] Web: Add > Music, artist page (albums by kind, tracks, editions), library cards
+- [x] RSS for music (feeds include category 3000; wanted albums matched and decided)
+- [x] Write the tags deferred while a hardlinked album was seeding (when the torrent is
+      removed: by hand or at its seeding goal; a paused one may seed again)
+- [x] Import an existing music folder: albums by tags (MusicBrainz ids match exactly) or
+      Artist/Album (Year) folders; recorded in place; Settings has a Music folder card
+- [x] Gate, as tests: an artist added; an album downloaded as FLAC with every track
+      matched, named and tagged; a better format upgrading it (MP3 320 -> FLAC, the MP3s
+      recycled); an existing tagged folder imported in place
+- [x] Music naming presets (Settings > Library folders > Music): folders, track names,
+      disc folders or 2-03 numbers, with live examples
+- [x] Album release dates on the calendar (wanted albums)
+
 **Until then:** keep Phases 3-4 generic about media kind where it is cheap (library
 import, naming, destinations, the kind check constraints), so music adds a kind rather
 than reworking these.

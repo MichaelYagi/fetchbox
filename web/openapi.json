@@ -110,6 +110,135 @@
     "title": "ActivityPage",
     "type": "object"
    },
+   "AlbumOut": {
+    "properties": {
+     "cover_url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Cover Url"
+     },
+     "edition_mbid": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "The edition whose track list is wanted",
+      "title": "Edition Mbid"
+     },
+     "editions": {
+      "description": "How many editions MusicBrainz knows (0: not looked up)",
+      "title": "Editions",
+      "type": "integer"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "kind": {
+      "enum": [
+       "album",
+       "ep",
+       "single",
+       "live",
+       "compilation",
+       "other"
+      ],
+      "title": "Kind",
+      "type": "string"
+     },
+     "mbid": {
+      "title": "Mbid",
+      "type": "string"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "release_date": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Release Date"
+     },
+     "secondary_types": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Secondary Types",
+      "type": "array"
+     },
+     "tracks": {
+      "items": {
+       "$ref": "#/components/schemas/TrackOut"
+      },
+      "title": "Tracks",
+      "type": "array"
+     },
+     "wanted": {
+      "$ref": "#/components/schemas/WantedOut"
+     }
+    },
+    "required": [
+     "id",
+     "mbid",
+     "name",
+     "kind",
+     "secondary_types",
+     "release_date",
+     "cover_url",
+     "edition_mbid",
+     "editions",
+     "wanted",
+     "tracks"
+    ],
+    "title": "AlbumOut",
+    "type": "object"
+   },
+   "AlbumStats": {
+    "properties": {
+     "acquired": {
+      "title": "Acquired",
+      "type": "integer"
+     },
+     "albums": {
+      "title": "Albums",
+      "type": "integer"
+     },
+     "missing": {
+      "description": "Monitored, released, no files yet",
+      "title": "Missing",
+      "type": "integer"
+     },
+     "monitored": {
+      "title": "Monitored",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "albums",
+     "monitored",
+     "acquired",
+     "missing"
+    ],
+    "title": "AlbumStats",
+    "type": "object"
+   },
    "ApiKeyCreate": {
     "properties": {
      "expires_at": {
@@ -404,6 +533,143 @@
     "title": "ApiKeyPatch",
     "type": "object"
    },
+   "ArtistHit": {
+    "properties": {
+     "begin_year": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Begin Year"
+     },
+     "country": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Country"
+     },
+     "disambiguation": {
+      "description": "What tells same-named artists apart: \"UK band\"",
+      "title": "Disambiguation",
+      "type": "string"
+     },
+     "in_library": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "The title id, when already added",
+      "title": "In Library"
+     },
+     "mbid": {
+      "title": "Mbid",
+      "type": "string"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "sort_name": {
+      "title": "Sort Name",
+      "type": "string"
+     },
+     "type": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Person, Group, Orchestra, ...",
+      "title": "Type"
+     }
+    },
+    "required": [
+     "mbid",
+     "name",
+     "sort_name",
+     "type",
+     "country",
+     "disambiguation",
+     "begin_year",
+     "in_library"
+    ],
+    "title": "ArtistHit",
+    "type": "object"
+   },
+   "ArtistIn": {
+    "properties": {
+     "album_kinds": {
+      "default": [
+       "album"
+      ],
+      "description": "Which kinds are wanted (studio albums by default)",
+      "items": {
+       "enum": [
+        "album",
+        "ep",
+        "single",
+        "live",
+        "compilation",
+        "other"
+       ],
+       "type": "string"
+      },
+      "title": "Album Kinds",
+      "type": "array"
+     },
+     "mbid": {
+      "description": "MusicBrainz artist id",
+      "maxLength": 36,
+      "minLength": 36,
+      "title": "Mbid",
+      "type": "string"
+     },
+     "monitor_mode": {
+      "default": "all",
+      "description": "all; future: released after adding; latest: the newest and future ones",
+      "enum": [
+       "all",
+       "future",
+       "latest",
+       "none"
+      ],
+      "title": "Monitor Mode",
+      "type": "string"
+     },
+     "profile_id": {
+      "title": "Profile Id",
+      "type": "string"
+     },
+     "search": {
+      "default": false,
+      "description": "Search for wanted albums now",
+      "title": "Search",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "mbid",
+     "profile_id"
+    ],
+    "title": "ArtistIn",
+    "type": "object"
+   },
    "AuthStatus": {
     "properties": {
      "setup_required": {
@@ -673,6 +939,18 @@
    },
    "CalendarEntry": {
     "properties": {
+     "album": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Music: the album (name is the artist)",
+      "title": "Album"
+     },
      "date": {
       "format": "date",
       "title": "Date",
@@ -703,7 +981,8 @@
      "kind": {
       "enum": [
        "episode",
-       "movie"
+       "movie",
+       "album"
       ],
       "title": "Kind",
       "type": "string"
@@ -837,7 +1116,8 @@
       "items": {
        "enum": [
         "movie",
-        "series"
+        "series",
+        "music"
        ],
        "type": "string"
       },
@@ -1008,7 +1288,8 @@
         "items": {
          "enum": [
           "movie",
-          "series"
+          "series",
+          "music"
          ],
          "type": "string"
         },
@@ -1313,7 +1594,8 @@
      "media_kind": {
       "enum": [
        "movie",
-       "series"
+       "series",
+       "music"
       ],
       "title": "Media Kind",
       "type": "string"
@@ -1420,7 +1702,8 @@
      "media_kind": {
       "enum": [
        "movie",
-       "series"
+       "series",
+       "music"
       ],
       "title": "Media Kind",
       "type": "string"
@@ -1851,6 +2134,82 @@
      "etag"
     ],
     "title": "DownloadOut",
+    "type": "object"
+   },
+   "EditionIn": {
+    "properties": {
+     "edition_mbid": {
+      "maxLength": 36,
+      "minLength": 36,
+      "title": "Edition Mbid",
+      "type": "string"
+     }
+    },
+    "required": [
+     "edition_mbid"
+    ],
+    "title": "EditionIn",
+    "type": "object"
+   },
+   "EditionOut": {
+    "properties": {
+     "country": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Country"
+     },
+     "date": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Date"
+     },
+     "formats": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Formats",
+      "type": "array"
+     },
+     "length_ms": {
+      "title": "Length Ms",
+      "type": "integer"
+     },
+     "mbid": {
+      "title": "Mbid",
+      "type": "string"
+     },
+     "title": {
+      "title": "Title",
+      "type": "string"
+     },
+     "tracks": {
+      "title": "Tracks",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "mbid",
+     "title",
+     "date",
+     "country",
+     "formats",
+     "tracks",
+     "length_ms"
+    ],
+    "title": "EditionOut",
     "type": "object"
    },
    "EpisodeDetail": {
@@ -2849,6 +3208,30 @@
    },
    "ImportItemIn": {
     "properties": {
+     "album_mbid": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Music: the release group",
+      "title": "Album Mbid"
+     },
+     "artist_mbid": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Music: the MusicBrainz artist",
+      "title": "Artist Mbid"
+     },
      "files": {
       "description": "Paths relative to the library folder",
       "items": {
@@ -2888,14 +3271,21 @@
       "type": "string"
      },
      "tmdb_id": {
-      "title": "Tmdb Id",
-      "type": "integer"
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Movies and series",
+      "title": "Tmdb Id"
      }
     },
     "required": [
      "folder",
      "files",
-     "tmdb_id",
      "profile_id"
     ],
     "title": "ImportItemIn",
@@ -5244,6 +5634,16 @@
       "title": "Languages",
       "type": "array"
      },
+     "media": {
+      "default": "video",
+      "description": "video: movies and TV; music: artists",
+      "enum": [
+       "video",
+       "music"
+      ],
+      "title": "Media",
+      "type": "string"
+     },
      "min_format_score": {
       "default": 0,
       "description": "Releases scoring below are rejected",
@@ -5471,6 +5871,16 @@
       "title": "Languages",
       "type": "array"
      },
+     "media": {
+      "default": "video",
+      "description": "video: movies and TV; music: artists",
+      "enum": [
+       "video",
+       "music"
+      ],
+      "title": "Media",
+      "type": "string"
+     },
      "min_format_score": {
       "default": 0,
       "description": "Releases scoring below are rejected",
@@ -5581,7 +5991,9 @@
        "upgrades_disabled",
        "cutoff_met",
        "not_an_upgrade",
-       "rule"
+       "rule",
+       "wrong_album",
+       "disc_image"
       ],
       "title": "Code",
       "type": "string"
@@ -7138,6 +7550,17 @@
       "title": "Added At",
       "type": "string"
      },
+     "albums": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/AlbumStats"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "For an artist: counts (see /titles/{id}/albums for the list)"
+     },
      "alt_titles": {
       "default": [],
       "items": {
@@ -7224,6 +7647,18 @@
      "kind": {
       "title": "Kind",
       "type": "string"
+     },
+     "mbid": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Music: the MusicBrainz artist id",
+      "title": "Mbid"
      },
      "minimum_availability": {
       "title": "Minimum Availability",
@@ -7555,6 +7990,46 @@
     "title": "TitleSummary",
     "type": "object"
    },
+   "TrackOut": {
+    "properties": {
+     "disc": {
+      "title": "Disc",
+      "type": "integer"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "length_ms": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Length Ms"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "number": {
+      "title": "Number",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "id",
+     "disc",
+     "number",
+     "name",
+     "length_ms"
+    ],
+    "title": "TrackOut",
+    "type": "object"
+   },
    "UnlockIn": {
     "properties": {
      "delete_file": {
@@ -7818,6 +8293,17 @@
    },
    "WantedOut": {
     "properties": {
+     "album_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Album Id"
+     },
      "cutoff_met": {
       "title": "Cutoff Met",
       "type": "boolean"
@@ -7959,6 +8445,17 @@
        }
       ],
       "title": "Air Date"
+     },
+     "album_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Album Id"
      },
      "cutoff_met": {
       "title": "Cutoff Met",
@@ -8396,6 +8893,155 @@
     "summary": "List Activity",
     "tags": [
      "activity"
+    ]
+   }
+  },
+  "/api/v1/albums/{album_id}/edition": {
+   "put": {
+    "description": "Want this edition's track list (e.g. the deluxe one).",
+    "operationId": "choose_edition_api_v1_albums__album_id__edition_put",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "album_id",
+      "required": true,
+      "schema": {
+       "title": "Album Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/EditionIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Unprocessable Content"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Choose Edition",
+    "tags": [
+     "music"
+    ]
+   }
+  },
+  "/api/v1/albums/{album_id}/editions": {
+   "get": {
+    "description": "The album's official editions (asks MusicBrainz).",
+    "operationId": "list_editions_api_v1_albums__album_id__editions_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "album_id",
+      "required": true,
+      "schema": {
+       "title": "Album Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/EditionOut"
+         },
+         "title": "Response List Editions Api V1 Albums  Album Id  Editions Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Conflict"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "List Editions",
+    "tags": [
+     "music"
     ]
    }
   },
@@ -10168,7 +10814,7 @@
   },
   "/api/v1/calendar": {
    "get": {
-    "description": "Episodes airing and movie release dates between two days (at most 100 days).",
+    "description": "Episodes airing, movie release dates and wanted albums' release dates between two\ndays (at most 100 days).",
     "operationId": "get_calendar_api_v1_calendar_get",
     "parameters": [
      {
@@ -10757,7 +11403,8 @@
         {
          "enum": [
           "movie",
-          "series"
+          "series",
+          "music"
          ],
          "type": "string"
         },
@@ -15867,6 +16514,142 @@
     ]
    }
   },
+  "/api/v1/music/artists": {
+   "post": {
+    "description": "Add an artist with all their albums; the chosen kinds are wanted per the mode.",
+    "operationId": "add_artist_api_v1_music_artists_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ArtistIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TitleOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Conflict"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Unprocessable Content"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Add Artist",
+    "tags": [
+     "music"
+    ]
+   }
+  },
+  "/api/v1/music/search": {
+   "get": {
+    "description": "Find an artist on MusicBrainz.",
+    "operationId": "search_artists_api_v1_music_search_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "q",
+      "required": true,
+      "schema": {
+       "maxLength": 200,
+       "minLength": 1,
+       "title": "Q",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/ArtistHit"
+         },
+         "title": "Response Search Artists Api V1 Music Search Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Conflict"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Search Artists",
+    "tags": [
+     "music"
+    ]
+   }
+  },
   "/api/v1/naming-templates": {
    "get": {
     "operationId": "list_templates_api_v1_naming_templates_get",
@@ -16598,6 +17381,30 @@
   "/api/v1/quality-profiles": {
    "get": {
     "operationId": "list_profiles_api_v1_quality_profiles_get",
+    "parameters": [
+     {
+      "description": "Only profiles for movies and TV (video) or for music",
+      "in": "query",
+      "name": "media",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "enum": [
+          "video",
+          "music"
+         ],
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Only profiles for movies and TV (video) or for music",
+       "title": "Media"
+      }
+     }
+    ],
     "responses": {
      "200": {
       "content": {
@@ -16612,6 +17419,16 @@
        }
       },
       "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
      }
     },
     "security": [
@@ -17824,7 +18641,8 @@
         {
          "enum": [
           "movie",
-          "series"
+          "series",
+          "music"
          ],
          "type": "string"
         },
@@ -18267,6 +19085,75 @@
     "summary": "Update Title",
     "tags": [
      "media"
+    ]
+   }
+  },
+  "/api/v1/titles/{title_id}/albums": {
+   "get": {
+    "description": "An artist's albums, newest first, each with its wanted item and tracks.",
+    "operationId": "list_albums_api_v1_titles__title_id__albums_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "title_id",
+      "required": true,
+      "schema": {
+       "title": "Title Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/AlbumOut"
+         },
+         "title": "Response List Albums Api V1 Titles  Title Id  Albums Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "List Albums",
+    "tags": [
+     "music"
     ]
    }
   },

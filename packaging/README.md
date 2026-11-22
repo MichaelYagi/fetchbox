@@ -14,7 +14,11 @@ PyInstaller. Then add the notices that must travel with a build:
     cp LICENSE dist/LICENSE.txt
     .venv-build/bin/python packaging/gen_third_party_notices.py dist/THIRD-PARTY-NOTICES.txt [--desktop]
 
-(`--desktop` for the Windows and macOS builds, which include the tray.) A runtime
+(`--desktop` for the Windows and macOS builds, which include the tray.)
+
+Fetchbox's own code is MIT. The builds also contain mutagen (music tags), which is
+GPL-2.0-or-later, so a packaged build as a whole is distributed under the GPL's terms;
+its full text and source location are in THIRD-PARTY-NOTICES.txt. A runtime
 dependency that ships no license file needs `license-fallbacks/<name>.txt`, or the
 notices script stops.
 

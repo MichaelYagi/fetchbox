@@ -145,6 +145,33 @@ class StorageService:
                             naming_template_id=naming_template_id,
                         )
                     )
+                await s.flush()
+            # Music (also on databases from before it): next to the default movie folder,
+            # so it's on the same drive as the rest of the library
+            if not await s.scalar(
+                select(Destination.id).where(Destination.media_kind == "music").limit(1)
+            ):
+                movies = await s.scalar(
+                    select(Destination).where(
+                        Destination.media_kind == "movie", Destination.is_default.is_(True)
+                    )
+                )
+                base = Path(movies.path).parent if movies else self.downloads_root
+                name = "Music"
+                taken = set((await s.execute(select(Destination.name))).scalars())
+                n = 1
+                while name in taken:
+                    n += 1
+                    name = f"Music {n}"
+                s.add(
+                    Destination(
+                        node_id=node.id,
+                        name=name,
+                        media_kind="music",
+                        path=str(base / "Music"),
+                        is_default=True,
+                    )
+                )
             await s.commit()
 
     async def recover(self) -> list[str]:

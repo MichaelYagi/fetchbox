@@ -31,8 +31,8 @@ class IndexerError(Exception):
 class SearchQuery:
     """What an indexer is asked for; indexers ignore the fields they can't use."""
 
-    kind: Literal["movie", "series"]
-    terms: tuple[str, ...]
+    kind: Literal["movie", "series", "music"]
+    terms: tuple[str, ...]  # music: "artist album"
     year: int | None = None
     season: int | None = None
     episode: int | None = None

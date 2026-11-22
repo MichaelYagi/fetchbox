@@ -91,7 +91,7 @@ class Plan:
     items: dict[EpisodeKey, str]
 
     def covered(self, d: Decision) -> list[str]:
-        if self.target.kind == "movie":
+        if self.target.kind in ("movie", "music"):
             return list(self.items.values())
         return [self.items[e] for e in d.episodes if e in self.items]
 
@@ -153,7 +153,12 @@ class ReleasesService:
         if title.imdb_id:
             ids["imdb"] = title.imdb_id
         by_key: dict[EpisodeKey, str] = {}
-        if title.kind == "movie":
+        if title.kind == "music":
+            w = items[0]
+            target = await self._album_target(title, w)
+            query = SearchQuery("music", (f"{title.name} {target.album}",))
+            by_key[(0, 0)] = w.id
+        elif title.kind == "movie":
             w = items[0]
             # Only an acquired item is compared with its file: after a redownload the item
             # is missing and the kept file is just replaced.
@@ -205,6 +210,45 @@ class ReleasesService:
             season_pack_share=cfg.season_pack_share,
         )
         return Plan(title.id, target, query, ctx, by_key)
+
+    async def _album_target(self, title: Title, w: WantedItem) -> Target:
+        """An album: its name, the artist's other titles (to tell albums apart), and the
+        wanted edition's length and track count (to judge sizes)."""
+        from fetchbox.modules.media.models import Album, Track
+
+        async with self.db.sessionmaker() as s:
+            album = await s.get(Album, w.album_id) if w.album_id else None
+            if album is None:
+                raise ProblemError(422, "Validation Failed", "no album to search for",
+                                   slug="validation")  # fmt: skip
+            others = list(
+                (
+                    await s.execute(
+                        select(Album.name).where(
+                            Album.title_id == title.id,
+                            Album.id != album.id,
+                            Album.kind.in_(("album", "ep", "compilation", "live")),
+                        )
+                    )
+                ).scalars()
+            )
+            lengths = list(
+                (
+                    await s.execute(select(Track.length_ms).where(Track.album_id == album.id))
+                ).scalars()
+            )
+        existing = await self.existing(w.id) if w.state == "acquired" else None
+        return Target(
+            "music",
+            (title.name,),
+            year=album.release_date.year if album.release_date else None,
+            existing=existing,
+            album=album.name,
+            album_kind=album.kind,
+            other_albums=tuple(others),
+            album_ms=sum(x or 0 for x in lengths) or None,
+            album_tracks=len(lengths) or None,
+        )
 
     async def existing(self, wanted_item_id: str) -> Existing | None:
         """The item's current file, as the decision engine compares upgrades against it."""

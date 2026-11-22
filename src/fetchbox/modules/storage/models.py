@@ -49,7 +49,7 @@ class Destination(IdMixin, VersionMixin, Base):
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
 
     __table_args__ = (
-        CheckConstraint("media_kind IN ('movie', 'series')", name="media_kind"),
+        CheckConstraint("media_kind IN ('movie', 'series', 'music')", name="media_kind"),
         CheckConstraint(
             "link_mode IN ('hardlink_or_copy', 'hardlink_only', 'copy', 'move', 'symlink')",
             name="link_mode",

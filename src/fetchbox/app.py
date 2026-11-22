@@ -7,6 +7,7 @@ import os
 from collections.abc import AsyncIterator, Callable, Sequence
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Any
 
 import structlog
 from fastapi import APIRouter, FastAPI
@@ -37,10 +38,14 @@ from fetchbox.modules.integrations import router as integrations_router
 from fetchbox.modules.integrations.service import IntegrationsService
 from fetchbox.modules.library import router as library_router
 from fetchbox.modules.library.existing import ExistingLibrary
+from fetchbox.modules.library.existing_music import ExistingMusic
 from fetchbox.modules.library.maintenance import LibraryCheck
 from fetchbox.modules.library.migrate import Migrator
+from fetchbox.modules.library.music_tags import DeferredTags
 from fetchbox.modules.library.service import LibraryService
+from fetchbox.modules.media import music_router
 from fetchbox.modules.media import router as media_router
+from fetchbox.modules.media.music import MusicService
 from fetchbox.modules.media.service import MediaService
 from fetchbox.modules.notifications import router as notifications_router
 from fetchbox.modules.notifications.service import NotificationsService
@@ -83,6 +88,7 @@ API_ROUTERS: tuple[APIRouter, ...] = (
     profiles_router.router,
     discovery_router.router,
     media_router.router,
+    music_router.router,
     sources_router.router,
     sources_router.definitions_router,
     releases_router.router,
@@ -188,6 +194,9 @@ def create_app(
         media = MediaService(db, bus, discovery, profiles)
         media.register_jobs(jobs, state.scheduler)
         app.state.media = media
+        music = MusicService(db, bus, jobs, media)
+        music.register_jobs(state.scheduler)
+        app.state.music = music
         sources = SourcesService(db, bus, box, provider_registry)
         await sources.sync_definitions(seed=settings.seed_indexers)
         app.state.sources = sources
@@ -229,6 +238,14 @@ def create_app(
         )
         app.state.storage = storage
         library = LibraryService(db, bus, jobs, storage, downloads, profiles, media)
+
+        def music_naming() -> Any:
+            from fetchbox.modules.library.music_files import Naming
+
+            m = config.current.music
+            return Naming(folder=m.folder, track=m.track, disc_folders=m.disc_folders)
+
+        library.music_naming = music_naming
         storage.register_jobs(jobs, state.scheduler, lambda: config.current.storage.recycle_days)
         backups_router.register(jobs, state.scheduler, backups)
         integrations = IntegrationsService(db, bus, box, provider_registry)
@@ -241,10 +258,12 @@ def create_app(
         existing = ExistingLibrary(
             db, jobs, storage=storage, media=media, discovery=discovery, library=library
         )
+        existing.music = ExistingMusic(db, music=music, profiles=profiles)
         existing.register_jobs()
         library_check = LibraryCheck(db, bus, jobs, storage)
         library_check.register_jobs()
         app.state.library_check = library_check
+        DeferredTags(db, bus, jobs).register_jobs()
         migrator = Migrator(
             db, jobs, storage=storage, media=media, profiles=profiles, library=library
         )

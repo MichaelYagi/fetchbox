@@ -1,0 +1,177 @@
+<script lang="ts">
+	import Path from './Path.svelte';
+	import { ApiError, get, patch, post, type S } from './api.ts';
+
+	// The music library folder: where albums go (Artist/Album (Year)/01 - Title.flac),
+	// how they get there, and importing what's already in it.
+	let { dest, onChanged }: { dest: S['DestinationOut'] | undefined; onChanged: () => void } = $props();
+	let editing = $state(false);
+	let folder = $state('');
+	let busy = $state('');
+	let error = $state('');
+	let message = $state('');
+
+	// naming (Settings: music.folder / music.track / music.disc_folders)
+	type Naming = { folder: string; track: string; disc_folders: boolean };
+	let naming = $state<Naming>({ folder: 'artist/album (year)', track: 'nn - title', disc_folders: true });
+	$effect(() => {
+		get<{ config: { music?: Naming } }>('/system/config').then((c) => {
+			if (c.config.music) naming = c.config.music;
+		});
+	});
+	const FOLDERS: [string, string][] = [
+		['artist/album (year)', 'Artist / Album (Year)'],
+		['artist/album', 'Artist / Album'],
+		['artist - album (year)', 'Artist - Album (Year)']
+	];
+	const TRACKS: [string, string][] = [
+		['nn - title', '01 - Title'],
+		['nn. title', '01. Title'],
+		['artist - nn - title', 'Artist - 01 - Title']
+	];
+	function example(n: Naming, multi: boolean, disc: number, num: number, title: string): string {
+		const folder =
+			n.folder === 'artist - album (year)'
+				? 'Portishead - Dummy (1994)'
+				: n.folder === 'artist/album'
+					? 'Portishead/Dummy'
+					: 'Portishead/Dummy (1994)';
+		let nn = String(num).padStart(2, '0');
+		const parts = [folder];
+		if (multi) {  // only albums with more than one disc get a disc folder / number
+			if (n.disc_folders) parts.push(`CD${disc}`);
+			else nn = `${disc}-${nn}`;
+		}
+		const name = n.track === 'nn. title' ? `${nn}. ${title}` : n.track === 'artist - nn - title' ? `Portishead - ${nn} - ${title}` : `${nn} - ${title}`;
+		parts.push(`${name}.flac`);
+		return parts.join('/');
+	}
+	const saveNaming = (patchIt: Partial<Naming>) =>
+		act('naming', async () => {
+			naming = { ...naming, ...patchIt };
+			await patch('/system/config', { music: naming });
+		}, 'Naming saved: it applies to albums imported from now on.');
+
+	const MODES: [string, string][] = [
+		['hardlink_or_copy', 'Hardlink when possible, else copy (recommended)'],
+		['hardlink_only', 'Hardlink only (fail rather than use double space)'],
+		['copy', 'Always copy'],
+		['move', 'Move (after seeding is done)']
+	];
+
+	async function act(name: string, fn: () => Promise<unknown>, done = '') {
+		busy = name;
+		error = message = '';
+		try {
+			await fn();
+			if (done) message = done;
+			onChanged();
+		} catch (e) {
+			error = e instanceof ApiError ? e.message : String(e);
+		} finally {
+			busy = '';
+		}
+	}
+	const save = (e: SubmitEvent) => {
+		e.preventDefault();
+		act('folder', async () => {
+			await patch(`/destinations/${dest!.id}`, { path: folder.trim() }, dest!.etag);
+			editing = false;
+		}, "Folder saved. New albums go there; albums already in the old folder stay (they aren't moved).");
+	};
+	const setMode = (mode: string) =>
+		act('mode', () => patch(`/destinations/${dest!.id}`, { link_mode: mode }, dest!.etag), 'Saved.');
+</script>
+
+<div class="card stack">
+	<div class="spread">
+		<h3>Music</h3>
+		{#if dest}<span class="badge {dest.status === 'online' ? 'ok' : 'warn'}" title={dest.status_message ?? ''}>{dest.status}</span>{/if}
+	</div>
+	{#if error}<p class="notice error">{error}</p>{/if}
+	{#if message}<p class="notice">{message}</p>{/if}
+	{#if !dest}
+		<p class="muted small">No music folder yet: it's created when Fetchbox starts.</p>
+	{:else}
+		<div class="field">
+			<div class="label">Folder</div>
+			{#if !editing}
+				<div class="row">
+					<Path path={dest.path} />
+					<button class="small" onclick={() => ((folder = dest.path), (editing = true))}>Change</button>
+					<a class="button small" href="/library/import?dest={dest.id}">Import what's already here</a>
+				</div>
+				{#if dest.status_message && dest.status_message !== 'ok'}<div class="muted small">{dest.status_message}</div>{/if}
+			{:else}
+				<form class="row" onsubmit={save}>
+					<input class="grow" bind:value={folder} required aria-label="Music folder" />
+					<button class="primary" disabled={!!busy}>Save</button>
+					<button type="button" onclick={() => (editing = false)}>Cancel</button>
+				</form>
+			{/if}
+		</div>
+		<label class="field">
+			<span class="label">Downloads from other clients (qBittorrent, Transmission, Deluge)</span>
+			<select value={dest.link_mode} onchange={(e) => setMode(e.currentTarget.value)} disabled={!!busy}>
+				{#each MODES as [v, l] (v)}<option value={v}>{l}</option>{/each}
+			</select>
+		</label>
+		<div class="field">
+			<span class="label">Naming</span>
+			<div class="row">
+				<label class="inline small"
+					>Folders
+					<select value={naming.folder} onchange={(e) => saveNaming({ folder: e.currentTarget.value })} disabled={!!busy}>
+						{#each FOLDERS as [v, l] (v)}<option value={v}>{l}</option>{/each}
+					</select>
+				</label>
+				<label class="inline small"
+					>Tracks
+					<select value={naming.track} onchange={(e) => saveNaming({ track: e.currentTarget.value })} disabled={!!busy}>
+						{#each TRACKS as [v, l] (v)}<option value={v}>{l}</option>{/each}
+					</select>
+				</label>
+				<label class="inline small"
+					><input type="checkbox" checked={naming.disc_folders} onchange={(e) => saveNaming({ disc_folders: e.currentTarget.checked })} disabled={!!busy} />
+					A folder per disc</label
+				>
+			</div>
+			<div class="mono small examples">
+				<div>{example(naming, false, 1, 1, 'Mysterons')}</div>
+				<div class="muted">{example(naming, true, 2, 3, 'Roads')} <span>(a two-disc album)</span></div>
+			</div>
+		</div>
+		<p class="muted small">
+			Albums download straight into this folder and are filed here, seeded from where they're filed. Tags come from
+			MusicBrainz and are written once seeding ends (changing a file a torrent shares would break it).
+		</p>
+	{/if}
+</div>
+
+<style>
+	.grow {
+		flex: 1;
+		min-width: 12rem;
+	}
+	.field {
+		display: grid;
+		gap: 0.3rem;
+	}
+	.label {
+		font-weight: 600;
+		font-size: 0.9rem;
+	}
+	.inline {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+	}
+	.examples {
+		display: grid;
+		gap: 0.15rem;
+		overflow-wrap: anywhere;
+	}
+	.mono {
+		font-family: var(--mono, ui-monospace, monospace);
+	}
+</style>

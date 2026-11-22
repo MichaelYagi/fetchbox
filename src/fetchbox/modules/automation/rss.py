@@ -40,6 +40,65 @@ def _names(t: Title) -> list[str]:
     return [n for n in (t.name, meta.get("original_name"), *(meta.get("alt_titles") or [])) if n]
 
 
+async def _music(auto: AutoSearch, releases: list[Candidate]) -> tuple[int, list[str]]:
+    """Feed releases that are a wanted album: (albums matched, releases grabbed). Each
+    album's matches go through the same decision and grab as a search."""
+    from sqlalchemy import select
+
+    from fetchbox.modules.media.models import Album, WantedItem
+    from fetchbox.modules.releases.music import match_album, norm
+
+    today = utcnow().date()
+    async with auto.db.sessionmaker() as s:
+        rows = (
+            await s.execute(
+                select(Album, Title, WantedItem)
+                .join(Title, Title.id == Album.title_id)
+                .join(WantedItem, WantedItem.album_id == Album.id)
+                .where(
+                    WantedItem.monitored.is_(True),
+                    WantedItem.lock.is_(None) | (WantedItem.lock == "acquired"),
+                    WantedItem.state.in_(("missing", "acquired")),
+                    WantedItem.cutoff_met.is_(False),
+                    Album.release_date <= today,
+                )
+            )
+        ).all()
+        others: dict[str, list[str]] = {}
+        for a in (
+            await s.execute(select(Album).where(Album.title_id.in_({t.id for _, t, _ in rows})))
+        ).scalars():
+            others.setdefault(a.title_id, []).append(a.name)
+    if not rows:
+        return 0, []
+    names = [(c, f" {norm(c.title)} ") for c in releases]
+    matched = 0
+    grabbed: list[str] = []
+    for album, title, w in rows:
+        artist = f" {norm(title.name).removeprefix('the ')} "
+        found = [
+            c
+            for c, n in names
+            if artist in n  # cheap first look, then the full check
+            and match_album(
+                c.title,
+                title.name,
+                album.name,
+                other_albums=[o for o in others[title.id] if o != album.name],
+                album_kind=album.kind,
+            ).ok
+        ]
+        if not found:
+            continue
+        matched += 1
+        result = await auto._search([w], reason="automatic", season_query=False, feed=found)
+        if result.get("grabbed"):
+            grabbed += [g["release_title"] for g in result.get("grabs", [])] or [
+                result["release_title"]
+            ]
+    return matched, grabbed
+
+
 def is_episode(p: ParsedRelease) -> bool:
     return bool(p.seasons or p.episodes or p.air_date or p.absolute_episodes or p.complete_series)
 
@@ -63,10 +122,11 @@ async def _feeds(auto: AutoSearch) -> tuple[list[Candidate], list[str], int]:
             return src.name
         await auto.sources.record_success(src.id)
         return [
-            c.model_copy(update={"source_id": src.id, "source_name": src.name,
-                                 "priority": src.priority})
+            c.model_copy(
+                update={"source_id": src.id, "source_name": src.name, "priority": src.priority}
+            )
             for c in found
-        ]  # fmt: skip
+        ]
 
     results = await asyncio.gather(*(one(s) for s in sources))
     found = [c for r in results if isinstance(r, list) for c in r]
@@ -76,7 +136,8 @@ async def _feeds(auto: AutoSearch) -> tuple[list[Candidate], list[str], int]:
 
 async def rss_sync(auto: AutoSearch) -> dict[str, Any]:
     releases, failed, n_sources = await _feeds(auto)
-    titles = await auto.media.all_titles()
+    # Video only: feed names are matched as movies and episodes (music isn't in RSS yet)
+    titles = [t for t in await auto.media.all_titles() if t.kind in ("movie", "series")]
     wanted = await auto.media.wanted_for([t.id for t in titles if t.kind == "movie"])
     index: dict[str, list[Title]] = defaultdict(list)
     for t in titles:
@@ -143,10 +204,12 @@ async def rss_sync(auto: AutoSearch) -> dict[str, Any]:
             grabbed += [g["release_title"] for g in result.get("grabs", [])] or [
                 result["release_title"]
             ]
+    music_matched, music_grabbed = await _music(auto, releases)
+    grabbed += music_grabbed
     out = {
         "indexers": n_sources,
         "releases": len(releases),
-        "matched": len(groups),
+        "matched": len(groups) + music_matched,
         "grabbed": grabbed,
         "failed_indexers": failed,
     }

@@ -221,10 +221,12 @@ async def test_destinations_and_health(c: httpx.AsyncClient, settings: Any, tmp_
     assert {(d["name"], d["media_kind"], d["is_default"]) for d in dests} == {
         ("Movies", "movie", True),
         ("TV", "series", True),
+        ("Music", "music", True),  # beside Movies: the same drive
     }
     assert {Path(d["path"]) for d in dests} == {
         settings.downloads_dir / "Movies",
         settings.downloads_dir / "TV",
+        settings.downloads_dir / "Music",
     }
     [node] = (await c.get("/storage/nodes")).json()
     assert node["kind"] == "local"

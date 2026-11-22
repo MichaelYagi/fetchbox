@@ -33,6 +33,8 @@ hidden = (
     # bs4 loads its parser by name: the HTML responses of indexer definitions use lxml
     + ["bs4.builder._lxml", "lxml.etree", "lxml._elementpath", "lxml.html"]
     + ["python_multipart"]  # FastAPI imports it lazily for uploads (backups)
+    # music tags: mutagen loads each format's module when it meets that format
+    + collect_submodules("mutagen")
 )
 binaries = collect_dynamic_libs("libtorrent")
 excludes = ["tkinter", "pytest", "mypy", "ruff"]

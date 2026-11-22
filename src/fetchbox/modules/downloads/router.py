@@ -312,7 +312,7 @@ class ClientPatch(BaseModel):
     priority: int | None = Field(default=None, ge=1, le=50)
     settings: dict[str, Any] | None = None
     policy: dict[str, Any] | None = None
-    media_kinds: list[Literal["movie", "series"]] | None = None
+    media_kinds: list[Literal["movie", "series", "music"]] | None = None
     tags: list[str] | None = None
 
 
@@ -347,7 +347,9 @@ class ClientIn(BaseModel):
     priority: int = Field(default=1, ge=1, le=50, description="Lower is tried first")
     settings: dict[str, Any] = {}
     policy: dict[str, Any] = {}
-    media_kinds: list[Literal["movie", "series"]] = Field(default=[], description="Empty = all")
+    media_kinds: list[Literal["movie", "series", "music"]] = Field(
+        default=[], description="Empty = all"
+    )
     tags: list[str] = []
 
 

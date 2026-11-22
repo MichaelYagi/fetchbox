@@ -113,7 +113,7 @@ def in_library(d: Download) -> bool:
     return bool(path) and PurePosixPath(path).name == INCOMPLETE
 
 
-CATEGORY = {"movie": "fetchbox-movies", "series": "fetchbox-tv"}
+CATEGORY = {"movie": "fetchbox-movies", "series": "fetchbox-tv", "music": "fetchbox-music"}
 BUILTIN_NAME = "Built-in"
 DIRECT_NAME = "Direct downloads"
 

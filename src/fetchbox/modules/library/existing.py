@@ -127,6 +127,7 @@ class ExistingLibrary:
         self.media = media
         self.discovery = discovery
         self.library = library
+        self.music: Any = None  # ExistingMusic, set by the app (music folders)
 
     def register_jobs(self) -> None:
         @self.jobs.handler(SCAN_JOB, queue="net", max_attempts=1)
@@ -177,6 +178,13 @@ class ExistingLibrary:
         dest = await self.storage.destination(destination_id)
         kind = dest.media_kind
         root = Path(dest.path)
+        if kind == "music" and self.music is not None:
+            if not await asyncio.to_thread(root.is_dir):
+                raise ProblemError(
+                    422, "Validation Failed", f"{root} is not a folder", slug="validation"
+                )
+            result: dict[str, Any] = await self.music.scan(dest, progress)
+            return result
         if not await asyncio.to_thread(root.is_dir):
             raise ProblemError(
                 422, "Validation Failed", f"{root} is not a folder", slug="validation"
@@ -290,8 +298,11 @@ class ExistingLibrary:
         later = utcnow() + FIRST_SEARCH_AFTER
         for n, item in enumerate(items, 1):
             try:
-                title, new = await self._title(kind, item, actor, later)
-                count = await self._adopt_files(title, dest, item["files"])
+                if kind == "music":
+                    title, new, count = await self.music.apply_one(dest, item, actor)
+                else:
+                    title, new = await self._title(kind, item, actor, later)
+                    count = await self._adopt_files(title, dest, item["files"])
                 files_recorded += count
                 added.append({"folder": item["folder"], "title_id": title.id,
                               "name": title.name, "new": new, "files": count})  # fmt: skip
