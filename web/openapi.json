@@ -6422,6 +6422,68 @@
     "title": "RenameStepOut",
     "type": "object"
    },
+   "ResetIn": {
+    "properties": {
+     "confirm": {
+      "description": "Must be \"delete all data\": a guard against a stray call",
+      "title": "Confirm",
+      "type": "string"
+     },
+     "delete_files": {
+      "default": false,
+      "description": "Also delete the media files in the library folders (into each folder's recycle folder when it has one). Off: the files stay, ready to import again",
+      "title": "Delete Files",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "confirm"
+    ],
+    "title": "ResetIn",
+    "type": "object"
+   },
+   "ResetOut": {
+    "properties": {
+     "backup": {
+      "description": "The backup made first: restore it to undo the reset",
+      "title": "Backup",
+      "type": "string"
+     },
+     "downloads_stopped": {
+      "title": "Downloads Stopped",
+      "type": "integer"
+     },
+     "files_deleted": {
+      "title": "Files Deleted",
+      "type": "integer"
+     },
+     "not_deleted": {
+      "description": "Media files that couldn't be deleted",
+      "items": {
+       "type": "string"
+      },
+      "title": "Not Deleted",
+      "type": "array"
+     },
+     "not_stopped": {
+      "description": "Downloads a client couldn't stop (offline?)",
+      "items": {
+       "type": "string"
+      },
+      "title": "Not Stopped",
+      "type": "array"
+     }
+    },
+    "required": [
+     "backup",
+     "downloads_stopped",
+     "files_deleted",
+     "not_stopped",
+     "not_deleted"
+    ],
+    "title": "ResetOut",
+    "type": "object"
+   },
    "RestoreIn": {
     "properties": {
      "password": {
@@ -18370,6 +18432,93 @@
      }
     ],
     "summary": "Ping",
+    "tags": [
+     "system"
+    ]
+   }
+  },
+  "/api/v1/system/reset-data": {
+   "post": {
+    "description": "Delete all data and keep the settings. Titles, the wanted list, history, the queue,\ngrabs, the blocklist, activity and jobs go; indexers, clients, library folders,\nprofiles, naming, notifications, users and keys stay. A backup is made first.\nDownloads are stopped (unfinished data deleted); media files stay unless asked.",
+    "operationId": "reset_data_api_v1_system_reset_data_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ResetIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ResetOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Unauthorized"
+     },
+     "403": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Forbidden"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Conflict"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Unprocessable Content"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Reset Data",
     "tags": [
      "system"
     ]

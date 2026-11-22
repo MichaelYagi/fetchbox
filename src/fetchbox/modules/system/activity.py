@@ -55,6 +55,8 @@ MESSAGES: dict[str, str] = {
     "profiles.format_updated": "Custom format '{name}' updated",
     "profiles.format_deleted": "Custom format '{name}' deleted",
     "system.config_changed": "Settings changed: {fields}",
+    "system.data_reset": "All data deleted, settings kept ({downloads} downloads stopped, "
+    "{files} media files deleted); backup {backup}",
     "title.added": "Added {name} ({year})",
     "title.updated": "Updated {name} ({year})",
     "title.refreshed": "Refreshed metadata for {name} ({year})",
@@ -175,6 +177,15 @@ class ActivityWriter:
                 await self._write_in_hand()
             self._sub.close()
             self._sub = None
+
+    async def settle(self) -> None:
+        """Write everything emitted so far, now (after any write in progress)."""
+        if self._sub is None:
+            return
+        async with self._lock:
+            while self._in_hand or not self._sub.queue.empty():
+                self._in_hand.extend(self._drain())
+                await self._write_in_hand()
 
     def _drain(self) -> list[Event]:
         assert self._sub is not None

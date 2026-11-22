@@ -2,6 +2,7 @@
 	import { ApiError, del, get, patch, post, type S } from '#lib/api.ts';
 	import BackupsCard from '#lib/BackupsCard.svelte';
 	import ConfigTransferCard from '#lib/ConfigTransferCard.svelte';
+	import ResetDataCard from '#lib/ResetDataCard.svelte';
 	import LibraryCard from '#lib/LibraryCard.svelte';
 	import LibraryCheckCard from '#lib/LibraryCheckCard.svelte';
 	import MediaServersCard from '#lib/MediaServersCard.svelte';
@@ -52,6 +53,7 @@
 		seed: false
 	});
 	let interfaces = $state<S['NetworkInterface'][]>([]);
+	let resets = $state(0); // a reset makes a backup: show it
 
 	function editIndexer(i: S['IndexerOut']) {
 		const st = i.settings as Record<string, unknown>;
@@ -666,12 +668,17 @@
 
 	<section id="backups">
 		<h2>Backups</h2>
-		<BackupsCard />
+		{#key resets}<BackupsCard />{/key}
 	</section>
 
 	<section id="move-settings">
 		<h2>Move settings</h2>
 		<ConfigTransferCard />
+	</section>
+
+	<section id="delete-all-data">
+		<h2 class="danger-title">Delete all data</h2>
+		<ResetDataCard ondone={() => (resets++, load())} />
 	</section>
 </main>
 
@@ -744,6 +751,9 @@
 		color: var(--ok);
 	}
 	.errt {
+		color: var(--error);
+	}
+	.danger-title {
 		color: var(--error);
 	}
 </style>

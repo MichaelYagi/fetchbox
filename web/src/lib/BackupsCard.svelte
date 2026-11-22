@@ -15,6 +15,7 @@
 		scheduled: 'Weekly',
 		'pre-migration': 'Before an update',
 		'before-restore': 'Before a restore',
+		'before-reset': 'Before deleting all data',
 		uploaded: 'Uploaded'
 	};
 
