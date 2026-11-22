@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { ApiError, del, get, patch, post, type S } from '#lib/api.ts';
 	import BackupsCard from '#lib/BackupsCard.svelte';
+	import ConfigTransferCard from '#lib/ConfigTransferCard.svelte';
 	import LibraryCard from '#lib/LibraryCard.svelte';
 	import LibraryCheckCard from '#lib/LibraryCheckCard.svelte';
 	import MediaServersCard from '#lib/MediaServersCard.svelte';
@@ -619,6 +620,11 @@
 	<section id="backups">
 		<h2>Backups</h2>
 		<BackupsCard />
+	</section>
+
+	<section id="move-settings">
+		<h2>Move settings</h2>
+		<ConfigTransferCard />
 	</section>
 </main>
 

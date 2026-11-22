@@ -352,6 +352,11 @@ Progress:
       settings with secrets masked, last 2000 log lines with keys / tokens / passwords
       scrubbed, indexer / client / folder summary without addresses or credentials);
       "Download diagnostics" in Settings > This computer
+- [x] Config export / import: `GET /config/export` (no secrets) / `POST /config/export`
+      {password} (secrets password-encrypted); `POST /config/import` dry run by default,
+      apply in one transaction: rows match by id then name (a fresh install's defaults
+      are updated, references remapped to local ids), secrets re-sealed with this
+      install's key, nothing deleted, restart after. Settings > Move settings
 
 **Gate:** migrate a real Sonarr+Radarr install and run side by side; installers work on all
 three OSes; a backup restores on a fresh machine.

@@ -396,6 +396,53 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/config/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export Config
+         * @description All configuration as one JSON document (no media data). Secrets are left out:
+         *     POST with a password to include them, encrypted.
+         */
+        get: operations["export_config_api_v1_config_export_get"];
+        put?: never;
+        /**
+         * Export Config With Secrets
+         * @description The same, with secrets (API keys, passwords) encrypted with ``password``.
+         */
+        post: operations["export_config_with_secrets_api_v1_config_export_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/config/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import Config
+         * @description Compare an export with this install (``apply: false``, the default) or apply it in
+         *     one transaction. Rows match by id, then by name; nothing is deleted. After applying,
+         *     Fetchbox restarts so every part uses the new configuration.
+         */
+        post: operations["import_config_api_v1_config_import_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/custom-formats": {
         parameters: {
             query?: never;
@@ -2589,6 +2636,21 @@ export interface components {
             /** Tags */
             tags?: string[] | null;
         };
+        /** ConfigImportOut */
+        ConfigImportOut: {
+            /** Applied */
+            applied: boolean;
+            /** Plan */
+            plan: {
+                [key: string]: components["schemas"]["PlanPart"];
+            };
+            /**
+             * Restarting
+             * @description Applied: Fetchbox restarts to use it
+             * @default false
+             */
+            restarting: boolean;
+        };
         /** ConfigOut */
         ConfigOut: {
             /**
@@ -2911,6 +2973,14 @@ export interface components {
             /** Label */
             label: string;
         };
+        /** ExportIn */
+        ExportIn: {
+            /**
+             * Password
+             * @description Encrypts the secrets in the export
+             */
+            password: string;
+        };
         /** FieldError */
         FieldError: {
             /** Code */
@@ -3152,13 +3222,6 @@ export interface components {
              * @description Set when running in WSL: paths are inside that distro
              */
             wsl_distro?: string | null;
-        };
-        /** ImportIn */
-        ImportIn: {
-            /** Destination Id */
-            destination_id: string;
-            /** Items */
-            items: components["schemas"]["ImportItemIn"][];
         };
         /** ImportItemIn */
         ImportItemIn: {
@@ -3919,6 +3982,15 @@ export interface components {
              * @default ok
              */
             status: string;
+        };
+        /** PlanPart */
+        PlanPart: {
+            /** Create */
+            create: string[];
+            /** Unchanged */
+            unchanged: string[];
+            /** Update */
+            update: string[];
         };
         /** Policy */
         Policy: {
@@ -5130,6 +5202,13 @@ export interface components {
              */
             remote: string;
         };
+        /** ImportIn */
+        fetchbox__modules__library__router__ImportIn: {
+            /** Destination Id */
+            destination_id: string;
+            /** Items */
+            items: components["schemas"]["ImportItemIn"][];
+        };
         /** ReorderIn */
         fetchbox__modules__sources__router__ReorderIn: {
             /**
@@ -5137,6 +5216,27 @@ export interface components {
              * @description Indexer ids, best first
              */
             ids: string[];
+        };
+        /** ImportIn */
+        fetchbox__modules__system__config_router__ImportIn: {
+            /**
+             * Apply
+             * @description False: only show what would change
+             * @default false
+             */
+            apply: boolean;
+            /**
+             * Document
+             * @description A Fetchbox config export
+             */
+            document: {
+                [key: string]: unknown;
+            };
+            /**
+             * Password
+             * @description If the export holds secrets
+             */
+            password?: string | null;
         };
     };
     responses: never;
@@ -6249,6 +6349,98 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CalendarEntry"][];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    export_config_api_v1_config_export_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    export_config_with_secrets_api_v1_config_export_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExportIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    import_config_api_v1_config_import_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["fetchbox__modules__system__config_router__ImportIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfigImportOut"];
                 };
             };
             /** @description Unprocessable Content */
@@ -8867,7 +9059,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ImportIn"];
+                "application/json": components["schemas"]["fetchbox__modules__library__router__ImportIn"];
             };
         };
         responses: {

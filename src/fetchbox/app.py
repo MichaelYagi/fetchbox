@@ -52,12 +52,13 @@ from fetchbox.modules.sources import router as sources_router
 from fetchbox.modules.sources.service import SourcesService
 from fetchbox.modules.storage import router as storage_router
 from fetchbox.modules.storage.service import StorageService
-from fetchbox.modules.system import activity_router, backups_router, jobs_router
+from fetchbox.modules.system import activity_router, backups_router, config_router, jobs_router
 from fetchbox.modules.system import jobs as system_jobs
 from fetchbox.modules.system import router as system_router
 from fetchbox.modules.system.activity import ActivityWriter
 from fetchbox.modules.system.backups import Backups, sqlite_path
 from fetchbox.modules.system.config import ConfigService
+from fetchbox.modules.system.portable import Portable
 from fetchbox.modules.system.service import register_core_checks
 from fetchbox.providers import builtin as _builtin_providers  # noqa: F401 (registers them)
 from fetchbox.ui import STATIC_DIR, install_ui
@@ -89,6 +90,7 @@ API_ROUTERS: tuple[APIRouter, ...] = (
     integrations_router.router,
     notifications_router.router,
     backups_router.router,
+    config_router.router,
 )
 
 
@@ -230,6 +232,7 @@ def create_app(
         notifications = NotificationsService(db, bus, box, provider_registry)
         app.state.notifications = notifications
         app.state.integrations = integrations
+        app.state.portable = Portable(db, box, provider_registry, config)
         existing = ExistingLibrary(
             db, jobs, storage=storage, media=media, discovery=discovery, library=library
         )

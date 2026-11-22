@@ -1075,6 +1075,33 @@
     "title": "ClientPatch",
     "type": "object"
    },
+   "ConfigImportOut": {
+    "properties": {
+     "applied": {
+      "title": "Applied",
+      "type": "boolean"
+     },
+     "plan": {
+      "additionalProperties": {
+       "$ref": "#/components/schemas/PlanPart"
+      },
+      "title": "Plan",
+      "type": "object"
+     },
+     "restarting": {
+      "default": false,
+      "description": "Applied: Fetchbox restarts to use it",
+      "title": "Restarting",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "applied",
+     "plan"
+    ],
+    "title": "ConfigImportOut",
+    "type": "object"
+   },
    "ConfigOut": {
     "properties": {
      "config": {
@@ -2035,6 +2062,21 @@
     "title": "EventKindOut",
     "type": "object"
    },
+   "ExportIn": {
+    "properties": {
+     "password": {
+      "description": "Encrypts the secrets in the export",
+      "minLength": 8,
+      "title": "Password",
+      "type": "string"
+     }
+    },
+    "required": [
+     "password"
+    ],
+    "title": "ExportIn",
+    "type": "object"
+   },
    "FieldError": {
     "properties": {
      "code": {
@@ -2756,28 +2798,6 @@
      "downloads_root"
     ],
     "title": "HostInfo",
-    "type": "object"
-   },
-   "ImportIn": {
-    "properties": {
-     "destination_id": {
-      "title": "Destination Id",
-      "type": "string"
-     },
-     "items": {
-      "items": {
-       "$ref": "#/components/schemas/ImportItemIn"
-      },
-      "minItems": 1,
-      "title": "Items",
-      "type": "array"
-     }
-    },
-    "required": [
-     "destination_id",
-     "items"
-    ],
-    "title": "ImportIn",
     "type": "object"
    },
    "ImportItemIn": {
@@ -4670,6 +4690,38 @@
      }
     },
     "title": "Ping",
+    "type": "object"
+   },
+   "PlanPart": {
+    "properties": {
+     "create": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Create",
+      "type": "array"
+     },
+     "unchanged": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Unchanged",
+      "type": "array"
+     },
+     "update": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Update",
+      "type": "array"
+     }
+    },
+    "required": [
+     "create",
+     "update",
+     "unchanged"
+    ],
+    "title": "PlanPart",
     "type": "object"
    },
    "Policy": {
@@ -7786,6 +7838,28 @@
     "title": "PathMapping",
     "type": "object"
    },
+   "fetchbox__modules__library__router__ImportIn": {
+    "properties": {
+     "destination_id": {
+      "title": "Destination Id",
+      "type": "string"
+     },
+     "items": {
+      "items": {
+       "$ref": "#/components/schemas/ImportItemIn"
+      },
+      "minItems": 1,
+      "title": "Items",
+      "type": "array"
+     }
+    },
+    "required": [
+     "destination_id",
+     "items"
+    ],
+    "title": "ImportIn",
+    "type": "object"
+   },
    "fetchbox__modules__sources__router__ReorderIn": {
     "properties": {
      "ids": {
@@ -7802,6 +7876,39 @@
      "ids"
     ],
     "title": "ReorderIn",
+    "type": "object"
+   },
+   "fetchbox__modules__system__config_router__ImportIn": {
+    "properties": {
+     "apply": {
+      "default": false,
+      "description": "False: only show what would change",
+      "title": "Apply",
+      "type": "boolean"
+     },
+     "document": {
+      "additionalProperties": true,
+      "description": "A Fetchbox config export",
+      "title": "Document",
+      "type": "object"
+     },
+     "password": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "If the export holds secrets",
+      "title": "Password"
+     }
+    },
+    "required": [
+     "document"
+    ],
+    "title": "ImportIn",
     "type": "object"
    }
   },
@@ -9707,6 +9814,149 @@
     "summary": "Get Calendar",
     "tags": [
      "media"
+    ]
+   }
+  },
+  "/api/v1/config/export": {
+   "get": {
+    "description": "All configuration as one JSON document (no media data). Secrets are left out:\nPOST with a password to include them, encrypted.",
+    "operationId": "export_config_api_v1_config_export_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Export Config Api V1 Config Export Get",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Export Config",
+    "tags": [
+     "system"
+    ]
+   },
+   "post": {
+    "description": "The same, with secrets (API keys, passwords) encrypted with ``password``.",
+    "operationId": "export_config_with_secrets_api_v1_config_export_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ExportIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Export Config With Secrets Api V1 Config Export Post",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Unprocessable Content"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Export Config With Secrets",
+    "tags": [
+     "system"
+    ]
+   }
+  },
+  "/api/v1/config/import": {
+   "post": {
+    "description": "Compare an export with this install (``apply: false``, the default) or apply it in\none transaction. Rows match by id, then by name; nothing is deleted. After applying,\nFetchbox restarts so every part uses the new configuration.",
+    "operationId": "import_config_api_v1_config_import_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/fetchbox__modules__system__config_router__ImportIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ConfigImportOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Unprocessable Content"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Import Config",
+    "tags": [
+     "system"
     ]
    }
   },
@@ -14069,7 +14319,7 @@
      "content": {
       "application/json": {
        "schema": {
-        "$ref": "#/components/schemas/ImportIn"
+        "$ref": "#/components/schemas/fetchbox__modules__library__router__ImportIn"
        }
       }
      },
