@@ -274,7 +274,7 @@
 
 <style>
 	.name {
-		word-break: break-all;
+		overflow-wrap: anywhere; /* long release names wrap, without splitting every word */
 	}
 	.item {
 		gap: 0.5rem;
@@ -287,11 +287,20 @@
 		align-items: center;
 		gap: 0.5rem;
 		margin-bottom: 0.6rem;
+		/* the card's padding plus its border: "Select all" sits in the same column as
+		   each download's box */
+		padding: 0 calc(1rem + 1px);
+		min-height: 2.25rem;
 	}
 	.check {
-		display: inline-flex;
+		display: flex;
 		gap: 0.5rem;
 		align-items: center;
+	}
+	.item .check {
+		/* the name takes the row; on a narrow screen the buttons go under it */
+		flex: 1 1 18rem;
+		min-width: 0;
 	}
 	.err {
 		color: var(--error);

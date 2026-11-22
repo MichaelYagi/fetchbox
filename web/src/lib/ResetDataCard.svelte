@@ -60,7 +60,7 @@
 		{/if}
 		<div class="row">
 			<label class="grow">
-				Type <code>{PHRASE}</code> to confirm
+				<span>Type <code>{PHRASE}</code> to confirm</span>
 				<input bind:value={typed} autocomplete="off" spellcheck="false" placeholder={PHRASE} />
 			</label>
 			<button class="danger solid" disabled={!ready || busy}>{busy ? 'Deleting…' : 'Delete all data'}</button>

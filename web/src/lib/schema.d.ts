@@ -2318,6 +2318,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/titles/{title_id}/folder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Title Folder
+         * @description Where the title's files go (or went): its library folder and its folder in there.
+         */
+        get: operations["title_folder_api_v1_titles__title_id__folder_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/titles/{title_id}/history": {
         parameters: {
             query?: never;
@@ -5441,6 +5461,25 @@ export interface components {
             name: string;
             /** Qualities */
             qualities: string[];
+        };
+        /** TitleFolderOut */
+        TitleFolderOut: {
+            /** Library Folder Id */
+            library_folder_id: string;
+            /** Library Folder Name */
+            library_folder_name: string;
+            /** Library Folder Path */
+            library_folder_path: string;
+            /**
+             * Own
+             * @description Chosen for this title; false: the default for its kind
+             */
+            own: boolean;
+            /**
+             * Path
+             * @description Its folder in there, by the naming settings
+             */
+            path: string;
         };
         /** TitleIn */
         TitleIn: {
@@ -12243,6 +12282,57 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FileOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    title_folder_api_v1_titles__title_id__folder_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                title_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TitleFolderOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
                 };
             };
             /** @description Validation Error */
