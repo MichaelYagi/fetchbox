@@ -633,6 +633,19 @@
       "title": "Album Kinds",
       "type": "array"
      },
+     "folder": {
+      "anyOf": [
+       {
+        "maxLength": 4000,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Its own library folder. Empty, or the default folder for its kind: the one set in Settings (and it follows that). An existing folder is reused; another path becomes a new library folder",
+      "title": "Folder"
+     },
      "mbid": {
       "description": "MusicBrainz artist id",
       "maxLength": 36,
@@ -7548,6 +7561,19 @@
    },
    "TitleIn": {
     "properties": {
+     "folder": {
+      "anyOf": [
+       {
+        "maxLength": 4000,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Its own library folder. Empty, or the default folder for its kind: the one set in Settings (and it follows that). An existing folder is reused; another path becomes a new library folder",
+      "title": "Folder"
+     },
      "kind": {
       "default": "movie",
       "enum": [

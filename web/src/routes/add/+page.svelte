@@ -51,6 +51,16 @@
 		{ kind: 'movie' | 'series'; r: S['TitleSummary'] } | { kind: 'music'; a: S['ArtistHit'] } | null
 	>(null);
 	let dialog = $state<HTMLDialogElement | null>(null);
+	// Library folders from Settings: the dialog's Folder starts at the default for the kind.
+	let folders = $state<S['DestinationOut'][]>([]);
+	let folder = $state('');
+	const foldersFor = (k: string) => folders.filter((d) => d.media_kind === k);
+	const defaultFolder = (k: string) => foldersFor(k).find((d) => d.is_default) ?? foldersFor(k)[0];
+	// only sent when changed: left as is, the title follows Settings
+	const folderChoice = (k: string) => {
+		const f = folder.trim();
+		return f && f !== defaultFolder(k)?.path ? { folder: f } : {};
+	};
 	$effect(() => {
 		if (pending && dialog && !dialog.open) dialog.showModal();
 	});
@@ -61,7 +71,14 @@
 		monitorMode = 'future';
 		artistMode = 'future';
 		searchNow = true;
+		folder = defaultFolder(p.kind)?.path ?? '';
 		pending = p;
+		// fresh, in case Settings changed since the page opened
+		get<S['DestinationOut'][]>('/destinations').then((d) => {
+			const before = defaultFolder(p.kind)?.path ?? '';
+			folders = d;
+			if (pending === p && folder === before) folder = defaultFolder(p.kind)?.path ?? '';
+		});
 	}
 
 	function close() {
@@ -85,6 +102,9 @@
 			const pick = media === 'music' ? 'Lossless' : '1080p';
 			profile = (p.find((x) => x.name === pick) ?? p[0])?.id ?? '';
 		});
+	});
+	$effect(() => {
+		get<S['DestinationOut'][]>('/destinations').then((d) => (folders = d));
 	});
 	$effect(() => {
 		get<S['TitlePage']>('/titles', { limit: 500 }).then((page) => {
@@ -120,7 +140,8 @@
 				profile_id: profile,
 				monitor_mode: artistMode,
 				album_kinds: albumKinds,
-				search: searchNow
+				search: searchNow,
+				...folderChoice('music')
 			});
 			await goto(`/title/${t.id}`);
 		} catch (err) {
@@ -139,6 +160,7 @@
 				tmdb_id: r.tmdb_id,
 				profile_id: profile,
 				search: searchNow,
+				...folderChoice(kind),
 				...(kind === 'series' ? { monitor_mode: monitorMode } : { minimum_availability: availability })
 			});
 			await goto(`/title/${t.id}`);
@@ -323,6 +345,23 @@
 						</select>
 					</label>
 				{/if}
+
+				<label class="field">
+					Folder
+					<input bind:value={folder} list="folder-choices" spellcheck="false" autocomplete="off" />
+					<datalist id="folder-choices">
+						{#each foldersFor(pending.kind) as d (d.id)}<option value={d.path}>{d.name}</option>{/each}
+					</datalist>
+					<span class="muted small">
+						{#if !folder.trim() || folder.trim() === defaultFolder(pending.kind)?.path}
+							The {defaultFolder(pending.kind)?.name ?? ''} folder from Settings (it follows any change there).
+						{:else if foldersFor(pending.kind).some((d) => d.path === folder.trim())}
+							One of your library folders.
+						{:else}
+							A new folder: it's created, and added to Settings → Library with the same naming.
+						{/if}
+					</span>
+				</label>
 
 				{#if !(pending.kind !== 'movie' && (isMusic ? artistMode : monitorMode) === 'none')}
 					<label class="inline check">
