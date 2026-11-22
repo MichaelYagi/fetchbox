@@ -96,7 +96,9 @@ class ProwlarrProvider(IndexerProvider):
             },
         )
         self._children: dict[int, _Child] = {}
-        self._listed_at = 0.0
+        # None until listed: the monotonic clock counts from boot, so a 0 here would read
+        # as "listed just now" for the first 10 minutes after the machine starts
+        self._listed_at: float | None = None
         self._lock = asyncio.Lock()
 
     async def aclose(self) -> None:
@@ -136,7 +138,11 @@ class ProwlarrProvider(IndexerProvider):
     async def indexers(self, *, fresh: bool = False) -> list[_Child]:
         """Prowlarr's enabled torrent indexers that can search."""
         async with self._lock:
-            if not fresh and self._listed_at > time.monotonic() - LIST_TTL:
+            if (
+                not fresh
+                and self._listed_at is not None
+                and self._listed_at > time.monotonic() - LIST_TTL
+            ):
                 return list(self._children.values())
             rows = await self._list()
             wanted = {

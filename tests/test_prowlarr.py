@@ -127,6 +127,19 @@ async def test_one_slow_indexer_doesnt_lose_the_others_results(
     await p.aclose()
 
 
+async def test_searches_right_after_the_machine_starts(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The monotonic clock counts from boot. The indexer list used to start "listed at 0",
+    which for the first 10 minutes after boot read as listed just now, with nothing in it:
+    every search failed with "Prowlarr has no enabled torrent indexers" (seen on CI)."""
+    from fetchbox.providers.indexers import prowlarr
+
+    monkeypatch.setattr(prowlarr.time, "monotonic", lambda: 5.0)  # 5 s after boot
+    p = _provider(FakeProwlarr())
+    found = await p.search(SearchQuery("movie", ("Dune",), year=2021))
+    assert len(found) == 2
+    await p.aclose()
+
+
 async def test_clear_errors() -> None:
     fake = FakeProwlarr()
     bad = _provider(fake, key="wrong")
