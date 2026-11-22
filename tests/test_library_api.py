@@ -149,7 +149,9 @@ async def test_gate_add_movie_get_named_file(
     r = await c.post(f"/downloads/{dl['id']}/download-again")
     assert r.status_code == 200 and r.json() == {"searching": 1, "skipped": []}, r.text
     again = (await c.get(f"/titles/{movie['id']}")).json()["wanted"][0]
-    assert again["lock"] is None and again["state"] in ("missing", "searching")
+    # wanted again: the search it queued may already have grabbed a release
+    assert again["lock"] is None
+    assert again["state"] in ("missing", "searching", "grabbed", "downloading")
     assert (await c.get("/blocklist")).json() == []
 
 
