@@ -22,7 +22,7 @@ import contextlib
 import re
 from collections.abc import Sequence
 from datetime import timedelta
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any, Literal
 
 import structlog
@@ -38,7 +38,7 @@ from fetchbox.core.errors import ConflictError, FieldError, NotFoundError, Probl
 from fetchbox.core.events import Actor, EventBus, Subject
 from fetchbox.core.ids import new_id
 from fetchbox.core.jobs import JobContext, JobRunner
-from fetchbox.core.paths import host_path
+from fetchbox.core.paths import native_folder_problem
 from fetchbox.core.providers import HealthStatus, ProviderRegistry, TestResult
 from fetchbox.core.secrets import MASK, SecretBox, mask_settings, open_settings, seal_settings
 from fetchbox.modules.downloads.models import ACTIVE, Download, DownloadClient
@@ -62,6 +62,47 @@ ADD_JOB = "downloads.add"
 ADD_ATTEMPTS = 3
 POLL_INTERVAL = 2.0
 SWEEP_EVERY = 15  # polls between sweeps when nothing wakes us
+INCOMPLETE = ".incomplete"  # downloads in progress, inside each library folder
+
+
+def _new_policy(data: dict[str, Any]) -> Policy:
+    """A policy being saved: also refuses a folder from the other system (in WSL a
+    Windows folder, on Windows a WSL one). Stored policies load without this check."""
+    policy = Policy.model_validate(data)
+    if policy.save_path and (why := native_folder_problem(policy.save_path)):
+        raise ProblemError(
+            422, "Validation Failed", slug="validation",
+            errors=[FieldError(field="body.policy.save_path", message=why)],
+        )  # fmt: skip
+    return policy
+
+
+def _remove_leftovers(files: list[Path], save_path: str | None) -> None:
+    """Delete what a torrent left in .incomplete, and the folders it empties; never
+    anything outside that folder."""
+    if not files or not save_path:
+        return
+    root = Path(save_path)
+    for f in files:
+        if root not in f.parents:
+            continue
+        f.unlink(missing_ok=True)
+        p = f.parent
+        while p != root and root in p.parents:
+            try:
+                p.rmdir()
+            except OSError:
+                break
+            p = p.parent
+
+
+def in_library(d: Download) -> bool:
+    """Downloaded into a library folder (its .incomplete): imported by moving, in place,
+    so after import its files are the library's own."""
+    path = (d.save_path or "").replace("\\", "/")
+    return bool(path) and PurePosixPath(path).name == INCOMPLETE
+
+
 CATEGORY = {"movie": "fetchbox-movies", "series": "fetchbox-tv"}
 BUILTIN_NAME = "Built-in"
 DIRECT_NAME = "Direct downloads"
@@ -116,7 +157,7 @@ class Policy(BaseModel):
             v = v.strip()
             if not v:
                 return None  # empty: back to the default
-            v = host_path(v)  # under WSL: C:\... is /mnt/c/...
+
             if not (v.startswith("/") or re.match(r"^[A-Za-z]:[\\/]", v) or v.startswith("~")):
                 raise ValueError("must be an absolute folder path")
         return v
@@ -350,18 +391,96 @@ class DownloadsService:
         return Policy.model_validate(row.policy or {})
 
     def saves_to(self, row: DownloadClient) -> str | None:
-        """Where this client's downloads go (Fetchbox's view); None: the client decides."""
-        if row.kind in ("builtin", "direct") or self.policy(row).save_path:
+        """Where an external client's downloads go (Fetchbox's view); None: the client
+        decides, or (built-in, direct) each library folder."""
+        if row.kind not in ("builtin", "direct") and self.policy(row).save_path:
             return str(self.save_root(row))
         return None
 
-    async def link_sources(self) -> list[tuple[str, str]]:
-        """(client name, folder) where enabled clients' downloads land, when known."""
-        out = []
-        for row in await self.client_rows():
-            if row.enabled and (where := self.saves_to(row)):
-                out.append((row.name, where))
-        return out
+    async def move_seeding_file(self, old: str, new: str) -> bool:
+        """A library file that a torrent seeds from: have the engine move it (a rename
+        behind its back would break the torrent). False: no torrent seeds it."""
+        async with self.db.sessionmaker() as s:
+            rows = list(
+                (
+                    await s.execute(
+                        select(Download).where(
+                            Download.status == "completed", Download.import_status == "imported"
+                        )
+                    )
+                ).scalars()
+            )
+        for d in rows:
+            client = self.clients.get(d.client_id or "")
+            if client is None or not client.can_relocate or not in_library(d):
+                continue
+            try:
+                files = await client.files(d.client_ref)
+            except DownloadClientError:
+                continue
+            if any(f.path == old for f in files):
+                await client.relocate(d.client_ref, {old: new})
+                return True
+        return False
+
+    async def release_files(self, paths: set[str]) -> int:
+        """Before the library replaces or deletes files: stop the torrents seeding from
+        them (keeping the data), else they'd error over the missing file."""
+        if not paths:
+            return 0
+        wanted = {str(Path(p)) for p in paths}
+        async with self.db.sessionmaker() as s:
+            rows = list(
+                (
+                    await s.execute(
+                        select(Download).where(
+                            Download.status == "completed", Download.import_status == "imported"
+                        )
+                    )
+                ).scalars()
+            )
+        stopped = 0
+        for d in rows:
+            client = self.clients.get(d.client_id or "")
+            if client is None or not in_library(d):
+                continue
+            try:
+                files = await client.files(d.client_ref)
+            except DownloadClientError:
+                continue
+            if any(str(Path(f.path)) in wanted for f in files if Path(f.path).is_absolute()):
+                await self.remove(d.id, delete_data=False, blocklist=False, actor=Actor())
+                stopped += 1
+        return stopped
+
+    async def _leftovers(self, d: Download) -> list[Path]:
+        """The torrent's files still in .incomplete (what the import didn't move)."""
+        client = self.clients.get(d.client_id or "")
+        if client is None or not d.save_path:
+            return []
+        try:
+            files = await client.files(d.client_ref)
+        except DownloadClientError:
+            return []
+        root = Path(d.save_path)
+        return [root / f.path for f in files if not Path(f.path).is_absolute()]
+
+    async def library_folder(self, title: Title | None, media_kind: str) -> Path | None:
+        """The title's library folder (its own, else the default one for its kind)."""
+        from fetchbox.modules.storage.models import Destination
+
+        async with self.db.sessionmaker() as s:
+            row = None
+            if title is not None and title.destination_id:
+                row = await s.get(Destination, title.destination_id)
+            if row is None:
+                row = await s.scalar(
+                    select(Destination)
+                    .where(Destination.media_kind == media_kind)
+                    .order_by(Destination.is_default.desc(), Destination.name)
+                    .limit(1)
+                )
+        return Path(row.path) if row is not None else None
 
     def save_root(self, row: DownloadClient) -> Path:
         p = self.policy(row).save_path
@@ -446,11 +565,24 @@ class DownloadsService:
             row, client = await self._pick_client(media_kind, src)
             policy = self.policy(row)
             built_in = row.kind in ("builtin", "direct")
-            # Built-in clients save under the downloads root; an external client keeps its
-            # own folder unless the client's policy names one.
+            # Built-in clients download straight into the title's library folder (a hidden
+            # .incomplete folder in it): on import the file is moved into place there and,
+            # for torrents, seeded from it. One file, in the library. An external client
+            # keeps its own folder unless the client's policy names one.
+            folder = await self.library_folder(title, media_kind) if built_in else None
+            if folder is not None and not await asyncio.to_thread(folder.is_dir):
+                # A NAS that's off, a folder gone: never download onto the disk underneath;
+                # the grab waits and is tried again
+                raise DownloadClientError(
+                    "unavailable",
+                    f"the library folder {folder} isn't available (offline or missing); "
+                    "the download starts when it's back",
+                )
             save: Path | None = (
-                self.save_root(row) / CATEGORY[media_kind] if built_in or policy.save_path else None
-            )
+                folder / INCOMPLETE if folder is not None
+                else self.save_root(row) / CATEGORY[media_kind] if built_in or policy.save_path
+                else None
+            )  # fmt: skip
             ref = await client.add(
                 src,
                 AddOptions(
@@ -707,9 +839,14 @@ class DownloadsService:
         if d.import_status != "imported" or not policy.seeding_done(t.ratio, t.seed_seconds):
             return
         delete_data = policy.seed_action == "remove" and not await self._symlinked(d)
+        leftovers: list[Path] = []
+        if in_library(d):  # its files are the library's: keep them
+            delete_data = False
+            leftovers = await self._leftovers(d) if policy.seed_action == "remove" else []
         try:
             if policy.seed_action == "remove":
                 await client.remove(d.client_ref, delete_data)
+                await asyncio.to_thread(_remove_leftovers, leftovers, d.save_path)
             else:
                 await client.pause(d.client_ref)
         except DownloadClientError as exc:
@@ -911,6 +1048,12 @@ class DownloadsService:
             and (d.import_status != "imported" or await self._symlinked(d))
         ):
             delete_data = False
+        # Imported in place: its files ARE the library's. Stop the torrent, keep the data,
+        # and clear only what it left in .incomplete (samples, .nfo...).
+        leftovers: list[Path] = []
+        if d.status == "completed" and d.import_status == "imported" and in_library(d):
+            delete_data = False
+            leftovers = await self._leftovers(d)
         client = self.clients.get(d.client_id or "")
         # Under the poll lock: a poll that already listed this download would otherwise
         # find the torrent gone from the client and fail it.
@@ -921,6 +1064,7 @@ class DownloadsService:
             row = await s.get(Download, d.id)
             grab = await s.get(Grab, d.grab_id)
             assert row is not None and grab is not None
+            await asyncio.to_thread(_remove_leftovers, leftovers, d.save_path)
             was_active = row.status in ACTIVE
             unimported = row.status == "completed" and row.import_status != "imported"
             row.status, row.removed_at = "removed", utcnow()
@@ -1020,7 +1164,7 @@ class DownloadsService:
             ) from None
         try:
             model = cls.Settings.model_validate(data.get("settings") or {})
-            policy = Policy.model_validate(data.get("policy") or {})
+            policy = _new_policy(data.get("policy") or {})
         except ValidationError as exc:
             raise _invalid(exc, "body") from None
         row = DownloadClient(
@@ -1107,7 +1251,16 @@ class DownloadsService:
                 restart = True
             if "policy" in changes:
                 try:
-                    policy = Policy.model_validate({**(row.policy or {}), **changes["policy"]})
+                    if row.kind in ("builtin", "direct") and changes["policy"].get("save_path"):
+                        raise ProblemError(
+                            422, "Validation Failed", slug="validation",
+                            errors=[FieldError(
+                                field="body.policy.save_path",
+                                message="built-in downloads go into the library folders, "
+                                "where they're filed: there's no separate folder to set",
+                            )],
+                        )  # fmt: skip
+                    policy = _new_policy({**(row.policy or {}), **changes["policy"]})
                 except ValidationError as exc:
                     raise _invalid(exc, "body.policy") from None
                 if policy.save_path and row.kind in ("builtin", "direct"):

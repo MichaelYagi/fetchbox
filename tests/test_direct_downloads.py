@@ -225,5 +225,6 @@ async def test_internet_archive_end_to_end(
 
     await until(dropped, within=10)
     await asyncio.sleep(0.2)
-    assert placed.read_bytes() == DATA  # the library's own link survives
-    assert not list((settings.downloads_dir / "Torrents").rglob("*.mp4"))
+    assert placed.read_bytes() == DATA  # the one file, filed
+    leftovers = settings.downloads_dir / "Movies" / ".incomplete"
+    assert not list(leftovers.rglob("*.mp4"))  # moved into place, nothing left behind

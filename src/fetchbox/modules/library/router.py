@@ -4,11 +4,10 @@ from datetime import datetime
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, Header, Query, Request, Response
-from pydantic import BaseModel, Field, computed_field, field_validator
+from pydantic import BaseModel, Field, computed_field
 
 from fetchbox.core.concurrency import etag
 from fetchbox.core.errors import problem_responses as pr
-from fetchbox.core.paths import host_path
 from fetchbox.modules.auth.deps import CurrentPrincipal, require
 from fetchbox.modules.downloads.models import Download
 from fetchbox.modules.library.existing import ExistingLibrary
@@ -27,7 +26,6 @@ from fetchbox.modules.library.naming import (
     render,
     safe_component,
 )
-from fetchbox.modules.library.relocate import FolderMover
 from fetchbox.modules.library.service import LibraryService
 from fetchbox.modules.media.series import SeriesMode
 from fetchbox.modules.system.jobs_router import JobOut, accepted
@@ -571,23 +569,3 @@ async def migrate_apply(body: MigrateApplyIn, request: Request, p: CurrentPrinci
         body.kind, body.url, body.api_key, options, p.actor()
     )
     return accepted(job)
-
-
-class MoveFolderIn(BaseModel):
-    path: str = Field(min_length=1, max_length=4000, description="The new folder")
-
-    @field_validator("path", mode="before")
-    @classmethod
-    def _host(cls, v: object) -> object:
-        r"""Under WSL, a Windows path (C:\Media) is taken as its /mnt/c/Media form."""
-        return host_path(v) if isinstance(v, str) else v
-
-
-@router.post("/destinations/{dest_id}/move", status_code=202, response_model=JobOut,
-             dependencies=_write, responses=pr(404, 409, 422))  # fmt: skip
-async def move_folder(dest_id: str, body: MoveFolderIn, request: Request,
-                      p: CurrentPrincipal) -> Response:  # fmt: skip
-    """Move a library folder with its files (copy, check, switch, then delete the old
-    copies; safe across drives). Unlike changing the path, the library comes along."""
-    mover: FolderMover = request.app.state.folder_mover
-    return accepted(await mover.start(dest_id, body.path, p.actor()))

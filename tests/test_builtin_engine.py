@@ -187,3 +187,54 @@ async def test_missing_interface_starts_paused() -> None:
         assert not off._s().is_paused() and (await off.test()).ok
     finally:
         await off.stop()
+
+
+async def test_files_moved_into_the_library_seed_from_there_across_a_restart(
+    tmp_path: Path,
+) -> None:
+    """A finished torrent's file is moved into the library (a rename on the same drive);
+    the engine seeds from it there, a new peer can download from it, and the new path
+    survives a restart (resume data)."""
+    made = make_torrent(tmp_path / "seedroot", "Movie.2021", {"Movie.2021.mkv": 400_000,
+                                                             "info.nfo": 60})  # fmt: skip
+    first = await seeder(made)
+    state = tmp_path / "state"
+    e = engine(state)
+    await e.start()
+    inc = tmp_path / "lib" / "Movies" / ".incomplete"
+    ref = await e.add(made.source(), AddOptions(save_path=str(inc), paused=False))
+
+    async def done() -> bool:
+        e.connect_peer(ref, "127.0.0.1", first.listen_port or 0)
+        return all(f.progress >= 1 for f in await e.files(ref))
+
+    await until(done, within=30)
+    await first.stop()  # from here on, only the library copy exists
+    dst = tmp_path / "lib" / "Movies" / "Movie (2021)" / "Movie (2021).mkv"
+    await e.relocate(ref, {"Movie.2021/Movie.2021.mkv": str(dst)})
+    assert digest(dst.read_bytes()) == digest(made.payload["Movie.2021.mkv"])
+    assert not (inc / "Movie.2021" / "Movie.2021.mkv").exists()
+    assert str(dst) in [f.path for f in await e.files(ref)]
+    with pytest.raises(DownloadClientError, match="isn't a file"):
+        await e.relocate(ref, {"nope.mkv": str(dst)})
+    await e.stop()  # writes the resume data
+
+    e2 = engine(state)
+    await e2.start()
+    try:
+        assert str(dst) in [f.path for f in await e2.files(ref)]  # still known after a restart
+        leech = engine()
+        await leech.start()
+        try:
+            r2 = await leech.add(made.source(), AddOptions(save_path=str(tmp_path / "other"),
+                                                           paused=False))  # fmt: skip
+
+            async def got() -> bool:
+                leech.connect_peer(r2, "127.0.0.1", e2.listen_port or 0)
+                return all(f.progress >= 1 for f in await leech.files(r2))
+
+            await until(got, within=40)  # downloaded from the library file
+        finally:
+            await leech.stop()
+    finally:
+        await e2.stop()

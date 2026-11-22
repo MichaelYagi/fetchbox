@@ -96,7 +96,15 @@ async def _acquire(
         t = (await c.get(f"/titles/{movie['id']}")).json()
         return bool(t["wanted"][0]["state"] == "acquired")
 
-    await until(acquired, within=60)
+    try:
+        await until(acquired, within=60)
+    except TimeoutError:
+        print("DEBUG imports", (await c.get("/imports")).json())
+        print(
+            "DEBUG downloads",
+            [(d["status"], d["save_path"], d["error"]) for d in (await c.get("/downloads")).json()],
+        )
+        raise
     return movie
 
 
@@ -113,29 +121,38 @@ async def test_gate_add_movie_get_named_file(
     placed = library / EXPECTED
     assert placed.is_file(), sorted(str(p) for p in library.rglob("*"))
     assert digest(placed.read_bytes()) == digest(made.payload[f"{NAME}.mkv"])
-    assert not list(library.rglob("*sample*")) and not list(library.rglob("*.nfo"))
-    assert not list(library.rglob("*.fetchbox-partial"))
-
-    # hardlinked from the torrent folder (same filesystem): seeding continues, no extra space
-    torrent_copy = settings.downloads_dir / "Torrents" / "fetchbox-movies" / NAME / f"{NAME}.mkv"
-    assert os.stat(placed).st_ino == os.stat(torrent_copy).st_ino
+    # One file: downloaded into the library folder, moved into place, seeded from there.
+    # The rest of the torrent (sample, .nfo) waits out of sight in .incomplete.
+    visible = [p for p in library.rglob("*") if p.is_file() and ".incomplete" not in p.parts]
+    assert visible == [placed], visible
+    assert not (library / ".incomplete" / NAME / f"{NAME}.mkv").exists()
+    assert not (settings.downloads_dir / "Torrents").exists()  # no separate torrent folder
+    engine_files = await _engine(server).files(made.info_hash)
+    assert str(placed) in [f.path for f in engine_files]  # the torrent seeds the library file
 
     wanted = (await c.get(f"/titles/{movie['id']}")).json()["wanted"][0]
     assert wanted["state"] == "acquired" and wanted["lock"] == "acquired"
     assert wanted["cutoff_met"] is True  # WEB 1080p is the Standard HD cutoff
 
     [f] = (await c.get(f"/titles/{movie['id']}/files")).json()
-    assert f["relative_path"] == EXPECTED and f["size"] == 3 * MB and f["link_mode"] == "hardlink"
+    assert f["relative_path"] == EXPECTED and f["size"] == 3 * MB and f["link_mode"] == "in_place"
     assert f["quality"]["name"] == "WEBDL-1080p" and f["release_group"] == "FLUX"
     assert f["custom_format_score"] == 5 and f["wanted_item_ids"] == [wanted["id"]]
 
     [imp] = (await c.get("/imports")).json()
     assert imp["status"] == "imported" and imp["imported_at"]
-    # the queue says where the library copy is, and that it's a hardlink
+    # the queue says where it was imported to
     [dl] = (await c.get("/downloads")).json()
-    assert dl["imported_to"] == str(placed) and dl["imported_as"] == "hardlink"
+    assert dl["imported_to"] == str(placed) and dl["imported_as"] == "in_place"
     hist = [h["type"] for h in (await c.get(f"/titles/{movie['id']}/history")).json()["items"]]
     assert hist == ["imported", "grabbed"]
+
+    # Stop seeding: the torrent stops, the library file stays, the leftovers go
+    assert (
+        await c.delete(f"/downloads/{dl['id']}", params={"delete_data": True})
+    ).status_code == 204
+    assert placed.is_file() and digest(placed.read_bytes()) == digest(made.payload[f"{NAME}.mkv"])
+    assert not (library / ".incomplete" / NAME).exists()
 
     # Deleting the file recycles it; the item stays locked (no automatic re-grab).
     assert (await c.delete(f"/files/{f['id']}")).status_code == 204
@@ -162,7 +179,13 @@ async def test_offline_destination_needs_attention_then_recovers(
     made: Made,
     seed: BuiltinClient,
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """Downloads go into the library folder itself, so while it's offline (a NAS that's
+    off) nothing is downloaded onto the disk underneath: the download waits for it."""
+    from fetchbox.core import jobs as jobs_mod
+
+    monkeypatch.setattr(jobs_mod, "BACKOFF_BASE_S", 0.5)  # retries in seconds, not minutes
     movies = next(d for d in (await c.get("/destinations")).json() if d["media_kind"] == "movie")
     elsewhere = tmp_path / "Library"
     r = await c.patch(
@@ -177,30 +200,19 @@ async def test_offline_destination_needs_attention_then_recovers(
     wid = movie["wanted"][0]["id"]
     rel = (await c.get("/releases", params={"wanted_item_id": wid})).json()["releases"][0]
     await c.post("/grabs", json={"release_id": rel["release_id"]})
-
-    async def downloading() -> bool:
-        return any(d["status"] == "downloading" for d in (await c.get("/downloads")).json())
-
-    await until(downloading, within=20)
-    _engine(server).connect_peer(made.info_hash, "127.0.0.1", seed.listen_port or 0)
-
-    async def attention() -> bool:
-        imps = (await c.get("/imports")).json()
-        return bool(imps) and imps[0]["status"] == "needs_attention"
-
-    await until(attention, within=40)
-    imp = (await c.get("/imports")).json()[0]
-    assert "offline" in imp["error"] and imp["retry_at"]
-    assert (await c.get(f"/titles/{movie['id']}")).json()["wanted"][0]["state"] == "downloading"
+    await asyncio.sleep(1)
+    assert (await c.get("/downloads")).json() == []  # waiting, not downloading elsewhere
+    assert not elsewhere.exists()  # and nothing written where the share would be
 
     elsewhere.mkdir()  # the share comes back
-    assert (await c.post(f"/destinations/{movies['id']}/check")).json()["status"] == "online"
-    assert (await c.post(f"/imports/{imp['download_id']}/retry")).status_code == 202
 
     async def acquired() -> bool:
+        with contextlib.suppress(DownloadClientError):
+            _engine(server).connect_peer(made.info_hash, "127.0.0.1", seed.listen_port or 0)
         return (await c.get(f"/titles/{movie['id']}")).json()["wanted"][0]["state"] == "acquired"
 
-    await until(acquired, within=20)
+    await until(acquired, within=40)
+    assert (elsewhere / EXPECTED).is_file()
     assert (elsewhere / EXPECTED).is_file()
 
 
@@ -478,18 +490,19 @@ async def test_seeding_goal_stops_the_torrent_after_import(
     )
     assert r.status_code == 200, r.text
     ev = await asyncio.wait_for(sub.queue.get(), 20)
-    assert ev.data["action"] == action and ev.data["deleted_data"] is (action == "remove")
+    # the torrent seeded the library file itself: stopping it never deletes that
+    assert ev.data["action"] == action and ev.data["deleted_data"] is False
 
     [d] = (await c.get("/downloads")).json()
     assert d["status"] == "completed" and d["seeded_at"]
-    torrent_copy = settings.downloads_dir / "Torrents" / "fetchbox-movies" / NAME / f"{NAME}.mkv"
+    leftovers = settings.downloads_dir / "Movies" / ".incomplete" / NAME
     library_file = settings.downloads_dir / "Movies" / EXPECTED
-    assert library_file.is_file()  # the library's own link survives
+    assert library_file.is_file()  # the one file stays
     engine = _engine(server)
-    if action == "remove":
-        assert not torrent_copy.exists() and await engine.status() == []
-    else:
-        assert torrent_copy.exists()
+    if action == "remove":  # the torrent is gone, and what it left in .incomplete
+        assert not leftovers.exists() and await engine.status() == []
+    else:  # paused: it may seed again, so its files stay as they are
+        assert leftovers.exists()
         [t] = await engine.status()
         assert t.state == "paused"
 

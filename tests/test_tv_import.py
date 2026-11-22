@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from collections.abc import AsyncIterator
 from pathlib import Path
 from typing import Any
@@ -122,10 +121,12 @@ async def test_season_pack_import(
     assert digest(placed.read_bytes()) == digest(
         made.payload["Severance.S01E03.1080p.WEB-DL.DDP5.1.H.264-NTb.mkv"]
     )
-    torrent_copy = (settings.downloads_dir / "Torrents" / "fetchbox-tv" / PACK
-                    / "Severance.S01E03.1080p.WEB-DL.DDP5.1.H.264-NTb.mkv")  # fmt: skip
-    assert os.stat(placed).st_ino == os.stat(torrent_copy).st_ino  # hardlinked
-    assert not list(library.rglob("*sample*")) and not list(library.rglob("*.nfo"))
+    # the pack's episodes were filed in place: nothing of them is left in .incomplete,
+    # and only the extras (sample, .nfo) wait there, out of sight
+    left = [p.name for p in (library / ".incomplete").rglob("*") if p.is_file()]
+    assert not [n for n in left if n.endswith(".mkv") and "sample" not in n.lower()], left
+    visible = [p for p in library.rglob("*") if p.is_file() and ".incomplete" not in p.parts]
+    assert not [p for p in visible if "sample" in p.name.lower() or p.suffix == ".nfo"]
     hist = (await c.get("/history", params={"type": "failed"})).json()["items"]
     assert [h["data"]["reason"] for h in hist] == ["not in the download"]
 

@@ -15,8 +15,8 @@ services:
       - "6881:6881/udp"
     volumes:
       - fetchbox-config:/config
-      # One folder for downloads AND library, so imports are instant hardlinks:
-      # Fetchbox uses /data/Torrents, /data/Movies and /data/TV.
+      # The library: /data/Movies, /data/TV, /data/Music. Downloads go straight into
+      # them and are filed (and seeded) in place: one file each.
       - /srv/media:/data
 volumes:
   fetchbox-config:
