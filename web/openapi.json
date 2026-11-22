@@ -1479,6 +1479,18 @@
        }
       ],
       "title": "Status Message"
+     },
+     "suggested_path": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "When this folder means a second copy of every download: a folder on the downloads' drive to move it to (PATCH path, which moves its files)",
+      "title": "Suggested Path"
      }
     },
     "required": [
@@ -1595,6 +1607,29 @@
     "title": "DestinationPatch",
     "type": "object"
    },
+   "DownloadAgainOut": {
+    "properties": {
+     "searching": {
+      "description": "Items wanted again, with a search queued",
+      "title": "Searching",
+      "type": "integer"
+     },
+     "skipped": {
+      "description": "Why some items weren't (e.g. already downloading)",
+      "items": {
+       "type": "string"
+      },
+      "title": "Skipped",
+      "type": "array"
+     }
+    },
+    "required": [
+     "searching",
+     "skipped"
+    ],
+    "title": "DownloadAgainOut",
+    "type": "object"
+   },
    "DownloadOut": {
     "properties": {
      "client_id": {
@@ -1649,6 +1684,30 @@
      "id": {
       "title": "Id",
       "type": "string"
+     },
+     "imported_as": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "How: hardlink (one file, no extra space), copy, move...",
+      "title": "Imported As"
+     },
+     "imported_to": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Where the imported file is in the library",
+      "title": "Imported To"
      },
      "info_hash": {
       "title": "Info Hash",
@@ -4073,6 +4132,22 @@
      "free"
     ],
     "title": "MountOut",
+    "type": "object"
+   },
+   "MoveFolderIn": {
+    "properties": {
+     "path": {
+      "description": "The new folder",
+      "maxLength": 4000,
+      "minLength": 1,
+      "title": "Path",
+      "type": "string"
+     }
+    },
+    "required": [
+     "path"
+    ],
+    "title": "MoveFolderIn",
     "type": "object"
    },
    "MovieDetail": {
@@ -8211,7 +8286,7 @@
  },
  "info": {
   "title": "Fetchbox",
-  "version": "0.1.0.dev0"
+  "version": "0.9.0"
  },
  "openapi": "3.1.0",
  "paths": {
@@ -11154,6 +11229,93 @@
     ]
    }
   },
+  "/api/v1/destinations/{dest_id}/move": {
+   "post": {
+    "description": "Move a library folder with its files (copy, check, switch, then delete the old\ncopies; safe across drives). Unlike changing the path, the library comes along.",
+    "operationId": "move_folder_api_v1_destinations__dest_id__move_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "dest_id",
+      "required": true,
+      "schema": {
+       "title": "Dest Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/MoveFolderIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "202": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/JobOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Conflict"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Unprocessable Content"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Move Folder",
+    "tags": [
+     "library"
+    ]
+   }
+  },
   "/api/v1/discovery/movies/{tmdb_id}": {
    "get": {
     "operationId": "movie_api_v1_discovery_movies__tmdb_id__get",
@@ -12438,6 +12600,71 @@
      }
     ],
     "summary": "Patch Download",
+    "tags": [
+     "downloads"
+    ]
+   }
+  },
+  "/api/v1/downloads/{download_id}/download-again": {
+   "post": {
+    "description": "Want what this download was for again (the movie, or each episode in it) and\nsearch now. Nothing is deleted or blocklisted: you may have moved or deleted the\nfile since, and the same release may be grabbed again.",
+    "operationId": "download_again_api_v1_downloads__download_id__download_again_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "download_id",
+      "required": true,
+      "schema": {
+       "title": "Download Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/DownloadAgainOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Download Again",
     "tags": [
      "downloads"
     ]

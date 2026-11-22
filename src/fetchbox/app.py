@@ -39,6 +39,7 @@ from fetchbox.modules.library import router as library_router
 from fetchbox.modules.library.existing import ExistingLibrary
 from fetchbox.modules.library.maintenance import LibraryCheck
 from fetchbox.modules.library.migrate import Migrator
+from fetchbox.modules.library.relocate import FolderMover
 from fetchbox.modules.library.service import LibraryService
 from fetchbox.modules.media import router as media_router
 from fetchbox.modules.media.service import MediaService
@@ -228,6 +229,7 @@ def create_app(
             torrents_dir=settings.downloads_dir / "Torrents",
         )
         app.state.storage = storage
+        storage.link_sources = downloads.link_sources
         library = LibraryService(db, bus, jobs, storage, downloads, profiles, media)
         storage.register_jobs(jobs, state.scheduler, lambda: config.current.storage.recycle_days)
         backups_router.register(jobs, state.scheduler, backups)
@@ -245,6 +247,9 @@ def create_app(
         library_check = LibraryCheck(db, bus, jobs, storage)
         library_check.register_jobs()
         app.state.library_check = library_check
+        mover = FolderMover(db, jobs, storage)
+        mover.register_jobs()
+        app.state.folder_mover = mover
         migrator = Migrator(
             db, jobs, storage=storage, media=media, profiles=profiles, library=library
         )

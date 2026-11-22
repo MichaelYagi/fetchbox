@@ -387,7 +387,15 @@ class LibraryService:
         )
         try:
             result = await self._import(d)
-        except ImportProblem as exc:
+        except Exception as raw:
+            # Never leave a download "importing" (and its items "downloading") forever: an
+            # unexpected error is a problem to show and retry like any other.
+            if isinstance(raw, ImportProblem):
+                exc = raw
+            else:
+                log.exception("library.import_crashed", download_id=d.id)
+                detail = f"import failed unexpectedly: {type(raw).__name__}: {raw}"
+                exc = ImportProblem(detail[:500], retry=True)
             attempts = d.import_attempts + 1
             retry_at = utcnow() + RETRY[min(attempts - 1, len(RETRY) - 1)] if exc.retry else None
             await self._set(
@@ -551,8 +559,29 @@ class LibraryService:
                 (f for f in old_files if f.relative_path == rel and f.destination_id == dest.id),
                 None,
             )
-            mf = same or MediaFile(
-                storage_node_id=dest.node_id, destination_id=dest.id, relative_path=rel
+            at_path = None
+            if same is None:
+                # A record already at this path (e.g. left by a title that was removed and
+                # added again): the file there is now this one, so take the record over.
+                at_path = (
+                    await s.execute(
+                        select(MediaFile).where(
+                            MediaFile.storage_node_id == dest.node_id,
+                            MediaFile.relative_path == rel,
+                        )
+                    )
+                ).scalar_one_or_none()
+                if at_path is not None:
+                    await s.execute(
+                        delete(MediaFileItem).where(MediaFileItem.media_file_id == at_path.id)
+                    )
+                    at_path.destination_id = dest.id
+            mf = (
+                same
+                or at_path
+                or MediaFile(
+                    storage_node_id=dest.node_id, destination_id=dest.id, relative_path=rel
+                )
             )
             mf.size, mf.mtime, mf.quick_hash = st.st_size, utcnow(), qh
             mf.quality, mf.custom_format_score = _quality_json(parsed, quality, info), score

@@ -14,7 +14,7 @@ import asyncio
 import os
 import re
 import shutil
-from collections.abc import Callable, Sequence
+from collections.abc import Awaitable, Callable, Sequence
 from datetime import timedelta
 from pathlib import Path
 from typing import Any
@@ -61,6 +61,24 @@ class _Unmounted(Exception):
     def __init__(self, mount: str) -> None:
         super().__init__(mount)
         self.mount = mount
+
+
+def _device(folder: str) -> int | None:
+    try:
+        return os.stat(folder).st_dev
+    except OSError:
+        return None
+
+
+def beside(download_folder: str, name: str) -> str:
+    """A library folder on the same drive as ``download_folder``:
+    /mnt/c/Users/me/Downloads -> /mnt/c/Users/me/Downloads/Fetchbox/Movies."""
+    base = Path(download_folder)
+    if base.name.lower() == "torrents":
+        base = base.parent
+    if base.name.lower() != "fetchbox":
+        base = base / "Fetchbox"
+    return str(base / name)
 
 
 def mount_of(path: Path) -> str | None:
@@ -122,6 +140,12 @@ class StorageService:
         self.downloads_root = downloads_root
         self.torrents_dir = torrents_dir
         self.local = LocalStorage(LocalStorage.Settings())
+        # Where downloads really land: (client name, folder) for each enabled client
+        # whose folder Fetchbox knows. Set by the app; the hardlink check uses them all.
+        self.link_sources: Callable[[], Awaitable[list[tuple[str, str]]]] | None = None
+        # destination id -> a folder beside the downloads (same drive), when the current
+        # one would mean copies; from the last check
+        self.suggested: dict[str, str] = {}
 
     # ---- seed + startup ---------------------------------------------------------------------
 
@@ -173,13 +197,17 @@ class StorageService:
             q = select(Destination).order_by(Destination.is_default.desc(), Destination.name)
             if media_kind:
                 q = q.where(Destination.media_kind == media_kind)
-            return list((await s.execute(q)).scalars())
+            rows = list((await s.execute(q)).scalars())
+        for row in rows:
+            row.suggested_path = self.suggested.get(row.id)  # type: ignore[attr-defined]
+        return rows
 
     async def destination(self, dest_id: str) -> Destination:
         async with self.db.sessionmaker() as s:
             row = await s.get(Destination, dest_id)
         if row is None:
             raise NotFoundError("destination", dest_id)
+        row.suggested_path = self.suggested.get(row.id)  # type: ignore[attr-defined]
         return row
 
     async def default_destination(self, media_kind: str) -> Destination:
@@ -275,6 +303,10 @@ class StorageService:
         path = Path(d.path)
         status, message = "online", "ok"
         learned: str | None = None
+        no_links: dict[str, list[str]] = {}  # download folder -> the clients saving there
+        drives: set[int] = set()  # the drives clients save to
+        sources: list[tuple[str, str]] = []  # (client, folder) where downloads land
+        self.suggested.pop(d.id, None)  # decided afresh by this check
         try:
             if d.mount_point and not await asyncio.to_thread(os.path.ismount, d.mount_point):
                 # Never create or write anything here: it would land on the local disk
@@ -286,6 +318,24 @@ class StorageService:
                     learned = current
             link_from = await asyncio.to_thread(self._prepare, path, d.is_default)
             r = await self.local.check_access(str(path), link_source=str(link_from))
+            # Hardlinks from every folder downloads actually land in, not only the default
+            # torrent folder: a client saving to another drive means a copy per import.
+            if r.exists and r.is_dir and r.writable:
+                sources = await self.link_sources() if self.link_sources else []
+                drives = {
+                    dev
+                    for _, folder in sources
+                    if (dev := await asyncio.to_thread(_device, folder)) is not None
+                }
+                for client, folder in sources:
+                    if folder in no_links:
+                        no_links[folder].append(client)
+                        continue
+                    if not await asyncio.to_thread(Path(folder).is_dir):
+                        continue
+                    rr = await self.local.check_access(str(path), link_source=folder)
+                    if rr.hardlink_with is False:
+                        no_links[folder] = [client]
             if not r.exists:
                 status, message = "offline", "folder does not exist"
             elif not r.is_dir or not r.writable or not r.deletable:
@@ -303,9 +353,34 @@ class StorageService:
                         "degraded",
                         "hardlinks from the torrent folder are not possible",
                     )
+                elif no_links and d.link_mode in ("hardlink_or_copy", "hardlink_only"):
+                    # A second full copy of every download: say so, and how to avoid it.
+                    status = "degraded"
+                    # A move only helps when every client saves to one drive; otherwise
+                    # some downloads would be copied wherever the library goes.
+                    one_drive = len(drives) == 1
+                    if one_drive:
+                        self.suggested[d.id] = beside(next(iter(no_links)), d.name)
+                    where = "; ".join(f"{' and '.join(c)} save to {f}" for f, c in no_links.items())
+                    effect = (
+                        "can't be imported here"
+                        if d.link_mode == "hardlink_only"
+                        else "are copied in full, not hardlinked"
+                    )
+                    message = (
+                        f"downloads {effect}: {where}, another drive. Move the library folder to "
+                        "that drive for one copy of each file"
+                    )
+                    if not one_drive:
+                        message += (
+                            "; your download clients save to different drives, so put them "
+                            "on one drive first"
+                        )
                 else:
                     message = f"{usage.free / GB:.1f} GB free" + (
-                        "" if r.hardlink_with else "; files will be copied (no hardlinks)"
+                        ""
+                        if (sources or r.hardlink_with)
+                        else "; files will be copied (no hardlinks)"
                     )
         except _Unmounted as exc:
             status = "unmounted"
@@ -375,12 +450,17 @@ class StorageService:
         rows: Sequence[Destination] = await self.check_all()
         if not rows:
             return HealthStatus(status="error", message="No destinations: add a library folder")
-        bad = [
-            f"{d.name}: {d.status_message}" for d in rows if d.status in ("offline", "unmounted")
-        ]
-        warn = [
-            f"{d.name}: {d.status_message}" for d in rows if d.status in ("low_space", "degraded")
-        ]
+
+        def grouped(states: tuple[str, ...]) -> list[str]:
+            """One line per problem, naming every folder that has it ("Movies, TV: ...")."""
+            by_msg: dict[str, list[str]] = {}
+            for d in rows:
+                if d.status in states:
+                    by_msg.setdefault(d.status_message or d.status, []).append(d.name)
+            return [f"{', '.join(names)}: {msg}" for msg, names in by_msg.items()]
+
+        bad = grouped(("offline", "unmounted"))
+        warn = grouped(("low_space", "degraded"))
         if bad:
             return HealthStatus(status="error", message="; ".join(bad + warn))
         if warn:

@@ -27,7 +27,7 @@ from typing import Any, Literal
 
 import structlog
 from pydantic import BaseModel, Field, ValidationError, field_validator
-from sqlalchemy import case, exists, select, update
+from sqlalchemy import case, exists, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
@@ -38,6 +38,7 @@ from fetchbox.core.errors import ConflictError, FieldError, NotFoundError, Probl
 from fetchbox.core.events import Actor, EventBus, Subject
 from fetchbox.core.ids import new_id
 from fetchbox.core.jobs import JobContext, JobRunner
+from fetchbox.core.paths import host_path
 from fetchbox.core.providers import HealthStatus, ProviderRegistry, TestResult
 from fetchbox.core.secrets import MASK, SecretBox, mask_settings, open_settings, seal_settings
 from fetchbox.modules.downloads.models import ACTIVE, Download, DownloadClient
@@ -115,6 +116,7 @@ class Policy(BaseModel):
             v = v.strip()
             if not v:
                 return None  # empty: back to the default
+            v = host_path(v)  # under WSL: C:\... is /mnt/c/...
             if not (v.startswith("/") or re.match(r"^[A-Za-z]:[\\/]", v) or v.startswith("~")):
                 raise ValueError("must be an absolute folder path")
         return v
@@ -216,7 +218,59 @@ class DownloadsService:
         async def add(ctx: JobContext) -> dict[str, Any]:
             return await self._add_job(ctx.payload["grab_id"], final=ctx.attempt >= ADD_ATTEMPTS)
 
+    async def repair_stuck(self) -> int:
+        """At startup: items still "grabbed / downloading / importing" with no download
+        that will finish them (it was removed or failed, or Fetchbox stopped mid-import)
+        go back to wanting a file; an import cut off mid-way is tried again."""
+        fixed = 0
+        async with self.db.sessionmaker() as s:
+            await s.execute(
+                update(Download)
+                .where(Download.status == "completed", Download.import_status == "importing")
+                .values(import_status="pending")
+                .execution_options(synchronize_session=False)
+            )
+            busy = list(
+                (
+                    await s.execute(
+                        select(WantedItem).where(
+                            WantedItem.state.in_(("grabbed", "downloading", "importing"))
+                        )
+                    )
+                ).scalars()
+            )
+            for w in busy:
+                live = await s.scalar(
+                    select(Download.id)
+                    .join(GrabItem, GrabItem.grab_id == Download.grab_id)
+                    .where(
+                        GrabItem.wanted_item_id == w.id,
+                        or_(
+                            Download.status.in_(ACTIVE),
+                            (Download.status == "completed")
+                            & (Download.import_status != "imported"),
+                        ),
+                    )
+                    .limit(1)
+                )
+                pending_grab = await s.scalar(
+                    select(Grab.id)
+                    .join(GrabItem, GrabItem.grab_id == Grab.id)
+                    .outerjoin(Download, Download.grab_id == Grab.id)
+                    .where(GrabItem.wanted_item_id == w.id, Download.id.is_(None))
+                    .limit(1)
+                )  # fmt: skip
+                if live is None and pending_grab is None:
+                    w.state = "acquired" if w.lock == "acquired" else "missing"
+                    w.version += 1
+                    fixed += 1
+            await s.commit()
+        if fixed:
+            log.warning("downloads.repaired_stuck_items", count=fixed)
+        return fixed
+
     async def start(self) -> None:
+        await self.repair_stuck()
         await self._seed_builtin()
         async with self.db.sessionmaker() as s:
             rows = list((await s.execute(select(DownloadClient))).scalars())
@@ -300,6 +354,14 @@ class DownloadsService:
         if row.kind in ("builtin", "direct") or self.policy(row).save_path:
             return str(self.save_root(row))
         return None
+
+    async def link_sources(self) -> list[tuple[str, str]]:
+        """(client name, folder) where enabled clients' downloads land, when known."""
+        out = []
+        for row in await self.client_rows():
+            if row.enabled and (where := self.saves_to(row)):
+                out.append((row.name, where))
+        return out
 
     def save_root(self, row: DownloadClient) -> Path:
         p = self.policy(row).save_path
@@ -443,6 +505,12 @@ class DownloadsService:
         await self._emit("download.queued", d, name=d.name)
         self._wake.set()
         return {"download_id": d.id, "client": row.name, "ref": ref}
+
+    async def wanted_ids(self, download_id: str) -> list[str]:
+        """The wanted items (a movie, or the episodes of a release) a download was for."""
+        d = await self.get(download_id)
+        async with self.db.sessionmaker() as s:
+            return [w.id for w in await self._items(s, d.grab_id)]
 
     async def _items(self, s: AsyncSession, grab_id: str) -> list[WantedItem]:
         q = (
@@ -660,6 +728,33 @@ class DownloadsService:
             deleted_data=delete_data,
         )
 
+    async def imported_to(self, download_ids: list[str]) -> dict[str, tuple[str, str]]:
+        """download id -> (where its file is in the library, how: hardlink / copy / ...),
+        from the import history; the newest import wins."""
+        if not download_ids:
+            return {}
+        from fetchbox.modules.storage.models import Destination
+
+        async with self.db.sessionmaker() as s:
+            folders = {d.name: d.path for d in (await s.execute(select(Destination))).scalars()}
+            rows = (
+                await s.execute(
+                    select(HistoryEvent.data)
+                    .where(HistoryEvent.type.in_(("imported", "upgraded")))
+                    .order_by(HistoryEvent.created_at)
+                )
+            ).scalars()
+            wanted = set(download_ids)
+            out: dict[str, tuple[str, str]] = {}
+            for data in rows:
+                data = data or {}
+                did, rel = data.get("download_id"), data.get("path")
+                if did in wanted and rel:
+                    root = folders.get(data.get("destination") or "")
+                    full = str(Path(root) / rel) if root else rel
+                    out[did] = (full, str(data.get("link_mode") or ""))
+            return out
+
     async def _symlinked(self, d: Download) -> bool:
         """Was this download imported as a symlink? Then its data is the library file."""
         async with self.db.sessionmaker() as s:
@@ -827,12 +922,17 @@ class DownloadsService:
             grab = await s.get(Grab, d.grab_id)
             assert row is not None and grab is not None
             was_active = row.status in ACTIVE
+            unimported = row.status == "completed" and row.import_status != "imported"
             row.status, row.removed_at = "removed", utcnow()
-            if was_active:  # the items still want a file
+            if was_active or unimported:  # the items still want a file
                 items = [w.id for w in await self._items(s, grab.id)]
                 await self._release_items(
-                    s, items, grab, "removed by user", block=blocklist, search_soon=False
-                )
+                    s, items, grab,
+                    "removed by user" if was_active else "removed before it was imported",
+                    block=blocklist and was_active, search_soon=False,
+                )  # fmt: skip
+            if unimported and row.import_status == "importing":
+                row.import_status = "skipped"
             await s.commit()
         self.live.pop(d.id, None)
         await self._emit("download.removed", d, actor=actor, name=d.name, delete_data=delete_data)

@@ -587,6 +587,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/destinations/{dest_id}/move": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Move Folder
+         * @description Move a library folder with its files (copy, check, switch, then delete the old
+         *     copies; safe across drives). Unlike changing the path, the library comes along.
+         */
+        post: operations["move_folder_api_v1_destinations__dest_id__move_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/discovery/movies/{tmdb_id}": {
         parameters: {
             query?: never;
@@ -837,6 +858,28 @@ export interface paths {
         head?: never;
         /** Patch Download */
         patch: operations["patch_download_api_v1_downloads__download_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/downloads/{download_id}/download-again": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Download Again
+         * @description Want what this download was for again (the movie, or each episode in it) and
+         *     search now. Nothing is deleted or blocklisted: you may have moved or deleted the
+         *     file since, and the same release may be grabbed again.
+         */
+        post: operations["download_again_api_v1_downloads__download_id__download_again_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/downloads/{download_id}/pause": {
@@ -2925,6 +2968,11 @@ export interface components {
             status: string;
             /** Status Message */
             status_message: string | null;
+            /**
+             * Suggested Path
+             * @description When this folder means a second copy of every download: a folder on the downloads' drive to move it to (PATCH path, which moves its files)
+             */
+            suggested_path?: string | null;
         };
         /** DestinationPatch */
         DestinationPatch: {
@@ -2942,6 +2990,19 @@ export interface components {
             path?: string | null;
             /** Recycle */
             recycle?: boolean | null;
+        };
+        /** DownloadAgainOut */
+        DownloadAgainOut: {
+            /**
+             * Searching
+             * @description Items wanted again, with a search queued
+             */
+            searching: number;
+            /**
+             * Skipped
+             * @description Why some items weren't (e.g. already downloading)
+             */
+            skipped: string[];
         };
         /** DownloadOut */
         DownloadOut: {
@@ -2965,6 +3026,16 @@ export interface components {
             grab_id: string;
             /** Id */
             id: string;
+            /**
+             * Imported As
+             * @description How: hardlink (one file, no extra space), copy, move...
+             */
+            imported_as?: string | null;
+            /**
+             * Imported To
+             * @description Where the imported file is in the library
+             */
+            imported_to?: string | null;
             /** Info Hash */
             info_hash: string;
             /** @description From the client's last poll (active downloads) */
@@ -3834,6 +3905,14 @@ export interface components {
             path: string;
             /** Total */
             total: number;
+        };
+        /** MoveFolderIn */
+        MoveFolderIn: {
+            /**
+             * Path
+             * @description The new folder
+             */
+            path: string;
         };
         /** MovieDetail */
         MovieDetail: {
@@ -7251,6 +7330,62 @@ export interface operations {
             };
         };
     };
+    move_folder_api_v1_destinations__dest_id__move_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dest_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MoveFolderIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
     movie_api_v1_discovery_movies__tmdb_id__get: {
         parameters: {
             query?: never;
@@ -8023,6 +8158,47 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Problem"];
                     "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    download_again_api_v1_downloads__download_id__download_again_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                download_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DownloadAgainOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
