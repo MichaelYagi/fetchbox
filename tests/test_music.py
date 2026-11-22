@@ -94,6 +94,8 @@ async def test_add_an_artist(c: httpx.AsyncClient, server: Running) -> None:
     )
     assert dummy["edition_mbid"] == ten["mbid"] and len(dummy["tracks"]) == 10
 
+    cal = (await c.get("/calendar", params={"start": "1994-08-01", "end": "1994-09-30"})).json()
+    assert [(e["kind"], e["name"], e["album"]) for e in cal] == [("album", "Portishead", "Dummy")]
     assert await music.refresh_artist(artist["id"]) == 0  # nothing new
 
     # changing the artist's mode re-applies it to the albums of the chosen kinds
@@ -270,13 +272,15 @@ async def test_download_and_import_an_album(
         [dl] = (await c.get("/downloads")).json()
         assert (await c.delete(f"/downloads/{dl['id']}")).status_code == 204
 
-        async def tagged() -> bool:
-            f = mutagen.File(folder / "01 - Mysterons.flac")
-            return bool(f.tags and f.tags.get("title") == ["Mysterons"])
+        async def tagged() -> bool:  # every track, whatever order the job takes them in
+            return all(
+                (f := mutagen.File(p)).tags and f.tags.get("title") for p in folder.iterdir()
+            )
 
         await until(tagged, within=20)
         last = mutagen.File(folder / "11 - Glory Box.flac")
         assert last["tracknumber"] == ["11"] and last["album"] == ["Dummy"]
+        assert mutagen.File(folder / "01 - Mysterons.flac")["title"] == ["Mysterons"]
     assert imported_ev["data"]["quality"] == "FLAC"
     queue = (await c.get("/downloads")).json()
     assert queue[0]["imported_to"].endswith("Portishead/Dummy (1994)")

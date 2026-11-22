@@ -466,7 +466,8 @@ export interface paths {
         };
         /**
          * Get Calendar
-         * @description Episodes airing and movie release dates between two days (at most 100 days).
+         * @description Episodes airing, movie release dates and wanted albums' release dates between two
+         *     days (at most 100 days).
          */
         get: operations["get_calendar_api_v1_calendar_get"];
         put?: never;
@@ -2830,6 +2831,11 @@ export interface components {
         /** CalendarEntry */
         CalendarEntry: {
             /**
+             * Album
+             * @description Music: the album (name is the artist)
+             */
+            album?: string | null;
+            /**
              * Date
              * Format: date
              */
@@ -2842,7 +2848,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "episode" | "movie";
+            kind: "episode" | "movie" | "album";
             /** Monitored */
             monitored: boolean;
             /** Name */

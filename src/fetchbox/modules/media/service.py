@@ -814,6 +814,37 @@ async def calendar(db: Database, start: date, end: date) -> list[dict[str, Any]]
             .where(Title.kind == "movie")
         )
         movies = (await s.execute(mq)).all()
+        from fetchbox.modules.media.models import Album
+
+        albums = (
+            await s.execute(
+                select(Album, Title, WantedItem)
+                .join(Title, Title.id == Album.title_id)
+                .join(WantedItem, WantedItem.album_id == Album.id)
+                .where(
+                    Album.release_date >= start,
+                    Album.release_date <= end,
+                    WantedItem.monitored.is_(True),
+                )
+            )
+        ).all()
+    for album, title, w in albums:
+        out.append(
+            {
+                "date": album.release_date,
+                "kind": "album",
+                "title_id": title.id,
+                "name": title.name,
+                "poster_url": (album.meta or {}).get("cover"),
+                "season": None,
+                "episode": None,
+                "episode_name": None,
+                "release": None,
+                "state": w.state,
+                "monitored": w.monitored,
+                "album": album.name,
+            }
+        )
     for title, w in movies:
         meta = title.meta or {}
         for key, label in MOVIE_DATES:

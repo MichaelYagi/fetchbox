@@ -56,6 +56,7 @@
 	const RELEASE: Record<string, string> = { cinema: 'in cinemas', digital: 'digital release', disc: 'on disc' };
 
 	function what(e: Entry): string {
+		if (e.kind === 'album') return `album: ${e.album ?? ''}`;
 		return e.kind === 'episode' ? `S${pad(e.season)}E${pad(e.episode)}` : RELEASE[e.release ?? ''] ?? '';
 	}
 	function tone(e: Entry): string {

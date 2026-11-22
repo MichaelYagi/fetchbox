@@ -939,6 +939,18 @@
    },
    "CalendarEntry": {
     "properties": {
+     "album": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Music: the album (name is the artist)",
+      "title": "Album"
+     },
      "date": {
       "format": "date",
       "title": "Date",
@@ -969,7 +981,8 @@
      "kind": {
       "enum": [
        "episode",
-       "movie"
+       "movie",
+       "album"
       ],
       "title": "Kind",
       "type": "string"
@@ -10798,7 +10811,7 @@
   },
   "/api/v1/calendar": {
    "get": {
-    "description": "Episodes airing and movie release dates between two days (at most 100 days).",
+    "description": "Episodes airing, movie release dates and wanted albums' release dates between two\ndays (at most 100 days).",
     "operationId": "get_calendar_api_v1_calendar_get",
     "parameters": [
      {

@@ -543,7 +543,7 @@ async def title_history(
 
 class CalendarEntry(BaseModel):
     date: date
-    kind: Literal["episode", "movie"]
+    kind: Literal["episode", "movie", "album"]
     title_id: str
     name: str
     poster_url: str | None
@@ -555,6 +555,7 @@ class CalendarEntry(BaseModel):
     )
     state: str
     monitored: bool
+    album: str | None = Field(default=None, description="Music: the album (name is the artist)")
 
 
 @router.get("/calendar", response_model=list[CalendarEntry], dependencies=_read, responses=pr(422))
@@ -563,7 +564,8 @@ async def get_calendar(
     start: Annotated[date, Query(description="First day (inclusive)")],
     end: Annotated[date, Query(description="Last day (inclusive)")],
 ) -> list[CalendarEntry]:
-    """Episodes airing and movie release dates between two days (at most 100 days)."""
+    """Episodes airing, movie release dates and wanted albums' release dates between two
+    days (at most 100 days)."""
     if end < start or (end - start).days > CALENDAR_MAX_DAYS:
         raise ProblemError(
             422,
