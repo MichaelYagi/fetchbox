@@ -6,6 +6,7 @@ lists indexers as JSON behind X-Api-Key, each indexer has a Torznab feed at /<id
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 import httpx
@@ -100,6 +101,29 @@ async def test_searches_every_enabled_torrent_indexer() -> None:
     fake.indexers.append({"id": 5, "name": "New", "enable": True, "protocol": "torrent"})
     fake.feeds[5] = FakeTorznab([], key=KEY)
     assert len(await p.indexers(fresh=True)) == 3
+    await p.aclose()
+
+
+async def test_one_slow_indexer_doesnt_lose_the_others_results(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Seen with a real Prowlarr: LimeTorrents took 30 s and timed out, and every other
+    indexer's results (The Pirate Bay: 71 in 0.3 s) were lost with it. Each indexer now
+    has its own deadline, inside the source's, and a slow one is left out alone."""
+    from fetchbox.providers.indexers import prowlarr
+
+    monkeypatch.setattr(prowlarr, "CHILD_DEADLINE", 0.5)
+    fake = FakeProwlarr()
+
+    async def handle(req: httpx.Request) -> httpx.Response:
+        if req.url.path.strip("/").split("/")[0] == "2":
+            await asyncio.sleep(30)  # a tracker that doesn't answer
+        return fake.handle(req)
+
+    p = ProwlarrProvider(ProwlarrSettings(url="http://prowlarr:9696", api_key=KEY),
+                         transport=httpx.MockTransport(handle))  # fmt: skip
+    found = await asyncio.wait_for(p.search(SearchQuery("movie", ("Dune",))), 2)
+    assert [c.title for c in found] == ["Dune.2021.1080p.WEB-DL.DDP5.1.Atmos.H.264-FLUX"]
     await p.aclose()
 
 

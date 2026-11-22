@@ -76,6 +76,7 @@ async def search(
         try:
             found = await asyncio.wait_for(src.search(query), source_timeout)
         except TimeoutError:
+            log.warning("search.source_timed_out", source=src.name, seconds=source_timeout)
             return SourceFailure(src.id, src.name, f"timed out after {source_timeout:g}s")
         except Exception as exc:
             log.warning("search.source_failed", source=src.name, error=str(exc))

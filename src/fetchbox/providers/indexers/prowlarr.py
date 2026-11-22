@@ -17,6 +17,7 @@ from typing import Any, ClassVar
 from urllib.parse import urlsplit
 
 import httpx
+import structlog
 from pydantic import BaseModel, Field, SecretStr, field_validator
 
 from fetchbox.core.providers import TestResult, registry
@@ -30,7 +31,13 @@ from fetchbox.providers.indexers import (
 )
 from fetchbox.providers.indexers.torznab import TorznabProvider, TorznabSettings
 
+log = structlog.get_logger(__name__)
+
 LIST_TTL = 600.0
+# Each Prowlarr indexer gets this long: well inside the 30 s a whole source gets, so one
+# slow tracker is left out on its own instead of taking every other indexer's results with
+# it (seen: LimeTorrents timing out at 30 s while The Pirate Bay answered in 0.3 s).
+CHILD_DEADLINE = 20.0
 TIMEOUT = httpx.Timeout(20.0, connect=10.0)
 # A pasted indexer feed (".../3" or ".../3/api") still means "this Prowlarr".
 _FEED_SUFFIX = re.compile(r"/\d+(/api)?/?$")
@@ -166,9 +173,17 @@ class ProwlarrProvider(IndexerProvider):
             raise IndexerError(
                 "config", "Prowlarr has no enabled torrent indexers: add some in Prowlarr"
             )
-        results = await asyncio.gather(
-            *(call(c.provider) for c in children), return_exceptions=True
-        )
+
+        async def one(c: _Child) -> list[ReleaseCandidate]:
+            try:
+                found: list[ReleaseCandidate] = await asyncio.wait_for(
+                    call(c.provider), CHILD_DEADLINE
+                )
+            except TimeoutError:
+                raise IndexerError("unavailable", f"no answer in {CHILD_DEADLINE:g}s") from None
+            return found
+
+        results = await asyncio.gather(*(one(c) for c in children), return_exceptions=True)
         found: list[ReleaseCandidate] = []
         errors: list[str] = []
         for c, res in zip(children, results, strict=True):
@@ -180,6 +195,10 @@ class ProwlarrProvider(IndexerProvider):
                 found += res
         if errors and len(errors) == len(children):
             raise IndexerError("unavailable", "every Prowlarr indexer failed: " + "; ".join(errors))
+        if errors:  # the others' results still count
+            log.warning(
+                "prowlarr.indexers_failed", failed=errors, answered=len(children) - len(errors)
+            )
         return found
 
     # ---- Provider / IndexerProvider ---------------------------------------------------------
