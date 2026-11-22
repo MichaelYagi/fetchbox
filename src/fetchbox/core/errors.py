@@ -95,7 +95,7 @@ def install_error_handlers(app: FastAPI) -> None:
         errors = [
             FieldError(
                 field=".".join(str(p) for p in err.get("loc", ()) if p != "body"),
-                message=str(err.get("msg", "")),
+                message=str(err.get("msg", "")).removeprefix("Value error, "),
                 code=str(err.get("type")) if err.get("type") else None,
             )
             for err in exc.errors()

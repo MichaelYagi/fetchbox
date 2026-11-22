@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from datetime import date, datetime, timedelta
 from typing import Annotated, Any, Literal, get_args
 
@@ -205,6 +206,13 @@ class TitleIn(BaseModel):
         default=True,
         description="Search for it now; otherwise at the regular missing-search interval",
     )
+    folder: str | None = Field(
+        default=None,
+        max_length=4000,
+        description="Its own library folder. Empty, or the default folder for its kind: "
+        "the one set in Settings (and it follows that). An existing folder is reused; "
+        "another path becomes a new library folder",
+    )
 
 
 class TitlePatch(BaseModel):
@@ -229,6 +237,23 @@ async def list_titles(
     return TitlePage(items=await _many(svc, list(rows)), next_cursor=nxt)
 
 
+def _folder(
+    request: Request, kind: str, path: str | None, p: Any
+) -> Callable[[], Awaitable[str | None]] | None:
+    """Resolves the folder asked for, once the add has passed its own checks."""
+    if not path or not path.strip():
+        return None
+    storage = request.app.state.storage
+
+    async def resolve() -> str | None:
+        dest: str | None = await storage.folder_for(
+            kind, path, field="body.folder", actor=p.actor()
+        )
+        return dest
+
+    return resolve
+
+
 @router.post(
     "/titles",
     response_model=TitleOut,
@@ -244,6 +269,7 @@ async def add_title(
     svc = _svc(request)
     hours = request.app.state.config.current.search.missing_every_hours
     later = None if body.search else utcnow() + timedelta(hours=hours)
+    folder = _folder(request, body.kind, body.folder, p)
     if body.kind == "series":
         t = await svc.add_series(
             body.tmdb_id,
@@ -251,6 +277,7 @@ async def add_title(
             monitor_mode=body.monitor_mode,
             actor=p.actor(),
             search_after=later,
+            folder=folder,
         )
     else:
         t = await svc.add_movie(
@@ -260,6 +287,7 @@ async def add_title(
             actor=p.actor(),
             search_after=later,
             minimum_availability=body.minimum_availability,
+            folder=folder,
         )
     response.headers["Location"] = f"{request.url.path}/{t.id}"
     return await _one(svc, t, response)

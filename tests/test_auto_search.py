@@ -362,3 +362,42 @@ async def test_unreleased_movie_waits_for_its_release(
     assert r.status_code == 200 and r.json()["available_from"] == soon
     job = await _job(c, (await c.post(f"/wanted/{wid}/search")).json()["id"])
     assert job["result"].get("grabbed"), job
+
+
+async def test_unmonitoring_during_a_search_stops_its_grab(
+    c: httpx.AsyncClient, fakes: Fakes, items: list[Item], server: Running
+) -> None:
+    """Adding searches straight away; unticking "monitored" while the indexers are still
+    being searched (seconds) must stop the grab, not just the next search."""
+    await _indexer(c, fakes, "one", items)
+    movie = await _movie(c, search=False)
+    wid = movie["wanted"][0]["id"]
+    auto = server.app.state.autosearch
+    run = auto.releases.run
+
+    async def unmonitored_meanwhile(*a: Any, **kw: Any) -> Any:
+        out = await run(*a, **kw)  # the indexers answered...
+        # ...but you unticked it meanwhile
+        r = await c.patch(f"/wanted/{wid}", json={"monitored": False})
+        assert r.status_code == 200, r.text
+        return out
+
+    auto.releases.run = unmonitored_meanwhile
+    try:
+        result = await auto.search(wid, reason="automatic")
+    finally:
+        auto.releases.run = run
+    assert result["accepted"] == 2 and "grabbed" not in result, result
+    assert result["skipped"] == "no longer monitored"
+    assert await _grabs(c, wid) == []
+    w = (await c.get(f"/titles/{movie['id']}")).json()["wanted"][0]
+    assert w["state"] == "missing" and w["monitored"] is False
+
+    # a search you ask for yourself still grabs (it never needed "monitored")
+    r = await c.post(f"/wanted/{wid}/search")
+    assert r.status_code == 202, r.text
+
+    async def grabbed() -> bool:
+        return bool(await _grabs(c, wid))
+
+    await until(grabbed, within=20)

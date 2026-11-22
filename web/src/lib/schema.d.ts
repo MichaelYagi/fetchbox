@@ -2726,6 +2726,11 @@ export interface components {
              */
             album_kinds: ("album" | "ep" | "single" | "live" | "compilation" | "other")[];
             /**
+             * Folder
+             * @description Its own library folder. Empty, or the default folder for its kind: the one set in Settings (and it follows that). An existing folder is reused; another path becomes a new library folder
+             */
+            folder?: string | null;
+            /**
              * Mbid
              * @description MusicBrainz artist id
              */
@@ -5439,6 +5444,11 @@ export interface components {
         };
         /** TitleIn */
         TitleIn: {
+            /**
+             * Folder
+             * @description Its own library folder. Empty, or the default folder for its kind: the one set in Settings (and it follows that). An existing folder is reused; another path becomes a new library folder
+             */
+            folder?: string | null;
             /**
              * Kind
              * @default movie

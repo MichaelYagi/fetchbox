@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -68,13 +69,21 @@ async def test_mounts_listed(c: httpx.AsyncClient) -> None:
 
 
 def test_native_folders_only() -> None:
-    """In WSL only WSL folders; on Windows only Windows folders."""
+    """In WSL, whatever WSL opens (the Windows drives under /mnt included); on Windows
+    only Windows folders."""
     from fetchbox.core.paths import native_folder_problem
 
     wsl = {"wsl": True, "windows": False}
-    for path in (r"C:\Users\me\Media", "D:/TV", "/mnt/c/Users/me/Media", "/mnt/d", r"\\nas\media"):
-        assert native_folder_problem(path, **wsl), path
-    for path in ("/home/me/Media", "/srv/media", "/mnt/nas/media", "/mnt/media2"):
+    for path in (r"C:\Users\me\Media", "D:/TV", r"\\nas\media", "//nas/media"):
+        assert native_folder_problem(path, **wsl), path  # WSL can't open these as written
+    assert "/mnt/c/Users/me/Media" in (native_folder_problem(r"C:\Users\me\Media", **wsl) or "")
+    for path in (
+        "/home/me/Media",
+        "/srv/media",
+        "/mnt/nas/media",
+        "/mnt/c/Users/me/Media",
+        "/mnt/d",
+    ):
         assert native_folder_problem(path, **wsl) is None, path
     win = {"wsl": False, "windows": True}
     for path in (r"\\wsl.localhost\Debian\home\me", r"\\wsl$\Ubuntu\srv", "//wsl.localhost/x"):
@@ -85,32 +94,40 @@ def test_native_folders_only() -> None:
     assert native_folder_problem("/mnt/c/x", wsl=False, windows=False) is None
 
 
-async def test_crossing_folders_are_refused_in_wsl(
+@pytest.mark.skipif(sys.platform == "win32", reason="WSL is Linux: /mnt/c isn't a path on Windows")
+async def test_in_wsl_windows_drives_are_fine_as_wsl_sees_them(
     c: httpx.AsyncClient, server: Running, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """In WSL, /mnt/c/... is a folder WSL opens: accepted. C:\\... as written isn't, and
+    the answer says what to use instead."""
     from fetchbox.core import paths
 
     monkeypatch.setattr(paths, "under_wsl", lambda: True)
     movies = next(d for d in (await c.get("/destinations")).json() if d["media_kind"] == "movie")
+    r = await c.patch(f"/destinations/{movies['id']}", json={"path": r"C:\Users\me\Movies"},
+                      headers={"If-Match": movies["etag"]})  # fmt: skip
+    assert r.status_code == 422 and "use /mnt/c/Users/me/Movies" in r.text
+    assert "Value error" not in r.text  # pydantic's prefix isn't shown
     r = await c.patch(f"/destinations/{movies['id']}", json={"path": "/mnt/c/Users/me/Movies"},
                       headers={"If-Match": movies["etag"]})  # fmt: skip
-    assert r.status_code == 422 and "WSL folder" in r.text
+    assert r.status_code == 200, r.text
+    assert "WSL" not in (r.json()["status_message"] or "")  # missing maybe, but not refused
     clients = (await c.get("/download-clients")).json()
     builtin = next(x for x in clients if x["kind"] == "builtin")
     r = await c.patch(f"/download-clients/{builtin['id']}",
                       json={"policy": {"save_path": "/home/me/torrents"}})  # fmt: skip
     assert r.status_code == 422 and "library folders" in r.text  # no separate folder at all
-    # one already stored (from before): flagged, nothing goes there
+    # one stored as C:\\... (from before): flagged, with the path to use
     from sqlalchemy import update
 
     from fetchbox.modules.storage.models import Destination
 
     async with server.app.state.fb.db.sessionmaker() as s:
         await s.execute(update(Destination).where(Destination.id == movies["id"])
-                        .values(path="/mnt/c/Users/me/Movies"))  # fmt: skip
+                        .values(path=r"C:\Users\me\Movies"))  # fmt: skip
         await s.commit()
     d = (await c.post(f"/destinations/{movies['id']}/check")).json()
-    assert d["status"] == "offline" and "WSL folder" in d["status_message"]
+    assert d["status"] == "offline" and "/mnt/c/Users/me/Movies" in d["status_message"]
 
 
 async def test_fetchboxs_own_default_folders_on_the_other_system_move_while_empty(

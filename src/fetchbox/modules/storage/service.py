@@ -110,6 +110,26 @@ def mounts() -> list[dict[str, Any]]:
     return sorted(out, key=lambda m: m["path"])
 
 
+def _norm_folder(path: str) -> str:
+    return os.path.normcase(os.path.normpath(os.path.expanduser(path)))
+
+
+def _same_folder(a: str, b: str) -> bool:
+    return _norm_folder(a) == _norm_folder(b)
+
+
+def _can_write(folder: Path) -> str | None:
+    """None if ``folder`` exists or can be created, and can be written to; else why not."""
+    try:
+        folder.mkdir(parents=True, exist_ok=True)
+        probe = folder / ".fetchbox-write-test"
+        probe.write_bytes(b"")
+        probe.unlink()
+    except OSError as exc:
+        return f"can't use {folder}: {exc.strerror or exc}"
+    return None
+
+
 def _has_files(folder: Path) -> bool:
     """Any file in ``folder`` (its recycle folder included); a missing folder has none."""
     try:
@@ -266,6 +286,43 @@ class StorageService:
         if not rows:
             raise ConflictError(f"no destination for {media_kind}; add one first")
         return rows[0]
+
+    async def folder_for(
+        self, media_kind: str, path: str | None, *, field: str, actor: Actor
+    ) -> str | None:
+        """The library folder (destination id) for a title added with its own ``path``.
+
+        None when ``path`` is empty or is the default folder for its kind: the title then
+        follows whatever Settings says. An existing folder of that kind is reused; any other
+        path becomes a new library folder (created on disk, named after it, with the
+        default's naming and import mode). Refused (422 on ``field``) if it can't be used.
+        """
+        if not path or not path.strip():
+            return None
+        p = Path(await asyncio.to_thread(os.path.expanduser, path.strip()))
+        if not p.is_absolute():
+            raise _invalid(field, "must be a full path, like /home/you/Media/Movies")
+        if why := native_folder_problem(str(p)):
+            raise _invalid(field, why)
+        rows = await self.destinations(media_kind)
+        default = rows[0] if rows else None
+        same = [d for d in rows if _same_folder(d.path, str(p))]
+        if same:
+            return None if default is not None and same[0].id == default.id else same[0].id
+        if problem := await asyncio.to_thread(_can_write, p):
+            raise _invalid(field, problem)
+        async with self.db.sessionmaker() as s:
+            taken = set((await s.execute(select(Destination.name))).scalars())
+        name, n = p.name or str(p), 1
+        while name in taken:
+            n += 1
+            name = f"{p.name} {n}"
+        data: dict[str, Any] = {"name": name, "media_kind": media_kind, "path": str(p)}
+        if default is not None:
+            data |= {"naming_template_id": default.naming_template_id,
+                     "link_mode": default.link_mode}  # fmt: skip
+        row = await self.create_destination(data, actor=actor)
+        return row.id
 
     # ---- CRUD -------------------------------------------------------------------------------
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Awaitable, Callable
 from datetime import date, datetime, timedelta
 from typing import Any, Literal
 
@@ -180,6 +181,7 @@ class MediaService:
         actor: Actor,
         search_after: datetime | None = None,
         minimum_availability: str = "released",
+        folder: Callable[[], Awaitable[str | None]] | None = None,
     ) -> Title:
         """``search_after`` None means search now (automatic search picks it up), once
         the movie is available per ``minimum_availability``."""
@@ -190,10 +192,12 @@ class MediaService:
             if (dup := await self._existing(s, "movie", tmdb_id)) is not None:
                 raise ConflictError(f"{dup.name} ({dup.year}) is already in the library: {dup.id}")
         detail = await self.discovery.movie(tmdb_id)
+        destination_id = await folder() if folder else None  # its own library folder
         title = Title(
             kind="movie",
             tmdb_id=tmdb_id,
             profile_id=profile_id,
+            destination_id=destination_id,
             monitor_mode="all" if monitored else "none",
             minimum_availability=minimum_availability,
             refreshed_at=utcnow(),
@@ -219,6 +223,7 @@ class MediaService:
         monitor_mode: SeriesMode,
         actor: Actor,
         search_after: datetime | None = None,
+        folder: Callable[[], Awaitable[str | None]] | None = None,
     ) -> Title:
         """A series with every season and episode TMDB lists; one wanted item per episode,
         monitored per ``monitor_mode``."""
@@ -229,10 +234,12 @@ class MediaService:
             if (dup := await self._existing(s, "series", tmdb_id)) is not None:
                 raise ConflictError(f"{dup.name} ({dup.year}) is already in the library: {dup.id}")
         detail = await self.discovery.series(tmdb_id)
+        destination_id = await folder() if folder else None  # its own library folder
         title = Title(
             kind="series",
             tmdb_id=tmdb_id,
             profile_id=profile_id,
+            destination_id=destination_id,
             monitor_mode=monitor_mode,
             refreshed_at=utcnow(),
         )

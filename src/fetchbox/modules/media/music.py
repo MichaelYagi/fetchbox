@@ -15,6 +15,7 @@ pace, only for albums that are wanted.
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Awaitable, Callable
 from datetime import date, datetime, timedelta
 from typing import Any, Literal
 
@@ -169,6 +170,7 @@ class MusicService:
         album_kinds: list[str] | None = None,
         actor: Actor,
         search_after: datetime | None = None,
+        folder: Callable[[], Awaitable[str | None]] | None = None,
     ) -> Title:
         if monitor_mode not in ARTIST_MODES:
             raise _invalid("body.monitor_mode", f"one of {', '.join(ARTIST_MODES)}")
@@ -191,8 +193,10 @@ class MusicService:
         finally:
             await mb.aclose()
         flags = wanted_flags(monitor_mode, kinds, albums, utcnow().date())
+        destination_id = await folder() if folder else None  # its own library folder
         title = Title(
             kind="music",
+            destination_id=destination_id,
             mbid=artist.id,
             name=artist.name,
             sort_name=artist.sort_name,
