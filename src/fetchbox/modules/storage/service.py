@@ -291,15 +291,18 @@ class StorageService:
             r = await self.local.check_access(str(path), link_source=str(link_from))
             # Hardlinks from every folder downloads actually land in, not only the default
             # torrent folder: a client saving to another drive means a copy per import.
-            no_links: list[str] = []
+            no_links: dict[str, list[str]] = {}  # folder -> the clients saving there
             if r.exists and r.is_dir and r.writable:
                 sources = await self.link_sources() if self.link_sources else []
                 for client, folder in sources:
+                    if folder in no_links:
+                        no_links[folder].append(client)
+                        continue
                     if not await asyncio.to_thread(Path(folder).is_dir):
                         continue
                     rr = await self.local.check_access(str(path), link_source=folder)
                     if rr.hardlink_with is False:
-                        no_links.append(f"{client} ({folder})")
+                        no_links[folder] = [client]
             if not r.exists:
                 status, message = "offline", "folder does not exist"
             elif not r.is_dir or not r.writable or not r.deletable:
@@ -320,11 +323,15 @@ class StorageService:
                 elif no_links and d.link_mode in ("hardlink_or_copy", "hardlink_only"):
                     # A second full copy of every download: say so, and how to avoid it.
                     status = "degraded"
-                    verb = "can't be imported" if d.link_mode == "hardlink_only" else "are copied"
+                    where = "; ".join(f"{' and '.join(c)} save to {f}" for f, c in no_links.items())
+                    effect = (
+                        "can't be imported here"
+                        if d.link_mode == "hardlink_only"
+                        else "are copied in full, not hardlinked"
+                    )
                     message = (
-                        f"downloads from {', '.join(no_links)} {verb} here: not the same drive, "
-                        "so no hardlinks. Put this folder on the same drive as the downloads "
-                        "(or the client's folder on this one) to keep one copy of each file"
+                        f"downloads {effect}: {where}, another drive. Move the library folder to "
+                        "that drive for one copy of each file"
                     )
                 else:
                     message = f"{usage.free / GB:.1f} GB free" + (
@@ -398,12 +405,17 @@ class StorageService:
         rows: Sequence[Destination] = await self.check_all()
         if not rows:
             return HealthStatus(status="error", message="No destinations: add a library folder")
-        bad = [
-            f"{d.name}: {d.status_message}" for d in rows if d.status in ("offline", "unmounted")
-        ]
-        warn = [
-            f"{d.name}: {d.status_message}" for d in rows if d.status in ("low_space", "degraded")
-        ]
+
+        def grouped(states: tuple[str, ...]) -> list[str]:
+            """One line per problem, naming every folder that has it ("Movies, TV: ...")."""
+            by_msg: dict[str, list[str]] = {}
+            for d in rows:
+                if d.status in states:
+                    by_msg.setdefault(d.status_message or d.status, []).append(d.name)
+            return [f"{', '.join(names)}: {msg}" for msg, names in by_msg.items()]
+
+        bad = grouped(("offline", "unmounted"))
+        warn = grouped(("low_space", "degraded"))
         if bad:
             return HealthStatus(status="error", message="; ".join(bad + warn))
         if warn:

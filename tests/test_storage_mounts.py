@@ -93,10 +93,10 @@ async def test_copies_from_a_client_on_another_drive_are_flagged(
     assert r.status_code == 200, r.text
     d = (await c.post(f"/destinations/{movies['id']}/check")).json()
     assert d["status"] == "degraded"
-    assert "are copied" in d["status_message"] and str(other_drive) in d["status_message"]
+    assert "are copied in full" in d["status_message"] and str(other_drive) in d["status_message"]
     assert builtin["name"] in d["status_message"]
     health = (await c.get("/system/health")).json()
-    assert any("are copied" in (x.get("message") or "") for x in health["checks"]), health
+    assert any("are copied in full" in (x.get("message") or "") for x in health["checks"]), health
 
     # hardlink only: such downloads wait instead of being copied, and it says that
     r = await c.patch(f"/destinations/{movies['id']}", json={"link_mode": "hardlink_only"},
