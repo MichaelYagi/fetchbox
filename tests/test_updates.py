@@ -2,8 +2,13 @@
 
 from __future__ import annotations
 
-import httpx
+import hashlib
+from pathlib import Path
 
+import httpx
+import pytest
+
+from fetchbox import updater
 from fetchbox.modules.system.updates import UpdateChecker, newer
 from tests.conftest import Running
 
@@ -20,13 +25,20 @@ async def test_updates_endpoint(server: Running) -> None:
     def github(req: httpx.Request) -> httpx.Response:
         calls.append(str(req.url))
         page = "https://github.com/MichaelYagi/fetchbox/releases/tag/v9.0.0"
-        body = {"tag_name": "v9.0.0", "published_at": "2027-01-01", "html_url": page}
+        dl = "https://github.com/MichaelYagi/fetchbox/releases/download/v9.0.0/"
+        assets = [
+            {"name": n, "browser_download_url": dl + n, "size": 1}
+            for n in ("Fetchbox-Windows-10-11-v9.0.0-Setup.exe", "SHA256SUMS-desktop.txt")
+        ]
+        body = {"tag_name": "v9.0.0", "published_at": "2027-01-01", "html_url": page,
+                "assets": assets}  # fmt: skip
         return httpx.Response(200, json=body)
 
     server.app.state.updates = UpdateChecker(httpx.MockTransport(github))
     async with server.client() as c:
         r = (await c.get("/system/updates")).json()
         assert r["update_available"] and r["latest"] == "v9.0.0" and r["checked"]
+        assert [d["name"] for d in r["downloads"]][1] == "SHA256SUMS-desktop.txt"
         await c.get("/system/updates")
         assert len(calls) == 1  # cached
         assert (
@@ -34,3 +46,56 @@ async def test_updates_endpoint(server: Running) -> None:
         ).status_code == 200
         r = (await c.get("/system/updates", params={"fresh": True})).json()
         assert not r["checked"] and not r["update_available"] and len(calls) == 1  # no contact
+
+
+def test_pick_the_installer_for_this_computer() -> None:
+    names = ["Fetchbox-Windows-10-11-v9.0.0-Setup.exe", "Fetchbox-Windows-10-11-v9.0.0.zip",
+             "Fetchbox-macOS-Silicon-v9.0.0.dmg", "Fetchbox-macOS-Intel-v9.0.0.dmg",
+             "Fetchbox-Linux-x86_64-v9.0.0.deb", "SHA256SUMS-desktop.txt"]  # fmt: skip
+    files = [updater.Download(n, f"https://x/{n}") for n in names]
+
+    def chosen(system: str, machine: str = "x86_64") -> str | None:
+        got = updater.pick(files, system=system, machine=machine)
+        return got[0].name if got else None
+
+    assert chosen("win32", "AMD64") == names[0]
+    assert chosen("darwin", "arm64") == names[2]
+    assert chosen("darwin", "x86_64") == names[3]
+    assert chosen("linux") is None  # apt, the AppImage or Docker
+    assert updater.pick(files[:-1], system="win32") is None  # no checksums: no install
+
+
+def test_download_is_checked_against_the_release(tmp_path: Path) -> None:
+    good = b"installer bytes" * 1000
+    name = "Fetchbox-Windows-10-11-v9.0.0-Setup.exe"
+    served = {"installer": good}
+
+    def gh(req: httpx.Request) -> httpx.Response:
+        if req.url.path.endswith("SHA256SUMS-desktop.txt"):
+            line = f"{hashlib.sha256(good).hexdigest()}  {name}\n"
+            return httpx.Response(200, text="0" * 64 + "  other.dmg\n" + line)
+        return httpx.Response(200, content=served["installer"])
+
+    inst = updater.Download(name, "https://x/" + name)
+    sums = updater.Download("SHA256SUMS-desktop.txt", "https://x/SHA256SUMS-desktop.txt")
+    t = httpx.MockTransport(gh)
+    path = updater.download(inst, sums, tmp_path, transport=t)
+    assert path.read_bytes() == good
+
+    served["installer"] = good + b"tampered"
+    with pytest.raises(updater.UpdateError, match="doesn't match"):
+        updater.download(inst, sums, tmp_path / "2", transport=t)
+    assert list((tmp_path / "2").iterdir()) == []  # nothing left to run
+    other = updater.Download("Fetchbox-macOS-Intel-v9.0.0.dmg", "https://x/m.dmg")
+    with pytest.raises(updater.UpdateError, match="isn't in the release's checksum list"):
+        updater.download(other, sums, tmp_path / "3", transport=t)
+
+
+def test_macos_swap_script(tmp_path: Path) -> None:
+    app = tmp_path / "Apps with space" / "Fetchbox.app"
+    script = updater.macos_script(tmp_path / "u.dmg", app, wait_pid=4242, relaunch=True)
+    text = script.read_text()
+    script.unlink()
+    assert "kill -0 4242" in text and "hdiutil attach" in text
+    # the new copy goes in beside the old one first; quoted paths (spaces)
+    assert f"'{app}.new'" in text and text.rstrip().endswith(f"open '{app}'")

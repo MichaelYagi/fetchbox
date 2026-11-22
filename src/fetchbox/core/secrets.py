@@ -15,6 +15,7 @@ it; ``mask_settings`` produces the API view, where secrets are never returned.
 from __future__ import annotations
 
 import base64
+import hashlib
 import os
 import secrets as pysecrets
 import stat
@@ -78,8 +79,106 @@ def _write_key_file(path: Path, key: bytes) -> None:
         os.close(fd)
 
 
+# ---- where the key lives ----------------------------------------------------------------
+# A file in the data folder, or (the Windows desktop app; FETCHBOX_KEYRING=1 elsewhere)
+# the operating system's keyring, so a copy of the data folder alone can't open the
+# secrets. A key *file* always wins and is moved into the keyring: that's how a restored
+# backup's key, or a hand-placed one, takes over.
+
+KEYRING_SERVICE = "Fetchbox secrets key"
+
+
+def keyring_wanted() -> bool:
+    """FETCHBOX_KEYRING=1/0 decides; by default the frozen Windows app only. (macOS asks
+    again after every update of an unsigned app, so it's opt-in there for now.)"""
+    env = os.environ.get("FETCHBOX_KEYRING", "").strip()
+    if env in ("0", "1"):
+        return env == "1"
+    return sys.platform == "win32" and bool(getattr(sys, "frozen", False))
+
+
+def _keyring() -> Any:
+    import keyring  # type: ignore[import-not-found,unused-ignore]  # desktop extra
+
+    return keyring
+
+
+def _where() -> str:
+    return {"win32": "Windows Credential Manager", "darwin": "the macOS Keychain"}.get(
+        sys.platform, "the system keyring"
+    )
+
+
+def _account(data_dir: Path) -> str:
+    """One key per data folder (two installs on one account don't share keys)."""
+    return hashlib.sha256(str(data_dir.resolve()).encode()).hexdigest()[:24]
+
+
+def _read_file(path: Path) -> bytes:
+    if sys.platform != "win32":
+        mode = stat.S_IMODE(path.stat().st_mode)
+        if mode & 0o077:
+            log.warning("secrets_key_permissions", path=str(path), mode=oct(mode), hint="chmod 600")
+    try:
+        return base64.b64decode(path.read_bytes().strip(), validate=True)
+    except ValueError as exc:
+        raise SecretsError(f"{path} is not a valid secrets key file") from exc
+
+
+def _store(kr: Any, account: str, key: bytes) -> bool:
+    """Save to the keyring and read it back; False (logged) when that doesn't work."""
+    text = base64.b64encode(key).decode()
+    try:
+        kr.set_password(KEYRING_SERVICE, account, text)
+        ok = bool(kr.get_password(KEYRING_SERVICE, account) == text)
+    except Exception as exc:  # any backend failure: keep the file instead
+        log.warning("secrets_key_keyring_failed", where=_where(), error=repr(exc))
+        return False
+    return ok
+
+
+def _load_keyring(kr: Any, data_dir: Path) -> tuple[SecretBox, bool]:
+    path = data_dir / KEY_FILENAME
+    account = _account(data_dir)
+    if path.exists():
+        key = _read_file(path)
+        if _store(kr, account, key):
+            path.unlink()
+            log.info("secrets_key_moved", to=_where())
+        return SecretBox(key), False
+    try:
+        stored = kr.get_password(KEYRING_SERVICE, account)
+    except Exception as exc:
+        # Never make a new key here: the existing secrets would become unreadable.
+        raise SecretsError(
+            f"couldn't read Fetchbox's secrets key from {_where()} ({exc}). Fix access to "
+            f"it, or start with FETCHBOX_KEYRING=0 and put the key in {path}"
+        ) from exc
+    if stored:
+        try:
+            return SecretBox(base64.b64decode(stored, validate=True)), False
+        except ValueError as exc:
+            raise SecretsError(f"the secrets key in {_where()} is damaged") from exc
+    key = AESGCM.generate_key(bit_length=256)
+    if not _store(kr, account, key):
+        _write_key_file(path, key)
+    log.warning(
+        "secrets_key_created",
+        where=str(path) if path.exists() else _where(),
+        hint="back up with the key included: secrets can't be recovered without it",
+    )
+    return SecretBox(key), True
+
+
 def load_or_create(data_dir: Path) -> tuple[SecretBox, bool]:
     """Return (box, created). Warns when the key file is readable by others (POSIX)."""
+    if keyring_wanted():
+        try:
+            kr = _keyring()
+        except ImportError:
+            log.warning("secrets_key_no_keyring", hint="install the desktop extra")
+        else:
+            return _load_keyring(kr, data_dir)
     path = data_dir / KEY_FILENAME
     if not path.exists():
         key = AESGCM.generate_key(bit_length=256)
@@ -94,15 +193,22 @@ def load_or_create(data_dir: Path) -> tuple[SecretBox, bool]:
                 hint="back this file up; secrets cannot be recovered without it",
             )
             return SecretBox(key), True
-    if sys.platform != "win32":
-        mode = stat.S_IMODE(path.stat().st_mode)
-        if mode & 0o077:
-            log.warning("secrets_key_permissions", path=str(path), mode=oct(mode), hint="chmod 600")
-    try:
-        key = base64.b64decode(path.read_bytes().strip(), validate=True)
-    except ValueError as exc:
-        raise SecretsError(f"{path} is not a valid secrets key file") from exc
-    return SecretBox(key), False
+    return SecretBox(_read_file(path)), False
+
+
+def key_file_bytes(data_dir: Path) -> bytes | None:
+    """The key in key-file form, wherever it lives (backups "with key")."""
+    path = data_dir / KEY_FILENAME
+    if path.is_file():
+        return path.read_bytes()
+    if keyring_wanted():
+        try:
+            stored = _keyring().get_password(KEYRING_SERVICE, _account(data_dir))
+        except Exception:
+            return None
+        if stored:
+            return str(stored).encode() + b"\n"
+    return None
 
 
 # ---- settings models -------------------------------------------------------------------

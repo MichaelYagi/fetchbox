@@ -9,7 +9,8 @@ from __future__ import annotations
 
 import re
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Any
 
 import httpx
 
@@ -41,6 +42,7 @@ class UpdateInfo:
     published_at: str | None
     checked: bool
     error: str | None = None
+    downloads: list[dict[str, Any]] = field(default_factory=list)  # the release's files
 
 
 class UpdateChecker:
@@ -64,9 +66,14 @@ class UpdateChecker:
                 r.raise_for_status()
                 d = r.json()
                 tag = str(d.get("tag_name") or "")
+                files = [
+                    {"name": a["name"], "url": a["browser_download_url"], "size": a.get("size")}
+                    for a in d.get("assets") or []
+                    if a.get("name") and a.get("browser_download_url")
+                ]
                 info = UpdateInfo(
                     current, tag or None, newer(tag, current), d.get("html_url"),
-                    d.get("published_at"), checked=True,
+                    d.get("published_at"), checked=True, downloads=files,
                 )  # fmt: skip
         except (httpx.HTTPError, ValueError) as exc:
             return UpdateInfo(current, None, False, None, None, checked=False,

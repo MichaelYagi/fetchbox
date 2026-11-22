@@ -1,13 +1,12 @@
 name: Notify desktop build
 
 # When a version tag is pushed here, asks the private MichaelYagi/fetchbox-artifacts
-# repo to build the desktop apps (Windows, macOS Silicon and Intel, Linux) for it.
-# They're built and released there, in a private repo, because workflow artifacts and
-# releases of a public repo can be downloaded by any signed-in GitHub user.
+# repo to build the desktop apps (Windows, macOS Silicon and Intel, Linux) and their
+# installers for it. That repo tests them and adds them to this tag's release here.
 #
-# Needs a repo secret DESKTOP_DISPATCH_TOKEN: a fine-grained personal access token
-# scoped to only fetchbox-artifacts with "Contents: Read and write" (the
-# repository_dispatch API requires it). Until the secret exists this skips itself
+# Needs a repo secret DESKTOP_DISPATCH_TOKEN: a fine-grained personal access token with
+# "Contents: Read and write" on fetchbox and fetchbox-artifacts (the same token is
+# FETCHBOX_RELEASE_TOKEN there, to upload). Until the secret exists this skips itself
 # with a warning instead of failing on every tag.
 on:
   push:

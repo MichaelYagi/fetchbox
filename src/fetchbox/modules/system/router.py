@@ -265,6 +265,12 @@ async def diagnostics(request: Request, state: State) -> Response:
                     headers={"Content-Disposition": f'attachment; filename="{name}"'})  # fmt: skip
 
 
+class ReleaseFileOut(BaseModel):
+    name: str
+    url: str
+    size: int | None = None
+
+
 class UpdateOut(BaseModel):
     current: str
     latest: str | None
@@ -273,6 +279,7 @@ class UpdateOut(BaseModel):
     published_at: str | None
     checked: bool = Field(description="False: checking is off, or GitHub couldn't be reached")
     error: str | None = None
+    downloads: list[ReleaseFileOut] = Field(default=[], description="The release's files")
 
 
 @router.get("/updates", response_model=UpdateOut, dependencies=_read)

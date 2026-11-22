@@ -44,7 +44,7 @@ A phase starts only when the previous gate passes.
       escalation guard, rotate/revoke/expiry, sessions + CSRF, login rate limit,
       first-run bootstrap, `fetchbox reset-password`, LAN bind refused without password
 - [x] Route-scope coverage test (enumerates OpenAPI operations; public routes allowlisted)
-- [ ] Trusted proxies (`X-Forwarded-For`) and forward-auth header (Authelia/Authentik)
+- [x] Trusted proxies (`X-Forwarded-For`) and forward-auth header (Authelia/Authentik): Phase 4
 - [x] API conventions: keyset cursor pagination + `sort`, ETag/If-Match on versioned rows
       (concurrent writes -> 412, never a lost update), Idempotency-Key store (per actor,
       24 h, replay / 422 mismatch / 409 in progress, errors not stored)
@@ -52,10 +52,10 @@ A phase starts only when the previous gate passes.
       Last-Event-ID replay with gap signal, `auth.*` admin-only, stream closes when its
       credential is revoked, single-use stream tokens, same-origin check for cookie WS
 - [x] Activity log: batched writer (lossless shutdown), `/activity`, prune job
-- [ ] Activity entries for request IPs behind proxies (needs trusted_proxies)
+- [x] Activity entries for request IPs behind proxies: Phase 4 (from trusted proxies)
 - [x] AES-GCM secrets with `secrets.key` (0600, AAD-bound per field), SecretStr
       seal/open/mask/merge helpers for provider settings; LAN bind refused without password
-- [ ] Optional OS-keychain storage of `secrets.key` on desktop; key rotation
+- [ ] Key rotation (OS-keychain storage of `secrets.key`: done in Phase 4)
 - [ ] PostgreSQL CI job (asyncpg)
 
 **Gate:** fresh start creates admin + `default` key; a test job survives `kill -9` and
@@ -336,8 +336,25 @@ Release pipeline (pulled forward from Phase 4, same flow as roast-telemetry):
       downloads:write only; nothing else). "Open Fetchbox" signs in with a one-time link
       (`POST /auth/login-link` -> `/login?code=`, 60 s, single use, hashed in memory, the
       code leaves the address bar). Pause / resume all downloads. "Start at login" toggle
-      (HKCU Run key, macOS LaunchAgent, XDG autostart). Remaining: installing updates
-      from the tray, keyring-stored secrets key
+      (HKCU Run key, macOS LaunchAgent, XDG autostart)
+- [x] Updates from the tray: desktop builds go on the public release with
+      SHA256SUMS-desktop.txt; the tray (via `GET /system/updates`, so the "check for
+      updates" setting applies) offers "Install Fetchbox vX" for an installed copy:
+      download, checksum, stop the server, then the Windows installer silently with
+      `/RELAUNCH=1`, or on macOS a script that swaps the .app from the .dmg and reopens
+      it. Others (portable zip) get the release page. Both paths tested in the release
+      workflow
+- [x] Secrets key in the OS keyring: Windows desktop app by default (Credential
+      Manager), `FETCHBOX_KEYRING=1/0` to force; macOS opt-in (an unsigned app is asked
+      again after each update). A key file wins and is moved in (restores); a keyring
+      read error stops startup rather than making a new key; backups "with key" read it
+      from the keyring
+- [x] Reverse proxies (Settings > Network): trusted proxies (X-Forwarded-For /
+      -Host), optional sign-in by a trusted proxy's header (Authelia / Authentik),
+      cross-site writes refused under it; `/auth/me` shows the addresses seen
+- [x] Optional "only send webhooks to public addresses": resolved once, every
+      address checked, the request pinned to the checked address (Host + TLS name kept),
+      no redirects
 - [x] Installers, built and tested by the release workflow (install, check, run the
       installed copy, uninstall): Windows Inno Setup (per user, no admin prompt, Start
       menu, optional start at sign-in using the tray's own Run entry, uninstaller asks

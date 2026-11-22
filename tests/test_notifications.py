@@ -134,3 +134,49 @@ def test_discord_embed_limits() -> None:
                      level="warning", occurred_at=utcnow())  # fmt: skip
     e = embed(n)["embeds"][0]  # type: ignore[index]
     assert len(e["title"]) == 256 and len(e["description"]) == 4096 and e["color"] == 0xD97706
+
+
+async def test_block_private_webhook_addresses(
+    c: httpx.AsyncClient, server: Running, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from fetchbox.core import netguard
+
+    seen: list[httpx.Request] = []
+
+    def handle(req: httpx.Request) -> httpx.Response:
+        seen.append(req)
+        return httpx.Response(204)
+
+    async def resolve(host: str, port: int) -> list[str]:
+        return {"hooks.example": ["93.184.216.34"], "rebind.example": ["93.184.216.34", "10.0.0.7"],
+                "home.example": ["192.168.1.20"]}[host]  # fmt: skip
+
+    monkeypatch.setattr(netguard, "_resolve", resolve)
+    server.app.state.notifications.provider_kwargs = {"transport": httpx.MockTransport(handle)}
+
+    async def target(url: str) -> str:
+        r = await c.post("/notifications/targets", json={"kind": "webhook", "name": url,
+                         "settings": {"url": url}})  # fmt: skip
+        assert r.status_code == 201, r.text
+        return str(r.json()["id"])
+
+    home = await target("http://home.example:8123/api/webhook/x")
+    public = await target("https://hooks.example/in")
+    # off by default: a webhook to the home network is fine
+    assert (await c.post(f"/notifications/targets/{home}/test")).json()["ok"]
+    assert seen[-1].url.host == "home.example"
+
+    await c.patch("/system/config", json={"network": {"block_private_webhooks": True}})
+    for url in ("http://home.example:8123/x", "http://127.0.0.1:9/x", "http://[::1]/x",
+                "http://169.254.169.254/latest", "http://rebind.example/x"):  # fmt: skip
+        res = (await c.post(f"/notifications/targets/{await target(url)}/test")).json()
+        assert not res["ok"] and "private or local address" in res["message"], (url, res)
+    n = len(seen)
+    assert (await c.post(f"/notifications/targets/{home}/test")).json()["ok"] is False
+    assert len(seen) == n  # nothing was sent
+
+    # a public one goes to the address that was checked, under its own name
+    assert (await c.post(f"/notifications/targets/{public}/test")).json()["ok"]
+    req = seen[-1]
+    assert req.url.host == "93.184.216.34" and req.headers["host"] == "hooks.example"
+    assert req.extensions.get("sni_hostname") == "hooks.example"

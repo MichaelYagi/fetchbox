@@ -70,8 +70,10 @@ async def list_scopes() -> list[ScopeInfo]:
 
 
 @router.get("/me", response_model=Me, dependencies=[Depends(authenticated())])
-async def me(p: CurrentPrincipal) -> Me:
-    return Me(type=p.type, id=p.id, name=p.name, scopes=sorted(p.scopes), via=p.via)
+async def me(p: CurrentPrincipal, request: Request) -> Me:
+    return Me(type=p.type, id=p.id, name=p.name, scopes=sorted(p.scopes), via=p.via,
+              ip=client_ip(request),
+              connected_from=request.client.host if request.client else None)  # fmt: skip
 
 
 class AuthStatus(BaseModel):

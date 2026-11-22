@@ -86,12 +86,48 @@ class UpdatesConfig(BaseModel):
     )
 
 
+class NetworkConfig(BaseModel):
+    trusted_proxies: list[str] = Field(
+        default=[],
+        description="Reverse proxies (addresses or ranges like 172.18.0.0/16) whose "
+        "X-Forwarded-For / X-Forwarded-Host / X-Forwarded-Proto are believed",
+    )
+    auth_header: str | None = Field(
+        default=None,
+        pattern=r"^[A-Za-z0-9-]{1,64}$",
+        description="Sign in whoever this header names (e.g. Remote-User from Authelia "
+        "or Authentik), only on requests from a trusted proxy",
+    )
+    block_private_webhooks: bool = Field(
+        default=False,
+        description="Only send webhook and Discord notifications to public internet "
+        "addresses (for installs reachable from the internet)",
+    )
+
+    @field_validator("trusted_proxies")
+    @classmethod
+    def _networks(cls, v: list[str]) -> list[str]:
+        import ipaddress
+
+        out = []
+        for raw in v:
+            raw = raw.strip()
+            if not raw:
+                continue
+            try:
+                out.append(str(ipaddress.ip_network(raw, strict=False)))
+            except ValueError:
+                raise ValueError(f"{raw!r} isn't an IP address or range") from None
+        return out
+
+
 class SystemConfig(BaseModel):
     tmdb: TmdbConfig = TmdbConfig()
     tvdb: TvdbConfig = TvdbConfig()
     search: SearchConfig = SearchConfig()
     storage: StorageConfig = StorageConfig()
     updates: UpdatesConfig = UpdatesConfig()
+    network: NetworkConfig = NetworkConfig()
 
 
 SECRETS: tuple[tuple[str, str], ...] = (("tmdb", "api_key"), ("tvdb", "api_key"), ("tvdb", "pin"))

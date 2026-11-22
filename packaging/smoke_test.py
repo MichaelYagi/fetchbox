@@ -53,6 +53,10 @@ try:
         page = r.read().decode("utf-8", "replace")
     assert want == "any" or got == want, f"version {got!r}, expected {want!r}"
     assert "<html" in page.lower(), "the web interface isn't served"
+    if sys.platform == "win32":
+        # the Windows app keeps the secrets key in Credential Manager, not in a file
+        assert not Path(data, "secrets.key").exists(), "secrets.key written: keyring not used"
+        print("ok: the secrets key is in Windows Credential Manager")
     print(f"ok: Fetchbox {got} answered at {base} and serves its web interface")
 finally:
     proc.terminate()

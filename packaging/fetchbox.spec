@@ -38,6 +38,12 @@ binaries = collect_dynamic_libs("libtorrent")
 excludes = ["tkinter", "pytest", "mypy", "ruff"]
 if TRAY:
     hidden += collect_submodules("pystray") + ["PIL.Image", "PIL.ImageDraw"]
+    # The secrets key in Credential Manager / the Keychain: keyring finds its backends
+    # through package metadata (entry points), so ship that too.
+    hidden += collect_submodules("keyring")
+    datas += copy_metadata("keyring")
+    if sys.platform == "win32":
+        hidden += collect_submodules("win32ctypes")
 else:
     hidden = [h for h in hidden if h != "fetchbox.tray"]
     excludes += ["pystray", "PIL", "Xlib"]

@@ -16,6 +16,11 @@ class Me(BaseModel):
     name: str
     scopes: list[str]
     via: str
+    ip: str | None = Field(default=None, description="This client's address, as Fetchbox sees it")
+    connected_from: str | None = Field(
+        default=None,
+        description="The address that connected to Fetchbox: a reverse proxy's, if any",
+    )
 
 
 class LoginIn(BaseModel):

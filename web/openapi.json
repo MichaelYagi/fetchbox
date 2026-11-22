@@ -3678,9 +3678,33 @@
    },
    "Me": {
     "properties": {
+     "connected_from": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "The address that connected to Fetchbox: a reverse proxy's, if any",
+      "title": "Connected From"
+     },
      "id": {
       "title": "Id",
       "type": "string"
+     },
+     "ip": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "This client's address, as Fetchbox sees it",
+      "title": "Ip"
      },
      "name": {
       "title": "Name",
@@ -5673,6 +5697,35 @@
     "title": "ReleaseCandidate",
     "type": "object"
    },
+   "ReleaseFileOut": {
+    "properties": {
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "size": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Size"
+     },
+     "url": {
+      "title": "Url",
+      "type": "string"
+     }
+    },
+    "required": [
+     "name",
+     "url"
+    ],
+    "title": "ReleaseFileOut",
+    "type": "object"
+   },
    "ReleaseIn": {
     "properties": {
      "indexer_flags": {
@@ -7502,6 +7555,15 @@
      "current": {
       "title": "Current",
       "type": "string"
+     },
+     "downloads": {
+      "default": [],
+      "description": "The release's files",
+      "items": {
+       "$ref": "#/components/schemas/ReleaseFileOut"
+      },
+      "title": "Downloads",
+      "type": "array"
      },
      "error": {
       "anyOf": [

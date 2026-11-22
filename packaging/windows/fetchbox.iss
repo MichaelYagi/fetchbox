@@ -64,10 +64,17 @@ Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: 
 [Run]
 Filename: "{app}\Fetchbox.exe"; Description: "Start Fetchbox now"; \
   Flags: nowait postinstall skipifsilent
+; An update from the tray runs silently with /RELAUNCH=1: start Fetchbox again after.
+Filename: "{app}\Fetchbox.exe"; Flags: nowait; Check: Relaunch
 
 [Code]
 const
   RunKey = 'Software\Microsoft\Windows\CurrentVersion\Run';
+
+function Relaunch: Boolean;
+begin
+  Result := ExpandConstant('{param:RELAUNCH|0}') = '1';
+end;
 
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var

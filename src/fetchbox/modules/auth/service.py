@@ -64,7 +64,7 @@ class Principal:
     id: str
     name: str
     scopes: frozenset[str]
-    via: Literal["session", "api_key", "stream_token"]
+    via: Literal["session", "api_key", "stream_token", "proxy"]
     csrf_token: str | None = None
     ip: str | None = None
 
@@ -269,6 +269,16 @@ class AuthService:
         async with self.db.sessionmaker() as s:
             await s.execute(delete(AuthSession).where(AuthSession.token_hash == _sha256(token)))
             await s.commit()
+
+    async def proxy_principal(self, who: str) -> Principal | None:
+        """Signed in by a trusted reverse proxy's header: the admin (single user in v1),
+        named as the proxy named them for the activity log."""
+        async with self.db.sessionmaker() as s:
+            user = (await s.execute(select(AppUser).order_by(AppUser.created_at))).scalar()
+        if user is None:
+            return None
+        return Principal(type="user", id=user.id, name=who, scopes=frozenset({sc.ALL}),
+                         via="proxy")  # fmt: skip
 
     async def resolve_session(self, token: str) -> Principal | None:
         now = utcnow()

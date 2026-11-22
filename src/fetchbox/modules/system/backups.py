@@ -33,6 +33,7 @@ from typing import Any
 
 import fetchbox
 from fetchbox import migrations
+from fetchbox.core.secrets import key_file_bytes
 
 BACKUP_DIR = "backups"
 PENDING_DIR = "restore-pending"
@@ -171,11 +172,12 @@ class Backups:
                 config = self.data_dir / CONFIG_NAME
                 if config.is_file():
                     z.write(config, CONFIG_NAME)
-                key = self.data_dir / KEY_NAME
                 if password is not None:
-                    if not key.is_file():
+                    # a file, or the system keyring (Windows desktop app)
+                    key = key_file_bytes(self.data_dir)
+                    if key is None:
                         raise BackupError("there is no secrets key to include")
-                    z.writestr(KEY_WRAPPED, wrap_key(key.read_bytes(), password))
+                    z.writestr(KEY_WRAPPED, wrap_key(key, password))
                 z.writestr(MANIFEST, json.dumps(manifest, indent=2))
             os.replace(part, target)
         self._prune(reason)

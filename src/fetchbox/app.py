@@ -233,6 +233,7 @@ def create_app(
         backups_router.register(jobs, state.scheduler, backups)
         integrations = IntegrationsService(db, bus, box, provider_registry)
         notifications = NotificationsService(db, bus, box, provider_registry)
+        notifications.public_only = lambda: config.current.network.block_private_webhooks
         app.state.notifications = notifications
         app.state.integrations = integrations
         app.state.portable = Portable(db, box, provider_registry, config)

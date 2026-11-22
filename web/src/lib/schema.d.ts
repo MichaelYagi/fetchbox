@@ -3662,8 +3662,18 @@ export interface components {
         };
         /** Me */
         Me: {
+            /**
+             * Connected From
+             * @description The address that connected to Fetchbox: a reverse proxy's, if any
+             */
+            connected_from?: string | null;
             /** Id */
             id: string;
+            /**
+             * Ip
+             * @description This client's address, as Fetchbox sees it
+             */
+            ip?: string | null;
             /** Name */
             name: string;
             /** Scopes */
@@ -4532,6 +4542,15 @@ export interface components {
             /** Title */
             title: string;
         };
+        /** ReleaseFileOut */
+        ReleaseFileOut: {
+            /** Name */
+            name: string;
+            /** Size */
+            size?: number | null;
+            /** Url */
+            url: string;
+        };
         /** ReleaseIn */
         ReleaseIn: {
             /**
@@ -5234,6 +5253,12 @@ export interface components {
             checked: boolean;
             /** Current */
             current: string;
+            /**
+             * Downloads
+             * @description The release's files
+             * @default []
+             */
+            downloads: components["schemas"]["ReleaseFileOut"][];
             /** Error */
             error?: string | null;
             /** Latest */

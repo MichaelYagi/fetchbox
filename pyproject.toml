@@ -29,7 +29,8 @@ dependencies = [
 [project.optional-dependencies]
 postgres = ["asyncpg>=0.29"]
 # Desktop tray (fetchbox tray). pystray is LGPL-3.0, used unmodified (see fetchbox/tray.py).
-desktop = ["pystray>=0.19.5", "Pillow>=10.4"]
+# keyring (MIT): the secrets key in Windows Credential Manager / the macOS Keychain
+desktop = ["pystray>=0.19.5", "Pillow>=10.4", "keyring>=25"]
 
 [project.scripts]
 fetchbox = "fetchbox.cli:main"

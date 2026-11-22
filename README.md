@@ -33,10 +33,41 @@ password is only used on first start; change it in the web UI. A compose file is
 
 ### Desktop apps
 
-Each release has a Windows app, a macOS app (Apple Silicon and Intel) and a Linux binary.
-Windows and macOS start in the tray / menu bar and open Fetchbox in your browser. They're
-unsigned: the bundled README.txt explains getting past SmartScreen or Gatekeeper.
-Building them yourself: `packaging/README.md`.
+Each release has a Windows installer (and a portable .zip), macOS disk images (Apple
+Silicon and Intel), and for Linux a .deb (a service), an AppImage and a plain binary.
+Windows and macOS start in the tray / menu bar, open Fetchbox in your browser, and
+update themselves from the tray menu. They're unsigned: the bundled README.txt explains
+getting past SmartScreen or Gatekeeper. Building them yourself: `packaging/README.md`.
+
+### Behind a reverse proxy
+
+In Settings → Network, list the proxy's address (or its Docker network, e.g.
+`172.18.0.0/16`) under **Trusted proxies**, so Fetchbox logs and limits failed sign-ins
+by the visitor's real address. Pass the usual forwarding headers:
+
+```nginx
+location / {
+    proxy_pass http://127.0.0.1:8787;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_http_version 1.1;                      # the live updates are a WebSocket
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+}
+```
+
+Caddy sends these by itself: `reverse_proxy 127.0.0.1:8787`.
+
+**Single sign-on** (Authelia, Authentik, oauth2-proxy): turn on "Sign in whoever the
+proxy says" with the header your proxy sets (`Remote-User` by default). Fetchbox then
+skips its own sign-in for requests from a trusted proxy that carry that header. Only do
+this when the proxy checks the login on every request and strips the header from what
+visitors send, and make sure Fetchbox can't be reached without going through the proxy.
+
+If Fetchbox is reachable from the internet, also consider **Only send webhooks to public
+internet addresses** in the same place.
 
 ### What you need
 

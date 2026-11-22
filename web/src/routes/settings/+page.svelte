@@ -5,6 +5,7 @@
 	import LibraryCard from '#lib/LibraryCard.svelte';
 	import LibraryCheckCard from '#lib/LibraryCheckCard.svelte';
 	import MediaServersCard from '#lib/MediaServersCard.svelte';
+	import NetworkCard from '#lib/NetworkCard.svelte';
 	import NotificationsCard from '#lib/NotificationsCard.svelte';
 	import Path from '#lib/Path.svelte';
 	import { session } from '#lib/session.svelte.ts';
@@ -644,6 +645,11 @@
 	<section id="notifications">
 		<h2>Notifications</h2>
 		<NotificationsCard />
+	</section>
+
+	<section id="network">
+		<h2>Network</h2>
+		<NetworkCard />
 	</section>
 
 	<section id="backups">

@@ -47,11 +47,16 @@ Releases follow the same flow as roast-telemetry:
    publishes a GitHub Release with the wheel, the sdist and a source zip.
 3. `notify-desktop.yml` asks the private `MichaelYagi/fetchbox-artifacts` repo to build
    the desktop apps for that tag. This needs a `DESKTOP_DISPATCH_TOKEN` secret here: a
-   fine-grained token with "Contents: Read and write" on fetchbox-artifacts only.
-   Without the secret it skips itself with a warning.
+   fine-grained token with "Contents: Read and write" on fetchbox and
+   fetchbox-artifacts. Without the secret it skips itself with a warning.
 4. That repo's `desktop-build.yml` builds Windows, macOS Silicon, macOS Intel and Linux.
-   It smoke-tests each build, makes and tests the installers, and publishes them as a
-   Release of the private repo.
+   It smoke-tests each build, makes and tests the installers (and the tray's update
+   path), then uploads them with `SHA256SUMS-desktop.txt` to this repo's release for the
+   tag. The same token is its `FETCHBOX_RELEASE_TOKEN` secret.
+
+Installed desktop copies (the Windows installer's, a macOS app in a writable folder)
+update themselves from the tray: it downloads the release's installer for that
+computer, checks it against `SHA256SUMS-desktop.txt`, and installs it.
 
 ## The tray and pystray (LGPL-3.0)
 

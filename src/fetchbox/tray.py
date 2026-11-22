@@ -27,6 +27,7 @@ from typing import Any
 
 import httpx
 
+from fetchbox import updater
 from fetchbox.config import Settings
 
 POLL_SECONDS = 3.0
@@ -243,6 +244,69 @@ def set_autostart(on: bool) -> None:
                      f"Exec={shlex.join(cmd)}\nX-GNOME-Autostart-enabled=true\n")  # fmt: skip
 
 
+# ---- updates (an installed Windows / macOS copy) -----------------------------------------
+
+UPDATE_EVERY = 6 * 3600.0
+
+
+class Updates:
+    """Asks the server (which honours Settings > "Check for updates") what's released."""
+
+    def __init__(self, sup: Supervisor, data_dir: Path) -> None:
+        self.sup = sup
+        self.folder = data_dir / "updates"
+        self.latest: str | None = None
+        self.page: str | None = None
+        self.files: tuple[Any, Any] | None = None  # (installer, checksums) for this computer
+        self.busy = ""
+        self.error = ""
+        self._checked = 0.0
+
+    @property
+    def label(self) -> str:
+        if self.busy:
+            return self.busy
+        if self.error:
+            return f"Update failed ({self.error[:60]}): try again"
+        verb = "Install" if self.files and updater.installed_app() else "Download"
+        return f"{verb} Fetchbox {self.latest}"
+
+    def maybe_check(self) -> None:
+        if not self.sup.healthy or time.monotonic() - self._checked < UPDATE_EVERY:
+            return
+        self._checked = time.monotonic()
+        r = self.sup.call("GET", "/system/updates")
+        if r is None or r.status_code != 200:
+            return
+        info = r.json()
+        if not info.get("update_available"):
+            self.latest = None
+            return
+        self.latest, self.page = info["latest"], info.get("url")
+        found = [updater.Download(d["name"], d["url"], d.get("size")) for d in info["downloads"]]
+        self.files = updater.pick(found)
+
+    def install(self, quit_tray: Any) -> None:
+        app = updater.installed_app()
+        if not (self.files and app):
+            if self.page:
+                webbrowser.open(self.page)
+            return
+        try:
+            self.error = ""
+            self.busy = f"Downloading Fetchbox {self.latest}…"
+            path = updater.download(*self.files, self.folder)
+            self.busy = f"Installing Fetchbox {self.latest}…"
+            self.sup.stop()  # jobs finish, torrents save their state
+            updater.apply(path, app, wait_pid=os.getpid())
+        except (updater.UpdateError, OSError) as exc:
+            self.busy, self.error = "", str(exc)
+            if not self.sup.running:
+                self.sup.start()
+            return
+        quit_tray()
+
+
 def run(settings: Settings) -> int:
     try:
         import pystray
@@ -262,8 +326,24 @@ def run(settings: Settings) -> int:
         sup.stop()
         icon.stop()
 
+    updates = Updates(sup, settings.data_dir)
+
+    def install_update(icon: Any, *_: Any) -> None:
+        def quit_tray() -> None:
+            stopping.set()
+            icon.stop()
+
+        threading.Thread(target=updates.install, args=(quit_tray,), daemon=True,
+                         name="tray-update").start()  # fmt: skip
+
     menu = pystray.Menu(
         pystray.MenuItem(lambda _: sup.status, None, enabled=False),
+        pystray.MenuItem(
+            lambda _: updates.label,
+            install_update,
+            visible=lambda _: updates.latest is not None,
+            enabled=lambda _: not updates.busy,
+        ),
         pystray.MenuItem("Open Fetchbox", open_ui, default=True, enabled=lambda _: sup.healthy),
         pystray.MenuItem(
             "Pause all downloads",
@@ -298,6 +378,7 @@ def run(settings: Settings) -> int:
         warned = False
         while not stopping.is_set():
             sup.poll()
+            updates.maybe_check()
             if sup.healthy and not opened:  # first start: open the UI once it answers
                 opened = True
                 open_ui()
