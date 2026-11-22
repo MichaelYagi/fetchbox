@@ -587,6 +587,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/destinations/{dest_id}/move": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Move Folder
+         * @description Move a library folder with its files (copy, check, switch, then delete the old
+         *     copies; safe across drives). Unlike changing the path, the library comes along.
+         */
+        post: operations["move_folder_api_v1_destinations__dest_id__move_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/discovery/movies/{tmdb_id}": {
         parameters: {
             query?: never;
@@ -2947,6 +2968,11 @@ export interface components {
             status: string;
             /** Status Message */
             status_message: string | null;
+            /**
+             * Suggested Path
+             * @description When this folder means a second copy of every download: a folder on the downloads' drive to move it to (PATCH path, which moves its files)
+             */
+            suggested_path?: string | null;
         };
         /** DestinationPatch */
         DestinationPatch: {
@@ -3879,6 +3905,14 @@ export interface components {
             path: string;
             /** Total */
             total: number;
+        };
+        /** MoveFolderIn */
+        MoveFolderIn: {
+            /**
+             * Path
+             * @description The new folder
+             */
+            path: string;
         };
         /** MovieDetail */
         MovieDetail: {
@@ -7292,6 +7326,62 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    move_folder_api_v1_destinations__dest_id__move_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dest_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MoveFolderIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
                 };
             };
         };

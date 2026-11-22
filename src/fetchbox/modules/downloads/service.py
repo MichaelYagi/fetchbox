@@ -38,6 +38,7 @@ from fetchbox.core.errors import ConflictError, FieldError, NotFoundError, Probl
 from fetchbox.core.events import Actor, EventBus, Subject
 from fetchbox.core.ids import new_id
 from fetchbox.core.jobs import JobContext, JobRunner
+from fetchbox.core.paths import host_path
 from fetchbox.core.providers import HealthStatus, ProviderRegistry, TestResult
 from fetchbox.core.secrets import MASK, SecretBox, mask_settings, open_settings, seal_settings
 from fetchbox.modules.downloads.models import ACTIVE, Download, DownloadClient
@@ -115,6 +116,7 @@ class Policy(BaseModel):
             v = v.strip()
             if not v:
                 return None  # empty: back to the default
+            v = host_path(v)  # under WSL: C:\... is /mnt/c/...
             if not (v.startswith("/") or re.match(r"^[A-Za-z]:[\\/]", v) or v.startswith("~")):
                 raise ValueError("must be an absolute folder path")
         return v
