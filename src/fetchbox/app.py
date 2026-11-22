@@ -62,6 +62,7 @@ from fetchbox.modules.system.portable import Portable
 from fetchbox.modules.system.service import register_core_checks
 from fetchbox.modules.system.updates import UpdateChecker
 from fetchbox.providers import builtin as _builtin_providers  # noqa: F401 (registers them)
+from fetchbox.security_headers import SecurityHeaders
 from fetchbox.ui import STATIC_DIR, install_ui
 
 API_PREFIX = "/api/v1"
@@ -315,6 +316,7 @@ def create_app(
         lifespan=lifespan,
     )
     install_error_handlers(app)
+    app.add_middleware(SecurityHeaders)
     app.include_router(build_api_router())
     install_ui(app, static_dir or STATIC_DIR)
     return app

@@ -361,6 +361,13 @@ Progress:
       `updates.check`, on by default, off = no contact); Settings > This computer shows
       the version and "Update available" with a link. Installing updates from the tray
       is still to do
+- [x] Hardening: strict CSP for the UI (a SvelteKit-generated meta tag hashing its own
+      bootstrap script: no 'unsafe-inline' scripts), plus nosniff / no-referrer / DENY
+      framing / permissions headers on every response and `default-src 'none'` on API
+      JSON; filesystem boundary (`inside()`: resolved paths, symlinks followed) checked
+      when placing imports, renaming and adopting existing files (paths from the API).
+      Login brute-force limit was already there (429). Still to do: optionally blocking
+      webhooks to private networks for internet-exposed installs
 
 **Gate:** migrate a real Sonarr+Radarr install and run side by side; installers work on all
 three OSes; a backup restores on a fresh machine.

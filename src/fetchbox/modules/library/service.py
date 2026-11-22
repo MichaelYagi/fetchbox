@@ -58,7 +58,7 @@ from fetchbox.modules.storage.models import Destination
 from fetchbox.modules.storage.service import RECYCLE_DIR, StorageService
 from fetchbox.providers.download_clients import ClientFile, DownloadClientError
 from fetchbox.providers.storage import StorageError
-from fetchbox.providers.storage.local import quick_hash
+from fetchbox.providers.storage.local import inside, quick_hash
 
 log = structlog.get_logger(__name__)
 
@@ -750,6 +750,10 @@ class LibraryService:
 
     async def _place(self, src: Path, dst: Path, dest: Destination) -> str:
         """Put src at dst using the destination's link mode. Returns the mode used."""
+        try:
+            inside(dest.path, dst)  # never write outside the library folder
+        except StorageError as exc:
+            raise ImportProblem(exc.message, retry=False) from None
         local = self.storage.local
         existing = await asyncio.to_thread(_compare, src, dst)
         if existing in ("same", "linked"):
@@ -1073,7 +1077,12 @@ class LibraryService:
         failed: list[dict[str, Any]] = []
         for p in plan:
             root = Path(p["root"])
-            src, dst = root / p["current"], root / p["new"]
+            try:
+                src, dst = inside(root, p["current"]), inside(root, p["new"])
+            except StorageError as exc:
+                failed.append({"file_id": p["file_id"], "current": p["current"],
+                               "error": exc.message})  # fmt: skip
+                continue
             try:
                 await asyncio.to_thread(_move, src, dst, root)
             except OSError as exc:
@@ -1110,7 +1119,10 @@ class LibraryService:
         ``items``: they become acquired, cutoff judged by the file's quality. Items that
         already have a file, or a file already recorded, are left alone. Returns whether
         anything was recorded."""
-        path = Path(dest.path) / rel
+        try:
+            path = inside(dest.path, rel)  # a path from the API: stay in the folder
+        except StorageError:
+            return False
         if not items or not await asyncio.to_thread(path.is_file):
             return False
         parsed = parse_release(PurePosixPath(rel).name)
