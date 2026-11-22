@@ -109,6 +109,10 @@ def _listen_port(listen: str) -> int:
     return int(m.group(1)) if m else 6881
 
 
+def _slashes(path: str) -> str:
+    return path.replace("\\", "/")
+
+
 def ref_of(hashes: Any) -> ClientRef:
     v1 = str(hashes.v1)
     if v1 and set(v1) != {"0"}:
@@ -553,13 +557,15 @@ class BuiltinClient(DownloadClientProvider):
         if ti is None:
             raise DownloadClientError("not_found", f"torrent {ref} has no metadata yet")
         fs = ti.layout() if hasattr(ti, "layout") else ti.files()
-        index = {fs.file_path(i): i for i in range(fs.num_files())}
-        # a file moved before (into the library) is known by where it is now too
-        index.update({path: i for i, path in self._renamed.get(ref, {}).items()})
+        # torrent paths with either separator (Windows reports backslashes); a file moved
+        # before (into the library) is also known by where it is now
+        index = {_slashes(fs.file_path(i)): i for i in range(fs.num_files())}
+        index.update({_slashes(path): i for i, path in self._renamed.get(ref, {}).items()})
         targets: dict[int, Path] = {}
         for rel, dst in moves.items():
-            if rel not in index:
+            if _slashes(rel) not in index:
                 raise DownloadClientError("not_found", f"{rel} isn't a file of torrent {ref}")
+            rel = _slashes(rel)
             Path(dst).parent.mkdir(parents=True, exist_ok=True)
             targets[index[rel]] = Path(dst)
         self._rename_failed.pop(ref, None)

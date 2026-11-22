@@ -302,3 +302,22 @@ async def test_built_in_downloads_go_into_the_library_folders(
                           json={"policy": {"save_path": str(tmp_path / "Torrents")}})  # fmt: skip
         assert r.status_code == 422 and "library folders" in r.text
         assert not (tmp_path / "Torrents").exists()
+
+
+async def test_a_missing_default_library_folder_is_created_not_waited_for(
+    c: httpx.AsyncClient, fakes: Fakes, settings: Any, tmp_path: Path
+) -> None:
+    """Fetchbox's own default folder may not exist yet (the first health check creates it):
+    a download then creates it and starts, rather than waiting as for a missing share."""
+    import shutil
+
+    movies = settings.downloads_dir / "Movies"
+    shutil.rmtree(movies, ignore_errors=True)
+    t = make_torrent(tmp_path / "t", "Dune.2021.1080p.WEB-DL-X", {"x.mkv": MB})
+    await _grab(c, fakes, Item(t.name, magnet=t.magnet, infohash=t.info_hash))
+
+    async def started() -> bool:
+        return (await _download(c)) is not None
+
+    await until(started, within=5)  # well before the add's first retry (10 s)
+    assert movies.is_dir()
