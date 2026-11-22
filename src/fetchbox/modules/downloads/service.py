@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import os
 import re
 from collections.abc import Sequence
 from datetime import timedelta
@@ -75,6 +76,15 @@ def _new_policy(data: dict[str, Any]) -> Policy:
             errors=[FieldError(field="body.policy.save_path", message=why)],
         )  # fmt: skip
     return policy
+
+
+def _norm_path(p: str) -> str:
+    """For comparing paths: one separator, and Windows' case-insensitivity."""
+    return os.path.normcase(os.path.normpath(p))
+
+
+def _same_path(a: str, b: str) -> bool:
+    return _norm_path(a) == _norm_path(b)
 
 
 def _remove_leftovers(files: list[Path], save_path: str | None) -> None:
@@ -418,7 +428,7 @@ class DownloadsService:
                 files = await client.files(d.client_ref)
             except DownloadClientError:
                 continue
-            if any(f.path == old for f in files):
+            if any(_same_path(f.path, old) for f in files):
                 await client.relocate(d.client_ref, {old: new})
                 return True
         return False
@@ -428,7 +438,7 @@ class DownloadsService:
         them (keeping the data), else they'd error over the missing file."""
         if not paths:
             return 0
-        wanted = {str(Path(p)) for p in paths}
+        wanted = {_norm_path(p) for p in paths}
         async with self.db.sessionmaker() as s:
             rows = list(
                 (
@@ -448,7 +458,7 @@ class DownloadsService:
                 files = await client.files(d.client_ref)
             except DownloadClientError:
                 continue
-            if any(str(Path(f.path)) in wanted for f in files if Path(f.path).is_absolute()):
+            if any(_norm_path(f.path) in wanted for f in files if Path(f.path).is_absolute()):
                 await self.remove(d.id, delete_data=False, blocklist=False, actor=Actor())
                 stopped += 1
         return stopped
@@ -464,6 +474,18 @@ class DownloadsService:
             return []
         root = Path(d.save_path)
         return [root / f.path for f in files if not Path(f.path).is_absolute()]
+
+    async def _is_default_folder(self, folder: Path) -> bool:
+        from fetchbox.modules.storage.models import Destination
+
+        async with self.db.sessionmaker() as s:
+            return bool(
+                await s.scalar(
+                    select(Destination.id).where(
+                        Destination.path == str(folder), Destination.is_default.is_(True)
+                    )
+                )
+            )
 
     async def library_folder(self, title: Title | None, media_kind: str) -> Path | None:
         """The title's library folder (its own, else the default one for its kind)."""
@@ -570,6 +592,11 @@ class DownloadsService:
             # for torrents, seeded from it. One file, in the library. An external client
             # keeps its own folder unless the client's policy names one.
             folder = await self.library_folder(title, media_kind) if built_in else None
+            # Fetchbox's own default folder is simply created (the first health check may
+            # not have run yet); one you chose may be an unmounted share: wait for it
+            missing = folder is not None and not await asyncio.to_thread(folder.is_dir)
+            if missing and folder is not None and await self._is_default_folder(folder):
+                await asyncio.to_thread(folder.mkdir, parents=True, exist_ok=True)
             if folder is not None and not await asyncio.to_thread(folder.is_dir):
                 # A NAS that's off, a folder gone: never download onto the disk underneath;
                 # the grab waits and is tried again
