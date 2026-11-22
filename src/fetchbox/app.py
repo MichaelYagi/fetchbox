@@ -239,6 +239,7 @@ def create_app(
         )
         app.state.storage = storage
         library = LibraryService(db, bus, jobs, storage, downloads, profiles, media)
+        library.music = music
 
         def music_naming() -> Any:
             from fetchbox.modules.library.music_files import Naming

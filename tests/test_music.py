@@ -239,6 +239,17 @@ async def test_download_and_import_an_album(
         for i, t in enumerate(dummy["tracks"])
     }
     files["folder.jpg"] = b"\xff\xd8\xff not really"
+    if not seeding:
+        # An album with no track list yet (one not monitored, downloaded by hand): the
+        # import asks MusicBrainz itself rather than waiting for a pick that never comes.
+        from sqlalchemy import delete, update
+
+        from fetchbox.modules.media.models import Album, Track
+
+        async with music.db.sessionmaker() as s:
+            await s.execute(delete(Track).where(Track.album_id == dummy["id"]))
+            await s.execute(update(Album).where(Album.id == dummy["id"]).values(edition_mbid=None))
+            await s.commit()
     name = "Portishead - Dummy (1994) [FLAC]"
     made = _album_torrent(tmp_path / "seedroot", name, files)
     seed = await seeder(made)
