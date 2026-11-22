@@ -266,6 +266,17 @@ async def test_download_and_import_an_album(
     else:  # hardlinked to the seeding download: left exactly as downloaded
         assert imported_ev["data"]["link_mode"] == "hardlink"
         assert imported_ev["data"]["tagged"] == 0 and not (first.tags or {}).get("title")
+        # once the torrent is removed, the held-back tags are written
+        [dl] = (await c.get("/downloads")).json()
+        assert (await c.delete(f"/downloads/{dl['id']}")).status_code == 204
+
+        async def tagged() -> bool:
+            f = mutagen.File(folder / "01 - Mysterons.flac")
+            return bool(f.tags and f.tags.get("title") == ["Mysterons"])
+
+        await until(tagged, within=20)
+        last = mutagen.File(folder / "11 - Glory Box.flac")
+        assert last["tracknumber"] == ["11"] and last["album"] == ["Dummy"]
     assert imported_ev["data"]["quality"] == "FLAC"
     queue = (await c.get("/downloads")).json()
     assert queue[0]["imported_to"].endswith("Portishead/Dummy (1994)")

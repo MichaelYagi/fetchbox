@@ -449,7 +449,8 @@ Progress (branch `phase5`, PR #7):
       shared with a seeding torrent), upgrades recycle the old album
 - [x] Web: Add > Music, artist page (albums by kind, tracks, editions), library cards
 - [ ] RSS for music
-- [ ] Write the tags deferred while a hardlinked album was seeding
+- [x] Write the tags deferred while a hardlinked album was seeding (when the torrent is
+      removed: by hand or at its seeding goal; a paused one may seed again)
 - [ ] Import an existing music folder (by tags)
 - [ ] Music naming presets in Settings
 - [ ] Album release dates on the calendar

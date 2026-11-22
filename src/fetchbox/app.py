@@ -39,6 +39,7 @@ from fetchbox.modules.library import router as library_router
 from fetchbox.modules.library.existing import ExistingLibrary
 from fetchbox.modules.library.maintenance import LibraryCheck
 from fetchbox.modules.library.migrate import Migrator
+from fetchbox.modules.library.music_tags import DeferredTags
 from fetchbox.modules.library.relocate import FolderMover
 from fetchbox.modules.library.service import LibraryService
 from fetchbox.modules.media import music_router
@@ -253,6 +254,7 @@ def create_app(
         library_check = LibraryCheck(db, bus, jobs, storage)
         library_check.register_jobs()
         app.state.library_check = library_check
+        DeferredTags(db, bus, jobs).register_jobs()
         mover = FolderMover(db, jobs, storage)
         mover.register_jobs()
         app.state.folder_mover = mover
