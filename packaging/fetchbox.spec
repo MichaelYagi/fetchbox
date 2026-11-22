@@ -32,6 +32,7 @@ hidden = (
     + ["aiosqlite", "libtorrent", "argon2", "psutil"]
     # bs4 loads its parser by name: the HTML responses of indexer definitions use lxml
     + ["bs4.builder._lxml", "lxml.etree", "lxml._elementpath", "lxml.html"]
+    + ["python_multipart"]  # FastAPI imports it lazily for uploads (backups)
 )
 binaries = collect_dynamic_libs("libtorrent")
 excludes = ["tkinter", "pytest", "mypy", "ruff"]

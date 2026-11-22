@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { ApiError, del, get, patch, post, type S } from '#lib/api.ts';
+	import BackupsCard from '#lib/BackupsCard.svelte';
 	import LibraryCard from '#lib/LibraryCard.svelte';
 	import LibraryCheckCard from '#lib/LibraryCheckCard.svelte';
 	import MediaServersCard from '#lib/MediaServersCard.svelte';
@@ -606,6 +607,11 @@
 	<section id="notifications">
 		<h2>Notifications</h2>
 		<NotificationsCard />
+	</section>
+
+	<section id="backups">
+		<h2>Backups</h2>
+		<BackupsCard />
 	</section>
 </main>
 

@@ -25,6 +25,12 @@ def _parser() -> argparse.ArgumentParser:
     serve.add_argument("--log-level", choices=["debug", "info", "warning", "error"])
     serve.add_argument("--log-format", choices=["auto", "json", "console"])
 
+    bk = sub.add_parser("backup", help="back up the database and settings now")
+    bk.add_argument("--with-key", action="store_true",
+                    help="include the secrets key, encrypted with a password you type")  # fmt: skip
+    rs = sub.add_parser("restore", help="restore a backup (Fetchbox must be stopped)")
+    rs.add_argument("file", help="a backup .zip")
+
     corpus = sub.add_parser("corpus", help="collect real release names for parser tests")
     corpus.add_argument("action", choices=["capture"])
     corpus.add_argument("--out", required=True, help="JSONL file to write")
@@ -194,10 +200,53 @@ def main(argv: Sequence[str] | None = None) -> int:
     from fetchbox.core.logging import configure_logging
 
     skip = {"command", "data_dir", "revision", "username", "password_stdin", "action", "out",
-            "search", "limit"}  # fmt: skip
+            "search", "limit", "with_key", "file"}  # fmt: skip
     cli = {k: v for k, v in vars(args).items() if k not in skip}
     settings = load_settings(args.data_dir, **cli)
     configure_logging(settings.log_level, settings.log_format, settings.logs_dir)
+
+    if args.command == "backup":
+        import getpass
+
+        from fetchbox.modules.system.backups import BackupError, Backups
+
+        password = getpass.getpass("Password for the secrets key: ") if args.with_key else None
+        try:
+            b = Backups(settings.data_dir, settings.database_url).create("manual", password)
+        except BackupError as exc:
+            print(f"error: {exc.message}", file=sys.stderr)
+            return 2
+        print(f"backup written: {b.path}")
+        return 0
+
+    if args.command == "restore":
+        import getpass
+        import shutil
+
+        from fetchbox import migrations
+        from fetchbox.modules.system.backups import BACKUP_DIR, BackupError, Backups
+
+        svc = Backups(settings.data_dir, settings.database_url)
+        src = Path(args.file)
+        try:
+            info = svc.info(src)
+            kept = svc.dir / src.name
+            if src.resolve() != kept.resolve():
+                svc.dir.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(src, kept)
+            password = (
+                getpass.getpass("The backup's key password: ")
+                if info.includes_secrets_key
+                else None
+            )
+            svc.stage_restore(kept.stem, password)
+            svc.apply_pending()
+        except BackupError as exc:
+            print(f"error: {exc.message}", file=sys.stderr)
+            return 2
+        migrations.upgrade(settings.database_url)
+        print(f"restored {src.name} (the previous data is in {BACKUP_DIR}/, as before-restore)")
+        return 0
 
     if args.command == "corpus":
         import asyncio

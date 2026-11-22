@@ -418,6 +418,77 @@
     "title": "AuthStatus",
     "type": "object"
    },
+   "BackupIn": {
+    "properties": {
+     "password": {
+      "anyOf": [
+       {
+        "minLength": 8,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Include the secrets key, encrypted with this password (needed to restore on another computer)",
+      "title": "Password"
+     }
+    },
+    "title": "BackupIn",
+    "type": "object"
+   },
+   "BackupOut": {
+    "properties": {
+     "app_version": {
+      "title": "App Version",
+      "type": "string"
+     },
+     "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "includes_secrets_key": {
+      "title": "Includes Secrets Key",
+      "type": "boolean"
+     },
+     "reason": {
+      "description": "manual, scheduled, pre-migration, before-restore, uploaded",
+      "title": "Reason",
+      "type": "string"
+     },
+     "schema_revision": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Schema Revision"
+     },
+     "size": {
+      "title": "Size",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "id",
+     "size",
+     "created_at",
+     "reason",
+     "app_version",
+     "schema_revision",
+     "includes_secrets_key"
+    ],
+    "title": "BackupOut",
+    "type": "object"
+   },
    "BlockIn": {
     "properties": {
      "guid": {
@@ -584,6 +655,20 @@
      "created_at"
     ],
     "title": "BlockOut",
+    "type": "object"
+   },
+   "Body_upload_backup_api_v1_backups_upload_post": {
+    "properties": {
+     "file": {
+      "contentMediaType": "application/octet-stream",
+      "title": "File",
+      "type": "string"
+     }
+    },
+    "required": [
+     "file"
+    ],
+    "title": "Body_upload_backup_api_v1_backups_upload_post",
     "type": "object"
    },
    "CalendarEntry": {
@@ -5622,6 +5707,42 @@
     "title": "RenameStepOut",
     "type": "object"
    },
+   "RestoreIn": {
+    "properties": {
+     "password": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "The backup's key password",
+      "title": "Password"
+     }
+    },
+    "title": "RestoreIn",
+    "type": "object"
+   },
+   "RestoreOut": {
+    "properties": {
+     "restarting": {
+      "description": "False: restart Fetchbox yourself to finish",
+      "title": "Restarting",
+      "type": "boolean"
+     },
+     "staged": {
+      "$ref": "#/components/schemas/BackupOut"
+     }
+    },
+    "required": [
+     "staged",
+     "restarting"
+    ],
+    "title": "RestoreOut",
+    "type": "object"
+   },
    "Revision": {
     "properties": {
      "real": {
@@ -8970,6 +9091,361 @@
     "summary": "Run Schedule",
     "tags": [
      "automation"
+    ]
+   }
+  },
+  "/api/v1/backups": {
+   "get": {
+    "operationId": "list_backups_api_v1_backups_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/BackupOut"
+         },
+         "title": "Response List Backups Api V1 Backups Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "List Backups",
+    "tags": [
+     "system"
+    ]
+   },
+   "post": {
+    "description": "Back up the database and settings now (safe while Fetchbox runs).",
+    "operationId": "make_backup_api_v1_backups_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "anyOf": [
+         {
+          "$ref": "#/components/schemas/BackupIn"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "title": "Body"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/BackupOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Unprocessable Content"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Make Backup",
+    "tags": [
+     "system"
+    ]
+   }
+  },
+  "/api/v1/backups/upload": {
+   "post": {
+    "description": "Add a backup made elsewhere (checked before it's kept).",
+    "operationId": "upload_backup_api_v1_backups_upload_post",
+    "requestBody": {
+     "content": {
+      "multipart/form-data": {
+       "schema": {
+        "$ref": "#/components/schemas/Body_upload_backup_api_v1_backups_upload_post"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/BackupOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Unprocessable Content"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Upload Backup",
+    "tags": [
+     "system"
+    ]
+   }
+  },
+  "/api/v1/backups/{backup_id}": {
+   "delete": {
+    "operationId": "delete_backup_api_v1_backups__backup_id__delete",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "backup_id",
+      "required": true,
+      "schema": {
+       "title": "Backup Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Delete Backup",
+    "tags": [
+     "system"
+    ]
+   },
+   "get": {
+    "operationId": "download_backup_api_v1_backups__backup_id__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "backup_id",
+      "required": true,
+      "schema": {
+       "title": "Backup Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Download Backup",
+    "tags": [
+     "system"
+    ]
+   }
+  },
+  "/api/v1/backups/{backup_id}/restore": {
+   "post": {
+    "description": "Restore a backup: it is staged, Fetchbox stops, and the next start applies it\n(keeping the current data as a before-restore backup) and brings it up to date.",
+    "operationId": "restore_backup_api_v1_backups__backup_id__restore_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "backup_id",
+      "required": true,
+      "schema": {
+       "title": "Backup Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "anyOf": [
+         {
+          "$ref": "#/components/schemas/RestoreIn"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "title": "Body"
+       }
+      }
+     }
+    },
+    "responses": {
+     "202": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/RestoreOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Conflict"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Unprocessable Content"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Restore Backup",
+    "tags": [
+     "system"
     ]
    }
   },

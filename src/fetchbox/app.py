@@ -52,10 +52,11 @@ from fetchbox.modules.sources import router as sources_router
 from fetchbox.modules.sources.service import SourcesService
 from fetchbox.modules.storage import router as storage_router
 from fetchbox.modules.storage.service import StorageService
-from fetchbox.modules.system import activity_router, jobs_router
+from fetchbox.modules.system import activity_router, backups_router, jobs_router
 from fetchbox.modules.system import jobs as system_jobs
 from fetchbox.modules.system import router as system_router
 from fetchbox.modules.system.activity import ActivityWriter
+from fetchbox.modules.system.backups import Backups, sqlite_path
 from fetchbox.modules.system.config import ConfigService
 from fetchbox.modules.system.service import register_core_checks
 from fetchbox.providers import builtin as _builtin_providers  # noqa: F401 (registers them)
@@ -87,6 +88,7 @@ API_ROUTERS: tuple[APIRouter, ...] = (
     library_router.router,
     integrations_router.router,
     notifications_router.router,
+    backups_router.router,
 )
 
 
@@ -124,12 +126,24 @@ def create_app(
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         settings.data_dir.mkdir(parents=True, exist_ok=True)
+        backups = Backups(settings.data_dir, settings.database_url)
+        if sqlite_path(settings.database_url) is not None:
+            # A restore staged by POST /backups/{id}/restore is applied now, before
+            # anything opens the database; then a backup if a migration is due.
+            restored = await asyncio.to_thread(backups.apply_pending)
+            if restored:
+                log.warning("backup.restored", backup_created_at=restored.get("created_at"),
+                            app_version=restored.get("app_version"))  # fmt: skip
+            if settings.run_migrations:
+                pre = await asyncio.to_thread(backups.before_migrations)
+                if pre is not None:
+                    log.info("backup.pre_migration", backup=pre.id)
         if settings.run_migrations:
-            # TODO(phase 4): automatic pre-migration backup before upgrading.
             await asyncio.to_thread(migrations.upgrade, settings.database_url)
 
         db = Database(settings.database_url)
         bus = EventBus()
+        app.state.backups = backups
         jobs = JobRunner(db, bus)
         box, _created = load_secrets(settings.data_dir)
         state = AppState(
@@ -211,6 +225,7 @@ def create_app(
         app.state.storage = storage
         library = LibraryService(db, bus, jobs, storage, downloads, profiles, media)
         storage.register_jobs(jobs, state.scheduler, lambda: config.current.storage.recycle_days)
+        backups_router.register(jobs, state.scheduler, backups)
         integrations = IntegrationsService(db, bus, box, provider_registry)
         notifications = NotificationsService(db, bus, box, provider_registry)
         app.state.notifications = notifications

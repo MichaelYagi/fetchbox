@@ -340,6 +340,15 @@ Sonarr/Radarr migration wizard; tray (keyring-stored key); packaging (multi-arch
 PyInstaller, Inno Setup, .app, AppImage/.deb); hardening (CSP, brute-force limit, outbound
 restrictions, filesystem-boundary tests).
 
+Progress:
+- [x] Backups and restore: zips in `<data>/backups` (SQLite online-backup snapshot,
+      config.toml, manifest; the secrets key only with a password, scrypt + AES-GCM);
+      weekly (last 8), on demand, automatically before migrations (last 5); restore is
+      staged, the server stops, and the next start swaps it in (current data kept as a
+      before-restore backup) and migrates it forward; newer-schema backups refused.
+      API `/backups` (list, create, download, delete, upload, restore), CLI
+      `fetchbox backup` / `fetchbox restore <zip>`, Settings > Backups
+
 **Gate:** migrate a real Sonarr+Radarr install and run side by side; installers work on all
 three OSes; a backup restores on a fresh machine.
 
