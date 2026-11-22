@@ -153,6 +153,22 @@ label {
 	gap: 0.25rem;
 	font-size: 0.9rem;
 }
+/* Checkboxes and radios: their natural size (not a text field's padding), and a label
+   around one reads on one line: the box, then its text. */
+input[type='checkbox'],
+input[type='radio'] {
+	width: auto;
+	padding: 0;
+	margin: 0;
+	flex: none;
+	accent-color: var(--accent);
+}
+label:has(> input[type='checkbox']),
+label:has(> input[type='radio']) {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
 .badge {
 	display: inline-block;
 	font-size: 0.75rem;
