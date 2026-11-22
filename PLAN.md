@@ -368,6 +368,14 @@ Progress:
       when placing imports, renaming and adopting existing files (paths from the API).
       Login brute-force limit was already there (429). Still to do: optionally blocking
       webhooks to private networks for internet-exposed installs
+- [x] Sonarr/Radarr migration wizard (`/library/migrate`): connect (URL + API key, kept in
+      memory, never in job payloads) -> scan (titles by TMDB id, monitored, profiles mapped
+      by resolution, root folders, files; indexers / clients listed only: their API masks
+      secrets) -> apply: root folders become library folders (optional path translation),
+      titles added without an immediate search, Sonarr's per-episode monitoring copied,
+      files recorded in place. Radarr / Sonarr never written to: side by side works.
+      Built and checked against real Radarr 7.0.3 and Sonarr 4.0.20 (their responses
+      recorded as test fixtures); refuses up front without a TMDB key
 
 **Gate:** migrate a real Sonarr+Radarr install and run side by side; installers work on all
 three OSes; a backup restores on a fresh machine.

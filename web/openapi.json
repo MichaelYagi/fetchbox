@@ -3889,6 +3889,100 @@
     "title": "MediaServerTestOut",
     "type": "object"
    },
+   "MigrateApplyIn": {
+    "properties": {
+     "api_key": {
+      "description": "Settings > General > API Key",
+      "minLength": 1,
+      "title": "Api Key",
+      "type": "string"
+     },
+     "kind": {
+      "enum": [
+       "radarr",
+       "sonarr"
+      ],
+      "title": "Kind",
+      "type": "string"
+     },
+     "only": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "integer"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Their title ids; null: all",
+      "title": "Only"
+     },
+     "path_map": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/PathMapIn"
+      },
+      "title": "Path Map",
+      "type": "array"
+     },
+     "profile_map": {
+      "additionalProperties": {
+       "type": "string"
+      },
+      "default": {},
+      "description": "Their quality profile id -> a Fetchbox profile id",
+      "title": "Profile Map",
+      "type": "object"
+     },
+     "url": {
+      "description": "e.g. http://192.168.1.10:7878",
+      "minLength": 1,
+      "title": "Url",
+      "type": "string"
+     }
+    },
+    "required": [
+     "kind",
+     "url",
+     "api_key"
+    ],
+    "title": "MigrateApplyIn",
+    "type": "object"
+   },
+   "MigrateConnectIn": {
+    "properties": {
+     "api_key": {
+      "description": "Settings > General > API Key",
+      "minLength": 1,
+      "title": "Api Key",
+      "type": "string"
+     },
+     "kind": {
+      "enum": [
+       "radarr",
+       "sonarr"
+      ],
+      "title": "Kind",
+      "type": "string"
+     },
+     "url": {
+      "description": "e.g. http://192.168.1.10:7878",
+      "minLength": 1,
+      "title": "Url",
+      "type": "string"
+     }
+    },
+    "required": [
+     "kind",
+     "url",
+     "api_key"
+    ],
+    "title": "MigrateConnectIn",
+    "type": "object"
+   },
    "MountOut": {
     "properties": {
      "device": {
@@ -4608,6 +4702,28 @@
      "normalized_title"
     ],
     "title": "ParsedRelease",
+    "type": "object"
+   },
+   "PathMapIn": {
+    "properties": {
+     "from": {
+      "description": "The path as Radarr/Sonarr sees it",
+      "minLength": 1,
+      "title": "From",
+      "type": "string"
+     },
+     "to": {
+      "description": "The same folder as Fetchbox sees it",
+      "minLength": 1,
+      "title": "To",
+      "type": "string"
+     }
+    },
+    "required": [
+     "from",
+     "to"
+    ],
+    "title": "PathMapIn",
     "type": "object"
    },
    "PathMapping-Input": {
@@ -14454,6 +14570,136 @@
      }
     ],
     "summary": "Import Existing",
+    "tags": [
+     "library"
+    ]
+   }
+  },
+  "/api/v1/library/migrate/apply": {
+   "post": {
+    "description": "Add their titles and record their files in place. Radarr / Sonarr aren't changed.",
+    "operationId": "migrate_apply_api_v1_library_migrate_apply_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/MigrateApplyIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "202": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/JobOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Conflict"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Unprocessable Content"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Migrate Apply",
+    "tags": [
+     "library"
+    ]
+   }
+  },
+  "/api/v1/library/migrate/scan": {
+   "post": {
+    "description": "Read what Radarr or Sonarr has (changes nothing on either side). The job's result\nlists titles, files, root folders, profile mapping, indexers and clients.",
+    "operationId": "migrate_scan_api_v1_library_migrate_scan_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/MigrateConnectIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "202": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/JobOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Conflict"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Unprocessable Content"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Migrate Scan",
     "tags": [
      "library"
     ]

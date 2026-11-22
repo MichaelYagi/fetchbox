@@ -38,6 +38,7 @@ from fetchbox.modules.integrations.service import IntegrationsService
 from fetchbox.modules.library import router as library_router
 from fetchbox.modules.library.existing import ExistingLibrary
 from fetchbox.modules.library.maintenance import LibraryCheck
+from fetchbox.modules.library.migrate import Migrator
 from fetchbox.modules.library.service import LibraryService
 from fetchbox.modules.media import router as media_router
 from fetchbox.modules.media.service import MediaService
@@ -243,6 +244,11 @@ def create_app(
         library_check = LibraryCheck(db, bus, jobs, storage)
         library_check.register_jobs()
         app.state.library_check = library_check
+        migrator = Migrator(
+            db, jobs, storage=storage, media=media, profiles=profiles, library=library
+        )
+        migrator.register_jobs()
+        app.state.migrator = migrator
         app.state.existing = existing
         library.register_jobs()
         app.state.library = library

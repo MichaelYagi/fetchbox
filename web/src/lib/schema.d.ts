@@ -1317,6 +1317,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/library/migrate/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Migrate Apply
+         * @description Add their titles and record their files in place. Radarr / Sonarr aren't changed.
+         */
+        post: operations["migrate_apply_api_v1_library_migrate_apply_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/library/migrate/scan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Migrate Scan
+         * @description Read what Radarr or Sonarr has (changes nothing on either side). The job's result
+         *     lists titles, files, root folders, profile mapping, indexers and clients.
+         */
+        post: operations["migrate_scan_api_v1_library_migrate_scan_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/library/naming-options": {
         parameters: {
             query?: never;
@@ -3659,6 +3700,60 @@ export interface components {
             /** Ok */
             ok: boolean;
         };
+        /** MigrateApplyIn */
+        MigrateApplyIn: {
+            /**
+             * Api Key
+             * @description Settings > General > API Key
+             */
+            api_key: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "radarr" | "sonarr";
+            /**
+             * Only
+             * @description Their title ids; null: all
+             */
+            only?: number[] | null;
+            /**
+             * Path Map
+             * @default []
+             */
+            path_map: components["schemas"]["PathMapIn"][];
+            /**
+             * Profile Map
+             * @description Their quality profile id -> a Fetchbox profile id
+             * @default {}
+             */
+            profile_map: {
+                [key: string]: string;
+            };
+            /**
+             * Url
+             * @description e.g. http://192.168.1.10:7878
+             */
+            url: string;
+        };
+        /** MigrateConnectIn */
+        MigrateConnectIn: {
+            /**
+             * Api Key
+             * @description Settings > General > API Key
+             */
+            api_key: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "radarr" | "sonarr";
+            /**
+             * Url
+             * @description e.g. http://192.168.1.10:7878
+             */
+            url: string;
+        };
         /** MountOut */
         MountOut: {
             /** Device */
@@ -3953,6 +4048,19 @@ export interface components {
             video_codec?: string | null;
             /** Year */
             year?: number | null;
+        };
+        /** PathMapIn */
+        PathMapIn: {
+            /**
+             * From
+             * @description The path as Radarr/Sonarr sees it
+             */
+            from: string;
+            /**
+             * To
+             * @description The same folder as Fetchbox sees it
+             */
+            to: string;
         };
         /** PathMapping */
         "PathMapping-Input": {
@@ -9123,6 +9231,94 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Problem"];
                     "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    migrate_apply_api_v1_library_migrate_apply_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MigrateApplyIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    migrate_scan_api_v1_library_migrate_scan_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MigrateConnectIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobOut"];
                 };
             };
             /** @description Conflict */
