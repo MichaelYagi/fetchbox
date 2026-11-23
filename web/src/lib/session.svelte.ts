@@ -6,11 +6,13 @@ export const session = $state<{
 	checked: boolean;
 	health: S['HealthReport'] | null;
 	host: S['HostInfo'] | null;
+	version: string | null;
 }>({
 	me: null,
 	checked: false,
 	health: null,
-	host: null
+	host: null,
+	version: null
 });
 
 /** How Windows sees a path when Fetchbox runs in WSL (null otherwise). */
