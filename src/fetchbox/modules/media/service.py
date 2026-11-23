@@ -182,6 +182,7 @@ class MediaService:
         search_after: datetime | None = None,
         minimum_availability: str = "released",
         folder: Callable[[], Awaitable[str | None]] | None = None,
+        title_folder: str | None = None,
     ) -> Title:
         """``search_after`` None means search now (automatic search picks it up), once
         the movie is available per ``minimum_availability``."""
@@ -198,6 +199,7 @@ class MediaService:
             tmdb_id=tmdb_id,
             profile_id=profile_id,
             destination_id=destination_id,
+            folder=title_folder,
             monitor_mode="all" if monitored else "none",
             minimum_availability=minimum_availability,
             refreshed_at=utcnow(),
@@ -224,6 +226,7 @@ class MediaService:
         actor: Actor,
         search_after: datetime | None = None,
         folder: Callable[[], Awaitable[str | None]] | None = None,
+        title_folder: str | None = None,
     ) -> Title:
         """A series with every season and episode TMDB lists; one wanted item per episode,
         monitored per ``monitor_mode``."""
@@ -240,6 +243,7 @@ class MediaService:
             tmdb_id=tmdb_id,
             profile_id=profile_id,
             destination_id=destination_id,
+            folder=title_folder,
             monitor_mode=monitor_mode,
             refreshed_at=utcnow(),
         )

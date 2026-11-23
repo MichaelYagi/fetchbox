@@ -50,6 +50,10 @@ class Title(IdMixin, VersionMixin, Base):
     profile_id: Mapped[str] = mapped_column(ForeignKey("quality_profile.id"))
     # TODO(phase 1, storage): FK to destination once that table exists.
     destination_id: Mapped[str | None] = mapped_column(String(26), nullable=True)
+    # Its own folder inside the library folder ("The Bear", "Artist"): remembered when
+    # the first file is filed or found there, then used whatever the naming says.
+    # None: not decided yet (the naming gives it).
+    folder: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     monitor_mode: Mapped[str] = mapped_column(String(20), default="all")
     # Movies: when automatic search starts (announced, in_cinemas, released).
     minimum_availability: Mapped[str] = mapped_column(String(20), default="released")

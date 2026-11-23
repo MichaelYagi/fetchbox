@@ -171,6 +171,7 @@ class MusicService:
         actor: Actor,
         search_after: datetime | None = None,
         folder: Callable[[], Awaitable[str | None]] | None = None,
+        title_folder: str | None = None,
     ) -> Title:
         if monitor_mode not in ARTIST_MODES:
             raise _invalid("body.monitor_mode", f"one of {', '.join(ARTIST_MODES)}")
@@ -197,6 +198,7 @@ class MusicService:
         title = Title(
             kind="music",
             destination_id=destination_id,
+            folder=title_folder,
             mbid=artist.id,
             name=artist.name,
             sort_name=artist.sort_name,

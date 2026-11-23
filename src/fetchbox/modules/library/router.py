@@ -97,7 +97,103 @@ class TitleFolderOut(BaseModel):
     library_folder_name: str
     library_folder_path: str
     own: bool = Field(description="Chosen for this title; false: the default for its kind")
-    path: str = Field(description="Its folder in there, by the naming settings")
+    remembered: bool = Field(
+        default=False,
+        description="Its own folder is set (found on disk, chosen, or where its first file "
+        "went): new files go there whatever the naming says",
+    )
+    path: str = Field(description="Its folder: remembered, else by the naming settings")
+
+
+class FolderIn(BaseModel):
+    path: str = Field(
+        min_length=1,
+        max_length=4000,
+        description="Full path of its folder, like /media/TV/The Bear",
+    )
+    move: bool = Field(
+        default=True, description="Move what's in its current folder there (else leave it)"
+    )
+
+
+class FolderFailOut(BaseModel):
+    path: str
+    error: str
+
+
+class FolderChangeOut(BaseModel):
+    path: str
+    moved: int = Field(description="Files moved")
+    failed: list[FolderFailOut] = Field(description="Files that couldn't be moved (left)")
+
+
+@router.put(
+    "/titles/{title_id}/folder",
+    response_model=FolderChangeOut,
+    dependencies=_write,
+    responses=pr(404, 409, 422),
+)
+async def change_title_folder(
+    title_id: str, body: FolderIn, request: Request, p: CurrentPrincipal
+) -> FolderChangeOut:
+    """Give a title another folder; its library folder is the parent (a new one is added
+    to Settings, named like the default). New files go there whatever the naming says."""
+    out = await _svc(request).change_folder(title_id, body.path, move=body.move, actor=p.actor())
+    return FolderChangeOut(
+        path=out["path"], moved=out["moved"], failed=[FolderFailOut(**f) for f in out["failed"]]
+    )
+
+
+class FolderChoiceOut(BaseModel):
+    name: str = Field(description="A folder in the library folder")
+    match: Literal["id", "title"] = Field(
+        description="Its TMDB/TVDB id is in the name, or its title"
+    )
+    files: int = Field(description="Video (or audio) files in it")
+    seasons: int = Field(description="Season folders in it (TV)")
+
+
+class FolderChoicesOut(BaseModel):
+    library_folder: str
+    suggested: str | None = Field(
+        description="The folder the naming creates; null: music named Artist - Album (Year), "
+        "which has no artist folder"
+    )
+    choices: list[FolderChoiceOut] = Field(description="Folders already there for it")
+
+
+@router.get(
+    "/library/folder-choices",
+    response_model=FolderChoicesOut,
+    dependencies=_read,
+    responses=pr(422),
+)
+async def folder_choices(
+    request: Request,
+    kind: Literal["movie", "series", "music"],
+    name: str = Query(min_length=1, max_length=500),
+    year: int | None = None,
+    tmdb_id: int | None = None,
+    folder: str | None = Query(None, max_length=4000, description="Library folder; empty: default"),
+) -> FolderChoicesOut:
+    """Before adding a title: folders already in the library folder that belong to it (its
+    id or its title in the name), and the folder the naming would create instead."""
+    from fetchbox.modules.media.models import Title
+
+    title = Title(kind=kind, name=name, year=year, tmdb_id=tmdb_id)
+    if kind == "series" and tmdb_id:
+        # the TVDB id (in the default show folder name) comes with the details
+        try:
+            detail = await request.app.state.discovery.series(tmdb_id)
+            title.tvdb_id = detail.tvdb_id
+        except Exception:
+            pass
+    out = await _svc(request).folder_choices(title, folder)
+    return FolderChoicesOut(
+        library_folder=out["library_folder"],
+        suggested=out["suggested"],
+        choices=[FolderChoiceOut(**c) for c in out["choices"]],
+    )
 
 
 @router.get(
@@ -115,6 +211,7 @@ async def title_folder(title_id: str, request: Request) -> TitleFolderOut:
         library_folder_name=dest.name,
         library_folder_path=dest.path,
         own=out["own"],
+        remembered=out["remembered"],
         path=out["path"],
     )
 

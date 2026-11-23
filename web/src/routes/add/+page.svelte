@@ -65,6 +65,43 @@
 	$effect(() => {
 		if (pending && dialog && !dialog.open) dialog.showModal();
 	});
+	// The title's own folder in the library folder: one already there (its id or title in
+	// the name) is offered first, so new files join it; else the naming's new folder.
+	let own = $state<S['FolderChoicesOut'] | null>(null);
+	let ownPick = $state('new'); // 'new' | 'other' | 'use:<name>'
+	let ownOther = $state('');
+	$effect(() => {
+		const p = pending;
+		const f = folder.trim();
+		if (!p) return;
+		const lib = f && f !== defaultFolder(p.kind)?.path ? { folder: f } : {};
+		const who =
+			p.kind === 'music'
+				? { kind: 'music', name: p.a.name }
+				: { kind: p.kind, name: p.r.name, year: p.r.year, tmdb_id: p.r.tmdb_id };
+		const t = setTimeout(async () => {
+			try {
+				const r = await get<S['FolderChoicesOut']>('/library/folder-choices', { ...who, ...lib });
+				if (pending !== p) return;
+				own = r;
+				ownPick = r.choices.length ? `use:${r.choices[0].name}` : 'new';
+			} catch {
+				if (pending === p) own = null;
+			}
+		}, 300);
+		return () => clearTimeout(t);
+	});
+	const ownChoice = () =>
+		ownPick.startsWith('use:')
+			? { title_folder: ownPick.slice(4) }
+			: ownPick === 'other' && ownOther.trim()
+				? { title_folder: ownOther.trim() }
+				: {};
+	const found = (k: string, c: S['FolderChoiceOut']) => {
+		const n = (x: number, one: string) => `${x} ${one}${x === 1 ? '' : 's'}`;
+		if (k === 'series') return c.seasons ? `${n(c.seasons, 'season')}, ${n(c.files, 'episode')}` : n(c.files, 'episode');
+		return n(c.files, k === 'music' ? 'track' : 'video file');
+	};
 
 	function ask(p: NonNullable<typeof pending>) {
 		error = null;
@@ -73,6 +110,9 @@
 		artistMode = 'future';
 		searchNow = true;
 		folder = defaultFolder(p.kind)?.path ?? '';
+		own = null;
+		ownPick = 'new';
+		ownOther = '';
 		pending = p;
 		// fresh, in case Settings changed since the page opened
 		get<S['DestinationOut'][]>('/destinations').then((d) => {
@@ -142,7 +182,8 @@
 				monitor_mode: artistMode,
 				album_kinds: albumKinds,
 				search: searchNow,
-				...folderChoice('music')
+				...folderChoice('music'),
+				...ownChoice()
 			});
 			await goto(`/title/${t.id}`);
 		} catch (err) {
@@ -162,6 +203,7 @@
 				profile_id: profile,
 				search: searchNow,
 				...folderChoice(kind),
+				...ownChoice(),
 				...(kind === 'series' ? { monitor_mode: monitorMode } : { minimum_availability: availability })
 			});
 			await goto(`/title/${t.id}`);
@@ -348,7 +390,7 @@
 				{/if}
 
 				<label class="field">
-					Folder
+					Library folder
 					<input bind:value={folder} list="folder-choices" spellcheck="false" autocomplete="off" />
 					<datalist id="folder-choices">
 						{#each foldersFor(pending.kind) as d (d.id)}<option value={d.path}>{d.name}</option>{/each}
@@ -364,6 +406,28 @@
 					</span>
 				</label>
 				<FolderTest path={folder.trim() || (defaultFolder(pending.kind)?.path ?? '')} />
+
+				{#if own && own.suggested !== null}
+					<fieldset class="own">
+						<legend>{pending.kind === 'movie' ? 'Movie folder' : pending.kind === 'series' ? 'Show folder' : 'Artist folder'}</legend>
+						{#each own.choices as ch (ch.name)}
+							<label class="check">
+								<input type="radio" name="own" value="use:{ch.name}" bind:group={ownPick} />
+								<span>Use existing: <strong>{ch.name}</strong> <span class="muted small">found, {found(pending.kind, ch)}</span></span>
+							</label>
+						{/each}
+						<label class="check">
+							<input type="radio" name="own" value="new" bind:group={ownPick} />
+							<span>{own.choices.length ? 'New folder: ' : ''}<strong>{own.suggested}</strong> <span class="muted small">(created when the first file arrives)</span></span>
+						</label>
+						<label class="check">
+							<input type="radio" name="own" value="other" bind:group={ownPick} />
+							<span class="grow-row">Other:
+								<input class="grow" bind:value={ownOther} onfocus={() => (ownPick = 'other')} placeholder="a folder name in there" spellcheck="false" aria-label="Other folder name" /></span>
+						</label>
+						<span class="muted small">New files go into this folder, whatever the naming says.</span>
+					</fieldset>
+				{/if}
 
 				{#if !(pending.kind !== 'movie' && (isMusic ? artistMode : monitorMode) === 'none')}
 					<label class="inline check">
@@ -460,6 +524,30 @@
 	}
 	.hint {
 		margin: 0;
+	}
+	.own {
+		display: grid;
+		gap: 0.4rem;
+		border: 0;
+		padding: 0;
+		margin: 0;
+	}
+	.own legend {
+		padding: 0;
+		margin-bottom: 0.3rem;
+	}
+	.own strong {
+		overflow-wrap: anywhere;
+	}
+	.grow-row .grow {
+		min-width: 0;
+	}
+	.grow-row {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		flex: 1;
+		min-width: 0;
 	}
 	.results {
 		display: grid;

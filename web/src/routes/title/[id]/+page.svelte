@@ -25,6 +25,30 @@
 	let error = $state('');
 	let message = $state('');
 	let busy = $state('');
+	// Change: another folder for it (full path), moving what's there or not
+	let editingFolder = $state(false);
+	let newFolder = $state('');
+	let moveFiles = $state(true);
+
+	async function saveFolder(e: SubmitEvent) {
+		e.preventDefault();
+		busy = 'folder';
+		error = '';
+		try {
+			const r = await put<S['FolderChangeOut']>(`/titles/${id}/folder`, { path: newFolder.trim(), move: moveFiles });
+			editingFolder = false;
+			message = r.failed.length
+				? `Folder changed; ${r.moved} files moved, ${r.failed.length} couldn't be (left where they were): ${r.failed[0].error}`
+				: r.moved
+					? `Folder changed; ${r.moved} files moved.`
+					: 'Folder changed: new files go there.';
+			await load();
+		} catch (err) {
+			error = err instanceof ApiError ? err.message : String(err);
+		} finally {
+			busy = '';
+		}
+	}
 
 	const series = $derived(title?.kind === 'series');
 	const music = $derived(title?.kind === 'music');
@@ -278,7 +302,31 @@
 						<span class="muted">
 							· {folder.own ? `its own library folder, ${folder.library_folder_name}` : `the ${folder.library_folder_name} folder from Settings`}{#if title.kind === 'music' && folder.path === folder.library_folder_path}, one folder per album{/if}
 						</span>
+						{#if !(title.kind === 'music' && folder.path === folder.library_folder_path) && !editingFolder}
+							<button class="small" onclick={() => ((newFolder = folder!.path), (moveFiles = true), (editingFolder = true))}>Change</button>
+						{/if}
 					</div>
+					{#if editingFolder}
+						<form class="card stack small" onsubmit={saveFolder}>
+							<label class="stack">
+								<span>{series ? 'Show folder' : music ? 'Artist folder' : 'Movie folder'} (full path)</span>
+								<input bind:value={newFolder} required spellcheck="false" aria-label="New folder" />
+							</label>
+							<label>
+								<input type="checkbox" bind:checked={moveFiles} /> Move what's in {folder.path} there
+							</label>
+							<span class="muted">
+								{moveFiles
+									? 'Everything in the folder moves (subtitles and artwork too); files a torrent seeds from move with it.'
+									: "Files stay where they are; new ones go to the new folder."}
+								New files go there whatever the naming says.
+							</span>
+							<div class="row">
+								<button class="primary" disabled={busy === 'folder' || !newFolder.trim()}>{busy === 'folder' ? 'Moving…' : 'Save'}</button>
+								<button type="button" onclick={() => (editingFolder = false)}>Cancel</button>
+							</div>
+						</form>
+					{/if}
 				{/if}
 				{#if wanted}
 					<div class="row">

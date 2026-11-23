@@ -16,7 +16,7 @@ from fetchbox.core.db import utcnow
 from fetchbox.core.errors import problem_responses as pr
 from fetchbox.modules.auth.deps import CurrentPrincipal, require
 from fetchbox.modules.media.music import MusicService
-from fetchbox.modules.media.router import TitleOut, WantedOut, _folder, _one
+from fetchbox.modules.media.router import TitleOut, WantedOut, _folder, _one, own_folder
 
 router = APIRouter(tags=["music"])
 _read = [Depends(require("media:read"))]
@@ -81,6 +81,12 @@ class ArtistIn(BaseModel):
         "the one set in Settings (and it follows that). An existing folder is reused; "
         "another path becomes a new library folder",
     )
+    title_folder: str | None = Field(
+        default=None,
+        max_length=255,
+        description="Its own folder inside the library folder (an existing one: new files "
+        "join it). Empty: the naming decides, when the first file is filed",
+    )
 
 
 @router.post(
@@ -105,6 +111,7 @@ async def add_artist(
         actor=p.actor(),
         search_after=later,
         folder=_folder(request, "music", body.folder, p),
+        title_folder=own_folder(body.title_folder),
     )
     response.status_code = 201
     return await _one(request.app.state.media, t, response)

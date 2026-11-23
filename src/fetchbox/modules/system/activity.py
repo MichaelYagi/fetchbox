@@ -91,6 +91,7 @@ MESSAGES: dict[str, str] = {
     "storage.destination_removed": "Destination {name} removed",
     "library.template_created": "Naming template '{name}' created",
     "library.template_updated": "Naming template '{name}' updated",
+    "library.folder_changed": "Folder changed to {path} ({moved} files moved)",
     "wanted.unlocked": "Unlocked {name}: automatic search may grab it again",
     "wanted.redownload": "Redownloading {name}",
     "download.seeded": "Finished seeding {name} (ratio {ratio}, {hours} h): {action}d",
