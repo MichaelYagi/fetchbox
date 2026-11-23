@@ -31,7 +31,9 @@
 
 	async function loadHost() {
 		try {
-			session.host = (await get<S['StatusInfo']>('/system/status')).host ?? null;
+			const status = await get<S['StatusInfo']>('/system/status');
+			session.host = status.host ?? null;
+			session.version = status.version;
 		} catch {
 			session.host = null;
 		}
@@ -156,7 +158,7 @@
 	{@render children()}
 	{#if session.host}
 		<footer>
-			Fetchbox is running on <strong>{session.host.name}</strong>
+			Fetchbox{session.version ? ` ${session.version}` : ''} is running on <strong>{session.host.name}</strong>
 			({session.host.wsl_distro ? `Linux, ${session.host.wsl_distro} in WSL` : session.host.os}): every
 			folder shown here is on that machine.
 			<a href="/settings#computer">Details</a>
