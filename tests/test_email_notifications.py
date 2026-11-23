@@ -65,7 +65,9 @@ def _start(inbox: Inbox, **kw: Any) -> Controller:
     with socket.socket() as s:  # a free port (aiosmtpd doesn't take 0)
         s.bind(("127.0.0.1", 0))
         port = s.getsockname()[1]
-    c = Controller(inbox, hostname="127.0.0.1", port=port, authenticator=_auth, **kw)
+    # server_hostname: its default (socket.getfqdn) can outlast the start-up wait on a Mac
+    c = Controller(inbox, hostname="127.0.0.1", port=port, authenticator=_auth,
+                   server_hostname="localhost", ready_timeout=30, **kw)  # fmt: skip
     c.start()
     return c
 

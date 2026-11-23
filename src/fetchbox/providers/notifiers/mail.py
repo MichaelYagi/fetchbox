@@ -151,10 +151,12 @@ class EmailNotifier(NotifierProvider):
     def _send(self, m: EmailMessage, cfg: EmailSettings, address: str) -> None:
         where = f"{cfg.host}:{cfg.port}"
         try:
+            # the name said in EHLO: smtplib's default (socket.getfqdn) can take seconds on a Mac
+            me = {"timeout": TIMEOUT, "local_hostname": socket.gethostname() or "localhost"}
             if cfg.port in TLS_PORTS:
-                smtp: smtplib.SMTP = _SMTPS(cfg.host, self._tls, timeout=TIMEOUT)
+                smtp: smtplib.SMTP = _SMTPS(cfg.host, self._tls, **me)
             else:
-                smtp = _SMTP(cfg.host, timeout=TIMEOUT)
+                smtp = _SMTP(cfg.host, **me)
             with smtp:
                 smtp.connect(address, cfg.port)
                 smtp.ehlo()
