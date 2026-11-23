@@ -204,6 +204,40 @@
 		);
 	};
 
+	// Install (the desktop app): the tray downloads it, restarts Fetchbox; the page reloads
+	// once the new version answers.
+	let installing = $state<string | null>(null);
+	let installNote = $state('');
+	async function installUpdate() {
+		if (!update) return;
+		const from = update.current;
+		installNote = '';
+		try {
+			installing = (await post<S['InstallOut']>('/system/updates/install')).version;
+		} catch (e) {
+			installNote = e instanceof ApiError ? e.message : String(e);
+			return;
+		}
+		const started = Date.now();
+		const tick = async () => {
+			try {
+				if ((await get<S['StatusInfo']>('/system/status')).version !== from) {
+					location.reload();
+					return;
+				}
+			} catch {
+				// restarting: not answering for a moment
+			}
+			if (Date.now() - started > 5 * 60_000) {
+				installing = null;
+				installNote = "It's taking longer than expected: look at the Fetchbox tray menu on the computer it runs on.";
+				return;
+			}
+			setTimeout(tick, 3000);
+		};
+		setTimeout(tick, 5000);
+	}
+
 	const setUpdates = (on: boolean) =>
 		act('updates', async () => {
 			await patch('/system/config', { updates: { check: on } });
@@ -296,11 +330,17 @@
 								{update?.current ?? ''}
 								{#if update?.update_available}
 									<a class="badge warn" href={update.url} target="_blank" rel="noreferrer">Update available: {update.latest}</a>
+									{#if update.can_install}
+										<button class="small primary" onclick={installUpdate} disabled={!!installing}>
+											{installing ? `Installing ${installing}… Fetchbox restarts by itself` : `Install ${update.latest}`}
+										</button>
+									{/if}
 								{:else if update?.checked}
 									<span class="muted small">· up to date</span>
 								{:else if update?.error}
 									<span class="muted small">· {update.error}</span>
 								{/if}
+								{#if installNote}<div class="small">{installNote}</div>{/if}
 								<label class="muted small inline-check"
 									><input type="checkbox" checked={config?.config.updates?.check ?? true}
 										onchange={(e) => setUpdates(e.currentTarget.checked)} /> Check for updates (asks GitHub)</label

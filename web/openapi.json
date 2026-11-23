@@ -3841,6 +3841,20 @@
     "title": "IndexerPatch",
     "type": "object"
    },
+   "InstallOut": {
+    "properties": {
+     "version": {
+      "description": "The version being installed",
+      "title": "Version",
+      "type": "string"
+     }
+    },
+    "required": [
+     "version"
+    ],
+    "title": "InstallOut",
+    "type": "object"
+   },
    "InteractiveOut": {
     "properties": {
      "failures": {
@@ -8387,6 +8401,27 @@
     "title": "TrackOut",
     "type": "object"
    },
+   "TrayRequestsOut": {
+    "properties": {
+     "install": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "A version to install now",
+      "title": "Install"
+     }
+    },
+    "required": [
+     "install"
+    ],
+    "title": "TrayRequestsOut",
+    "type": "object"
+   },
    "UnlockIn": {
     "properties": {
      "delete_file": {
@@ -8426,6 +8461,12 @@
    },
    "UpdateOut": {
     "properties": {
+     "can_install": {
+      "default": false,
+      "description": "It can be installed from here: the desktop app, started by its tray, with an installer for this computer in the release",
+      "title": "Can Install",
+      "type": "boolean"
+     },
      "checked": {
       "description": "False: checking is off, or GitHub couldn't be reached",
       "title": "Checked",
@@ -8454,6 +8495,18 @@
        }
       ],
       "title": "Error"
+     },
+     "installing": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Asked to install this version: the tray is on it",
+      "title": "Installing"
      },
      "latest": {
       "anyOf": [
@@ -19160,9 +19213,42 @@
     ]
    }
   },
+  "/api/v1/system/tray/requests": {
+   "post": {
+    "description": "For the desktop tray (polled): what the web UI asked it to do. Taken once.",
+    "operationId": "tray_requests_api_v1_system_tray_requests_post",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TrayRequestsOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Tray Requests",
+    "tags": [
+     "system"
+    ]
+   }
+  },
   "/api/v1/system/updates": {
    "get": {
-    "description": "Is a newer Fetchbox released? (Settings: updates.check; nothing is installed.)",
+    "description": "Is a newer Fetchbox released? (Settings: updates.check.)",
     "operationId": "check_updates_api_v1_system_updates_get",
     "parameters": [
      {
@@ -19210,6 +19296,50 @@
      }
     ],
     "summary": "Check Updates",
+    "tags": [
+     "system"
+    ]
+   }
+  },
+  "/api/v1/system/updates/install": {
+   "post": {
+    "description": "Install the newer version (the desktop app): the tray downloads it, stops\nFetchbox, replaces the app and opens it again. Poll /system/status for the version.",
+    "operationId": "install_update_api_v1_system_updates_install_post",
+    "responses": {
+     "202": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/InstallOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Conflict"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Install Update",
     "tags": [
      "system"
     ]

@@ -34,6 +34,7 @@ async def ping() -> Ping:
 
 
 _read = [Depends(require("system:read"))]
+_write = [Depends(require("system:write"))]
 
 
 @router.get("/health", response_model=HealthReport, dependencies=_read)
@@ -330,13 +331,83 @@ class UpdateOut(BaseModel):
     checked: bool = Field(description="False: checking is off, or GitHub couldn't be reached")
     error: str | None = None
     downloads: list[ReleaseFileOut] = Field(default=[], description="The release's files")
+    can_install: bool = Field(
+        default=False,
+        description="It can be installed from here: the desktop app, started by its tray, "
+        "with an installer for this computer in the release",
+    )
+    installing: str | None = Field(
+        default=None, description="Asked to install this version: the tray is on it"
+    )
+
+
+def _installable(info: Any) -> bool:
+    """The desktop app (its tray started this server), installed where an update can
+    replace it, and the release has its installer: the tray can install it."""
+    import os
+
+    from fetchbox import updater
+    from fetchbox.modules.auth.deps import TRAY_ENV
+
+    if not info.update_available or not os.environ.get(TRAY_ENV):
+        return False
+    if updater.installed_app() is None:
+        return False
+    found = [updater.Download(d["name"], d["url"], d.get("size")) for d in info.downloads]
+    return updater.pick(found) is not None
 
 
 @router.get("/updates", response_model=UpdateOut, dependencies=_read)
 async def check_updates(request: Request, fresh: bool = False) -> UpdateOut:
-    """Is a newer Fetchbox released? (Settings: updates.check; nothing is installed.)"""
+    """Is a newer Fetchbox released? (Settings: updates.check.)"""
     from dataclasses import asdict
 
     checker = request.app.state.updates
     info = await checker.check(enabled=_config(request).current.updates.check, fresh=fresh)
-    return UpdateOut(**asdict(info))
+    return UpdateOut(
+        **asdict(info),
+        can_install=_installable(info),
+        installing=getattr(request.app.state, "install_requested", None),
+    )
+
+
+class InstallOut(BaseModel):
+    version: str = Field(description="The version being installed")
+
+
+@router.post(
+    "/updates/install",
+    status_code=202,
+    response_model=InstallOut,
+    dependencies=_write,
+    responses=problem_responses(409),
+)
+async def install_update(request: Request) -> InstallOut:
+    """Install the newer version (the desktop app): the tray downloads it, stops
+    Fetchbox, replaces the app and opens it again. Poll /system/status for the version."""
+    checker = request.app.state.updates
+    info = await checker.check(enabled=_config(request).current.updates.check)
+    if not _installable(info):
+        raise ProblemError(
+            409,
+            "Conflict",
+            "Nothing to install from here: no newer version, or Fetchbox isn't the desktop "
+            "app started by its tray (update it the way it was installed)",
+            slug="update-not-installable",
+        )
+    request.app.state.install_requested = info.latest
+    return InstallOut(version=str(info.latest))
+
+
+class TrayRequestsOut(BaseModel):
+    install: str | None = Field(description="A version to install now")
+
+
+@router.post("/tray/requests", response_model=TrayRequestsOut, dependencies=_write)
+async def tray_requests(request: Request, p: CurrentPrincipal) -> TrayRequestsOut:
+    """For the desktop tray (polled): what the web UI asked it to do. Taken once."""
+    if p.id != "tray":
+        raise ProblemError(403, "Forbidden", "only the desktop tray asks this", slug="forbidden")
+    asked = getattr(request.app.state, "install_requested", None)
+    request.app.state.install_requested = None
+    return TrayRequestsOut(install=asked)

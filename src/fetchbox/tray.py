@@ -303,11 +303,13 @@ class Updates:
         verb = "Install" if self.files and updater.installed_app() else "Download"
         return f"{verb} Fetchbox {self.latest}"
 
-    def maybe_check(self) -> None:
-        if not self.sup.healthy or time.monotonic() - self._checked < UPDATE_EVERY:
+    def maybe_check(self, *, force: bool = False) -> None:
+        if not self.sup.healthy:
+            return
+        if not force and time.monotonic() - self._checked < UPDATE_EVERY:
             return
         self._checked = time.monotonic()
-        r = self.sup.call("GET", "/system/updates")
+        r = self.sup.call("GET", "/system/updates" + ("?fresh=true" if force else ""))
         if r is None or r.status_code != 200:
             return
         info = r.json()
@@ -317,6 +319,16 @@ class Updates:
         self.latest, self.page = info["latest"], info.get("url")
         found = [updater.Download(d["name"], d["url"], d.get("size")) for d in info["downloads"]]
         self.files = updater.pick(found)
+
+    def asked(self) -> bool:
+        """The web UI's "Install" (Settings): asked of the server, taken here once."""
+        if not self.sup.healthy or self.busy:
+            return False
+        r = self.sup.call("POST", "/system/tray/requests")
+        if r is None or r.status_code != 200 or not r.json().get("install"):
+            return False
+        self.maybe_check(force=True)  # the installer for this computer, fresh
+        return bool(self.files)
 
     def install(self, quit_tray: Any) -> None:
         app = updater.installed_app()
@@ -428,6 +440,8 @@ def run(settings: Settings) -> int:
         while not stopping.is_set():
             sup.poll()
             updates.maybe_check()
+            if updates.asked():
+                install_update(icon)
             if sup.healthy and not opened:  # first start: open the UI once it answers
                 opened = True
                 open_ui()
