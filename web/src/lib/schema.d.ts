@@ -3596,6 +3596,8 @@ export interface components {
             choices: components["schemas"]["FolderChoiceOut"][];
             /** Library Folder */
             library_folder: string;
+            /** @description The library folder given is this title's own folder (none in it belongs to the title, but its name does): use its parent as the library folder */
+            own?: components["schemas"]["OwnFolderOut"] | null;
             /**
              * Suggested
              * @description The folder the naming creates; null: music named Artist - Album (Year), which has no artist folder
@@ -4503,6 +4505,35 @@ export interface components {
             name: string;
             /** Status */
             status: string;
+        };
+        /** OwnFolderOut */
+        OwnFolderOut: {
+            /**
+             * Files
+             * @description Video (or audio) files in it
+             */
+            files: number;
+            /**
+             * Library Folder
+             * @description The folder it is in: the library folder
+             */
+            library_folder: string;
+            /**
+             * Match
+             * @description Its TMDB/TVDB id is in the name, or its title
+             * @enum {string}
+             */
+            match: "id" | "title";
+            /**
+             * Name
+             * @description A folder in the library folder
+             */
+            name: string;
+            /**
+             * Seasons
+             * @description Season folders in it (TV)
+             */
+            seasons: number;
         };
         /** ParsedRelease */
         ParsedRelease: {

@@ -12,5 +12,6 @@ import fetchbox.providers.media_servers.jellyfin
 import fetchbox.providers.media_servers.plex
 import fetchbox.providers.metadata.tmdb
 import fetchbox.providers.notifiers.discord
+import fetchbox.providers.notifiers.mail
 import fetchbox.providers.notifiers.webhook
 import fetchbox.providers.storage.local  # noqa: F401

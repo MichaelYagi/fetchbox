@@ -212,3 +212,20 @@ def test_an_unknown_id_leaves_no_empty_tag() -> None:
     assert render(pattern, {"Title": "Severance", "Year": 2022, "TvdbId": 1}) == (
         "Severance (2022) {tvdb-1}"
     )
+
+
+async def test_the_shows_own_folder_typed_as_the_library_folder(c: httpx.AsyncClient) -> None:
+    root = Path((await _dest(c, "series"))["path"])
+    _write(root, "Severance/Season 1/Severance.S01E01.mkv")
+    _write(root, "Severance/Season 2/Severance.S02E01.mkv")
+    r = await c.get("/library/folder-choices",
+                    params={"kind": "series", "name": "Severance", "year": 2022,
+                            "tmdb_id": SEVERANCE, "folder": str(root / "Severance")})  # fmt: skip
+    out = r.json()
+    assert out["choices"] == []  # nothing in it is the show: it is the show
+    assert out["own"] == {"name": "Severance", "match": "title", "files": 2, "seasons": 2,
+                          "library_folder": str(root)}  # fmt: skip
+    # the library folder itself: no hint
+    out = (await c.get("/library/folder-choices",
+                       params={"kind": "series", "name": "Severance"})).json()  # fmt: skip
+    assert out["own"] is None and out["choices"][0]["name"] == "Severance"

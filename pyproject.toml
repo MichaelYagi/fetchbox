@@ -1,6 +1,6 @@
 [project]
 name = "fetchbox"
-version = "0.9.10"
+version = "0.9.11"
 description = "Self-hosted media manager for movies and TV with a built-in torrent engine"
 readme = "README.md"
 license = "MIT"
@@ -53,6 +53,8 @@ dev = [
     "websockets>=13",
     "types-pyyaml>=6.0.12.20261113",
     "types-psutil>=7.2.2.20261111",
+    "aiosmtpd>=1.4.6",
+    "trustme>=1.2.1",
 ]
 
 [build-system]

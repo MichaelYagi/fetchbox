@@ -1,13 +1,27 @@
 <script lang="ts">
 	import { ApiError, del, get, patch, post, type S } from './api.ts';
 
-	// Where Fetchbox sends a short message when something happens (Discord, a webhook).
+	// Where Fetchbox sends a short message when something happens (Discord, email, a webhook).
 	type Target = S['TargetOut'];
 	let targets = $state<Target[]>([]);
 	let events = $state<S['EventKindOut'][]>([]);
 	let results = $state<Record<string, S['TestResult']>>({});
 	let editing = $state<string | null>(null); // a target id, or 'new'
-	let draft = $state({ kind: 'discord', name: 'Discord', url: '', secret: '', events: [] as string[] });
+	const blank = () => ({
+		kind: 'discord',
+		name: 'Discord',
+		url: '',
+		secret: '',
+		// email
+		host: '',
+		port: '587',
+		username: '',
+		password: '',
+		to: '',
+		sender: '',
+		events: [] as string[]
+	});
+	let draft = $state(blank());
 	let busy = $state('');
 	let error = $state('');
 
@@ -17,6 +31,12 @@
 			field: 'webhook_url',
 			placeholder: 'https://discord.com/api/webhooks/…',
 			help: 'In Discord: channel settings › Integrations › Webhooks › New Webhook › Copy Webhook URL.'
+		},
+		email: {
+			label: 'Email',
+			field: 'host',
+			placeholder: 'smtp.gmail.com',
+			help: 'Gmail: server smtp.gmail.com, port 587, your Gmail address as the user name, and an app password (Google Account › Security › 2-Step Verification › App passwords), not your normal password.'
 		},
 		webhook: {
 			label: 'Webhook',
@@ -53,15 +73,23 @@
 	}
 
 	function startAdd() {
-		draft = { kind: 'discord', name: 'Discord', url: '', secret: '', events: events.filter((e) => e.default).map((e) => e.event) };
+		draft = { ...blank(), events: events.filter((e) => e.default).map((e) => e.event) };
 		editing = 'new';
 	}
 	function startEdit(t: Target) {
+		const v = (k: string) => String(t.settings[k] ?? '');
 		draft = {
+			...blank(),
 			kind: t.kind,
 			name: t.name,
-			url: String(t.settings[KINDS[t.kind].field] ?? ''),
-			secret: String(t.settings.secret ?? ''),
+			url: v(KINDS[t.kind]?.field ?? 'url'),
+			secret: v('secret'),
+			host: v('host'),
+			port: v('port') || '587',
+			username: v('username'),
+			password: v('password'), // the mask: sent back, it keeps the password
+			to: v('to'),
+			sender: v('sender'),
 			events: [...t.events]
 		};
 		editing = t.id;
@@ -73,8 +101,19 @@
 	const save = (e: SubmitEvent) => {
 		e.preventDefault();
 		act('save', async () => {
-			const settings: Record<string, string | null> = { [KINDS[draft.kind].field]: draft.url.trim() };
-			if (draft.kind === 'webhook') settings.secret = draft.secret.trim() || null;
+			const orNull = (x: string) => x.trim() || null;
+			const settings: Record<string, string | number | null> =
+				draft.kind === 'email'
+					? {
+							host: draft.host.trim(),
+							port: Number(draft.port) || 587,
+							username: orNull(draft.username),
+							password: orNull(draft.password),
+							to: draft.to.trim(),
+							sender: orNull(draft.sender)
+						}
+					: { [KINDS[draft.kind].field]: draft.url.trim() };
+			if (draft.kind === 'webhook') settings.secret = orNull(draft.secret);
 			const body = { name: draft.name.trim(), settings, events: draft.events };
 			const row =
 				editing === 'new'
@@ -106,7 +145,7 @@
 </script>
 
 <div class="stack">
-	<p class="muted small">Get a message when something finishes or goes wrong: in a Discord channel, or anywhere that takes a webhook.</p>
+	<p class="muted small">Get a message when something finishes or goes wrong: by email, in a Discord channel, or anywhere that takes a webhook.</p>
 	{#if error}<p class="notice error">{error}</p>{/if}
 
 	{#each targets as t (t.id)}
@@ -149,13 +188,35 @@
 				{/each}
 			</div>
 		{/if}
-		<div class="row">
-			<label class="grow">Name <input bind:value={draft.name} required /></label>
-			<label class="grow2">
-				{draft.kind === 'discord' ? 'Webhook URL' : 'URL'}
-				<input bind:value={draft.url} required placeholder={KINDS[draft.kind].placeholder} autocomplete="off" spellcheck="false" />
+		{#if draft.kind === 'email'}
+			<div class="row">
+				<label class="grow">Name <input bind:value={draft.name} required /></label>
+				<label class="grow2">Send to
+					<input bind:value={draft.to} required type="text" inputmode="email" placeholder="you@example.com (several: separate with commas)" autocomplete="off" spellcheck="false" />
+				</label>
+			</div>
+			<div class="row">
+				<label class="grow2">Mail server
+					<input bind:value={draft.host} required placeholder="smtp.gmail.com" autocomplete="off" spellcheck="false" />
+				</label>
+				<label class="port">Port <input bind:value={draft.port} required inputmode="numeric" placeholder="587" /></label>
+			</div>
+			<div class="row">
+				<label class="grow">User name <input bind:value={draft.username} placeholder="you@gmail.com" autocomplete="off" spellcheck="false" /></label>
+				<label class="grow">Password <input bind:value={draft.password} type="password" placeholder="app password" autocomplete="new-password" /></label>
+			</div>
+			<label>From <span class="muted small">(optional: the user name when empty)</span>
+				<input bind:value={draft.sender} placeholder="fetchbox@example.com" autocomplete="off" spellcheck="false" />
 			</label>
-		</div>
+		{:else}
+			<div class="row">
+				<label class="grow">Name <input bind:value={draft.name} required /></label>
+				<label class="grow2">
+					{draft.kind === 'discord' ? 'Webhook URL' : 'URL'}
+					<input bind:value={draft.url} required placeholder={KINDS[draft.kind].placeholder} autocomplete="off" spellcheck="false" />
+				</label>
+			</div>
+		{/if}
 		<p class="muted small hint">{KINDS[draft.kind].help}</p>
 		{#if draft.kind === 'webhook'}
 			<label>Secret <span class="muted small">(optional, sent as X-Fetchbox-Secret)</span>
@@ -192,6 +253,10 @@
 	.grow2 {
 		flex: 2;
 		min-width: 14rem;
+	}
+	.port {
+		flex: 0 1 6rem;
+		min-width: 5rem;
 	}
 	.seg {
 		gap: 0.35rem;

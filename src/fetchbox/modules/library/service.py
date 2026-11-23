@@ -1269,7 +1269,29 @@ class LibraryService:
                 tmdb_id=title.tmdb_id,
                 tvdb_id=title.tvdb_id,
             )
-        return {"library_folder": str(root), "suggested": suggested, "choices": choices}
+        own = None
+        if suggested is not None and not choices and root.parent != root:
+            # the title's own folder typed as the library folder ("…/TV/Invincible"):
+            # its parent is the library folder
+            mine = await asyncio.to_thread(
+                folder_choices,
+                root.parent,
+                title.kind,
+                name=title.name,
+                year=title.year,
+                tmdb_id=title.tmdb_id,
+                tvdb_id=title.tvdb_id,
+            )
+            own = next(
+                ({**c, "library_folder": str(root.parent)} for c in mine if c["name"] == root.name),
+                None,
+            )
+        return {
+            "library_folder": str(root),
+            "suggested": suggested,
+            "choices": choices,
+            "own": own,
+        }
 
     async def _patterns(self, dest: Destination) -> dict[str, str]:
         async with self.db.sessionmaker() as s:
