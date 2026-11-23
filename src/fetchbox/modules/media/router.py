@@ -13,12 +13,14 @@ from fetchbox.core.errors import FieldError, ProblemError
 from fetchbox.core.errors import problem_responses as pr
 from fetchbox.core.pagination import Page, Sort, paginate
 from fetchbox.modules.auth.deps import CurrentPrincipal, require
+from fetchbox.modules.library.naming import safe_component
 from fetchbox.modules.media.models import HISTORY_TYPES, HistoryEvent, Title, WantedItem
 from fetchbox.modules.media.series import SeriesMode
 from fetchbox.modules.media.service import (
     CALENDAR_MAX_DAYS,
     MediaService,
     WantedFilter,
+    _invalid,
     available_from,
     calendar,
 )
@@ -213,6 +215,12 @@ class TitleIn(BaseModel):
         "the one set in Settings (and it follows that). An existing folder is reused; "
         "another path becomes a new library folder",
     )
+    title_folder: str | None = Field(
+        default=None,
+        max_length=255,
+        description="Its own folder inside the library folder (an existing one: new files "
+        "join it). Empty: the naming decides, when the first file is filed",
+    )
 
 
 class TitlePatch(BaseModel):
@@ -235,6 +243,16 @@ async def list_titles(
             s, svc.list_query(kind), TITLE_SORT, sort_param=sort, limit=limit, cursor=cursor
         )
     return TitlePage(items=await _many(svc, list(rows)), next_cursor=nxt)
+
+
+def own_folder(name: str | None, field: str = "body.title_folder") -> str | None:
+    """A title's own folder: one name inside its library folder, or None."""
+    name = (name or "").strip()
+    if not name:
+        return None
+    if "/" in name or "\\" in name or name in (".", "..") or safe_component(name) != name:
+        raise _invalid(field, "one folder name inside the library folder, like The Bear")
+    return name
 
 
 def _folder(
@@ -278,6 +296,7 @@ async def add_title(
             actor=p.actor(),
             search_after=later,
             folder=folder,
+            title_folder=own_folder(body.title_folder),
         )
     else:
         t = await svc.add_movie(
@@ -288,6 +307,7 @@ async def add_title(
             search_after=later,
             minimum_availability=body.minimum_availability,
             folder=folder,
+            title_folder=own_folder(body.title_folder),
         )
     response.headers["Location"] = f"{request.url.path}/{t.id}"
     return await _one(svc, t, response)

@@ -251,15 +251,18 @@ def track_path(
     discs: int,
     ext: str,
     naming: Naming | None = None,
+    *,
+    artist_folder: str | None = None,
 ) -> str:
-    """Artist/Album (Year)/[CD2/]03 - Title.flac, or as ``naming`` says."""
+    """Artist/Album (Year)/[CD2/]03 - Title.flac, or as ``naming`` says.
+    ``artist_folder``: the artist's own folder (remembered), instead of the name."""
     n = naming or Naming()
     dated = f"{album} ({year})" if year else album
     if n.folder == "artist - album (year)":
         parts = [safe_component(f"{artist} - {dated}")]
     else:
         parts = [
-            safe_component(artist),
+            artist_folder or safe_component(artist),
             safe_component(album if n.folder == "artist/album" else dated),
         ]
     num = f"{t.number:02d}"

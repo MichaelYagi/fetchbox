@@ -1401,6 +1401,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/library/folder-choices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Folder Choices
+         * @description Before adding a title: folders already in the library folder that belong to it (its
+         *     id or its title in the name), and the folder the naming would create instead.
+         */
+        get: operations["folder_choices_api_v1_library_folder_choices_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/library/import": {
         parameters: {
             query?: never;
@@ -2351,7 +2372,12 @@ export interface paths {
          * @description Where the title's files go (or went): its library folder and its folder in there.
          */
         get: operations["title_folder_api_v1_titles__title_id__folder_get"];
-        put?: never;
+        /**
+         * Change Title Folder
+         * @description Give a title another folder; its library folder is the parent (a new one is added
+         *     to Settings, named like the default). New files go there whatever the naming says.
+         */
+        put: operations["change_title_folder_api_v1_titles__title_id__folder_put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -2791,6 +2817,11 @@ export interface components {
              * @default false
              */
             search: boolean;
+            /**
+             * Title Folder
+             * @description Its own folder inside the library folder (an existing one: new files join it). Empty: the naming decides, when the first file is filed
+             */
+            title_folder?: string | null;
         };
         /** AuthStatus */
         AuthStatus: {
@@ -3475,6 +3506,81 @@ export interface components {
             size: number;
             /** Wanted Item Ids */
             wanted_item_ids: string[];
+        };
+        /** FolderChangeOut */
+        FolderChangeOut: {
+            /**
+             * Failed
+             * @description Files that couldn't be moved (left)
+             */
+            failed: components["schemas"]["FolderFailOut"][];
+            /**
+             * Moved
+             * @description Files moved
+             */
+            moved: number;
+            /** Path */
+            path: string;
+        };
+        /** FolderChoiceOut */
+        FolderChoiceOut: {
+            /**
+             * Files
+             * @description Video (or audio) files in it
+             */
+            files: number;
+            /**
+             * Match
+             * @description Its TMDB/TVDB id is in the name, or its title
+             * @enum {string}
+             */
+            match: "id" | "title";
+            /**
+             * Name
+             * @description A folder in the library folder
+             */
+            name: string;
+            /**
+             * Seasons
+             * @description Season folders in it (TV)
+             */
+            seasons: number;
+        };
+        /** FolderChoicesOut */
+        FolderChoicesOut: {
+            /**
+             * Choices
+             * @description Folders already there for it
+             */
+            choices: components["schemas"]["FolderChoiceOut"][];
+            /** Library Folder */
+            library_folder: string;
+            /**
+             * Suggested
+             * @description The folder the naming creates; null: music named Artist - Album (Year), which has no artist folder
+             */
+            suggested: string | null;
+        };
+        /** FolderFailOut */
+        FolderFailOut: {
+            /** Error */
+            error: string;
+            /** Path */
+            path: string;
+        };
+        /** FolderIn */
+        FolderIn: {
+            /**
+             * Move
+             * @description Move what's in its current folder there (else leave it)
+             * @default true
+             */
+            move: boolean;
+            /**
+             * Path
+             * @description Full path of its folder, like /media/TV/The Bear
+             */
+            path: string;
         };
         /** FolderOut */
         FolderOut: {
@@ -5525,9 +5631,15 @@ export interface components {
             own: boolean;
             /**
              * Path
-             * @description Its folder in there, by the naming settings
+             * @description Its folder: remembered, else by the naming settings
              */
             path: string;
+            /**
+             * Remembered
+             * @description Its own folder is set (found on disk, chosen, or where its first file went): new files go there whatever the naming says
+             * @default false
+             */
+            remembered: boolean;
         };
         /** TitleIn */
         TitleIn: {
@@ -5570,6 +5682,11 @@ export interface components {
              * @default true
              */
             search: boolean;
+            /**
+             * Title Folder
+             * @description Its own folder inside the library folder (an existing one: new files join it). Empty: the naming decides, when the first file is filed
+             */
+            title_folder?: string | null;
             /** Tmdb Id */
             tmdb_id: number;
         };
@@ -9970,6 +10087,43 @@ export interface operations {
             };
         };
     };
+    folder_choices_api_v1_library_folder_choices_get: {
+        parameters: {
+            query: {
+                kind: "movie" | "series" | "music";
+                name: string;
+                year?: number | null;
+                tmdb_id?: number | null;
+                /** @description Library folder; empty: default */
+                folder?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FolderChoicesOut"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
     import_existing_api_v1_library_import_post: {
         parameters: {
             query?: never;
@@ -12423,6 +12577,62 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    change_title_folder_api_v1_titles__title_id__folder_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                title_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FolderIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FolderChangeOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
                 };
             };
         };

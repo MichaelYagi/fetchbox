@@ -21,8 +21,10 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import errno
 import os
 import re
+import shutil
 from datetime import date, timedelta
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -46,9 +48,11 @@ from fetchbox.modules.library.naming import (
     OLD_EPISODE_FILE,
     TemplateError,
     episode_path,
+    existing_season_folder,
     movie_path,
     render,
     safe_component,
+    series_folder,
     validate_patterns,
 )
 from fetchbox.modules.library.probe import MediaInfo, probe
@@ -134,6 +138,18 @@ class ImportProblem(Exception):
         super().__init__(message)
         self.message = message
         self.retry = retry
+
+
+def _season_on_disk(show: Path, season: int) -> str | None:
+    """The folder a show already on disk keeps ``season`` in ("" for loose episodes),
+    or None (nothing there yet: the naming decides)."""
+    try:
+        entries = list(show.iterdir())
+    except OSError:
+        return None
+    folders = [e.name for e in entries if e.is_dir() and not e.name.startswith(".")]
+    loose = any(e.is_file() and e.suffix.lower().lstrip(".") in VIDEO_EXTS for e in entries)
+    return existing_season_folder(folders, loose, season)
 
 
 def pick_video(files: list[ClientFile], *, kind: str = "movie") -> ClientFile | None:
@@ -505,12 +521,15 @@ class LibraryService:
         src = await self._on_disk(d, video)
         patterns = await self._patterns(dest)
         info = await asyncio.to_thread(probe, src)
-        rel = movie_path(patterns, movie_context(title, parsed, quality, info), src.suffix)
+        rel = movie_path(
+            patterns, movie_context(title, parsed, quality, info), src.suffix, folder=title.folder
+        )
         dst = Path(dest.path) / rel
         mode = await self._place(src, dst, dest, d, video.path)
         mf, replaced, cutoff_met = await self._record(
             d, grab, title, dest, waiting, rel, dst, mode, parsed, quality, score, info, video.path
         )
+        await self.remember_folder(title, rel.split("/")[0])
         await self._announce(title, dest, mf, rel, quality, mode, replaced)
         return {
             "media_file_id": mf.id,
@@ -608,12 +627,14 @@ class LibraryService:
             if of.destination_id == dest.id
         }
         recycle = str(Path(dest.path) / RECYCLE_DIR) if dest.recycle else None
+        naming = self.music_naming() or mfiles.Naming()
         placed: list[tuple[mfiles.WantedTrack, str, Path, str, mfiles.AudioFile]] = []
         for t in tracks:
             af = m.pairs[t.id]
             rel = mfiles.track_path(
-                title.name, album.name, year, t, discs, af.path.suffix, self.music_naming()
-            )
+                title.name, album.name, year, t, discs, af.path.suffix, naming,
+                artist_folder=title.folder,
+            )  # fmt: skip
             dst = Path(dest.path) / rel
             if str(dst) in old_paths and await asyncio.to_thread(dst.exists):
                 # an upgrade at the same path (FLAC over FLAC): the old file is recycled,
@@ -623,6 +644,8 @@ class LibraryService:
                     await self.storage.local.delete(str(dst), recycle_dir=recycle)
             placed.append((t, rel, dst, await self._place(af.path, dst, dest, d, af.rel), af))
 
+        if placed and naming.folder != "artist - album (year)":  # Artist/Album: the artist's
+            await self.remember_folder(title, placed[0][1].split("/")[0])
         # Tags change the file's bytes: never in a file the torrent still seeds from
         # (a hardlink or the download itself), only in the library's own copy.
         cover = await _cover(album.meta or {})
@@ -989,7 +1012,9 @@ class LibraryService:
                 matched[0][0],
                 eps,
             )
-            rel = episode_path(patterns, ctx, src.suffix)
+            show = title.folder or series_folder(patterns, ctx)
+            season = await asyncio.to_thread(_season_on_disk, Path(dest.path) / show, matched[0][0])
+            rel = episode_path(patterns, ctx, src.suffix, folder=show, season_folder=season)
             dst = Path(dest.path) / rel
             mode = await self._place(src, dst, dest, d, video.path)
             items = [by_key[k][1] for k in matched]
@@ -1009,6 +1034,7 @@ class LibraryService:
                 video.path,
             )
             await self._announce(title, dest, mf, rel, file_quality, mode, replaced)
+            await self.remember_folder(title, show)
             done.update(w.id for w in items)
             imported.append({"media_file_id": mf.id, "path": str(dst), "episodes": matched})
         if not imported:
@@ -1043,6 +1069,42 @@ class LibraryService:
                 )
             await s.commit()
 
+    async def remember_folder(self, title: Title, folder: str) -> None:
+        """The title's own folder, once known (the first file filed or found in it):
+        later files go there whatever the naming says. Never replaces one."""
+        if title.folder or not folder:
+            return
+        async with self.db.sessionmaker() as s:
+            await s.execute(
+                update(Title)
+                .where(Title.id == title.id, Title.folder.is_(None))
+                .values(folder=folder)
+                .execution_options(synchronize_session=False)
+            )
+            await s.commit()
+        title.folder = folder
+
+    async def settle_found(
+        self, title: Title, dest: Destination, folder: str | None, *, new: bool
+    ) -> None:
+        """A title found on disk (import of an existing library), in ``folder`` of
+        ``dest``: a title added by that import lives in that library folder; its folder is
+        remembered there, so later files join the ones already on disk."""
+        default = await self.storage.default_destination(title.kind)
+        home = title.destination_id or default.id
+        if new and home != dest.id:
+            async with self.db.sessionmaker() as s:
+                await s.execute(
+                    update(Title)
+                    .where(Title.id == title.id)
+                    .values(destination_id=dest.id)
+                    .execution_options(synchronize_session=False)
+                )
+                await s.commit()
+            title.destination_id = home = dest.id
+        if home == dest.id and folder:
+            await self.remember_folder(title, folder)
+
     async def title_folder(self, title_id: str) -> dict[str, Any]:
         """Where a title's files go: its library folder (its own, else the default for its
         kind) and its folder in there, named by that folder's naming settings. Movies and
@@ -1055,24 +1117,159 @@ class LibraryService:
             if title.destination_id
             else self.storage.default_destination(title.kind)
         )
-        sub: str | None
-        if title.kind == "music":
-            from fetchbox.modules.library import music_files as mfiles
-
-            naming = self.music_naming() or mfiles.Naming()
-            sub = None if naming.folder == "artist - album (year)" else safe_component(title.name)
-        else:
-            patterns = await self._patterns(dest)
-            ctx = movie_context(title, parse_release(title.name or ""), "", None)
-            ctx["TvdbId"] = title.tvdb_id
-            key = "series_folder" if title.kind == "series" else "movie_folder"
-            sub = safe_component(render(patterns[key], ctx)) or None
+        sub = title.folder or await self._naming_folder(title, dest)
+        if title.kind == "music" and self._flat_music():
+            sub = None
         root = Path(dest.path)
         return {
             "library_folder": dest,
             "own": own,
+            "remembered": bool(title.folder) and sub is not None,
             "path": str(root / sub) if sub else str(root),
         }
+
+    async def change_folder(
+        self, title_id: str, path: str, *, move: bool, actor: Actor
+    ) -> dict[str, Any]:
+        """Give a title another folder (a full path: its library folder is the parent).
+        ``move``: what's in its current folder moves along (files a torrent seeds from
+        through the engine), and the files Fetchbox recorded there point to the new place.
+        Without it, files stay where they are; new ones go to the new folder.
+        Returns {path, moved, failed: [{path, error}]}."""
+        from fetchbox.core.paths import native_folder_problem
+        from fetchbox.modules.media.service import _invalid
+
+        title = await self.media.get_title(title_id)
+        if title.kind == "music" and self._flat_music():
+            raise _invalid(
+                "body.path",
+                "music is named Artist - Album (Year): there is no artist folder to choose",
+            )
+        p = Path(await asyncio.to_thread(os.path.expanduser, path.strip()))
+        if not p.is_absolute() or p.parent == p:
+            raise _invalid("body.path", "a full path, like /media/TV/The Bear")
+        if why := native_folder_problem(str(p)):
+            raise _invalid("body.path", why)
+        if p.name != safe_component(p.name) or p.name in (".", ".."):
+            raise _invalid("body.path", f"{p.name} can't be a folder name")
+        old = await self.title_folder(title_id)
+        old_dest: Destination = old["library_folder"]
+        old_dir = Path(old["path"])
+        dest_id = await self.storage.folder_for(
+            title.kind, str(p.parent), field="body.path", actor=actor
+        )
+        new_dest = await (
+            self.storage.destination(dest_id)
+            if dest_id
+            else self.storage.default_destination(title.kind)
+        )
+        new_root = Path(new_dest.path)
+        moved = 0
+        failed: list[dict[str, str]] = []
+        if move and old_dir != p and await asyncio.to_thread(old_dir.is_dir):
+            if p == old_dir.parent or old_dir in p.parents:
+                raise _invalid("body.path", "can't move a folder into itself")
+            async with self.db.sessionmaker() as s:
+                recorded = {
+                    str(Path(old_dest.path) / mf.relative_path): mf.id
+                    for mf in (
+                        await s.execute(
+                            select(MediaFile)
+                            .join(MediaFileItem, MediaFileItem.media_file_id == MediaFile.id)
+                            .join(WantedItem, WantedItem.id == MediaFileItem.wanted_item_id)
+                            .where(
+                                WantedItem.title_id == title.id,
+                                MediaFile.destination_id == old_dest.id,
+                            )
+                        )
+                    ).scalars()
+                }
+            files = await asyncio.to_thread(_files_in, old_dir)
+            for src in files:
+                dst = p / src.relative_to(old_dir)
+                try:
+                    if not (
+                        str(src) in recorded
+                        and await self.downloads.move_seeding_file(str(src), str(dst))
+                    ):
+                        await asyncio.to_thread(_relocate, src, dst)
+                except (OSError, DownloadClientError) as exc:
+                    msg = getattr(exc, "message", None) or getattr(exc, "strerror", None) or exc
+                    failed.append({"path": str(src), "error": str(msg)})
+                    continue
+                moved += 1
+                if (mf_id := recorded.get(str(src))) is not None:
+                    async with self.db.sessionmaker() as s:
+                        mf = await s.get(MediaFile, mf_id)
+                        if mf is not None:
+                            mf.relative_path = dst.relative_to(new_root).as_posix()
+                            mf.destination_id = new_dest.id
+                            mf.storage_node_id = new_dest.node_id
+                            await s.commit()
+            await asyncio.to_thread(_prune_tree, old_dir, Path(old_dest.path))
+        async with self.db.sessionmaker() as s:
+            await s.execute(
+                update(Title)
+                .where(Title.id == title.id)
+                .values(destination_id=dest_id, folder=p.name, version=Title.version + 1)
+                .execution_options(synchronize_session=False)
+            )
+            await s.commit()
+        await self.bus.emit(
+            "library.folder_changed",
+            subject=Subject(type="title", id=title.id),
+            actor=actor,
+            path=str(p),
+            moved=moved,
+            failed=len(failed),
+            folders=sorted({str(old_dir), str(p)}),  # for media servers to rescan
+        )
+        return {"path": str(p), "moved": moved, "failed": failed}
+
+    def _flat_music(self) -> bool:
+        """Music named "Artist - Album (Year)": one folder per album, no artist folder."""
+        from fetchbox.modules.library import music_files as mfiles
+
+        naming = self.music_naming() or mfiles.Naming()
+        return bool(naming.folder == "artist - album (year)")
+
+    async def _naming_folder(self, title: Title, dest: Destination) -> str | None:
+        """The folder the naming gives a title in ``dest`` (None: music with no artist
+        folder)."""
+        if title.kind == "music":
+            return None if self._flat_music() else safe_component(title.name) or None
+        patterns = await self._patterns(dest)
+        ctx = movie_context(title, parse_release(title.name or ""), "", None)
+        ctx["TvdbId"] = title.tvdb_id
+        key = "series_folder" if title.kind == "series" else "movie_folder"
+        return safe_component(render(patterns[key], ctx)) or None
+
+    async def folder_choices(self, title: Title, library_path: str | None) -> dict[str, Any]:
+        """For a title being added (not saved): the library folder it would go to, the
+        folder the naming would create in there, and folders already there that belong
+        to it."""
+        from fetchbox.modules.library.title_folders import folder_choices
+        from fetchbox.modules.storage.service import _same_folder
+
+        rows = await self.storage.destinations(title.kind)
+        default = rows[0] if rows else await self.storage.default_destination(title.kind)
+        path = (library_path or "").strip()
+        dest = next((d for d in rows if path and _same_folder(d.path, path)), None)
+        root = Path(path) if path and dest is None else Path((dest or default).path)
+        # a new library folder gets the default's naming
+        suggested = await self._naming_folder(title, dest or default)
+        choices: list[dict[str, Any]] = []
+        if suggested is not None:
+            choices = await asyncio.to_thread(
+                folder_choices,
+                root,
+                title.kind,
+                name=title.name,
+                year=title.year,
+                tmdb_id=title.tmdb_id,
+                tvdb_id=title.tvdb_id,
+            )
+        return {"library_folder": str(root), "suggested": suggested, "choices": choices}
 
     async def _patterns(self, dest: Destination) -> dict[str, str]:
         async with self.db.sessionmaker() as s:
@@ -1457,6 +1654,18 @@ class LibraryService:
                     mf.relative_path = p["new"]
                     await s.commit()
             renamed.append(p)
+        # the titles now live where the naming puts them: their folder moves along
+        moved = {p["title_id"]: p["new"].split("/")[0] for p in renamed if "/" in p["new"]}
+        if moved:
+            async with self.db.sessionmaker() as s:
+                for tid, folder in moved.items():
+                    await s.execute(
+                        update(Title)
+                        .where(Title.id == tid)
+                        .values(folder=folder)
+                        .execution_options(synchronize_session=False)
+                    )
+                await s.commit()
         if renamed:
             await self.bus.emit(
                 "library.renamed",
@@ -1583,6 +1792,34 @@ def _prune(folder: Path, root: Path) -> None:
         except OSError:
             break
         folder = folder.parent
+
+
+def _files_in(folder: Path) -> list[Path]:
+    """Every file in a folder, recursively."""
+    return sorted(Path(d) / f for d, _dirs, files in os.walk(folder) for f in files)
+
+
+def _relocate(src: Path, dst: Path) -> None:
+    """Move a file, never over another one; across disks it's copied, then removed."""
+    if dst.exists() and not dst.samefile(src):
+        raise FileExistsError(errno.EEXIST, f"{dst} already exists")
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        src.rename(dst)
+    except OSError as exc:
+        if exc.errno != errno.EXDEV:
+            raise
+        shutil.copy2(src, dst)
+        src.unlink()
+
+
+def _prune_tree(folder: Path, root: Path) -> None:
+    """Remove the empty folders in ``folder`` (deepest first), then ``folder`` and its
+    parents while empty, up to ``root``."""
+    for d, _dirs, _files in sorted(os.walk(folder), key=lambda w: -len(Path(w[0]).parts)):
+        with contextlib.suppress(OSError):
+            Path(d).rmdir()
+    _prune(folder.parent, root)
 
 
 def _move(src: Path, dst: Path, root: Path) -> None:

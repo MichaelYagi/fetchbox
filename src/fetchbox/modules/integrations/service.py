@@ -43,7 +43,12 @@ from fetchbox.providers.media_servers import (
 log = structlog.get_logger(__name__)
 
 GATHER_SECONDS = 5.0
-EVENTS = ("import.completed", "library.renamed", "library.imported_existing")
+EVENTS = (
+    "import.completed",
+    "library.renamed",
+    "library.imported_existing",
+    "library.folder_changed",
+)
 
 
 class PathMapping(BaseModel):

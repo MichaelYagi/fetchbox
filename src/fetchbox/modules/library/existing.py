@@ -300,9 +300,17 @@ class ExistingLibrary:
             try:
                 if kind == "music":
                     title, new, count = await self.music.apply_one(dest, item, actor)
+                    # Artist/Album (Year)/...: the artist's folder
+                    parts = PurePosixPath(item["folder"]).parts
+                    found = parts[0] if len(parts) > 1 else None
                 else:
                     title, new = await self._title(kind, item, actor, later)
                     count = await self._adopt_files(title, dest, item["files"])
+                    # a folder (not a loose movie file in the library folder itself)
+                    files = [f if isinstance(f, str) else f["path"] for f in item["files"]]
+                    found = item["folder"] if any("/" in f for f in files) else None
+                if count:
+                    await self.library.settle_found(title, dest, found, new=new)
                 files_recorded += count
                 added.append({"folder": item["folder"], "title_id": title.id,
                               "name": title.name, "new": new, "files": count})  # fmt: skip

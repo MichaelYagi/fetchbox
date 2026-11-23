@@ -162,6 +162,8 @@ def render(template: str | list[Part], ctx: Mapping[str, Any]) -> str:
                 out.append("".join(values))
     text = re.sub(r"\s+", " ", "".join(out))
     text = re.sub(r"\(\s*\)|\{\s*\}", "", text)  # "()" / "{}" left by an empty token
+    # "{tvdb-}" / "[tmdbid-]": an id tag whose id isn't known
+    text = re.sub(r"\{[A-Za-z]+[-=]\}|\[[A-Za-z]+[-=]\]", "", text)
     text = re.sub(r"\s+", " ", text)
     return text.strip().rstrip(" -_.").strip()
 
@@ -260,19 +262,45 @@ def preset_of(kind: str, patterns: Mapping[str, str]) -> str:
     return "custom"
 
 
-def movie_path(patterns: Mapping[str, str], ctx: Mapping[str, Any], extension: str) -> str:
-    """Relative path ``<folder>/<file>.<ext>`` for a movie, with safe components."""
-    folder = safe_component(render(patterns["movie_folder"], ctx))
+def movie_path(
+    patterns: Mapping[str, str],
+    ctx: Mapping[str, Any],
+    extension: str,
+    *,
+    folder: str | None = None,
+) -> str:
+    """Relative path ``<folder>/<file>.<ext>`` for a movie, with safe components.
+    ``folder``: the movie's own folder (remembered), instead of the naming's."""
+    folder = folder or safe_component(render(patterns["movie_folder"], ctx))
     stem = safe_component(render(patterns["movie_file"], ctx))
     ext = extension.lower().lstrip(".")
     return f"{folder}/{stem}.{ext}" if ext else f"{folder}/{stem}"
 
 
-def episode_path(patterns: Mapping[str, str], ctx: Mapping[str, Any], extension: str) -> str:
+def series_folder(patterns: Mapping[str, str], ctx: Mapping[str, Any]) -> str:
+    """The show folder the naming gives."""
+    return safe_component(render(patterns["series_folder"], ctx))
+
+
+def episode_path(
+    patterns: Mapping[str, str],
+    ctx: Mapping[str, Any],
+    extension: str,
+    *,
+    folder: str | None = None,
+    season_folder: str | None = None,
+) -> str:
     """Relative path ``<series>/<season>/<file>.<ext>`` for an episode file. An empty
-    season folder pattern puts episodes straight into the series folder."""
-    series = safe_component(render(patterns["series_folder"], ctx))
-    season = render(patterns["season_folder"], ctx).strip() if patterns.get("season_folder") else ""
+    season folder pattern puts episodes straight into the series folder. ``folder``: the
+    show's own folder (remembered); ``season_folder``: one already on disk for this
+    season ("" when the show keeps its episodes loose), both instead of the naming's."""
+    series = folder or series_folder(patterns, ctx)
+    if season_folder is not None:
+        season = season_folder
+    elif patterns.get("season_folder"):
+        season = render(patterns["season_folder"], ctx).strip()
+    else:
+        season = ""
     stem = safe_component(render(patterns["episode_file"], ctx))
     ext = extension.lower().lstrip(".")
     name = f"{stem}.{ext}" if ext else stem
@@ -320,3 +348,30 @@ def preview_samples(kind: str, patterns: Mapping[str, str]) -> list[dict[str, st
     if kind == "movie":
         return [{"label": lb, "path": movie_path(patterns, c, "mkv")} for lb, c in _MOVIE_SAMPLES]
     return [{"label": lb, "path": episode_path(patterns, c, "mkv")} for lb, c in _EPISODE_SAMPLES]
+
+
+_SEASON_DIR = re.compile(
+    r"^(?:season|series|staffel|saison|temporada|stagione|seizoen|s)[\s._-]*0*(\d{1,4})$", re.I
+)
+_SPECIALS_DIR = re.compile(r"^(?:specials?|extras?)$", re.I)
+
+
+def season_of_folder(name: str) -> int | None:
+    """The season a folder holds, by its name: "Season 1", "Season 01", "S01", "Series 2",
+    "Specials" (0); None for anything else."""
+    if _SPECIALS_DIR.match(name.strip()):
+        return 0
+    m = _SEASON_DIR.match(name.strip())
+    return int(m.group(1)) if m else None
+
+
+def existing_season_folder(folders: list[str], loose_videos: bool, season: int) -> str | None:
+    """Where a show already on disk keeps ``season``: the folder holding it, "" when the
+    show keeps its episodes loose (videos and no season folders at all), None when
+    nothing tells (the naming decides)."""
+    for name in sorted(folders):
+        if season_of_folder(name) == season:
+            return name
+    if loose_videos and not any(season_of_folder(n) is not None for n in folders):
+        return ""
+    return None

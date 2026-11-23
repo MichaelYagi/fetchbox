@@ -674,6 +674,19 @@
       "description": "Search for wanted albums now",
       "title": "Search",
       "type": "boolean"
+     },
+     "title_folder": {
+      "anyOf": [
+       {
+        "maxLength": 255,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Its own folder inside the library folder (an existing one: new files join it). Empty: the naming decides, when the first file is filed",
+      "title": "Title Folder"
      }
     },
     "required": [
@@ -2633,6 +2646,145 @@
      "imported_at"
     ],
     "title": "FileOut",
+    "type": "object"
+   },
+   "FolderChangeOut": {
+    "properties": {
+     "failed": {
+      "description": "Files that couldn't be moved (left)",
+      "items": {
+       "$ref": "#/components/schemas/FolderFailOut"
+      },
+      "title": "Failed",
+      "type": "array"
+     },
+     "moved": {
+      "description": "Files moved",
+      "title": "Moved",
+      "type": "integer"
+     },
+     "path": {
+      "title": "Path",
+      "type": "string"
+     }
+    },
+    "required": [
+     "path",
+     "moved",
+     "failed"
+    ],
+    "title": "FolderChangeOut",
+    "type": "object"
+   },
+   "FolderChoiceOut": {
+    "properties": {
+     "files": {
+      "description": "Video (or audio) files in it",
+      "title": "Files",
+      "type": "integer"
+     },
+     "match": {
+      "description": "Its TMDB/TVDB id is in the name, or its title",
+      "enum": [
+       "id",
+       "title"
+      ],
+      "title": "Match",
+      "type": "string"
+     },
+     "name": {
+      "description": "A folder in the library folder",
+      "title": "Name",
+      "type": "string"
+     },
+     "seasons": {
+      "description": "Season folders in it (TV)",
+      "title": "Seasons",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "name",
+     "match",
+     "files",
+     "seasons"
+    ],
+    "title": "FolderChoiceOut",
+    "type": "object"
+   },
+   "FolderChoicesOut": {
+    "properties": {
+     "choices": {
+      "description": "Folders already there for it",
+      "items": {
+       "$ref": "#/components/schemas/FolderChoiceOut"
+      },
+      "title": "Choices",
+      "type": "array"
+     },
+     "library_folder": {
+      "title": "Library Folder",
+      "type": "string"
+     },
+     "suggested": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "The folder the naming creates; null: music named Artist - Album (Year), which has no artist folder",
+      "title": "Suggested"
+     }
+    },
+    "required": [
+     "library_folder",
+     "suggested",
+     "choices"
+    ],
+    "title": "FolderChoicesOut",
+    "type": "object"
+   },
+   "FolderFailOut": {
+    "properties": {
+     "error": {
+      "title": "Error",
+      "type": "string"
+     },
+     "path": {
+      "title": "Path",
+      "type": "string"
+     }
+    },
+    "required": [
+     "path",
+     "error"
+    ],
+    "title": "FolderFailOut",
+    "type": "object"
+   },
+   "FolderIn": {
+    "properties": {
+     "move": {
+      "default": true,
+      "description": "Move what's in its current folder there (else leave it)",
+      "title": "Move",
+      "type": "boolean"
+     },
+     "path": {
+      "description": "Full path of its folder, like /media/TV/The Bear",
+      "maxLength": 4000,
+      "minLength": 1,
+      "title": "Path",
+      "type": "string"
+     }
+    },
+    "required": [
+     "path"
+    ],
+    "title": "FolderIn",
     "type": "object"
    },
    "FolderOut": {
@@ -7636,9 +7788,15 @@
       "type": "boolean"
      },
      "path": {
-      "description": "Its folder in there, by the naming settings",
+      "description": "Its folder: remembered, else by the naming settings",
       "title": "Path",
       "type": "string"
+     },
+     "remembered": {
+      "default": false,
+      "description": "Its own folder is set (found on disk, chosen, or where its first file went): new files go there whatever the naming says",
+      "title": "Remembered",
+      "type": "boolean"
      }
     },
     "required": [
@@ -7715,6 +7873,19 @@
       "description": "Search for it now; otherwise at the regular missing-search interval",
       "title": "Search",
       "type": "boolean"
+     },
+     "title_folder": {
+      "anyOf": [
+       {
+        "maxLength": 255,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Its own folder inside the library folder (an existing one: new files join it). Empty: the naming decides, when the first file is filed",
+      "title": "Title Folder"
      },
      "tmdb_id": {
       "exclusiveMinimum": 0.0,
@@ -8941,7 +9112,7 @@
  },
  "info": {
   "title": "Fetchbox",
-  "version": "0.9.8"
+  "version": "0.9.9"
  },
  "openapi": "3.1.0",
  "paths": {
@@ -15632,6 +15803,128 @@
     ]
    }
   },
+  "/api/v1/library/folder-choices": {
+   "get": {
+    "description": "Before adding a title: folders already in the library folder that belong to it (its\nid or its title in the name), and the folder the naming would create instead.",
+    "operationId": "folder_choices_api_v1_library_folder_choices_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "kind",
+      "required": true,
+      "schema": {
+       "enum": [
+        "movie",
+        "series",
+        "music"
+       ],
+       "title": "Kind",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "name",
+      "required": true,
+      "schema": {
+       "maxLength": 500,
+       "minLength": 1,
+       "title": "Name",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "year",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Year"
+      }
+     },
+     {
+      "in": "query",
+      "name": "tmdb_id",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Tmdb Id"
+      }
+     },
+     {
+      "description": "Library folder; empty: default",
+      "in": "query",
+      "name": "folder",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "maxLength": 4000,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Library folder; empty: default",
+       "title": "Folder"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/FolderChoicesOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Unprocessable Content"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Folder Choices",
+    "tags": [
+     "library"
+    ]
+   }
+  },
   "/api/v1/library/import": {
    "post": {
     "description": "Add the chosen titles (no search yet) and record their files where they are.",
@@ -19691,6 +19984,91 @@
      }
     ],
     "summary": "Title Folder",
+    "tags": [
+     "library"
+    ]
+   },
+   "put": {
+    "description": "Give a title another folder; its library folder is the parent (a new one is added\nto Settings, named like the default). New files go there whatever the naming says.",
+    "operationId": "change_title_folder_api_v1_titles__title_id__folder_put",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "title_id",
+      "required": true,
+      "schema": {
+       "title": "Title Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/FolderIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/FolderChangeOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Conflict"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Unprocessable Content"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Change Title Folder",
     "tags": [
      "library"
     ]
