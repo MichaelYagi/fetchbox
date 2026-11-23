@@ -13,6 +13,12 @@ from fetchbox.modules.system.updates import UpdateChecker, newer
 from tests.conftest import Running
 
 
+def test_no_releases_yet() -> None:
+    from fetchbox.modules.system.updates import newest
+
+    assert newest([]) is None and newest([{"tag_name": "v1.0.0", "draft": True}]) is None
+
+
 def test_version_comparison() -> None:
     assert newer("v0.2.0", "0.1.0") and newer("v0.1.1", "0.1.0.dev0")
     assert not newer("v0.1.0", "0.1.0.dev0")  # a dev build of 0.1.0 isn't offered 0.1.0
@@ -31,8 +37,15 @@ async def test_updates_endpoint(server: Running) -> None:
             for n in ("Fetchbox-Windows-10-11-v9.0.0-Setup.exe", "SHA256SUMS-desktop.txt")
         ]
         body = {"tag_name": "v9.0.0", "published_at": "2027-01-01", "html_url": page,
-                "assets": assets}  # fmt: skip
-        return httpx.Response(200, json=body)
+                "assets": assets, "prerelease": True}  # fmt: skip
+        # newest first as GitHub lists them, but the highest version wins, pre-release or not;
+        # a draft is never offered
+        return httpx.Response(200, json=[
+            {"tag_name": "v10.0.0", "draft": True, "assets": []},
+            {"tag_name": "v8.9.9", "html_url": "x", "assets": []},
+            body,
+            {"tag_name": "nightly", "assets": []},
+        ])  # fmt: skip
 
     server.app.state.updates = UpdateChecker(httpx.MockTransport(github))
     async with server.client() as c:
