@@ -2219,6 +2219,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system/tray/requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Tray Requests
+         * @description For the desktop tray (polled): what the web UI asked it to do. Taken once.
+         */
+        post: operations["tray_requests_api_v1_system_tray_requests_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/system/updates": {
         parameters: {
             query?: never;
@@ -2228,11 +2248,32 @@ export interface paths {
         };
         /**
          * Check Updates
-         * @description Is a newer Fetchbox released? (Settings: updates.check; nothing is installed.)
+         * @description Is a newer Fetchbox released? (Settings: updates.check.)
          */
         get: operations["check_updates_api_v1_system_updates_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system/updates/install": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Install Update
+         * @description Install the newer version (the desktop app): the tray downloads it, stops
+         *     Fetchbox, replaces the app and opens it again. Poll /system/status for the version.
+         */
+        post: operations["install_update_api_v1_system_updates_install_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3969,6 +4010,14 @@ export interface components {
             } | null;
             /** Tags */
             tags?: string[] | null;
+        };
+        /** InstallOut */
+        InstallOut: {
+            /**
+             * Version
+             * @description The version being installed
+             */
+            version: string;
         };
         /** InteractiveOut */
         InteractiveOut: {
@@ -5831,6 +5880,14 @@ export interface components {
             /** Number */
             number: number;
         };
+        /** TrayRequestsOut */
+        TrayRequestsOut: {
+            /**
+             * Install
+             * @description A version to install now
+             */
+            install: string | null;
+        };
         /** UnlockIn */
         UnlockIn: {
             /**
@@ -5852,6 +5909,12 @@ export interface components {
         /** UpdateOut */
         UpdateOut: {
             /**
+             * Can Install
+             * @description It can be installed from here: the desktop app, started by its tray, with an installer for this computer in the release
+             * @default false
+             */
+            can_install: boolean;
+            /**
              * Checked
              * @description False: checking is off, or GitHub couldn't be reached
              */
@@ -5866,6 +5929,11 @@ export interface components {
             downloads: components["schemas"]["ReleaseFileOut"][];
             /** Error */
             error?: string | null;
+            /**
+             * Installing
+             * @description Asked to install this version: the tray is on it
+             */
+            installing?: string | null;
             /** Latest */
             latest: string | null;
             /** Published At */
@@ -12094,6 +12162,26 @@ export interface operations {
             };
         };
     };
+    tray_requests_api_v1_system_tray_requests_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrayRequestsOut"];
+                };
+            };
+        };
+    };
     check_updates_api_v1_system_updates_get: {
         parameters: {
             query?: {
@@ -12121,6 +12209,36 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    install_update_api_v1_system_updates_install_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstallOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
                 };
             };
         };
