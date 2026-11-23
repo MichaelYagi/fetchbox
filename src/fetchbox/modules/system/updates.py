@@ -1,6 +1,7 @@
 """Update check: is there a newer Fetchbox release? (spec: "Migrations and updates")
 
-Asks GitHub for the public repo's latest release, at most every 6 hours, and only when
+Asks GitHub for the public repo's newest release (trial pre-releases included: GitHub's
+"latest" leaves them out), at most every 6 hours, and only when
 ``updates.check`` is on (default; it contacts api.github.com, so it can be turned off).
 Nothing is downloaded or installed: the UI shows "update available" with a link.
 """
@@ -17,13 +18,24 @@ import httpx
 import fetchbox
 
 REPO = "MichaelYagi/fetchbox"
-FEED = f"https://api.github.com/repos/{REPO}/releases/latest"
+FEED = f"https://api.github.com/repos/{REPO}/releases?per_page=30"
 TTL = 6 * 3600.0
 
 
 def _parts(v: str) -> tuple[int, ...] | None:
     m = re.match(r"^v?(\d+)\.(\d+)\.(\d+)", v.strip())
     return tuple(int(x) for x in m.groups()) if m else None
+
+
+def newest(releases: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """The highest version among published releases (drafts and odd tags left out)."""
+    found = [
+        (v, r)
+        for r in releases
+        if isinstance(r, dict) and not r.get("draft")
+        and (v := _parts(str(r.get("tag_name") or ""))) is not None
+    ]  # fmt: skip
+    return max(found, key=lambda x: x[0])[1] if found else None
 
 
 def newer(latest: str, current: str) -> bool:
@@ -60,11 +72,12 @@ class UpdateChecker:
             async with httpx.AsyncClient(timeout=10.0, transport=self.transport) as http:
                 r = await http.get(FEED, headers={"Accept": "application/vnd.github+json",
                                                   "User-Agent": "Fetchbox"})  # fmt: skip
-            if r.status_code == 404:  # no release published yet
+            r.raise_for_status()
+            body = r.json()
+            d = newest(body if isinstance(body, list) else [])
+            if d is None:  # no release published yet
                 info = UpdateInfo(current, None, False, None, None, checked=True)
             else:
-                r.raise_for_status()
-                d = r.json()
                 tag = str(d.get("tag_name") or "")
                 files = [
                     {"name": a["name"], "url": a["browser_download_url"], "size": a.get("size")}
