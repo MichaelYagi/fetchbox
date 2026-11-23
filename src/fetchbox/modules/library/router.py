@@ -153,6 +153,10 @@ class FolderChoiceOut(BaseModel):
     seasons: int = Field(description="Season folders in it (TV)")
 
 
+class OwnFolderOut(FolderChoiceOut):
+    library_folder: str = Field(description="The folder it is in: the library folder")
+
+
 class FolderChoicesOut(BaseModel):
     library_folder: str
     suggested: str | None = Field(
@@ -160,6 +164,11 @@ class FolderChoicesOut(BaseModel):
         "which has no artist folder"
     )
     choices: list[FolderChoiceOut] = Field(description="Folders already there for it")
+    own: OwnFolderOut | None = Field(
+        None,
+        description="The library folder given is this title's own folder (none in it "
+        "belongs to the title, but its name does): use its parent as the library folder",
+    )
 
 
 @router.get(
@@ -193,6 +202,7 @@ async def folder_choices(
         library_folder=out["library_folder"],
         suggested=out["suggested"],
         choices=[FolderChoiceOut(**c) for c in out["choices"]],
+        own=OwnFolderOut(**out["own"]) if out["own"] else None,
     )
 
 

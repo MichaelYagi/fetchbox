@@ -410,6 +410,13 @@
 				{#if own && own.suggested !== null}
 					<fieldset class="own">
 						<legend>{pending.kind === 'movie' ? 'Movie folder' : pending.kind === 'series' ? 'Show folder' : 'Artist folder'}</legend>
+						{#if own.own}
+							{@const it = own.own}
+							<div class="notice warn stack">
+								<span><strong>{it.name}</strong> looks like the {pending.kind === 'movie' ? "movie's" : pending.kind === 'series' ? "show's" : "artist's"} own folder ({found(pending.kind, it)}), not a library folder.</span>
+								<button type="button" onclick={() => (folder = it.library_folder)}>Use {it.library_folder} as the library folder</button>
+							</div>
+						{/if}
 						{#each own.choices as ch (ch.name)}
 							<label class="check">
 								<input type="radio" name="own" value="use:{ch.name}" bind:group={ownPick} />
@@ -531,6 +538,12 @@
 		border: 0;
 		padding: 0;
 		margin: 0;
+		min-width: 0; /* a fieldset is as wide as its content otherwise */
+	}
+	.own .notice button {
+		white-space: normal;
+		overflow-wrap: anywhere;
+		text-align: left;
 	}
 	.own legend {
 		padding: 0;

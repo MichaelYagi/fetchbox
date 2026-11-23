@@ -2726,6 +2726,17 @@
       "title": "Library Folder",
       "type": "string"
      },
+     "own": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/OwnFolderOut"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "The library folder given is this title's own folder (none in it belongs to the title, but its name does): use its parent as the library folder"
+     },
      "suggested": {
       "anyOf": [
        {
@@ -5088,6 +5099,48 @@
      "etag"
     ],
     "title": "NodeOut",
+    "type": "object"
+   },
+   "OwnFolderOut": {
+    "properties": {
+     "files": {
+      "description": "Video (or audio) files in it",
+      "title": "Files",
+      "type": "integer"
+     },
+     "library_folder": {
+      "description": "The folder it is in: the library folder",
+      "title": "Library Folder",
+      "type": "string"
+     },
+     "match": {
+      "description": "Its TMDB/TVDB id is in the name, or its title",
+      "enum": [
+       "id",
+       "title"
+      ],
+      "title": "Match",
+      "type": "string"
+     },
+     "name": {
+      "description": "A folder in the library folder",
+      "title": "Name",
+      "type": "string"
+     },
+     "seasons": {
+      "description": "Season folders in it (TV)",
+      "title": "Seasons",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "name",
+     "match",
+     "files",
+     "seasons",
+     "library_folder"
+    ],
+    "title": "OwnFolderOut",
     "type": "object"
    },
    "ParsedRelease": {
