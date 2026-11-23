@@ -28,6 +28,7 @@ from typing import Any
 
 import httpx
 
+import fetchbox
 from fetchbox import updater
 from fetchbox.config import Settings, write_config_value
 
@@ -374,6 +375,7 @@ def run(settings: Settings) -> int:
                          name="tray-update").start()  # fmt: skip
 
     menu = pystray.Menu(
+        pystray.MenuItem(f"Fetchbox {fetchbox.__version__}", None, enabled=False),
         pystray.MenuItem(lambda _: sup.status, None, enabled=False),
         pystray.MenuItem(
             lambda _: updates.label,
