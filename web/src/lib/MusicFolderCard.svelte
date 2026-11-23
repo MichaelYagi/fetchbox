@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Path from './Path.svelte';
 	import { ApiError, get, patch, post, type S } from './api.ts';
+	import FolderTest from './FolderTest.svelte';
 
 	// The music library folder: where albums go (Artist/Album (Year)/01 - Title.flac),
 	// how they get there, and importing what's already in it.
@@ -108,6 +109,7 @@
 					<button class="primary" disabled={!!busy}>Save</button>
 					<button type="button" onclick={() => (editing = false)}>Cancel</button>
 				</form>
+				<FolderTest path={folder} />
 			{/if}
 		</div>
 		<label class="field">

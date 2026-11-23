@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { ApiError, get, post, type S, type Title } from '#lib/api.ts';
+	import FolderTest from '#lib/FolderTest.svelte';
 
 	let q = $state('');
 	let results = $state<S['TitleSummary'][] | null>(null);
@@ -362,6 +363,7 @@
 						{/if}
 					</span>
 				</label>
+				<FolderTest path={folder.trim() || (defaultFolder(pending.kind)?.path ?? '')} />
 
 				{#if !(pending.kind !== 'movie' && (isMusic ? artistMode : monitorMode) === 'none')}
 					<label class="inline check">

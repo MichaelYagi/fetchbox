@@ -15,9 +15,9 @@ def _clean_env(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_defaults(tmp_path: Path) -> None:
     s = load_settings(tmp_path)
-    assert s.host == "127.0.0.1"
+    assert s.host == "0.0.0.0"  # other devices on the network can open it
     assert s.port == 8787
-    assert s.is_loopback
+    assert not s.is_loopback
     assert s.database_url.startswith("sqlite+aiosqlite:///")
     assert s.database_url.endswith("fetchbox.db")
 

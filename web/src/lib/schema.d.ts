@@ -1990,6 +1990,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/storage/test-folder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Test Folder Path
+         * @description Check a folder before choosing it: usable here, writable, free space. Nothing is
+         *     created; a probe file is written and deleted in an existing folder.
+         */
+        post: operations["test_folder_path_api_v1_storage_test_folder_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/system/config": {
         parameters: {
             query?: never;
@@ -3465,6 +3486,33 @@ export interface components {
             status: string;
             /** Status Message */
             status_message: string | null;
+        };
+        /** FolderTestIn */
+        FolderTestIn: {
+            /** Path */
+            path: string;
+        };
+        /** FolderTestOut */
+        FolderTestOut: {
+            /** Exists */
+            exists: boolean;
+            /**
+             * Free
+             * @description Free bytes where it is (or will be)
+             */
+            free: number | null;
+            /** Message */
+            message: string;
+            /**
+             * Network
+             * @description On a NAS / network share
+             */
+            network: boolean;
+            /**
+             * Ok
+             * @description The folder can be used as a library folder
+             */
+            ok: boolean;
         };
         /** ForgetIn */
         ForgetIn: {
@@ -11518,6 +11566,39 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Problem"];
                     "application/problem+json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    test_folder_path_api_v1_storage_test_folder_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FolderTestIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FolderTestOut"];
                 };
             };
             /** @description Validation Error */
