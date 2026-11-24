@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import socket
 import ssl
+import sys
 from collections.abc import Iterator
 from email import message_from_bytes
 from email.message import Message
@@ -213,5 +214,6 @@ def test_certificate_authorities_without_the_systems(
     (tmp_path / "none.pem").write_text("")
     monkeypatch.setenv("SSL_CERT_FILE", str(tmp_path / "none.pem"))
     monkeypatch.setenv("SSL_CERT_DIR", str(tmp_path))
-    assert ssl.create_default_context().get_ca_certs() == []
+    if sys.platform != "win32":  # Windows always adds its own certificate store
+        assert ssl.create_default_context().get_ca_certs() == []
     assert len(mail.trusted().get_ca_certs()) > 50
