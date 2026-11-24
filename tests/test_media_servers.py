@@ -178,6 +178,8 @@ async def test_imports_and_renames_trigger_one_refresh_each(
     servers.updated.clear()
     simple = {"movie_folder": "{Title} ({Year})", "movie_file": "{Title} ({Year})"}
     assert (await c.put("/library/naming/movie", json={"patterns": simple})).status_code == 200
+    allow = {"storage": {"rename_existing": True}}
+    assert (await c.patch("/system/config", json=allow)).status_code == 200
     out = (await c.post("/library/rename/movie", json={})).json()
     assert len(out["renamed"]) == 2
 

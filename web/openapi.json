@@ -9218,7 +9218,7 @@
  },
  "info": {
   "title": "Fetchbox",
-  "version": "0.9.14"
+  "version": "0.9.15"
  },
  "openapi": "3.1.0",
  "paths": {
@@ -16559,7 +16559,7 @@
     ]
    },
    "post": {
-    "description": "Rename files to the current naming (on the same disk: nothing is copied).",
+    "description": "Rename files to the current naming (on the same disk: nothing is copied). Only\nwhile `storage.rename_existing` is on: renamed files make media servers re-match.",
     "operationId": "rename_files_api_v1_library_rename__kind__post",
     "parameters": [
      {
@@ -16596,6 +16596,17 @@
        }
       },
       "description": "Successful Response"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Conflict"
      },
      "422": {
       "content": {

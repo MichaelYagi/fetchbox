@@ -1563,7 +1563,8 @@ export interface paths {
         put?: never;
         /**
          * Rename Files
-         * @description Rename files to the current naming (on the same disk: nothing is copied).
+         * @description Rename files to the current naming (on the same disk: nothing is copied). Only
+         *     while `storage.rename_existing` is on: renamed files make media servers re-match.
          */
         post: operations["rename_files_api_v1_library_rename__kind__post"];
         delete?: never;
@@ -10571,6 +10572,16 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RenameOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
                 };
             };
             /** @description Validation Error */

@@ -194,6 +194,8 @@ async def test_an_imported_show_keeps_its_folder_and_can_move(c: httpx.AsyncClie
     assert (await c.get(f"/titles/{tid}/folder")).json()["path"] == str(elsewhere)
 
     # Rename existing files: the naming's folder, which the show then keeps
+    allow = {"storage": {"rename_existing": True}}
+    assert (await c.patch("/system/config", json=allow)).status_code == 200
     r = await c.post("/library/rename/series", json={"file_ids": None})
     assert r.status_code == 200 and len(r.json()["renamed"]) == 2, r.text
     named = root / "Severance (2022) {tvdb-371980}"
