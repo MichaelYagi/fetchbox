@@ -15,10 +15,13 @@ from fetchbox.providers.media_servers import (
     MediaServerProvider,
     check_url,
     covering,
+    parent_of,
+    same_path,
 )
 
 TIMEOUT = httpx.Timeout(20.0, connect=10.0)
 KINDS = {"movies": "movie", "tvshows": "series", "music": "music"}
+ITEM_TYPES = {"movie": "Movie", "series": "Episode", "music": "Audio"}
 
 
 class JellyfinSettings(BaseModel):
@@ -113,6 +116,29 @@ class JellyfinProvider(MediaServerProvider):
             f"{len(libs)} librar{'y' if len(libs) == 1 else 'ies'}",
             details={"libraries": [lib.model_dump() for lib in libs]},
         )
+
+    async def files(self, library: Library, limit: int) -> list[str]:
+        kind = ITEM_TYPES.get(library.kind)
+        if kind is None:
+            return []
+        params = {"ParentId": library.id, "Recursive": "true", "IncludeItemTypes": kind,
+                  "Fields": "Path", "Limit": limit}  # fmt: skip
+        r = await self._call("GET", "/Items", params=params)
+        try:
+            return [str(x["Path"]) for x in r.json().get("Items") or [] if x.get("Path")]
+        except (ValueError, KeyError, TypeError, AttributeError):
+            return []
+
+    async def exists(self, path: str) -> bool | None:
+        params = {"path": parent_of(path), "includeFiles": "true", "includeDirectories": "true"}
+        try:
+            r = await self._http.get("/Environment/DirectoryContents", params=params)
+            if r.status_code != 200:
+                return None
+            seen = [str(x.get("Path", "")) for x in r.json()]
+        except (httpx.HTTPError, ValueError, TypeError, AttributeError):
+            return None
+        return any(same_path(x, path) for x in seen)
 
     async def refresh(self, folders: list[str]) -> list[str]:
         libs = await self.libraries()

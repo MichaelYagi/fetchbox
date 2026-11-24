@@ -10,7 +10,7 @@
 	let tests = $state<Record<string, Test>>({});
 	let editing = $state<string | null>(null); // a server id, or 'new'
 	let draft = $state({ kind: 'plex', name: 'Plex', url: '', secret: '', mappings: [] as { local: string; remote: string }[] });
-	let showMappings = $state(false);
+	let paths = $state<Record<string, string>>({}); // a folder's path as typed in the Test results
 	let busy = $state('');
 	let error = $state('');
 
@@ -65,7 +65,6 @@
 
 	function startAdd() {
 		draft = { kind: 'plex', name: 'Plex', url: '', secret: '', mappings: [] };
-		showMappings = false;
 		editing = 'new';
 	}
 	function startEdit(s: Server) {
@@ -76,14 +75,17 @@
 			secret: String(s.settings[KINDS[s.kind].secret] ?? ''),
 			mappings: s.path_mappings.map((m) => ({ ...m }))
 		};
-		showMappings = draft.mappings.length > 0;
 		editing = s.id;
 	}
-	function addMapping() {
-		const used = new Set(draft.mappings.map((m) => m.local));
-		const next = destinations.find((d) => !used.has(d.path));
-		draft.mappings = [...draft.mappings, { local: next?.path ?? '', remote: '' }];
-	}
+	// only for a folder the server's own folders don't reveal: the user says where it is
+	const setPath = (s: Server, local: string, remote: string) =>
+		act(`path-${s.id}`, async () => {
+			const path_mappings = [...s.path_mappings.filter((m) => m.local !== local), ...(remote.trim() ? [{ local, remote: remote.trim() }] : [])];
+			await patch(`/media-servers/${s.id}`, { path_mappings }, s.etag);
+			await load();
+			tests[s.id] = await post<Test>(`/media-servers/${s.id}/test`);
+		});
+	const byHand = (s: Server, local: string) => s.path_mappings.some((m) => m.local === local);
 
 	const save = (e: SubmitEvent) => {
 		e.preventDefault();
@@ -91,7 +93,7 @@
 			const body = {
 				name: draft.name.trim(),
 				settings: { url: draft.url.trim(), [KINDS[draft.kind].secret]: draft.secret },
-				path_mappings: showMappings ? draft.mappings.filter((m) => m.local.trim() && m.remote.trim()) : []
+				path_mappings: draft.mappings // set from the Test results; kept as they are
 			};
 			const row =
 				editing === 'new'
@@ -155,9 +157,22 @@
 									<td class="mono">{c.remote}</td>
 									<td>
 										{#if c.library}
-											<span class="badge ok">✓ in “{c.library}”</span>
+											{#if c.visible === false}
+												<span class="badge warn">in “{c.library}”, but {KINDS[s.kind]?.label} can't see this folder</span>
+											{:else}
+												<span class="badge ok">✓ in “{c.library}”</span>
+											{/if}
+											{#if c.how === 'files'}<span class="muted small">matched by files {KINDS[s.kind]?.label} already has</span>
+											{:else if c.how === 'names'}<span class="muted small">matched by folder names</span>{/if}
+											{#if byHand(s, c.local)}
+												<button class="small" onclick={() => setPath(s, c.local, '')} disabled={!!busy}>Forget the path I typed</button>
+											{/if}
 										{:else}
-											<span class="badge warn">not in any {KINDS[s.kind]?.label} library</span>
+											<span class="badge warn">not found in {KINDS[s.kind]?.label}</span>
+											<form class="row pathfix" onsubmit={(e) => (e.preventDefault(), setPath(s, c.local, paths[c.local] ?? ''))}>
+												<input class="small" bind:value={paths[c.local]} placeholder="this folder's path in {KINDS[s.kind]?.label}" aria-label="{c.folder}: its path in {KINDS[s.kind]?.label}" />
+												<button class="small" disabled={!!busy || !paths[c.local]?.trim()}>Save</button>
+											</form>
 										{/if}
 									</td>
 								</tr>
@@ -166,8 +181,9 @@
 					</table>
 					{#if t.coverage.some((c) => !c.library)}
 						<p class="muted small">
-							If {KINDS[s.kind]?.label} shows these folders under other paths (Docker, another computer), add a path mapping
-							with Edit. A folder you don't keep in {KINDS[s.kind]?.label} can be ignored.
+							A folder you don't keep in {KINDS[s.kind]?.label} can be ignored. Otherwise add it to a library in
+							{KINDS[s.kind]?.label}, or type where {KINDS[s.kind]?.label} sees it (the library's settings in
+							{KINDS[s.kind]?.label} show its folders).
 						</p>
 					{/if}
 				{/if}
@@ -202,22 +218,6 @@
 			<input bind:value={draft.secret} required autocomplete="off" spellcheck="false" />
 		</label>
 		<p class="muted small hint">{KINDS[draft.kind].where}</p>
-		<label class="inline"><input type="checkbox" bind:checked={showMappings} onchange={() => showMappings && draft.mappings.length === 0 && addMapping()} />
-			{KINDS[draft.kind].label} sees my folders at different paths (Docker, another computer)</label>
-		{#if showMappings}
-			{#each draft.mappings as m, i (i)}
-				<div class="row mapping">
-					<label class="grow">Fetchbox folder
-						<select bind:value={m.local}>
-							{#each destinations as d (d.id)}<option value={d.path}>{d.name}: {d.path}</option>{/each}
-						</select>
-					</label>
-					<label class="grow">…is in {KINDS[draft.kind].label} at <input bind:value={m.remote} placeholder="/data/movies" /></label>
-					<button type="button" class="small" onclick={() => (draft.mappings = draft.mappings.filter((_, j) => j !== i))}>Remove</button>
-				</div>
-			{/each}
-			<div><button type="button" class="small" onclick={addMapping}>Add another folder</button></div>
-		{/if}
 		<div class="row">
 			<button class="primary" disabled={!!busy}>{busy === 'save' ? 'Saving…' : 'Save and test'}</button>
 			{#if editing === 'new'}<button type="button" onclick={() => (editing = null)}>Cancel</button>{/if}
@@ -247,14 +247,28 @@
 	.hint {
 		margin: 0;
 	}
-	.inline {
-		display: flex;
-		gap: 0.5rem;
-		align-items: center;
+	.pathfix {
+		margin-top: 0.35rem;
+		gap: 0.35rem;
 	}
-	.mapping {
-		align-items: flex-end;
-		flex-wrap: wrap;
+	.pathfix input {
+		min-width: 0;
+		flex: 1 1 12rem;
+	}
+	.coverage {
+		width: 100%;
+	}
+	@media (max-width: 640px) {
+		/* one folder per block: name, then its path, then the verdict */
+		.coverage tr {
+			display: block;
+			padding: 0.4rem 0;
+			border-bottom: 1px solid var(--border);
+		}
+		.coverage td {
+			display: block;
+			padding: 0.1rem 0;
+		}
 	}
 	.coverage td {
 		padding: 0.25rem 0.5rem 0.25rem 0;

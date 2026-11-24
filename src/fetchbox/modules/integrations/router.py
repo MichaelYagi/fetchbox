@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, Header, Request, Response
 from pydantic import BaseModel, Field, computed_field
@@ -63,6 +63,17 @@ class CoverageOut(BaseModel):
     local: str
     remote: str = Field(description="The same folder as the server sees it")
     library: str | None = Field(description="The server's library holding it; null: none")
+    found: bool = Field(
+        False, description="The server's path was worked out from its libraries, not a mapping"
+    )
+    how: Literal["", "mapping", "files", "names"] = Field(
+        "",
+        description="How the server's path is known: your mapping, files both know, "
+        "folder names, or as it is (same machine, or not found)",
+    )
+    visible: bool | None = Field(
+        None, description="Whether the server sees this folder; null: it can't say"
+    )
 
 
 class MediaServerTestOut(BaseModel):

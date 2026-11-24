@@ -3156,6 +3156,19 @@ export interface components {
              */
             folder: string;
             /**
+             * Found
+             * @description The server's path was worked out from its libraries, not a mapping
+             * @default false
+             */
+            found: boolean;
+            /**
+             * How
+             * @description How the server's path is known: your mapping, files both know, folder names, or as it is (same machine, or not found)
+             * @default
+             * @enum {string}
+             */
+            how: "" | "mapping" | "files" | "names";
+            /**
              * Library
              * @description The server's library holding it; null: none
              */
@@ -3167,6 +3180,11 @@ export interface components {
              * @description The same folder as the server sees it
              */
             remote: string;
+            /**
+             * Visible
+             * @description Whether the server sees this folder; null: it can't say
+             */
+            visible?: boolean | null;
         };
         /** DefinitionIn */
         DefinitionIn: {
