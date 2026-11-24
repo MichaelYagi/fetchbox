@@ -558,11 +558,22 @@ async def rename_preview(kind: LibKind, request: Request) -> list[RenameStepOut]
     return [RenameStepOut(**x) for x in await _svc(request).rename_plan(kind)]
 
 
-@router.post("/library/rename/{kind}", response_model=RenameOut, dependencies=_write)
+@router.post(
+    "/library/rename/{kind}", response_model=RenameOut, dependencies=_write, responses=pr(409)
+)
 async def rename_files(
     kind: LibKind, body: RenameIn, request: Request, p: CurrentPrincipal
 ) -> RenameOut:
-    """Rename files to the current naming (on the same disk: nothing is copied)."""
+    """Rename files to the current naming (on the same disk: nothing is copied). Only
+    while `storage.rename_existing` is on: renamed files make media servers re-match."""
+    if not request.app.state.config.current.storage.rename_existing:
+        raise ProblemError(
+            409,
+            "Conflict",
+            "renaming files already in the library is turned off "
+            "(Settings > Library: Rename files already in the library)",
+            slug="conflict",
+        )
     out = await _svc(request).rename(kind, body.file_ids, actor=p.actor())
     return RenameOut(
         renamed=[RenameStepOut(**x) for x in out["renamed"]],

@@ -77,6 +77,12 @@ class StorageConfig(BaseModel):
     recycle_days: int = Field(
         default=7, ge=1, le=365, description="Days deleted files stay in recycle folders"
     )
+    rename_existing: bool = Field(
+        default=False,
+        description="Allow renaming files already in the library to the current naming "
+        "(Settings > Library). Off: only new downloads are named; files already there, "
+        "and in Plex, keep their names",
+    )
 
 
 class UpdatesConfig(BaseModel):

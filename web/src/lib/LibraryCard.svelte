@@ -32,6 +32,8 @@
 	let previewError = $state('');
 	let renames = $state<S['RenameStepOut'][] | null>(null);
 	let showRenames = $state(false);
+	// off by default: renaming files Plex already has makes it re-match them
+	let allowRename = $state(false);
 	let editingFolder = $state(false);
 	let folder = $state('');
 	let busy = $state('');
@@ -52,6 +54,8 @@
 			draft = { ...saved.patterns };
 			custom = saved.preset === 'custom';
 			preview = saved.samples;
+			const cfg = await get<{ config: { storage?: { rename_existing?: boolean } } }>('/system/config');
+			allowRename = cfg.config.storage?.rename_existing === true;
 			renames = await get<S['RenameStepOut'][]>(`/library/rename/${kind}`);
 		} catch (e) {
 			error = e instanceof ApiError ? e.message : String(e);
@@ -127,8 +131,17 @@
 			renames = await get<S['RenameStepOut'][]>(`/library/rename/${kind}`);
 		}, 'Saved. New files will be named this way.');
 
-	const rename = () =>
-		act('rename', async () => {
+	const setAllowRename = (on: boolean) =>
+		act('allow-rename', async () => {
+			await patch('/system/config', { storage: { rename_existing: on } });
+			allowRename = on;
+			showRenames = false;
+		});
+
+	const rename = () => {
+		const n = renames?.length ?? 0;
+		if (!confirm(`Rename ${n} file${n === 1 ? '' : 's'} already in your library?\n\nPlex, Jellyfin or Emby will see ${n === 1 ? 'it' : 'them'} at the new name and must re-match ${n === 1 ? 'it' : 'them'}. There is no undo.`)) return;
+		return act('rename', async () => {
 			const r = await post<S['RenameOut']>(`/library/rename/${kind}`, {});
 			renames = await get<S['RenameStepOut'][]>(`/library/rename/${kind}`);
 			if (r.failed.length) {
@@ -137,6 +150,7 @@
 			message = `Renamed ${r.renamed.length} file${r.renamed.length === 1 ? '' : 's'}.`;
 			showRenames = renames.length > 0;
 		});
+	};
 
 	const LINK_MODES: [string, string][] = [
 		['hardlink_or_copy', 'Hardlink when possible, else copy (recommended: keeps seeding, no double space)'],
@@ -313,7 +327,13 @@
 			{#if dirty}<span class="muted small">Not saved yet.</span>{/if}
 		</div>
 
-		{#if renames && renames.length > 0}
+		<label class="inline small">
+			<input type="checkbox" checked={allowRename} disabled={!!busy} onchange={(e) => setAllowRename(e.currentTarget.checked)} />
+			Rename files already in the library
+			<span class="muted">— off: only new downloads get this naming; what's already there (and in Plex) keeps its name</span>
+		</label>
+
+		{#if allowRename && renames && renames.length > 0}
 			<div class="notice warn stack">
 				<div class="spread">
 					<span>{renames.length} file{renames.length === 1 ? '' : 's'} already in the library {renames.length === 1 ? 'has' : 'have'} different names than this naming gives.</span>

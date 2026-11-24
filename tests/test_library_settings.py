@@ -80,6 +80,12 @@ async def test_rename_an_imported_movie(
     assert step["current"] == EXPECTED and step["new"] == "Dune (2021)/Dune (2021).mkv"
     assert step["title_id"] == movie["id"]
 
+    # off unless turned on: files already in the library (and in Plex) keep their names
+    r = await c.post("/library/rename/movie", json={})
+    assert r.status_code == 409 and "turned off" in r.json()["detail"], r.text
+    assert (settings.downloads_dir / "Movies" / EXPECTED).exists()
+    allow = {"storage": {"rename_existing": True}}
+    assert (await c.patch("/system/config", json=allow)).status_code == 200
     r = await c.post("/library/rename/movie", json={})
     assert r.status_code == 200, r.text
     assert [x["new"] for x in r.json()["renamed"]] == [step["new"]] and r.json()["failed"] == []
@@ -133,6 +139,8 @@ async def test_rename_episode_files(c: httpx.AsyncClient, fakes: Fakes, server: 
         + "Severance - S01E05-E06 - Ep 5 + Ep 6 [WEBDL-1080p].mkv",
         "messy/s01e07.mkv": base + "Severance - S01E07 - Ep 7 [HDTV-720p].mkv",
     }  # fmt: skip
+    allow = {"storage": {"rename_existing": True}}
+    assert (await c.patch("/system/config", json=allow)).status_code == 200
     out = (await c.post("/library/rename/series", json={})).json()
     assert [x["current"] for x in out["renamed"]] == ["messy/Severance.S01E05E06.mkv"]
     assert [x["current"] for x in out["failed"]] == ["messy/s01e07.mkv"]
