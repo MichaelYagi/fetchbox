@@ -322,7 +322,6 @@
 								</div>
 							</td>
 						</tr>
-						<tr><td class="w muted">Downloads</td><td><Path path={session.host.downloads_root} /></td></tr>
 						<tr><td class="w muted">Fetchbox data</td><td><Path path={session.host.data_dir} /></td></tr>
 						<tr>
 							<td class="w muted">Version</td>
