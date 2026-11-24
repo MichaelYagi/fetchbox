@@ -1,4 +1,31 @@
+/* Colour themes. Everything else uses these tokens, never colours of its own. The dark
+   theme is the default; another is picked in the top bar (ThemePicker.svelte), saved
+   per browser and set as data-theme on <html> before the page draws (static/theme.js).
+   To add one: a [data-theme='…'] block defining every token, and an entry in themes.ts. */
 :root {
+	--radius: 10px;
+}
+:root,
+[data-theme='dark'] {
+	--bg: #0f1216;
+	--surface: #171b21;
+	--surface-2: #1f242c;
+	--border: #2c333d;
+	--text: #e6e9ee;
+	--muted: #9aa4b2;
+	--accent: #5b8def;
+	--accent-text: #0b0e12;
+	--ok: #4ade80;
+	--warn: #fbbf24;
+	--error: #f87171;
+	--ok-bg: #12301d;
+	--warn-bg: #3a2a0b;
+	--error-bg: #3b1515;
+	--info-bg: #172a4a;
+	--shadow: none;
+	color-scheme: dark;
+}
+[data-theme='light'] {
 	--bg: #f6f7f9;
 	--surface: #ffffff;
 	--surface-2: #f0f2f5;
@@ -14,30 +41,72 @@
 	--warn-bg: #fef3c7;
 	--error-bg: #fee2e2;
 	--info-bg: #dbeafe;
-	--radius: 10px;
 	--shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 1px 1px rgb(0 0 0 / 0.04);
 	color-scheme: light;
 }
-@media (prefers-color-scheme: dark) {
-	:root {
-		--bg: #0f1216;
-		--surface: #171b21;
-		--surface-2: #1f242c;
-		--border: #2c333d;
-		--text: #e6e9ee;
-		--muted: #9aa4b2;
-		--accent: #5b8def;
-		--accent-text: #0b0e12;
-		--ok: #4ade80;
-		--warn: #fbbf24;
-		--error: #f87171;
-		--ok-bg: #12301d;
-		--warn-bg: #3a2a0b;
-		--error-bg: #3b1515;
-		--info-bg: #172a4a;
-		--shadow: none;
-		color-scheme: dark;
-	}
+/* Nord: cool blue-grey, frost accents */
+[data-theme='nord'] {
+	--bg: #2e3440;
+	--surface: #3b4252;
+	--surface-2: #434c5e;
+	--border: #4c566a;
+	--text: #e5e9f0;
+	--muted: #a3adbd;
+	--accent: #88c0d0;
+	--accent-text: #2e3440;
+	--ok: #a3be8c;
+	--warn: #ebcb8b;
+	--error: #d08770;
+	--ok-bg: #34402f;
+	--warn-bg: #4a432f;
+	--error-bg: #4a3431;
+	--info-bg: #2f4250;
+	--shadow: none;
+	color-scheme: dark;
+}
+/* Carnival: deep purple with gold, pink and green */
+[data-theme='carnival'] {
+	--bg: #1a1025;
+	--surface: #251733;
+	--surface-2: #311f42;
+	--border: #4a2f5e;
+	--text: #ede4f5;
+	--muted: #b39ac9;
+	--accent: #ffb627;
+	--accent-text: #1a1025;
+	--ok: #2ecc71;
+	--warn: #ff9f6b;
+	--error: #ff5470;
+	--ok-bg: #15301f;
+	--warn-bg: #3a2416;
+	--error-bg: #3a1620;
+	--info-bg: #1f2d40;
+	--shadow: none;
+	color-scheme: dark;
+}
+/* Garbagefire: an affront to god and designers everywhere */
+[data-theme='garbagefire'] {
+	--bg: #ffff00;
+	--surface: #aaff00;
+	--surface-2: #00ff00;
+	--border: #ff00ff;
+	--text: #cc0066;
+	--muted: #aa6600;
+	--accent: #0000ff;
+	--accent-text: #ffff00;
+	--ok: #006600;
+	--warn: #ff6600;
+	--error: #ff0000;
+	--ok-bg: #ccffcc;
+	--warn-bg: #ffdd99;
+	--error-bg: #ffcccc;
+	--info-bg: #ccffff;
+	--shadow: 4px 4px 0 #ff00ff;
+	color-scheme: light;
+}
+[data-theme='garbagefire'],
+[data-theme='garbagefire'] * {
+	font-family: 'Comic Sans MS', 'Comic Sans', 'Chalkboard SE', 'Comic Neue', cursive !important;
 }
 * {
 	box-sizing: border-box;
