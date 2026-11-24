@@ -16,6 +16,7 @@ from email.message import EmailMessage
 from email.utils import formatdate, getaddresses, make_msgid
 from typing import Any, ClassVar
 
+import certifi
 from pydantic import BaseModel, Field, SecretStr, field_validator, model_validator
 
 from fetchbox.core.netguard import BlockedAddress, public_target
@@ -24,6 +25,15 @@ from fetchbox.providers.notifiers import Notification, NotifierError, NotifierPr
 
 TIMEOUT = 20.0
 TLS_PORTS = {465}  # TLS from the start (SMTPS); other ports: STARTTLS
+
+
+def trusted() -> ssl.SSLContext:
+    """The system's certificate authorities plus certifi's (the ones web requests use):
+    the desktop app's bundled Python finds no system ones on macOS, so smtp.gmail.com
+    failed with "unable to get local issuer certificate"."""
+    ctx = ssl.create_default_context()
+    ctx.load_verify_locations(cafile=certifi.where())
+    return ctx
 
 
 def _addresses(raw: str) -> list[str]:
@@ -134,7 +144,7 @@ class EmailNotifier(NotifierProvider):
 
     def __init__(self, settings: BaseModel, *, tls: ssl.SSLContext | None = None, **kw: Any):
         super().__init__(settings, **kw)
-        self._tls = tls or ssl.create_default_context()  # tests: a test CA
+        self._tls = tls or trusted()  # tests: a test CA
 
     async def send(self, n: Notification) -> None:
         cfg = self.settings
