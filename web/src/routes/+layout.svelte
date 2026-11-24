@@ -4,6 +4,7 @@
 	import { page } from '$app/state';
 	import { get, post, rate, SignedOut, type Download, type S } from '#lib/api.ts';
 	import { session } from '#lib/session.svelte.ts';
+	import ThemePicker from '#lib/ThemePicker.svelte';
 
 	let { children } = $props();
 
@@ -151,6 +152,7 @@
 						{health.status === 'ok' ? 'Healthy' : `${problems.length} issue${problems.length === 1 ? '' : 's'}`}
 					</a>
 				{/if}
+				<ThemePicker />
 				<button class="small" onclick={signOut}>Sign out</button>
 			</div>
 		</div>
