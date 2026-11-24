@@ -156,6 +156,7 @@
 									<td>
 										{#if c.library}
 											<span class="badge ok">✓ in “{c.library}”</span>
+											{#if c.found}<span class="muted small">found by itself</span>{/if}
 										{:else}
 											<span class="badge warn">not in any {KINDS[s.kind]?.label} library</span>
 										{/if}

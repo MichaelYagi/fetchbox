@@ -68,6 +68,49 @@ def to_remote(path: str, mappings: list[PathMapping]) -> str:
     return path
 
 
+def _parts(path: str) -> list[str]:
+    return [x for x in path.replace("\\", "/").split("/") if x]
+
+
+def guess_mapping(path: str, libraries: list[Library]) -> PathMapping | None:
+    """The same folder as a server on another machine sees it, worked out from its
+    libraries: /Volumes/Public/Media/Movies on a Mac is /volume1/Public/Media/Movies on
+    the NAS running Plex. The library folder sharing the most trailing folder names with
+    ``path`` (or one of its parents) wins; a tie between different places is no guess."""
+    mine = _parts(path)
+    best: dict[str, PathMapping] = {}  # translated path -> mapping
+    score = 0
+    for lib in libraries:
+        for root in lib.paths:
+            theirs = _parts(root)
+            for cut in range(len(mine), 0, -1):  # path itself, then each parent
+                head = mine[:cut]
+                k = 0
+                while k < min(len(head), len(theirs)) and (
+                    head[-1 - k].casefold() == theirs[-1 - k].casefold()
+                ):
+                    k += 1
+                if k == 0 or k < score:
+                    continue
+                local = ("/" if path.replace("\\", "/").startswith("/") else "") + "/".join(head)
+                m = PathMapping(local=local, remote=root)
+                if k > score:
+                    score, best = k, {}
+                best[to_remote(path, [m])] = m
+    return next(iter(best.values())) if len(best) == 1 else None
+
+
+def server_path(
+    path: str, mappings: list[PathMapping], libraries: list[Library]
+) -> tuple[str, bool]:
+    """``path`` as the server sees it: by the user's path mappings, else, when no library
+    holds it that way, worked out from the server's libraries. (path, worked out?)"""
+    remote = to_remote(path, mappings)
+    if covering(libraries, remote) is None and (m := guess_mapping(path, libraries)):
+        return to_remote(path, [m]), True
+    return remote, False
+
+
 def _invalid(exc: ValidationError, prefix: str) -> ProblemError:
     return ProblemError(
         422,
@@ -134,6 +177,9 @@ class IntegrationsService:
         problems: list[str] = []
         provider = self._provider(row)
         try:
+            # a server on another machine (Plex on a NAS) sees these folders elsewhere
+            libs = await provider.libraries()
+            remote = sorted({server_path(f, mappings, libs)[0] for f in folders})
             problems = await provider.refresh(remote)
         except MediaServerError as exc:
             error = exc.message
@@ -144,7 +190,8 @@ class IntegrationsService:
             await provider.aclose()
         if problems and not error:
             error = "; ".join(problems) + (
-                " (add a path mapping if the server sees these folders elsewhere)"
+                " (add that folder to a library in the server, or a path mapping in "
+                "Fetchbox if the server sees it under another name)"
             )
         async with self.db.sessionmaker() as s:
             r = await s.get(MediaServer, row.id)
@@ -303,11 +350,11 @@ class IntegrationsService:
         mappings = [PathMapping.model_validate(m) for m in row.path_mappings or []]
         coverage = []
         for name, local in folders:
-            remote = to_remote(local, mappings)
+            remote, found = server_path(local, mappings, libs)
             lib = covering(libs, remote)
             coverage.append(
                 {"folder": name, "local": local, "remote": remote,
-                 "library": lib.name if lib else None}
+                 "library": lib.name if lib else None, "found": found}
             )  # fmt: skip
         return {
             "ok": res.ok,

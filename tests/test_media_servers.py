@@ -14,7 +14,12 @@ import httpx
 import pytest
 
 from fetchbox.core.secrets import MASK
-from fetchbox.modules.integrations.service import PathMapping, to_remote
+from fetchbox.modules.integrations.service import (
+    PathMapping,
+    guess_mapping,
+    server_path,
+    to_remote,
+)
 from fetchbox.providers.media_servers import Library, covering
 from tests.conftest import Running
 from tests.pipeline import Fakes, standard_hd
@@ -85,6 +90,29 @@ def test_path_helpers() -> None:
     assert covering(libs, "/mx/Film") is None
 
 
+def test_the_servers_path_is_worked_out_from_its_libraries() -> None:
+    nas = [Library(id="1", name="Movies", kind="movie",
+                   paths=["/volume1/Public/Media/Partition_2/Movies"]),
+           Library(id="2", name="TV Shows", kind="series",
+                   paths=["/volume1/Public/Media/Partition_2/TV"])]  # fmt: skip
+    film = "/Volumes/Public/Media/Partition_2/Movies/You Can See Everything (2026)"
+    assert server_path(film, [], nas) == (
+        "/volume1/Public/Media/Partition_2/Movies/You Can See Everything (2026)", True)  # fmt: skip
+    # the user's own mapping comes first
+    mine = [PathMapping(local="/Volumes/Public/Media/Partition_2/Movies", remote="/x/films")]
+    films = [*nas, Library(id="3", name="Films", kind="movie", paths=["/x/films"])]
+    assert server_path(film, mine, films) == ("/x/films/You Can See Everything (2026)", False)
+    # Plex on Windows
+    win = [Library(id="1", name="Movies", kind="movie", paths=["D:\\Media\\Movies"])]
+    assert server_path("/Volumes/D/Media/Movies/Dune (2021)", [], win) == (
+        "D:\\Media\\Movies\\Dune (2021)", True)  # fmt: skip
+    # two equally good places: no guess, the folder is reported instead
+    two = [Library(id="1", name="A", kind="movie", paths=["/a/Movies"]),
+           Library(id="2", name="B", kind="movie", paths=["/b/Movies"])]  # fmt: skip
+    assert guess_mapping("/Volumes/x/Movies/Dune", two) is None
+    assert guess_mapping("/srv/Films/Dune", nas) is None  # nothing in common
+
+
 async def _add(c: httpx.AsyncClient, body: dict[str, Any]) -> dict[str, Any]:
     r = await c.post("/media-servers", json=body)
     assert r.status_code == 201, r.text
@@ -104,7 +132,10 @@ async def test_connect_test_and_coverage(
     assert r["ok"] and r["message"] == "Jellyfin 12.4.0 works (den): 2 libraries"
     cov = {x["local"]: x for x in r["coverage"]}
     assert cov[movies]["library"] == "Movies" and cov[movies]["remote"] == "/media/movies"
-    assert any(x["library"] is None for x in r["coverage"])  # TV isn't mapped: not covered
+    # TV isn't mapped, but Jellyfin's /media/tv ends the same way: found by itself
+    tv = next(x for x in r["coverage"] if x["folder"] == "TV")
+    assert tv["library"] == "Shows" and tv["remote"] == "/media/tv" and tv["found"]
+    assert not cov[movies]["found"]  # that one came from the mapping
 
     bad = await _add(c, {"kind": "plex", "name": "Plex", "settings": {
         "url": "http://plex:32400", "token": "wrong"}})  # fmt: skip
@@ -216,3 +247,25 @@ async def test_refresh_problems_are_recorded_not_raised(
     err = (await c.get("/media-servers")).json()[0]["last_error"]
     assert err.startswith("Jellyfin unreachable at http://jellyfin:8096")
     assert (await c.delete(f"/media-servers/{row['id']}")).status_code == 204
+
+
+async def test_plex_elsewhere_needs_no_mapping(
+    c: httpx.AsyncClient, servers: FakeServers, server: Running, settings: Any
+) -> None:
+    # Plex (on a NAS) has /data/movies; Fetchbox's folder is .../Movies: no mapping set
+    await _add(c, {"kind": "plex", "name": "Plex", "settings": {
+        "url": "http://plex:32400", "token": PLEX_TOKEN}})  # fmt: skip
+    film = settings.downloads_dir / "Movies" / "You Can See Everything (2026)"
+    await server.app.state.fb.bus.emit("import.completed", folders=[str(film)])
+
+    async def refreshed() -> bool:
+        return bool(servers.plex_refreshed)
+
+    await until(refreshed, within=10)
+    assert servers.plex_refreshed == [("1", "/data/movies/You Can See Everything (2026)")]
+
+    async def recorded() -> bool:
+        return (await c.get("/media-servers")).json()[0]["last_refresh_at"] is not None
+
+    await until(recorded, within=10)
+    assert (await c.get("/media-servers")).json()[0]["last_error"] is None

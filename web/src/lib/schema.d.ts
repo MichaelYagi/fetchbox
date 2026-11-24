@@ -3156,6 +3156,12 @@ export interface components {
              */
             folder: string;
             /**
+             * Found
+             * @description The server's path was worked out from its libraries, not a mapping
+             * @default false
+             */
+            found: boolean;
+            /**
              * Library
              * @description The server's library holding it; null: none
              */

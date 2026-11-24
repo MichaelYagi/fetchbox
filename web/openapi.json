@@ -1453,6 +1453,12 @@
       "title": "Folder",
       "type": "string"
      },
+     "found": {
+      "default": false,
+      "description": "The server's path was worked out from its libraries, not a mapping",
+      "title": "Found",
+      "type": "boolean"
+     },
      "library": {
       "anyOf": [
        {

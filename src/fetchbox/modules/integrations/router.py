@@ -63,6 +63,9 @@ class CoverageOut(BaseModel):
     local: str
     remote: str = Field(description="The same folder as the server sees it")
     library: str | None = Field(description="The server's library holding it; null: none")
+    found: bool = Field(
+        False, description="The server's path was worked out from its libraries, not a mapping"
+    )
 
 
 class MediaServerTestOut(BaseModel):
