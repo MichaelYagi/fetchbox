@@ -268,6 +268,7 @@ def create_app(
             db, bus, library=library, grabs=grabs, autosearch=autosearch
         )
         await storage.seed(await library.seed())
+        await storage.merge_duplicates()
         await storage.recover()
 
         activity_writer = ActivityWriter(db, bus)

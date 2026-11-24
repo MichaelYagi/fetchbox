@@ -177,7 +177,15 @@ def _norm_folder(path: str) -> str:
 
 
 def _same_folder(a: str, b: str) -> bool:
-    return _norm_folder(a) == _norm_folder(b)
+    """The same folder, however it's written: on a Mac /Volumes/Macintosh HD/X is /X,
+    a symlink is where it points, and the case of a name may not matter (this touches
+    the disk: call it off the event loop)."""
+    if _norm_folder(a) == _norm_folder(b):
+        return True
+    try:
+        return os.path.samefile(os.path.expanduser(a), os.path.expanduser(b))
+    except (OSError, ValueError):
+        return False
 
 
 def _can_write(folder: Path) -> str | None:
@@ -307,6 +315,54 @@ class StorageService:
             if changed:
                 await s.commit()
 
+    async def merge_duplicates(self) -> list[str]:
+        """Library folders of one kind that are the same folder written two ways (an older
+        Fetchbox made "Movies 2" for a title added to /Volumes/Macintosh HD/.../Movies):
+        their titles and files move to the first, and the others go. Names of the ones
+        removed."""
+        from fetchbox.modules.library.models import MediaFile
+        from fetchbox.modules.media.models import Title
+
+        rows = sorted(
+            await self.destinations(),
+            key=lambda d: (not d.is_default, d.created_at, d.name),
+        )
+        gone: dict[str, Destination] = {}  # duplicate id -> the one it joins
+        for i, d in enumerate(rows):
+            if d.id in gone:
+                continue
+            for other in rows[i + 1 :]:
+                if (
+                    other.id not in gone
+                    and other.media_kind == d.media_kind
+                    and await asyncio.to_thread(_same_folder, d.path, other.path)
+                ):
+                    gone[other.id] = d
+        if not gone:
+            return []
+        names = []
+        async with self.db.sessionmaker() as s:
+            for dup_id, keep in gone.items():
+                # a title in the default folder has none of its own (it follows Settings)
+                own = None if keep.is_default else keep.id
+                for col, dest_id in (
+                    (Title.destination_id, own),
+                    (MediaFile.destination_id, keep.id),
+                ):
+                    await s.execute(
+                        update(col.class_)
+                        .where(col == dup_id)
+                        .values(destination_id=dest_id)
+                        .execution_options(synchronize_session=False)
+                    )
+                dup = await s.get(Destination, dup_id)
+                if dup is not None:
+                    names.append(dup.name)
+                    await s.delete(dup)
+            await s.commit()
+        log.info("storage.duplicates_merged", removed=names)
+        return names
+
     async def recover(self) -> list[str]:
         """Roll back file operations a crash interrupted (partial files)."""
         removed: list[str] = []
@@ -368,7 +424,7 @@ class StorageService:
             raise _invalid(field, why)
         rows = await self.destinations(media_kind)
         default = rows[0] if rows else None
-        same = [d for d in rows if _same_folder(d.path, str(p))]
+        same = [d for d in rows if await asyncio.to_thread(_same_folder, d.path, str(p))]
         if same:
             return None if default is not None and same[0].id == default.id else same[0].id
         if problem := await asyncio.to_thread(_can_write, p):

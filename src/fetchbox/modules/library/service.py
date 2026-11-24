@@ -1254,7 +1254,11 @@ class LibraryService:
         rows = await self.storage.destinations(title.kind)
         default = rows[0] if rows else await self.storage.default_destination(title.kind)
         path = (library_path or "").strip()
-        dest = next((d for d in rows if path and _same_folder(d.path, path)), None)
+        dest = None
+        for d in rows if path else []:
+            if await asyncio.to_thread(_same_folder, d.path, path):
+                dest = d
+                break
         root = Path(path) if path and dest is None else Path((dest or default).path)
         # a new library folder gets the default's naming
         suggested = await self._naming_folder(title, dest or default)
