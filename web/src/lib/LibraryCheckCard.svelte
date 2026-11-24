@@ -89,7 +89,7 @@
 			<div class="block">
 				<strong>Not in Fetchbox ({report.unknown_count})</strong>
 				<div class="muted small">Video files in your library folders that Fetchbox has no record of. Use “Import what's already here” on the folder to add them.</div>
-				{#each report.unknown.slice(0, 30) as u (u.path)}<div class="small line mono">{u.path}</div>{/each}
+				{#each report.unknown.slice(0, 30) as u, i (i)}<div class="small line mono">{u.path}</div>{/each}
 				{#if report.unknown_count > 30}<div class="muted small">…and {report.unknown_count - 30} more</div>{/if}
 			</div>
 		{/if}
