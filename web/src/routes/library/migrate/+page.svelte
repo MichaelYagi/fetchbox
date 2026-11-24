@@ -114,7 +114,7 @@
 
 			<h3>Folders</h3>
 			<p class="muted small">Each becomes a Fetchbox library folder. If {label} runs on another machine or in Docker, type where this computer sees the same folder.</p>
-			{#each scan.root_folders as r (r.path)}
+			{#each scan.root_folders as r, i (i)}
 				<div class="row">
 					<span class="mono grow">{r.path} <span class="muted small">({r.titles})</span></span>
 					<label class="grow small">Fetchbox sees it at <input bind:value={seenAs[r.path]} /></label>

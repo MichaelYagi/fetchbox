@@ -238,6 +238,11 @@
 		setTimeout(tick, 5000);
 	}
 
+	const checkNow = () =>
+		act('check-updates', async () => {
+			update = await get<S['UpdateOut']>('/system/updates', { fresh: true });
+		});
+
 	const setUpdates = (on: boolean) =>
 		act('updates', async () => {
 			await patch('/system/config', { updates: { check: on } });
@@ -338,6 +343,11 @@
 									<span class="muted small">· up to date</span>
 								{:else if update?.error}
 									<span class="muted small">· {update.error}</span>
+								{/if}
+								{#if (config?.config.updates?.check ?? true) && !installing}
+									<button class="small" onclick={checkNow} disabled={busy === 'check-updates'}>
+										{busy === 'check-updates' ? 'Checking…' : 'Check now'}
+									</button>
 								{/if}
 								{#if installNote}<div class="small">{installNote}</div>{/if}
 								<label class="muted small inline-check"

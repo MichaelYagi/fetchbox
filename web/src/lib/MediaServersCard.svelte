@@ -149,7 +149,7 @@
 				{#if t.ok}
 					<table class="coverage small">
 						<tbody>
-							{#each t.coverage as c (c.local)}
+							{#each t.coverage as c (c.folder)}
 								<tr>
 									<td><strong>{c.folder}</strong></td>
 									<td class="mono">{c.remote}</td>

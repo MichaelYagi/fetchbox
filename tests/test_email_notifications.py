@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import socket
 import ssl
+import sys
 from collections.abc import Iterator
 from email import message_from_bytes
 from email.message import Message
@@ -204,3 +205,15 @@ async def test_settings_are_checked_and_the_password_masked(c: httpx.AsyncClient
     r = await c.post("/notifications/targets", json={"kind": "email", "name": "Bad",
                      "settings": {**ok, "to": "nobody"}})  # fmt: skip
     assert r.status_code == 422 and "settings" in r.json()["errors"][0]["field"]
+
+
+def test_certificate_authorities_without_the_systems(
+    tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # like the Mac desktop app: OpenSSL's default certificate locations hold nothing
+    (tmp_path / "none.pem").write_text("")
+    monkeypatch.setenv("SSL_CERT_FILE", str(tmp_path / "none.pem"))
+    monkeypatch.setenv("SSL_CERT_DIR", str(tmp_path))
+    if sys.platform != "win32":  # Windows always adds its own certificate store
+        assert ssl.create_default_context().get_ca_certs() == []
+    assert len(mail.trusted().get_ca_certs()) > 50
