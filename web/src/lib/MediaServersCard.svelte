@@ -157,7 +157,13 @@
 									<td class="mono">{c.remote}</td>
 									<td>
 										{#if c.library}
-											<span class="badge ok">✓ in “{c.library}”</span>
+											{#if c.visible === false}
+												<span class="badge warn">in “{c.library}”, but {KINDS[s.kind]?.label} can't see this folder</span>
+											{:else}
+												<span class="badge ok">✓ in “{c.library}”</span>
+											{/if}
+											{#if c.how === 'files'}<span class="muted small">matched by files {KINDS[s.kind]?.label} already has</span>
+											{:else if c.how === 'names'}<span class="muted small">matched by folder names</span>{/if}
 											{#if byHand(s, c.local)}
 												<button class="small" onclick={() => setPath(s, c.local, '')} disabled={!!busy}>Forget the path I typed</button>
 											{/if}
@@ -246,8 +252,23 @@
 		gap: 0.35rem;
 	}
 	.pathfix input {
-		min-width: 14rem;
-		flex: 1;
+		min-width: 0;
+		flex: 1 1 12rem;
+	}
+	.coverage {
+		width: 100%;
+	}
+	@media (max-width: 640px) {
+		/* one folder per block: name, then its path, then the verdict */
+		.coverage tr {
+			display: block;
+			padding: 0.4rem 0;
+			border-bottom: 1px solid var(--border);
+		}
+		.coverage td {
+			display: block;
+			padding: 0.1rem 0;
+		}
 	}
 	.coverage td {
 		padding: 0.25rem 0.5rem 0.25rem 0;

@@ -34,6 +34,17 @@ def check_url(v: str) -> str:
     return v
 
 
+def parent_of(path: str) -> str:
+    """The folder holding ``path``, in the path's own style (``/`` or ``\\``)."""
+    sep = "\\" if "\\" in path and "/" not in path else "/"
+    head = path.rstrip(sep).rsplit(sep, 1)[0]
+    return head or sep
+
+
+def same_path(a: str, b: str) -> bool:
+    return a.replace("\\", "/").rstrip("/") == b.replace("\\", "/").rstrip("/")
+
+
 def covering(libraries: list[Library], path: str) -> Library | None:
     """The library whose folder holds ``path`` (longest folder wins)."""
     norm = path.replace("\\", "/").rstrip("/")
@@ -59,6 +70,15 @@ class MediaServerProvider(Provider):
         telling the user (e.g. a folder no library holds); raises MediaServerError when
         the server can't be reached or refuses."""
         raise NotImplementedError
+
+    async def files(self, library: Library, limit: int) -> list[str]:
+        """Up to ``limit`` media file paths in this library, as the server sees them (to
+        line up with the files Fetchbox knows). Empty: the server can't say."""
+        return []
+
+    async def exists(self, path: str) -> bool | None:
+        """Does the server see this file or folder? None: it can't tell (never raises)."""
+        return None
 
     async def aclose(self) -> None:
         return None

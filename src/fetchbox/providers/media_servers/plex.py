@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 from typing import Any, ClassVar
 
 import httpx
@@ -15,10 +16,13 @@ from fetchbox.providers.media_servers import (
     MediaServerProvider,
     check_url,
     covering,
+    parent_of,
+    same_path,
 )
 
 TIMEOUT = httpx.Timeout(20.0, connect=10.0)
 KINDS = {"movie": "movie", "show": "series", "artist": "music"}
+ITEM_TYPES = {"movie": 1, "series": 4, "music": 10}  # movies, episodes, tracks: what has files
 
 
 class PlexSettings(BaseModel):
@@ -105,6 +109,38 @@ class PlexProvider(MediaServerProvider):
             message=f"Plex works: {len(libs)} librar{'y' if len(libs) == 1 else 'ies'}",
             details={"libraries": [lib.model_dump() for lib in libs]},
         )
+
+    async def files(self, library: Library, limit: int) -> list[str]:
+        kind = ITEM_TYPES.get(library.kind)
+        if kind is None:
+            return []
+        page = {"X-Plex-Container-Start": 0, "X-Plex-Container-Size": limit}
+        r = await self._get(f"/library/sections/{library.id}/all", type=kind, **page)
+        try:
+            items = r.json()["MediaContainer"].get("Metadata") or []
+            return [
+                str(part["file"])
+                for item in items
+                for media in item.get("Media") or []
+                for part in media.get("Part") or []
+                if part.get("file")
+            ][:limit]
+        except (ValueError, KeyError, TypeError, AttributeError):
+            return []
+
+    async def exists(self, path: str) -> bool | None:
+        # Plex Web's "Add folders" browser: what the server itself sees in a folder
+        parent = parent_of(path)
+        key = base64.b64encode(parent.encode()).decode()
+        try:
+            r = await self._http.get(f"/services/browse/{key}", params={"includeFiles": 1})
+            if r.status_code != 200:
+                return None
+            box = r.json()["MediaContainer"]
+            seen = [str(x.get("path", "")) for k in ("Path", "File") for x in box.get(k) or []]
+        except (httpx.HTTPError, ValueError, KeyError, TypeError, AttributeError):
+            return None
+        return any(same_path(x, path) for x in seen)
 
     async def refresh(self, folders: list[str]) -> list[str]:
         libs = await self.libraries()

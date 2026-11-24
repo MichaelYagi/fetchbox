@@ -11,8 +11,11 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import os
+import time
+from collections import Counter
 from pathlib import PurePath
-from typing import Any
+from typing import Any, Literal
 
 import structlog
 from pydantic import BaseModel, Field, ValidationError
@@ -38,11 +41,16 @@ from fetchbox.providers.media_servers import (
     MediaServerError,
     MediaServerProvider,
     covering,
+    same_path,
 )
 
 log = structlog.get_logger(__name__)
 
 GATHER_SECONDS = 5.0
+SAMPLE = 300  # files asked of each server library to line up with Fetchbox's
+LEARN_SECONDS = 6 * 3600  # how long what the files said is trusted before asking again
+LOCAL_FILES = 20000
+PRODUCTS = {"plex": "Plex", "jellyfin": "Jellyfin", "emby": "Emby"}
 EVENTS = (
     "import.completed",
     "library.renamed",
@@ -72,13 +80,50 @@ def _parts(path: str) -> list[str]:
     return [x for x in path.replace("\\", "/").split("/") if x]
 
 
-def guess_mapping(path: str, libraries: list[Library]) -> PathMapping | None:
-    """The same folder as a server on another machine sees it, worked out from its
-    libraries: /Volumes/Public/Media/Movies on a Mac is /volume1/Public/Media/Movies on
-    the NAS running Plex. The library folder sharing the most trailing folder names with
-    ``path`` (or one of its parents) wins; a tie between different places is no guess."""
+def _join(like: str, parts: list[str]) -> str:
+    """Folder names joined in the style of the path ``like`` (/a/b, D:\\a, \\\\nas\\a)."""
+    sep = "\\" if "\\" in like and "/" not in like else "/"
+    lead = "\\\\" if like.startswith("\\\\") else "/" if like.startswith("/") else ""
+    return lead + sep.join(parts)
+
+
+def learn_mappings(local: list[tuple[str, str]], remote: list[str]) -> list[PathMapping]:
+    """Where the server sees each library folder, from files both know: Fetchbox's
+    ``(library folder, path inside it)`` and the server's full paths. A server file
+    ending in the same path inside the folder gives the folder's place on the server
+    (``/Volumes/Public/Movies`` + ``Dune (2021)/Dune.mkv`` vs ``/volume1/Public/Movies/
+    Dune (2021)/Dune.mkv``: ``/volume1/Public/Movies``). The most-agreed place wins."""
+    by_name: dict[str, list[tuple[str, list[str]]]] = {}
+    for root, rel in local:
+        parts = [x.casefold() for x in _parts(rel)]
+        if parts:
+            by_name.setdefault(parts[-1], []).append((root, parts))
+    votes: Counter[tuple[str, str]] = Counter()
+    for path in remote:
+        theirs = _parts(path)
+        if not theirs:
+            continue
+        for root, parts in by_name.get(theirs[-1].casefold(), []):
+            n = len(parts)
+            if len(theirs) > n and [x.casefold() for x in theirs[-n:]] == parts:
+                votes[(root, _join(path, theirs[:-n]))] += 1
+    best: dict[str, tuple[int, str]] = {}
+    for (root, there), n in votes.most_common():
+        best.setdefault(root, (n, there))
+    return [
+        PathMapping(local=root, remote=there)
+        for root, (_, there) in sorted(best.items())
+        if not same_path(root, there)
+    ]
+
+
+def guess_mappings(path: str, libraries: list[Library]) -> list[PathMapping]:
+    """When no shared file says, a guess from the names: the server library folder
+    sharing the most trailing folder names with ``path`` (or one of its parents), e.g.
+    /Volumes/Public/Media/Movies and /volume1/Public/Media/Movies. Several equally good
+    places are all returned (the caller asks the server which one it has)."""
     mine = _parts(path)
-    best: dict[str, PathMapping] = {}  # translated path -> mapping
+    best: dict[str, PathMapping] = {}  # the path as each place would have it -> mapping
     score = 0
     for lib in libraries:
         for root in lib.paths:
@@ -92,23 +137,14 @@ def guess_mapping(path: str, libraries: list[Library]) -> PathMapping | None:
                     k += 1
                 if k == 0 or k < score:
                     continue
-                local = ("/" if path.replace("\\", "/").startswith("/") else "") + "/".join(head)
-                m = PathMapping(local=local, remote=root)
+                m = PathMapping(local=_join(path, head), remote=root)
                 if k > score:
                     score, best = k, {}
                 best[to_remote(path, [m])] = m
-    return next(iter(best.values())) if len(best) == 1 else None
+    return list(best.values())
 
 
-def server_path(
-    path: str, mappings: list[PathMapping], libraries: list[Library]
-) -> tuple[str, bool]:
-    """``path`` as the server sees it: by the user's path mappings, else, when no library
-    holds it that way, worked out from the server's libraries. (path, worked out?)"""
-    remote = to_remote(path, mappings)
-    if covering(libraries, remote) is None and (m := guess_mapping(path, libraries)):
-        return to_remote(path, [m]), True
-    return remote, False
+Where = Literal["", "mapping", "files", "names"]
 
 
 def _invalid(exc: ValidationError, prefix: str) -> ProblemError:
@@ -139,6 +175,7 @@ class IntegrationsService:
         self._pending: set[str] = set()
         self._flush: asyncio.Task[None] | None = None
         self._lock = asyncio.Lock()
+        self._learned: dict[str, tuple[float, list[PathMapping]]] = {}  # server id ->
 
         @bus.on(*EVENTS)
         async def changed(ev: Event) -> None:
@@ -179,8 +216,20 @@ class IntegrationsService:
         try:
             # a server on another machine (Plex on a NAS) sees these folders elsewhere
             libs = await provider.libraries()
-            remote = sorted({server_path(f, mappings, libs)[0] for f in folders})
-            problems = await provider.refresh(remote)
+            places = await self._places(row, provider, libs, mappings, folders)
+            remote = sorted(set(places.values()))
+            wanted = []
+            product = PRODUCTS.get(row.kind, row.name)
+            for local, there in sorted(places.items()):
+                # a folder that's here but not there: the scan would quietly do nothing.
+                # (One gone from here too, e.g. renamed away, is scanned so it's dropped.)
+                here: bool = await asyncio.to_thread(os.path.isdir, local)
+                if here and covering(libs, there) and await provider.exists(there) is False:
+                    problems.append(f"{product} can't see {there} (here it's {local})")
+                elif there not in wanted:
+                    wanted.append(there)
+            if wanted:
+                problems += await provider.refresh(sorted(wanted))
         except MediaServerError as exc:
             error = exc.message
         except Exception as exc:  # a broken server must not break imports
@@ -277,6 +326,7 @@ class IntegrationsService:
     async def update(
         self, server_id: str, changes: dict[str, Any], *, if_match: str | None, actor: Actor
     ) -> MediaServer:
+        self._learned.pop(server_id, None)
         async with self.db.sessionmaker() as s:
             row = await s.get(MediaServer, server_id)
             if row is None:
@@ -319,6 +369,7 @@ class IntegrationsService:
         return row
 
     async def delete(self, server_id: str, *, if_match: str | None, actor: Actor) -> None:
+        self._learned.pop(server_id, None)
         async with self.db.sessionmaker() as s:
             row = await s.get(MediaServer, server_id)
             if row is None:
@@ -335,9 +386,12 @@ class IntegrationsService:
 
     async def test(self, server_id: str, folders: list[tuple[str, str]]) -> dict[str, Any]:
         """Connection test, plus which library holds each of Fetchbox's library folders
-        (``folders``: [(name, local path)]), as the server sees them."""
+        (``folders``: [(name, local path)]), as the server sees them, and whether the
+        server can see that folder."""
         row = await self.get(server_id)
+        mappings = [PathMapping.model_validate(m) for m in row.path_mappings or []]
         provider = self._provider(row)
+        coverage = []
         try:
             res: TestResult = await provider.test()
             libs = (
@@ -345,23 +399,103 @@ class IntegrationsService:
                 if res.ok
                 else []
             )
+            if res.ok:
+                learned = await self._known(row, provider, libs, fresh=True)
+                for name, local in folders:
+                    remote, how = await self._where(local, mappings, learned, libs, provider)
+                    lib = covering(libs, remote)
+                    coverage.append(
+                        {"folder": name, "local": local, "remote": remote,
+                         "library": lib.name if lib else None, "how": how,
+                         "found": how in ("files", "names"),
+                         "visible": await provider.exists(remote) if lib else None}
+                    )  # fmt: skip
         finally:
             await provider.aclose()
-        mappings = [PathMapping.model_validate(m) for m in row.path_mappings or []]
-        coverage = []
-        for name, local in folders:
-            remote, found = server_path(local, mappings, libs)
-            lib = covering(libs, remote)
-            coverage.append(
-                {"folder": name, "local": local, "remote": remote,
-                 "library": lib.name if lib else None, "found": found}
-            )  # fmt: skip
         return {
             "ok": res.ok,
             "message": res.message,
             "libraries": [lib.model_dump() for lib in libs],
             "coverage": coverage,
         }
+
+    # ---- where the server sees Fetchbox's folders ---------------------------------------------
+
+    async def _places(
+        self,
+        row: MediaServer,
+        provider: MediaServerProvider,
+        libs: list[Library],
+        mappings: list[PathMapping],
+        folders: list[str],
+    ) -> dict[str, str]:
+        """Each folder as the server sees it; what the files said is asked again (once)
+        when it leaves a folder outside every library, e.g. a library added since."""
+        cached = row.id in self._learned
+        learned = await self._known(row, provider, libs)
+        out = {f: (await self._where(f, mappings, learned, libs, provider))[0] for f in folders}
+        if cached and any(covering(libs, x) is None for x in out.values()):
+            learned = await self._known(row, provider, libs, fresh=True)
+            out = {f: (await self._where(f, mappings, learned, libs, provider))[0] for f in folders}
+        return out
+
+    async def _where(
+        self,
+        path: str,
+        mappings: list[PathMapping],
+        learned: list[PathMapping],
+        libs: list[Library],
+        provider: MediaServerProvider,
+    ) -> tuple[str, Where]:
+        """``path`` as the server sees it, and how that's known: the user's mapping, the
+        files both know, the folder names, or "" (as it is: same machine, or not found)."""
+        mine = to_remote(path, mappings)
+        if covering(libs, mine):
+            return mine, "mapping" if mine != path else ""
+        there = to_remote(path, learned)
+        if there != path and covering(libs, there):
+            return there, "files"
+        guesses = guess_mappings(path, libs)
+        if len(guesses) > 1:  # several equally good: the one the server has
+            guesses = [m for m in guesses if await provider.exists(to_remote(path, [m]))]
+        if len(guesses) == 1:
+            return to_remote(path, guesses), "names"
+        return mine, ""
+
+    async def _known(
+        self,
+        row: MediaServer,
+        provider: MediaServerProvider,
+        libs: list[Library],
+        *,
+        fresh: bool = False,
+    ) -> list[PathMapping]:
+        """Where the server sees each library folder, from files both know (cached)."""
+        hit = self._learned.get(row.id)
+        if hit and not fresh and time.monotonic() - hit[0] < LEARN_SECONDS:
+            return hit[1]
+        theirs: list[str] = []
+        for lib in libs:
+            try:
+                theirs += await provider.files(lib, SAMPLE)
+            except MediaServerError:
+                continue
+        learned = learn_mappings(await self._local_files(), theirs) if theirs else []
+        self._learned[row.id] = (time.monotonic(), learned)
+        return learned
+
+    async def _local_files(self) -> list[tuple[str, str]]:
+        from fetchbox.modules.library.models import MediaFile
+        from fetchbox.modules.storage.models import Destination
+
+        async with self.db.sessionmaker() as s:
+            rows = await s.execute(
+                select(Destination.path, MediaFile.relative_path)
+                .join(Destination, Destination.id == MediaFile.destination_id)
+                .order_by(MediaFile.id.desc())
+                .limit(LOCAL_FILES)
+            )
+            return [(str(a), str(b)) for a, b in rows.all()]
 
 
 def folder_of(path: str) -> str:

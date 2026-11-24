@@ -1459,6 +1459,18 @@
       "title": "Found",
       "type": "boolean"
      },
+     "how": {
+      "default": "",
+      "description": "How the server's path is known: your mapping, files both know, folder names, or as it is (same machine, or not found)",
+      "enum": [
+       "",
+       "mapping",
+       "files",
+       "names"
+      ],
+      "title": "How",
+      "type": "string"
+     },
      "library": {
       "anyOf": [
        {
@@ -1479,6 +1491,18 @@
       "description": "The same folder as the server sees it",
       "title": "Remote",
       "type": "string"
+     },
+     "visible": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Whether the server sees this folder; null: it can't say",
+      "title": "Visible"
      }
     },
     "required": [
