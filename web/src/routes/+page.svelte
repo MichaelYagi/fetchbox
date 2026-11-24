@@ -43,6 +43,7 @@
 			return true;
 		})
 	);
+	const KIND: Record<string, string> = { movie: 'Movie', series: 'TV', music: 'Music' };
 </script>
 
 <main>
@@ -87,7 +88,7 @@
 					<div class="meta">
 						<div class="name" title={t.name}>{t.name}</div>
 						<div class="spread">
-							<span class="muted small">{t.year ?? ''}</span>
+							<span class="muted small">{[KIND[t.kind] ?? t.kind, t.year].filter(Boolean).join(' · ')}</span>
 							{#if t.kind === 'series' && t.episodes}
 								<span class="badge {t.episodes.missing ? 'warn' : 'ok'}" title="Episodes downloaded of monitored">
 									{t.episodes.acquired}/{t.episodes.monitored}
