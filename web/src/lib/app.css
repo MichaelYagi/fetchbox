@@ -340,3 +340,7 @@ dialog::backdrop {
 dialog.ask {
 	width: min(28rem, calc(100vw - 2rem));
 }
+/* The page behind a modal doesn't scroll (the modal itself still can). */
+html:has(dialog[open]:modal) {
+	overflow: hidden;
+}
