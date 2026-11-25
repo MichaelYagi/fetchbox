@@ -153,23 +153,54 @@
 		});
 	});
 
-	async function search(e: SubmitEvent) {
-		e.preventDefault();
-		if (!q.trim()) return;
+	// Movies and TV search as you type (TMDB is quick, and the server caches); music only on
+	// Enter, since MusicBrainz allows one request a second. Only the latest search shows.
+	const LIVE_MIN = 2;
+	const LIVE_PAUSE = 250; // ms after the last key
+	let seq = 0;
+	let searched = $state(''); // the query the results on screen are for
+	let liveTimer: ReturnType<typeof setTimeout> | undefined;
+
+	async function run(query: string, k: typeof kind) {
+		const mine = ++seq;
 		busy = true;
 		error = null;
 		try {
-			if (kind === 'music') {
-				artists = await get<S['ArtistHit'][]>('/music/search', { q: q.trim() });
-				return;
+			if (k === 'music') {
+				const a = await get<S['ArtistHit'][]>('/music/search', { q: query });
+				if (mine === seq) artists = a;
+			} else {
+				const r = await get<S['TitleSummary'][]>('/discovery/search', { q: query, kind: k });
+				if (mine === seq) results = r;
 			}
-			results = await get<S['TitleSummary'][]>('/discovery/search', { q: q.trim(), kind });
+			if (mine === seq) searched = query;
 		} catch (err) {
+			if (mine !== seq) return;
 			error = err instanceof ApiError ? err : new ApiError(0, String(err));
 			results = null;
 		} finally {
-			busy = false;
+			if (mine === seq) busy = false;
 		}
+	}
+
+	$effect(() => {
+		const query = q.trim();
+		const k = kind;
+		clearTimeout(liveTimer);
+		if (k === 'music' || query.length < LIVE_MIN) return;
+		liveTimer = setTimeout(() => {
+			if (query !== searched || results === null) run(query, k);
+		}, LIVE_PAUSE);
+		return () => clearTimeout(liveTimer);
+	});
+
+	function search(e: SubmitEvent) {
+		e.preventDefault();
+		clearTimeout(liveTimer); // Enter doesn't wait for the pause
+		const query = q.trim();
+		if (!query) return;
+		if (kind !== 'music' && query === searched && results !== null && !busy) return;
+		run(query, kind);
 	}
 
 	async function addArtist(a: S['ArtistHit']) {
@@ -227,6 +258,9 @@
 					kind = k as 'movie' | 'series' | 'music';
 					results = null;
 					artists = null;
+					searched = '';
+					seq++; // a search still on its way is for the other kind
+					busy = false;
 				}}>{label}</button
 			>
 		{/each}
@@ -243,7 +277,7 @@
 				bind:value={q}
 				aria-label="Search"
 			/>
-			<button class="primary" disabled={busy || !q.trim()}>{busy ? 'Searching…' : 'Search'}</button>
+			<button class="primary" disabled={!q.trim()}>{busy ? 'Searching…' : 'Search'}</button>
 		</div>
 		{#if kind === 'music'}
 			<p class="muted small hint">Artists, albums and track lists come from MusicBrainz.</p>
@@ -264,7 +298,7 @@
 
 	{#if artists !== null}
 		{#if artists.length === 0}
-			<p class="empty">No artists found for “{q}”.</p>
+			<p class="empty">No artists found for “{searched}”.</p>
 		{:else}
 			<div class="results">
 				{#each artists as a (a.mbid)}
@@ -300,7 +334,7 @@
 
 	{#if results !== null}
 		{#if results.length === 0}
-			<p class="empty">No {kind === 'movie' ? 'movies' : 'TV shows'} found for “{q}”.</p>
+			<p class="empty">No {kind === 'movie' ? 'movies' : 'TV shows'} found for “{searched}”.</p>
 		{:else}
 			<div class="results">
 				{#each results as r (r.tmdb_id)}
