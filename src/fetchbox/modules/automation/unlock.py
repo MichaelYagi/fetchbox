@@ -79,7 +79,7 @@ class UnlockService:
         redownload: bool = False,
         actor: Actor,
     ) -> tuple[WantedItem, str | None]:
-        """Returns (item, search job id or None if a search was already queued)."""
+        """Returns (item, the search job: the one queued, or one already queued for it)."""
         async with self.db.sessionmaker() as s:
             w = await s.get(WantedItem, wanted_item_id)
         if w is None:
@@ -145,5 +145,5 @@ class UnlockService:
             deleted_files=len(deleted),
             blocklisted=blocked,
         )
-        job = await self.autosearch.queue(w.id, reason="manual")
+        job = await self.autosearch.queued(w.id, reason="manual")
         return row, job.id if job is not None else None

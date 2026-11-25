@@ -11,12 +11,14 @@ import asyncio
 import contextlib
 import os
 from collections.abc import AsyncIterator
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 import httpx
 import pytest
 
+from fetchbox.modules.automation.search import SEARCH_JOB
 from fetchbox.modules.library.naming import DEFAULT_PATTERNS, movie_path, parse, render
 from fetchbox.modules.library.service import pick_video
 from fetchbox.providers.download_clients import ClientFile, DownloadClientError
@@ -439,6 +441,26 @@ async def test_unlock_then_redownload(
 
     assert (await c.post("/wanted/nope/unlock")).status_code == 404
     assert (await c.post("/wanted/nope/redownload")).status_code == 404
+
+
+async def test_redownload_reports_a_search_already_queued(
+    c: httpx.AsyncClient, fakes: Fakes, server: Running, made: Made, seed: BuiltinClient
+) -> None:
+    """The scheduled search for missing items can queue one first: that's the search job."""
+    movie = await _acquire(c, fakes, server, made, seed)
+    wid = movie["wanted"][0]["id"]
+    jobs = server.app.state.autosearch.jobs
+    first = await jobs.enqueue(  # still waiting when the redownload asks
+        SEARCH_JOB,
+        {"wanted_item_id": wid, "reason": "automatic"},
+        dedupe_key=f"search:wanted:{wid}",
+        run_after=datetime.now(UTC) + timedelta(minutes=1),
+    )
+    assert first is not None
+    r = await c.post(f"/wanted/{wid}/redownload", json={"blocklist": False, "delete_file": False})
+    assert r.status_code == 200, r.text
+    assert r.json()["search_job_id"] == first.id
+    assert (await c.get(f"/jobs/{first.id}")).json()["status"] == "pending"
 
 
 async def test_redownload_keeps_the_file_until_the_new_import(

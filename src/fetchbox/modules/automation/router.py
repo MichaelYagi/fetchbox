@@ -227,7 +227,7 @@ class RedownloadIn(BaseModel):
 class UnlockOut(BaseModel):
     wanted: WantedOut
     search_job_id: str | None = Field(
-        description="The search queued for the item; null if one was already queued"
+        description="The search for the item: the one queued, or one already queued for it"
     )
 
 
