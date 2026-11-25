@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { ask } from '#lib/dialogs.svelte.ts';
 	import Path from '#lib/Path.svelte';
 	import { ago, ApiError, bytes, del, duration, get, post, rate, type Download, type S } from '#lib/api.ts';
 
@@ -45,7 +46,7 @@
 		}
 	}
 
-	function remove(d: Download) {
+	async function remove(d: Download) {
 		const active = ['queued', 'downloading', 'paused'].includes(d.status);
 		const msg = active
 			? `Stop and remove ${d.name}? Its data is deleted and the release is blocklisted, so another one is searched for.`
@@ -56,12 +57,12 @@
 						`The file Fetchbox imported into your library isn't touched (imported to ${d.imported_to}).` +
 						(d.imported_as === 'hardlink' ? ' (It was the same file, so no space is freed.)' : '')
 					: `Stop seeding ${d.name}? It hasn't been imported into your library, so its files are kept.`;
-		if (!confirm(msg)) return;
+		if (!(await ask(msg, active ? 'Stop and remove' : 'Stop seeding', true))) return;
 		act(d.id, () => del(`/downloads/${d.id}`, { delete_data: true, blocklist: active }));
 	}
 
-	function again(d: Download) {
-		if (!confirm(`Download ${d.name} again? Fetchbox searches for it now and may grab the same release. Nothing is deleted.`)) return;
+	async function again(d: Download) {
+		if (!(await ask(`Download ${d.name} again? Fetchbox searches for it now and may grab the same release. Nothing is deleted.`, 'Download again'))) return;
 		act(d.id, async () => {
 			const r = await post<{ searching: number; skipped: string[] }>(`/downloads/${d.id}/download-again`);
 			notice = r.searching
@@ -113,9 +114,11 @@
 		const n = list.length === 1 ? '1 download' : `${list.length} downloads`;
 		if (
 			what === 'remove' &&
-			!confirm(
-				`Stop and remove ${n}?\n\nTheir data is deleted and each release is blocklisted, so another one is searched for.`
-			)
+			!(await ask(
+				`Stop and remove ${n}?\n\nTheir data is deleted and each release is blocklisted, so another one is searched for.`,
+				'Stop and remove',
+				true
+			))
 		)
 			return;
 		busy = 'batch';

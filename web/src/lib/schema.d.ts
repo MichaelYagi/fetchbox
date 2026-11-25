@@ -5952,7 +5952,7 @@ export interface components {
         UnlockOut: {
             /**
              * Search Job Id
-             * @description The search queued for the item; null if one was already queued
+             * @description The search for the item: the one queued, or one already queued for it
              */
             search_job_id: string | null;
             wanted: components["schemas"]["WantedOut"];

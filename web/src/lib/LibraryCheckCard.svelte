@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { ask } from '#lib/dialogs.svelte.ts';
 	import { ApiError, bytes, get, post, type S } from './api.ts';
 
 	// Check every library folder: files gone from disk, duplicates, files Fetchbox
@@ -41,7 +42,7 @@
 	}
 
 	async function forget() {
-		if (!report || !confirm(`Forget ${report.missing.length} missing file(s)? Fetchbox will search for them again.`)) return;
+		if (!report || !(await ask(`Forget ${report.missing.length} missing file(s)? Fetchbox will search for them again.`, 'Forget'))) return;
 		try {
 			const r = await post<{ forgotten: number }>('/library/check/forget', { file_ids: report.missing.map((m) => m.file_id) });
 			message = `${r.forgotten} forgotten; they'll be searched for again.`;

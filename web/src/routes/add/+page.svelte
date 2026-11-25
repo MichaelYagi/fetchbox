@@ -508,17 +508,6 @@
 </main>
 
 <style>
-	dialog {
-		width: min(32rem, calc(100vw - 2rem));
-		border: 1px solid var(--border);
-		border-radius: var(--radius);
-		background: var(--surface);
-		color: var(--text);
-		padding: 1.25rem;
-	}
-	dialog::backdrop {
-		background: rgb(0 0 0 / 0.5);
-	}
 	.head {
 		display: flex;
 		gap: 1rem;

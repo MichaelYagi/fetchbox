@@ -220,6 +220,17 @@ class JobRunner:
         async with self.db.sessionmaker() as s:
             return await s.get(Job, job_id)
 
+    async def latest(self, dedupe_key: str) -> Job | None:
+        """The newest job queued under ``dedupe_key`` (the one an ``enqueue`` deduped into,
+        even if it has finished since)."""
+        async with self.db.sessionmaker() as s:
+            return await s.scalar(
+                select(Job)
+                .where(Job.dedupe_key == dedupe_key)
+                .order_by(Job.created_at.desc(), Job.id.desc())
+                .limit(1)
+            )
+
     async def cancel(self, job_id: str) -> Job | None:
         async with self.db.sessionmaker() as s:
             job = await s.get(Job, job_id)

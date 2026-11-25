@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { ask } from '#lib/dialogs.svelte.ts';
 	import { ApiError, del, get, patch, post, type S } from './api.ts';
 
 	// Where Fetchbox sends a short message when something happens (Discord, email, a webhook).
@@ -134,8 +135,8 @@
 			await patch(`/notifications/targets/${t.id}`, { enabled: !t.enabled }, t.etag);
 			await load();
 		});
-	const remove = (t: Target) => {
-		if (!confirm(`Stop sending notifications to ${t.name}?`)) return;
+	const remove = async (t: Target) => {
+		if (!(await ask(`Stop sending notifications to ${t.name}?`, 'Remove', true))) return;
 		act(`rm-${t.id}`, async () => {
 			await del(`/notifications/targets/${t.id}`, undefined, t.etag);
 			await load();

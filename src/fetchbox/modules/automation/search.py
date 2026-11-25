@@ -65,6 +65,10 @@ Reason = Literal["automatic", "manual"]
 SYSTEM = Actor(type="system", id="automation", name="automatic search")
 
 
+def _search_key(wanted_item_id: str) -> str:
+    return f"search:wanted:{wanted_item_id}"
+
+
 class AutoSearch:
     def __init__(
         self,
@@ -281,8 +285,14 @@ class AutoSearch:
         return await self.jobs.enqueue(
             SEARCH_JOB,
             {"wanted_item_id": wanted_item_id, "reason": reason},
-            dedupe_key=f"search:wanted:{wanted_item_id}",
+            dedupe_key=_search_key(wanted_item_id),
         )
+
+    async def queued(self, wanted_item_id: str, *, reason: Reason) -> Job | None:
+        """Queue a search, or the one already queued for the item (say the scheduled search
+        for missing items got there first)."""
+        job = await self.queue(wanted_item_id, reason=reason)
+        return job or await self.jobs.latest(_search_key(wanted_item_id))
 
     async def request(self, wanted_item_id: str) -> Job:
         """A user's "search now": 409 while the item is busy or already being searched."""

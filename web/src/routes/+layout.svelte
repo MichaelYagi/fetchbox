@@ -5,6 +5,7 @@
 	import { get, post, rate, SignedOut, type Download, type S } from '#lib/api.ts';
 	import { session } from '#lib/session.svelte.ts';
 	import ThemePicker from '#lib/ThemePicker.svelte';
+	import Dialogs from '#lib/Dialogs.svelte';
 
 	let { children } = $props();
 
@@ -171,6 +172,7 @@
 {:else if session.checked}
 	<main><p class="muted">Signing in…</p></main>
 {/if}
+<Dialogs />
 
 <style>
 	header {
