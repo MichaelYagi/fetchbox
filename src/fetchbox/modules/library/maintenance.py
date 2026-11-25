@@ -22,7 +22,7 @@ import asyncio
 import os
 from collections import defaultdict
 from collections.abc import Callable, Coroutine
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 from typing import Any
 
 from sqlalchemy import delete, select, update
@@ -32,7 +32,7 @@ from fetchbox.core.errors import ConflictError
 from fetchbox.core.events import Actor, EventBus, Subject
 from fetchbox.core.jobs import Job, JobContext, JobRunner
 from fetchbox.modules.library.models import MediaFile, MediaFileItem
-from fetchbox.modules.library.service import _SAMPLE, VIDEO_EXTS
+from fetchbox.modules.library.service import _SAMPLE, is_video
 from fetchbox.modules.media.models import HistoryEvent, Title, WantedItem
 from fetchbox.modules.storage.service import RECYCLE_DIR, StorageService
 from fetchbox.providers.storage.local import quick_hash
@@ -55,7 +55,7 @@ def _videos(root: Path) -> list[str]:
     for dirpath, dirnames, filenames in os.walk(root):
         dirnames[:] = [d for d in dirnames if not d.startswith(".") and d != RECYCLE_DIR]
         for f in filenames:
-            if PurePosixPath(f).suffix.lower().lstrip(".") in VIDEO_EXTS and not _SAMPLE.search(f):
+            if is_video(f) and not _SAMPLE.search(f):
                 out.append((Path(dirpath) / f).relative_to(root).as_posix())
     return out
 

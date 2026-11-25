@@ -77,7 +77,9 @@ def folder_hints(name: str) -> dict[str, Any]:
 
 
 def _is_video(name: str) -> bool:
-    return PurePosixPath(name).suffix.lower().lstrip(".") in VIDEO_EXTS
+    return PurePosixPath(name).suffix.lower().lstrip(".") in VIDEO_EXTS and not name.startswith(
+        "._"
+    )
 
 
 def _scan_tree(root: Path, kind: str) -> list[dict[str, Any]]:

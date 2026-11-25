@@ -24,10 +24,11 @@ import structlog
 from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 
+from fetchbox.core import macfiles
 from fetchbox.core.concurrency import check_if_match
 from fetchbox.core.db import Database, utcnow
 from fetchbox.core.errors import ConflictError, FieldError, NotFoundError, ProblemError
-from fetchbox.core.events import Actor, EventBus, Subject
+from fetchbox.core.events import Actor, Event, EventBus, Subject
 from fetchbox.core.jobs import JobContext, JobRunner
 from fetchbox.core.paths import native_folder_problem
 from fetchbox.core.providers import HealthStatus
@@ -43,6 +44,14 @@ GB = 1_000_000_000
 FLOOR_MIN = 20 * GB
 FLOOR_SHARE = 0.05
 RECYCLE_DIR = ".fetchbox-recycle"
+MAC_FILES_JOB = "storage.mac_files"
+# a library folder changed: what macOS left beside the new files goes at once
+CHANGED_EVENTS = (
+    "import.completed",
+    "library.renamed",
+    "library.imported_existing",
+    "library.folder_changed",
+)
 RECYCLE_JOB = "storage.recycle_cleanup"
 
 
@@ -716,6 +725,33 @@ class StorageService:
                 "Delete recycled files older than the retention (Settings: 7 days)",
             )
         )  # fmt: skip
+
+        @jobs.handler(MAC_FILES_JOB, queue="maintenance", max_attempts=1)
+        async def tidy(ctx: JobContext) -> dict[str, Any]:
+            return {"removed": len(await self.sweep_mac_files())}
+
+        scheduler.define(
+            ScheduleDef(
+                "mac_files_cleanup", MAC_FILES_JOB, timedelta(days=1),
+                "Remove macOS ._ files from library folders", run_at_start=True,
+            )
+        )  # fmt: skip
+
+        @self.bus.on(*CHANGED_EVENTS)
+        async def changed(ev: Event) -> None:
+            for folder in ev.data.get("folders") or []:
+                await asyncio.to_thread(macfiles.sweep, str(folder))
+
+    async def sweep_mac_files(self) -> list[str]:
+        """macOS ``._`` files in every library folder that's there (see ``macfiles``)."""
+        removed: list[str] = []
+        for d in await self.destinations():
+            if d.status in ("offline", "unmounted"):
+                continue
+            removed += await asyncio.to_thread(macfiles.sweep, d.path)
+        if removed:
+            log.info("storage.mac_files_removed", count=len(removed))
+        return removed
 
     async def purge_recycle(self, days: int) -> int:
         """Delete recycle-folder days older than ``days`` in every destination."""
