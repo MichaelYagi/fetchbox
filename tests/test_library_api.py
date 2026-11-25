@@ -267,9 +267,14 @@ async def test_destinations_and_health(c: httpx.AsyncClient, settings: Any, tmp_
     ).status_code == 422
     assert (
         await c.post(
-            "/destinations", json={"name": "4K", "path": str(extra), "media_kind": "movie"}
+            "/destinations",
+            json={"name": "4K", "path": str(tmp_path / "Other4K"), "media_kind": "movie"},
         )
-    ).status_code == 409
+    ).status_code == 409  # the name is taken
+    same = await c.post(
+        "/destinations", json={"name": "4K again", "path": str(extra), "media_kind": "movie"}
+    )
+    assert same.status_code == 422 and "already the library folder 4K" in same.text
     assert (await c.delete(f"/destinations/{r.json()['id']}")).status_code == 204
 
 
