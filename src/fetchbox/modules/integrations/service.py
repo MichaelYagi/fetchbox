@@ -41,6 +41,7 @@ from fetchbox.providers.media_servers import (
     MediaServerError,
     MediaServerProvider,
     covering,
+    place,
     same_path,
 )
 
@@ -450,16 +451,18 @@ class IntegrationsService:
         """``path`` as the server sees it, and how that's known: the user's mapping, the
         files both know, the folder names, or "" (as it is: same machine, or not found)."""
         mine = to_remote(path, mappings)
-        if covering(libs, mine):
-            return mine, "mapping" if mine != path else ""
+        if found := place(libs, mine):
+            return found[1], "mapping" if mine != path else ""
         there = to_remote(path, learned)
-        if there != path and covering(libs, there):
-            return there, "files"
+        if there != path and (found := place(libs, there)):
+            return found[1], "files"
         guesses = guess_mappings(path, libs)
         if len(guesses) > 1:  # several equally good: the one the server has
             guesses = [m for m in guesses if await provider.exists(to_remote(path, [m]))]
         if len(guesses) == 1:
-            return to_remote(path, guesses), "names"
+            there = to_remote(path, guesses)
+            found = place(libs, there)
+            return (found[1] if found else there), "names"
         return mine, ""
 
     async def _known(

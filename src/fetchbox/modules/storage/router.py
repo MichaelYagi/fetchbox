@@ -184,12 +184,13 @@ async def update_destination(
 
 
 @router.delete(
-    "/destinations/{dest_id}", status_code=204, dependencies=_write, responses=pr(404, 412)
+    "/destinations/{dest_id}", status_code=204, dependencies=_write, responses=pr(404, 409, 412)
 )
 async def delete_destination(
     dest_id: str, request: Request, p: CurrentPrincipal, if_match: IfMatch = None
 ) -> Response:
-    """Files in the folder are not touched."""
+    """Files in the folder are not touched. Refused (409) while titles or files Fetchbox
+    knows of are in it."""
     await _svc(request).delete_destination(dest_id, if_match=if_match, actor=p.actor())
     return Response(status_code=204)
 

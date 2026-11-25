@@ -599,7 +599,8 @@ export interface paths {
         post?: never;
         /**
          * Delete Destination
-         * @description Files in the folder are not touched.
+         * @description Files in the folder are not touched. Refused (409) while titles or files Fetchbox
+         *     knows of are in it.
          */
         delete: operations["delete_destination_api_v1_destinations__dest_id__delete"];
         options?: never;
@@ -7934,6 +7935,16 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

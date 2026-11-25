@@ -41,22 +41,60 @@ def parent_of(path: str) -> str:
     return head or sep
 
 
+MAC_DISK = ["volumes", "macintosh hd"]  # on a Mac, /Volumes/Macintosh HD/X is /X
+
+
+def _names(path: str) -> list[str]:
+    """The folder names in ``path``, without a Mac's /Volumes/Macintosh HD in front."""
+    parts = [x for x in path.replace("\\", "/").split("/") if x]
+    return parts[2:] if [x.casefold() for x in parts[:2]] == MAC_DISK else parts
+
+
+def _key(names: list[str]) -> list[str]:
+    return [x.casefold() for x in names]
+
+
 def same_path(a: str, b: str) -> bool:
-    return a.replace("\\", "/").rstrip("/") == b.replace("\\", "/").rstrip("/")
+    """The same place, written either way: ``/`` or ``\\``, a trailing separator, other
+    capitals (a Mac's and Windows' disks don't mind), /Volumes/Macintosh HD in front."""
+    return _key(_names(a)) == _key(_names(b))
 
 
-def covering(libraries: list[Library], path: str) -> Library | None:
-    """The library whose folder holds ``path`` (longest folder wins)."""
+def place(libraries: list[Library], path: str) -> tuple[Library, str] | None:
+    """The library whose folder holds ``path`` (the longest folder wins), and ``path``
+    written the way that library writes its folder, which is the spelling to ask the
+    server about. A folder written exactly the same wins over one with other capitals
+    or /Volumes/Macintosh HD in front."""
     norm = path.replace("\\", "/").rstrip("/")
-    best: tuple[int, Library] | None = None
+    exact: tuple[int, Library] | None = None
     for lib in libraries:
         for p in lib.paths:
             root = p.replace("\\", "/").rstrip("/")
             if (norm == root or norm.startswith(root + "/")) and (
-                best is None or len(root) > best[0]
+                exact is None or len(root) > exact[0]
             ):
-                best = (len(root), lib)
-    return best[1] if best else None
+                exact = (len(root), lib)
+    if exact:
+        return exact[1], path
+    mine = _names(path)
+    near: tuple[int, Library, str] | None = None
+    for lib in libraries:
+        for root in lib.paths:
+            theirs = _key(_names(root))
+            n = len(theirs)
+            if n and _key(mine[:n]) == theirs and (near is None or n > near[0]):
+                near = (n, lib, root)
+    if near is None:
+        return None
+    n, lib, root = near
+    sep = "\\" if "\\" in root and "/" not in root else "/"
+    return lib, root.rstrip("/\\") + "".join(sep + x for x in mine[n:])
+
+
+def covering(libraries: list[Library], path: str) -> Library | None:
+    """The library whose folder holds ``path`` (see ``place``)."""
+    found = place(libraries, path)
+    return found[0] if found else None
 
 
 class MediaServerProvider(Provider):

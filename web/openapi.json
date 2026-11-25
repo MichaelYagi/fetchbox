@@ -12016,7 +12016,7 @@
   },
   "/api/v1/destinations/{dest_id}": {
    "delete": {
-    "description": "Files in the folder are not touched.",
+    "description": "Files in the folder are not touched. Refused (409) while titles or files Fetchbox\nknows of are in it.",
     "operationId": "delete_destination_api_v1_destinations__dest_id__delete",
     "parameters": [
      {
@@ -12061,6 +12061,17 @@
        "application/problem+json": {}
       },
       "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Conflict"
      },
      "412": {
       "content": {

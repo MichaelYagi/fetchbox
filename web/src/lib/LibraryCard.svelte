@@ -173,7 +173,7 @@
 			editingFolder = false;
 			onChanged();
 			await load();
-		}, 'Folder saved. New files go there; files already in the old folder stay (they aren\'t moved).');
+		}, `Folder saved. New titles go there. Titles already in the old folder stay there, with their upgrades (as "${dest!.name} (old folder)"); nothing is moved.`);
 	};
 
 	// the preview as a folder tree, under the library folder

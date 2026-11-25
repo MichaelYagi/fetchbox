@@ -18,6 +18,7 @@ payload.
 
 from __future__ import annotations
 
+import asyncio
 import re
 import secrets
 from datetime import timedelta
@@ -35,7 +36,7 @@ from fetchbox.modules.library.service import LibraryService
 from fetchbox.modules.media.models import Title, WantedItem
 from fetchbox.modules.media.service import MediaService
 from fetchbox.modules.profiles.service import ProfilesService
-from fetchbox.modules.storage.service import StorageService
+from fetchbox.modules.storage.service import StorageService, _same_folder
 from fetchbox.providers.arr import ArrClient, ArrError, Kind
 
 log = structlog.get_logger(__name__)
@@ -342,14 +343,11 @@ class Migrator:
         existing = await self.storage.destinations(media_kind)
         for root in roots:
             local = translate(root, mappings).rstrip("/\\")
-            match = next(
-                (
-                    d
-                    for d in existing
-                    if d.path.rstrip("/\\").replace("\\", "/") == local.replace("\\", "/")
-                ),
-                None,
-            )
+            match = None
+            for d in existing:
+                if await asyncio.to_thread(_same_folder, d.path, local):
+                    match = d
+                    break
             if match is None:
                 base = f"{kind.title()} {PurePath(local).name or local}"
                 name, n = base, 1

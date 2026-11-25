@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import Any
 
 import structlog
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 
 from fetchbox.core.concurrency import check_if_match
@@ -320,9 +320,6 @@ class StorageService:
         Fetchbox made "Movies 2" for a title added to /Volumes/Macintosh HD/.../Movies):
         their titles and files move to the first, and the others go. Names of the ones
         removed."""
-        from fetchbox.modules.library.models import MediaFile
-        from fetchbox.modules.media.models import Title
-
         rows = sorted(
             await self.destinations(),
             key=lambda d: (not d.is_default, d.created_at, d.name),
@@ -343,18 +340,7 @@ class StorageService:
         names = []
         async with self.db.sessionmaker() as s:
             for dup_id, keep in gone.items():
-                # a title in the default folder has none of its own (it follows Settings)
-                own = None if keep.is_default else keep.id
-                for col, dest_id in (
-                    (Title.destination_id, own),
-                    (MediaFile.destination_id, keep.id),
-                ):
-                    await s.execute(
-                        update(col.class_)
-                        .where(col == dup_id)
-                        .values(destination_id=dest_id)
-                        .execution_options(synchronize_session=False)
-                    )
+                await self._join(s, dup_id, keep, keep.is_default)
                 dup = await s.get(Destination, dup_id)
                 if dup is not None:
                     names.append(dup.name)
@@ -453,8 +439,57 @@ class StorageService:
                 raise _invalid("body.path", "must be an absolute path")
             changes["path"] = str(p)
 
+    async def _same_as(
+        self, path: str, media_kind: str, but: str | None = None
+    ) -> Destination | None:
+        """The library folder of this kind that ``path`` already is, however it's written."""
+        for d in await self.destinations(media_kind):
+            if d.id != but and await asyncio.to_thread(_same_folder, d.path, path):
+                return d
+        return None
+
+    async def _already(self, path: str, media_kind: str) -> None:
+        """Refused (422 on body.path) when ``path`` is already a library folder."""
+        if d := await self._same_as(path, media_kind):
+            raise _invalid("body.path", f"that folder is already the library folder {d.name}")
+
+    async def _join(self, s: Any, dup_id: str, keep: Destination, default: bool) -> None:
+        """``dup_id``'s titles and files belong to ``keep`` (the same folder) from now on."""
+        from fetchbox.modules.library.models import MediaFile
+        from fetchbox.modules.media.models import Title
+
+        # a title in the default folder has none of its own (it follows Settings)
+        own = None if default else keep.id
+        for col, dest_id in ((Title.destination_id, own), (MediaFile.destination_id, keep.id)):
+            await s.execute(
+                update(col.class_)
+                .where(col == dup_id)
+                .values(destination_id=dest_id)
+                .execution_options(synchronize_session=False)
+            )
+
+    async def _titles_in(self, s: Any, dest_id: str) -> set[str]:
+        """Titles with files in this library folder."""
+        from fetchbox.modules.library.models import MediaFile, MediaFileItem
+        from fetchbox.modules.media.models import Album, Track, WantedItem
+
+        via_items = (
+            select(WantedItem.title_id)
+            .join(MediaFileItem, MediaFileItem.wanted_item_id == WantedItem.id)
+            .join(MediaFile, MediaFile.id == MediaFileItem.media_file_id)
+            .where(MediaFile.destination_id == dest_id)
+        )
+        via_tracks = (
+            select(Album.title_id)
+            .join(Track, Track.album_id == Album.id)
+            .join(MediaFile, MediaFile.track_id == Track.id)
+            .where(MediaFile.destination_id == dest_id)
+        )
+        return set((await s.execute(via_items.union(via_tracks))).scalars())
+
     async def create_destination(self, data: dict[str, Any], *, actor: Actor) -> Destination:
         self._check_fields(data)
+        await self._already(data.get("path", ""), data.get("media_kind", ""))
         async with self.db.sessionmaker() as s:
             node_id = data.get("node_id") or await s.scalar(
                 select(StorageNode.id).where(StorageNode.kind == "local")
@@ -485,11 +520,27 @@ class StorageService:
         self, dest_id: str, changes: dict[str, Any], *, if_match: str | None, actor: Actor
     ) -> Destination:
         self._check_fields(changes)
+        before = await self.destination(dest_id)
+        moved = "path" in changes and not await asyncio.to_thread(
+            _same_folder, before.path, changes["path"]
+        )
+        kind = changes.get("media_kind", before.media_kind)
+        # moved onto another library folder (e.g. back to an old one): the two become one
+        other = await self._same_as(changes["path"], kind, dest_id) if "path" in changes else None
+        kept: Destination | None = None
         async with self.db.sessionmaker() as s:
             row = await s.get(Destination, dest_id)
             if row is None:
                 raise NotFoundError("destination", dest_id)
             check_if_match(row, if_match)
+            if moved:
+                kept = await self._keep_old_folder(s, row)
+            if other is not None:
+                await self._join(s, other.id, row, bool(changes.get("is_default", row.is_default)))
+                gone = await s.get(Destination, other.id)
+                if gone is not None:
+                    await s.delete(gone)
+                    await s.flush()
             if changes.get("is_default"):
                 await self._clear_default(s, changes.get("media_kind", row.media_kind))
             for k, v in changes.items():
@@ -502,7 +553,51 @@ class StorageService:
                 raise ConflictError(f"a destination named {changes.get('name')!r} exists") from None
         await self.check(dest_id)
         await self._emit("storage.destination_updated", row, actor, fields=sorted(changes))
+        if kept is not None:
+            await self.check(kept.id)
+            await self._emit("storage.destination_added", kept, actor)
         return await self.destination(dest_id)
+
+    async def _keep_old_folder(self, s: Any, row: Destination) -> Destination | None:
+        """Before ``row`` moves to another folder: the files already in its folder (and
+        their titles) get a library folder of their own there, so nothing goes missing
+        and those titles keep their upgrades where their files are. New titles go to the
+        new folder. None when the folder holds nothing Fetchbox knows of."""
+        from fetchbox.modules.library.models import MediaFile
+        from fetchbox.modules.media.models import Title
+
+        if not await s.scalar(
+            select(MediaFile.id).where(MediaFile.destination_id == row.id).limit(1)
+        ):
+            return None
+        titles = await self._titles_in(s, row.id)
+        taken = set((await s.execute(select(Destination.name))).scalars())
+        name, n = f"{row.name} (old folder)", 1
+        while name in taken:
+            n += 1
+            name = f"{row.name} (old folder {n})"
+        old = Destination(
+            node_id=row.node_id, name=name, path=row.path, media_kind=row.media_kind,
+            naming_template_id=row.naming_template_id, link_mode=row.link_mode,
+            free_space_min=row.free_space_min, recycle=row.recycle, is_default=False,
+            mount_point=row.mount_point,
+        )  # fmt: skip
+        s.add(old)
+        await s.flush()
+        await s.execute(
+            update(MediaFile)
+            .where(MediaFile.destination_id == row.id)
+            .values(destination_id=old.id)
+            .execution_options(synchronize_session=False)
+        )
+        if titles:
+            await s.execute(
+                update(Title)
+                .where(Title.id.in_(titles))
+                .values(destination_id=old.id)
+                .execution_options(synchronize_session=False)
+            )
+        return old
 
     async def delete_destination(self, dest_id: str, *, if_match: str | None, actor: Actor) -> None:
         async with self.db.sessionmaker() as s:
@@ -510,8 +605,26 @@ class StorageService:
             if row is None:
                 raise NotFoundError("destination", dest_id)
             check_if_match(row, if_match)
+            from fetchbox.modules.library.models import MediaFile
+            from fetchbox.modules.media.models import Title
+
+            titles = await self._titles_in(s, dest_id) | set(
+                (await s.execute(select(Title.id).where(Title.destination_id == dest_id))).scalars()
+            )
+            files = await s.scalar(
+                select(func.count())
+                .select_from(MediaFile)
+                .where(MediaFile.destination_id == dest_id)
+            )
+            if titles or files:
+                n = len(titles)
+                raise ConflictError(
+                    f"{row.name} still holds {n} title{'' if n == 1 else 's'} ({files} "
+                    f"file{'' if files == 1 else 's'}): move them to another library folder "
+                    "first (each title's page), so Fetchbox doesn't lose track of them"
+                )
             await s.delete(row)
-            await s.commit()  # files there stay; media_file.destination_id becomes NULL
+            await s.commit()  # nothing of Fetchbox's was in it
         await self._emit("storage.destination_removed", row, actor)
 
     # ---- health -----------------------------------------------------------------------------
