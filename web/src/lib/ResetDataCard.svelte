@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { ask } from '#lib/dialogs.svelte.ts';
 	import { ApiError, post, type S } from './api.ts';
 
 	// Settings → Delete all data: the data goes, the settings stay, a backup comes first.
@@ -17,7 +18,7 @@
 		const what = deleteFiles
 			? 'all data AND the media files in your library folders'
 			: 'all data (your media files stay)';
-		if (!confirm(`Delete ${what}?\n\nSettings are kept, and a backup is made first.`)) return;
+		if (!(await ask(`Delete ${what}?\n\nSettings are kept, and a backup is made first.`, 'Delete', true))) return;
 		busy = true;
 		error = '';
 		result = null;

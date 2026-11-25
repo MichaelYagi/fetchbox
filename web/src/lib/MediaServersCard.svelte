@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { ask } from '#lib/dialogs.svelte.ts';
 	import { ApiError, del, get, patch, post, type S } from './api.ts';
 
 	// Plex / Jellyfin / Emby: told to rescan the folders Fetchbox changes.
@@ -104,8 +105,8 @@
 			tests[row.id] = await post<Test>(`/media-servers/${row.id}/test`);
 		});
 	};
-	const remove = (s: Server) => {
-		if (!confirm(`Stop telling ${s.name} about new files?`)) return;
+	const remove = async (s: Server) => {
+		if (!(await ask(`Stop telling ${s.name} about new files?`, 'Remove', true))) return;
 		act(`rm-${s.id}`, async () => {
 			await del(`/media-servers/${s.id}`, undefined, s.etag);
 			await load();

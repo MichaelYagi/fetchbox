@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { ask, askText } from '#lib/dialogs.svelte.ts';
 	import { ApiError, bytes, del, get, post, upload, type S } from './api.ts';
 
 	// Backups of the database and settings: made weekly and before updates, or now.
@@ -49,10 +50,10 @@
 			password = '';
 			withKey = false;
 		});
-	const remove = (b: Backup) => confirm(`Delete the backup from ${when(b.created_at)}?`) && act(`rm-${b.id}`, () => del(`/backups/${b.id}`));
-	function restore(b: Backup) {
-		if (!confirm(`Restore the backup from ${when(b.created_at)}?\n\nFetchbox restarts, and everything since then is replaced (your current data is kept as a "Before a restore" backup).`)) return;
-		const pw = b.includes_secrets_key ? prompt("The backup's password (it holds the secrets key):") : null;
+	const remove = async (b: Backup) => (await ask(`Delete the backup from ${when(b.created_at)}?`, 'Delete', true)) && act(`rm-${b.id}`, () => del(`/backups/${b.id}`));
+	async function restore(b: Backup) {
+		if (!(await ask(`Restore the backup from ${when(b.created_at)}?\n\nFetchbox restarts, and everything since then is replaced (your current data is kept as a "Before a restore" backup).`, 'Restore', true))) return;
+		const pw = b.includes_secrets_key ? await askText("The backup's password (it holds the secrets key):", { ok: 'Restore', password: true }) : null;
 		if (b.includes_secrets_key && pw === null) return;
 		act(`restore-${b.id}`, async () => {
 			const r = await post<S['RestoreOut']>(`/backups/${b.id}/restore`, pw ? { password: pw } : {});

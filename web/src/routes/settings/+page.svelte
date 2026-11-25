@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { ask } from '#lib/dialogs.svelte.ts';
 	import { ApiError, del, get, patch, post, type S } from '#lib/api.ts';
 	import BackupsCard from '#lib/BackupsCard.svelte';
 	import ConfigTransferCard from '#lib/ConfigTransferCard.svelte';
@@ -452,7 +453,7 @@
 									<button class="small" onclick={() => act(i.id, () => patch(`/indexers/${i.id}`, { enabled: !i.enabled }, i.etag))} disabled={!!busy}>
 										{i.enabled ? 'Disable' : 'Enable'}
 									</button>
-									<button class="small danger" onclick={() => confirm(`Remove ${i.name}?`) && act(i.id, () => del(`/indexers/${i.id}`, undefined, i.etag))} disabled={!!busy}>Remove</button>
+									<button class="small danger" onclick={async () => (await ask(`Remove ${i.name}?`, 'Remove', true)) && act(i.id, () => del(`/indexers/${i.id}`, undefined, i.etag))} disabled={!!busy}>Remove</button>
 								</div></td>
 							</tr>
 							{#if editing === i.id}
@@ -548,7 +549,7 @@
 									{c.enabled ? 'Disable' : 'Enable'}
 								</button>
 								{#if c.kind !== 'builtin' && c.kind !== 'direct'}
-									<button class="small danger" onclick={() => confirm(`Remove ${c.name}?`) && act(c.id, () => del(`/download-clients/${c.id}`, undefined, c.etag))} disabled={!!busy}>Remove</button>
+									<button class="small danger" onclick={async () => (await ask(`Remove ${c.name}?`, 'Remove', true)) && act(c.id, () => del(`/download-clients/${c.id}`, undefined, c.etag))} disabled={!!busy}>Remove</button>
 								{/if}
 							</div></td>
 						</tr>

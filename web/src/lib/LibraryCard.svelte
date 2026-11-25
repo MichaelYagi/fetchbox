@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { ask } from '#lib/dialogs.svelte.ts';
 	import Path from './Path.svelte';
 	import { ApiError, get, patch, post, put, type S } from './api.ts';
 	import FolderTest from './FolderTest.svelte';
@@ -138,9 +139,9 @@
 			showRenames = false;
 		});
 
-	const rename = () => {
+	const rename = async () => {
 		const n = renames?.length ?? 0;
-		if (!confirm(`Rename ${n} file${n === 1 ? '' : 's'} already in your library?\n\nPlex, Jellyfin or Emby will see ${n === 1 ? 'it' : 'them'} at the new name and must re-match ${n === 1 ? 'it' : 'them'}. There is no undo.`)) return;
+		if (!(await ask(`Rename ${n} file${n === 1 ? '' : 's'} already in your library?\n\nPlex, Jellyfin or Emby will see ${n === 1 ? 'it' : 'them'} at the new name and must re-match ${n === 1 ? 'it' : 'them'}. There is no undo.`, 'Rename', true))) return;
 		return act('rename', async () => {
 			const r = await post<S['RenameOut']>(`/library/rename/${kind}`, {});
 			renames = await get<S['RenameStepOut'][]>(`/library/rename/${kind}`);

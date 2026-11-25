@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { ask } from '#lib/dialogs.svelte.ts';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import Badge from '#lib/Badge.svelte';
@@ -229,12 +230,12 @@
 		act('profile', () => patch(`/titles/${id}`, { profile_id: pid }, title!.etag));
 	const unlock = () =>
 		act('unlock', () => post(`/wanted/${wanted!.id}/unlock`), 'Unlocked: Fetchbox may grab an upgrade.');
-	const redownload = () => {
-		if (!confirm('Blocklist the current release, move the file to the recycle folder, and download again?')) return;
+	const redownload = async () => {
+		if (!(await ask('Blocklist the current release, move the file to the recycle folder, and download again?', 'Download again', true))) return;
 		act('redownload', () => post(`/wanted/${wanted!.id}/redownload`), 'Searching for a new copy.');
 	};
-	const remove = () => {
-		if (!confirm(`Remove ${title!.name} from Fetchbox? Files on disk are kept.`)) return;
+	const remove = async () => {
+		if (!(await ask(`Remove ${title!.name} from Fetchbox? Files on disk are kept.`, 'Remove', true))) return;
 		act('delete', async () => {
 			await del(`/titles/${id}`, undefined, title!.etag);
 			await goto('/');
