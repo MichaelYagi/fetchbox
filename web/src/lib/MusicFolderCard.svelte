@@ -78,7 +78,7 @@
 		act('folder', async () => {
 			await patch(`/destinations/${dest!.id}`, { path: folder.trim() }, dest!.etag);
 			editing = false;
-		}, "Folder saved. New albums go there; albums already in the old folder stay (they aren't moved).");
+		}, `Folder saved. New artists go there. Artists already in the old folder stay there, with new albums (as "${dest!.name} (old folder)"); nothing is moved.`);
 	};
 	const setMode = (mode: string) =>
 		act('mode', () => patch(`/destinations/${dest!.id}`, { link_mode: mode }, dest!.etag), 'Saved.');
