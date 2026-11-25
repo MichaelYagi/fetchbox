@@ -30,7 +30,7 @@ def _counts(folder: Path, kind: str) -> tuple[int, int]:
         for f in filenames:
             ext = os.path.splitext(f)[1].lower().lstrip(".")
             if (
-                is_audio(f) if kind == "music" else ext in VIDEO_EXTS
+                is_audio(f) if kind == "music" else ext in VIDEO_EXTS and not f.startswith("._")
             ) and "sample" not in f.lower():
                 files += 1
         if files >= MAX_FILES:

@@ -71,7 +71,8 @@ class TrackMatch:
 
 
 def is_audio(path: str) -> bool:
-    return PurePosixPath(path).suffix.lower() in AUDIO_EXTS
+    p = PurePosixPath(path)
+    return p.suffix.lower() in AUDIO_EXTS and not p.name.startswith("._")  # not a macOS ._ file
 
 
 def _num(v: Any) -> int | None:

@@ -34,6 +34,7 @@ from sqlalchemy import delete, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from fetchbox.core import macfiles
 from fetchbox.core.concurrency import check_if_match
 from fetchbox.core.db import Database, utcnow
 from fetchbox.core.errors import ConflictError, FieldError, NotFoundError, ProblemError
@@ -72,6 +73,14 @@ log = structlog.get_logger(__name__)
 IMPORT_JOB = "library.import"
 DEFAULT_TEMPLATE = "Plex / Jellyfin"
 VIDEO_EXTS = {"mkv", "mp4", "m4v", "avi", "mov", "wmv", "ts", "m2ts", "webm", "mpg", "mpeg"}
+
+
+def is_video(path: str) -> bool:
+    """A video file by its name (a macOS ._ file beside one is not)."""
+    p = PurePosixPath(path.replace("\\", "/"))
+    return p.suffix.lower().lstrip(".") in VIDEO_EXTS and not macfiles.is_appledouble(p.name)
+
+
 _SAMPLE = re.compile(r"(?<![a-z])sample(?![a-z])", re.I)
 RETRY = (timedelta(minutes=1), timedelta(minutes=5), timedelta(minutes=15), timedelta(hours=1))
 SWEEP_INTERVAL = 30.0
@@ -126,7 +135,7 @@ def _scan(save_path: str, name: str) -> list[ClientFile]:
         return [
             ClientFile(path=str(p.relative_to(base)), size=p.stat().st_size, progress=1.0)
             for p in root.rglob("*")
-            if p.is_file()
+            if p.is_file() and not macfiles.is_appledouble(p.name)
         ]
     return []
 
@@ -148,7 +157,7 @@ def _season_on_disk(show: Path, season: int) -> str | None:
     except OSError:
         return None
     folders = [e.name for e in entries if e.is_dir() and not e.name.startswith(".")]
-    loose = any(e.is_file() and e.suffix.lower().lstrip(".") in VIDEO_EXTS for e in entries)
+    loose = any(e.is_file() and is_video(e.name) for e in entries)
     return existing_season_folder(folders, loose, season)
 
 
@@ -156,7 +165,7 @@ def pick_video(files: list[ClientFile], *, kind: str = "movie") -> ClientFile | 
     videos = [
         f
         for f in files
-        if PurePosixPath(f.path.replace("\\", "/")).suffix.lower().lstrip(".") in VIDEO_EXTS
+        if is_video(f.path)
         and not any(_SAMPLE.search(part) for part in PurePosixPath(f.path.replace("\\", "/")).parts)
     ]
     if not videos:
@@ -169,7 +178,7 @@ def videos_in(files: list[ClientFile]) -> list[ClientFile]:
     out = [
         f
         for f in files
-        if PurePosixPath(f.path.replace("\\", "/")).suffix.lower().lstrip(".") in VIDEO_EXTS
+        if is_video(f.path)
         and not any(_SAMPLE.search(part) for part in PurePosixPath(f.path.replace("\\", "/")).parts)
     ]
     return sorted(out, key=lambda f: f.path)
@@ -292,6 +301,13 @@ async def _cover(meta: dict[str, Any]) -> bytes | None:
     except httpx.HTTPError:
         pass
     return None
+
+
+def _tidy_placed(src: Path, dst: Path) -> None:
+    macfiles.tidy(dst)
+    if not src.exists():  # moved: its ._ file stayed behind
+        with contextlib.suppress(OSError):
+            (src.parent / f"{macfiles.PREFIX}{src.name}").unlink(missing_ok=True)
 
 
 def _rename_into(src: Path, dst: Path) -> None:
@@ -1307,6 +1323,20 @@ class LibraryService:
         return {**DEFAULT_PATTERNS, **(row.patterns if row else {})}
 
     async def _place(
+        self,
+        src: Path,
+        dst: Path,
+        dest: Destination,
+        d: Download | None = None,
+        rel: str | None = None,
+    ) -> str:
+        """Put src at dst (see ``_put``), leaving no macOS ``._`` file beside it, nor one
+        behind where it came from."""
+        how = await self._put(src, dst, dest, d, rel)
+        await asyncio.to_thread(_tidy_placed, src, dst)
+        return how
+
+    async def _put(
         self,
         src: Path,
         dst: Path,
