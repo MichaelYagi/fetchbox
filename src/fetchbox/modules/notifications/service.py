@@ -126,6 +126,18 @@ class NotificationsService:
                     self._tasks.add(task)
                     task.add_done_callback(self._done)
 
+    async def send(self, n: Notification) -> int:
+        """Send a message (a plugin's) to the enabled targets that chose its event; how many
+        it went to. Sent in the background, like event messages."""
+        count = 0
+        for t in await self.all():
+            if t.enabled and n.event in (t.events or []):
+                task = asyncio.create_task(self._send(t, n), name=f"notify:{t.name}")
+                self._tasks.add(task)
+                task.add_done_callback(self._done)
+                count += 1
+        return count
+
     def _done(self, task: asyncio.Task[None]) -> None:
         self._tasks.discard(task)
         if not task.cancelled() and task.exception() is not None:
