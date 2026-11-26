@@ -51,8 +51,8 @@ class Watcher(Addon):
 
     @on("title.added")
     async def added(self, ctx: Any, event: PublicEvent) -> None:
+        await ctx.store.set("last", event.title_id)  # before SEEN: the test reads it then
         SEEN.append(("added", (event.title_id, event.kind, event.data.get("name"))))
-        await ctx.store.set("last", event.title_id)
 
     @on("file.imported")
     async def imported(self, ctx: Any, event: PublicEvent) -> None:
