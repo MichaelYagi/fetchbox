@@ -6001,6 +6001,18 @@
       ],
       "title": "Number"
      },
+     "quality": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Its file's quality, when it has one",
+      "title": "Quality"
+     },
      "ref": {
       "title": "Ref",
       "type": "string"
@@ -9110,6 +9122,60 @@
      }
     },
     "title": "TitlePatch",
+    "type": "object"
+   },
+   "TitleQualities": {
+    "properties": {
+     "available": {
+      "description": "The kind's qualities, best first",
+      "items": {
+       "type": "string"
+      },
+      "title": "Available",
+      "type": "array"
+     },
+     "cutoff": {
+      "description": "Good enough: no upgrade is looked for past it",
+      "title": "Cutoff",
+      "type": "string"
+     },
+     "qualities": {
+      "description": "The ones this title accepts, best first",
+      "items": {
+       "type": "string"
+      },
+      "title": "Qualities",
+      "type": "array"
+     }
+    },
+    "required": [
+     "available",
+     "qualities",
+     "cutoff"
+    ],
+    "title": "TitleQualities",
+    "type": "object"
+   },
+   "TitleQualitiesIn": {
+    "properties": {
+     "cutoff": {
+      "title": "Cutoff",
+      "type": "string"
+     },
+     "qualities": {
+      "items": {
+       "type": "string"
+      },
+      "minItems": 1,
+      "title": "Qualities",
+      "type": "array"
+     }
+    },
+    "required": [
+     "qualities",
+     "cutoff"
+    ],
+    "title": "TitleQualitiesIn",
     "type": "object"
    },
    "TitleSummary": {
@@ -19193,6 +19259,144 @@
      }
     ],
     "summary": "Title Items",
+    "tags": [
+     "plugins"
+    ]
+   }
+  },
+  "/api/v1/plugins/titles/{title_id}/qualities": {
+   "get": {
+    "operationId": "title_qualities_api_v1_plugins_titles__title_id__qualities_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "title_id",
+      "required": true,
+      "schema": {
+       "title": "Title Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TitleQualities"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Title Qualities",
+    "tags": [
+     "plugins"
+    ]
+   },
+   "put": {
+    "description": "Which of the kind's qualities this title accepts (best first) and when it's good\nenough. A file below the cutoff is upgraded when a better release turns up.",
+    "operationId": "set_title_qualities_api_v1_plugins_titles__title_id__qualities_put",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "title_id",
+      "required": true,
+      "schema": {
+       "title": "Title Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/TitleQualitiesIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TitleQualities"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Unprocessable Content"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Set Title Qualities",
     "tags": [
      "plugins"
     ]

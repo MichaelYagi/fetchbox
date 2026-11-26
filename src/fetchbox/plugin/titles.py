@@ -162,9 +162,23 @@ class PluginTitles:
                     .where(PluginItem.title_id == title_id)
                 )
             ).all()
+        from fetchbox.modules.library.models import MediaFile, MediaFileItem
+
+        async with self.db.sessionmaker() as s:
+            files = {
+                w: (q or {}).get("name")
+                for w, q in (
+                    await s.execute(
+                        select(MediaFileItem.wanted_item_id, MediaFile.quality)
+                        .join(MediaFile, MediaFile.id == MediaFileItem.media_file_id)
+                        .where(MediaFileItem.wanted_item_id.in_([w.id for _p, w in rows]))
+                    )
+                ).all()
+            }
         out = [
             {"id": w.id, "ref": p.ref, "number": p.number, "name": p.name, "released": p.released,
-             "state": w.state, "monitored": w.monitored, "version": w.version}
+             "state": w.state, "monitored": w.monitored, "version": w.version,
+             "quality": files.get(w.id)}
             for p, w in rows
         ]  # fmt: skip
         out.sort(key=lambda x: (x["number"] is None, x["number"] or 0, x["released"] or date.min))

@@ -1990,6 +1990,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/plugins/titles/{title_id}/qualities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Title Qualities */
+        get: operations["title_qualities_api_v1_plugins_titles__title_id__qualities_get"];
+        /**
+         * Set Title Qualities
+         * @description Which of the kind's qualities this title accepts (best first) and when it's good
+         *     enough. A file below the cutoff is upgraded when a better release turns up.
+         */
+        put: operations["set_title_qualities_api_v1_plugins_titles__title_id__qualities_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/plugins/titles/{title_id}/refresh": {
         parameters: {
             query?: never;
@@ -5157,6 +5179,11 @@ export interface components {
             name: string | null;
             /** Number */
             number: number | null;
+            /**
+             * Quality
+             * @description Its file's quality, when it has one
+             */
+            quality?: string | null;
             /** Ref */
             ref: string;
             /** Released */
@@ -6425,6 +6452,31 @@ export interface components {
             monitor_mode?: string | null;
             /** Profile Id */
             profile_id?: string | null;
+        };
+        /** TitleQualities */
+        TitleQualities: {
+            /**
+             * Available
+             * @description The kind's qualities, best first
+             */
+            available: string[];
+            /**
+             * Cutoff
+             * @description Good enough: no upgrade is looked for past it
+             */
+            cutoff: string;
+            /**
+             * Qualities
+             * @description The ones this title accepts, best first
+             */
+            qualities: string[];
+        };
+        /** TitleQualitiesIn */
+        TitleQualitiesIn: {
+            /** Cutoff */
+            cutoff: string;
+            /** Qualities */
+            qualities: string[];
         };
         /** TitleSummary */
         TitleSummary: {
@@ -12245,6 +12297,93 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    title_qualities_api_v1_plugins_titles__title_id__qualities_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                title_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TitleQualities"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_title_qualities_api_v1_plugins_titles__title_id__qualities_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                title_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TitleQualitiesIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TitleQualities"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
                 };
             };
         };

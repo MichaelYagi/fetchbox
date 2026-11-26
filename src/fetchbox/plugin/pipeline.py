@@ -62,6 +62,31 @@ class PluginPipeline:
             ]
 
     @staticmethod
+    def qualities(title: Title, kind: MediaKind) -> tuple[list[str], str]:
+        """The title's accepted qualities (best first) and its cutoff: as chosen on its page,
+        or every quality of the kind with the best as the cutoff."""
+        names = list(kind.qualities.names)
+        chosen = [q for q in (title.meta or {}).get("qualities") or [] if q in names] or names
+        cutoff = str((title.meta or {}).get("cutoff") or "")
+        return chosen, cutoff if cutoff in chosen else chosen[0]
+
+    async def current(self, wanted_ids: list[str]) -> dict[str, str]:
+        """The quality of each item's file, by wanted item."""
+        from fetchbox.modules.library.models import MediaFile, MediaFileItem
+
+        if not wanted_ids:
+            return {}
+        async with self.db.sessionmaker() as s:
+            rows = (
+                await s.execute(
+                    select(MediaFileItem.wanted_item_id, MediaFile.quality)
+                    .join(MediaFile, MediaFile.id == MediaFileItem.media_file_id)
+                    .where(MediaFileItem.wanted_item_id.in_(wanted_ids))
+                )
+            ).all()
+        return {w: str((q or {}).get("name") or "Unknown") for w, q in rows}
+
+    @staticmethod
     def _details(title: Title, rows: list[tuple[PluginItem, WantedItem]]) -> TitleDetails:
         meta = title.meta or {}
         items = [Item(p.ref, p.number, p.name, p.released, p.group_ref) for p, _w in rows]
@@ -80,10 +105,18 @@ class PluginPipeline:
         kind, _got = self.titles.kind(title.kind)
         rows = await self._rows(title_id)
         today = date.today()
+        allowed, cutoff = self.qualities(title, kind)
+        files = await self.current([w.id for _p, w in rows if w.state == "acquired"])
+
+        def upgradable(w: WantedItem) -> bool:
+            have = files.get(w.id)
+            return have is not None and _rank(have, allowed) > _rank(cutoff, allowed)
+
         wanted = [
             (p, w) for p, w in rows
-            if w.state == "missing" and (w.id in item_ids if item_ids else w.monitored
-                                         and (p.released is None or p.released <= today))
+            if (w.id in item_ids if item_ids else w.monitored)
+            and ((w.state == "missing" and (item_ids or p.released is None or p.released <= today))
+                 or (w.state == "acquired" and upgradable(w)))
         ]  # fmt: skip
         if not wanted:
             return {"searched": 0, "results": 0, "grabbed": 0}
@@ -107,7 +140,10 @@ class PluginPipeline:
                         indexer=getattr(src, "name", ""),
                         error=str(exc),
                     )
-        picks = await self.decide(title, kind, details, wanted, list(found.values()))
+        picks = await self.decide(
+            title, kind, details, wanted, list(found.values()), allowed=allowed,
+            current={w.id: _rank(files[w.id], allowed) for _p, w in wanted if w.id in files},
+        )  # fmt: skip
         grabbed = 0
         needed = {w.id for _p, w in wanted}
         for pick in picks:
@@ -139,9 +175,15 @@ class PluginPipeline:
         details: TitleDetails,
         wanted: list[tuple[PluginItem, WantedItem]],
         found: list[ReleaseCandidate],
+        *,
+        allowed: list[str] | None = None,
+        current: dict[str, int] | None = None,
     ) -> list[Pick]:
         """The releases worth grabbing, best first: this title's, of wanted items, not
-        blocklisted; the kind's better quality, then more wanted items, then more seeders."""
+        blocklisted, of an accepted quality (an item that has a file: only a better one);
+        the better quality, then more wanted items, then more seeders."""
+        allowed = allowed or list(kind.qualities.names)
+        current = current or {}
         by_number = {p.number: w.id for p, w in wanted if p.number is not None}
         entries = await self.grabs.blocklist(title.id)
         blocked = {(e.release_title or "").lower() for e in entries}
@@ -165,11 +207,17 @@ class PluginPipeline:
                 and len(parsed.numbers) != 1
             ):
                 continue
-            covered = [by_number[n] for n in parsed.numbers if n in by_number]
+            quality = parsed.quality if parsed.quality in names else None
+            if quality is not None and quality not in allowed:
+                continue  # a quality the title doesn't accept
+            rank = _rank(quality or "Unknown", allowed)
+            covered = [
+                by_number[n] for n in parsed.numbers if n in by_number
+                if by_number[n] not in current
+                or (quality is not None and rank < current[by_number[n]])
+            ]  # fmt: skip
             if not covered:
                 continue
-            quality = parsed.quality if parsed.quality in names else None
-            rank = names.index(quality) if quality else len(names)
             picks.append(Pick(c, quality or "Unknown", rank, covered))
         picks.sort(key=lambda p: (p.rank, -len(p.items), -(p.candidate.seeders or 0)))
         return picks
@@ -252,3 +300,8 @@ class PluginPipeline:
             except Exception as exc:
                 log.warning("plugin.search_missing_failed", title=tid, error=str(exc))
         return {"titles": len(ids), "grabbed": grabbed}
+
+
+def _rank(quality: str, allowed: list[str]) -> int:
+    """0 for the best accepted quality; unknown and unaccepted ones after every accepted."""
+    return allowed.index(quality) if quality in allowed else len(allowed)
