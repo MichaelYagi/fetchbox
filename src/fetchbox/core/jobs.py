@@ -174,6 +174,11 @@ class JobRunner:
             raise ValueError(f"job handler {type!r} already registered")
         self._handlers[type] = HandlerSpec(type, queue, max_attempts, fn)
 
+    def unregister(self, type: str) -> None:
+        """Forget a handler (a plugin being unloaded). A running job of it finishes; one still
+        queued fails when claimed, "no handler", as for any unknown job type."""
+        self._handlers.pop(type, None)
+
     # ---- enqueue / control -------------------------------------------------------
 
     async def enqueue(

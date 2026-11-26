@@ -97,6 +97,10 @@ class EventBus:
 
         return deco
 
+    def off(self, handler: Handler) -> None:
+        """Remove an in-process handler added with ``on`` (a plugin being unloaded)."""
+        self._handlers = [(p, h) for p, h in self._handlers if h is not handler]
+
     async def publish(self, event: Event) -> Event:
         self._buffer.append(event)
         for sub in list(self._subs):
