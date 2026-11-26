@@ -365,6 +365,7 @@
 						tabindex="0"
 						class="card result pick"
 						class:busy={!a.in_library && (addingArtist !== null || !profile)}
+						class:chosen={pending?.kind === 'music' && pending.a.mbid === a.mbid}
 						aria-label={a.in_library ? `${a.name}: in your library` : `Add ${a.name}`}
 						onclick={a.in_library ? undefined : () => pickIf(addingArtist === null && !!profile, open)}
 						onkeydown={a.in_library ? undefined : (e: KeyboardEvent) => pickKey(e, addingArtist === null && !!profile, open)}
@@ -403,6 +404,7 @@
 						tabindex="0"
 						class="card result pick"
 						class:busy={!mine && (adding !== null || !profile)}
+						class:chosen={pending !== null && pending.kind !== 'music' && pending.r.tmdb_id === r.tmdb_id}
 						aria-label={mine ? `${r.name}: in your library` : `Add ${r.name}${r.year ? ` (${r.year})` : ''}`}
 						onclick={mine ? undefined : () => pickIf(adding === null && !!profile, open)}
 						onkeydown={mine ? undefined : (e: KeyboardEvent) => pickKey(e, adding === null && !!profile, open)}
@@ -802,6 +804,13 @@
 		border-color: var(--border);
 		background: var(--surface);
 		box-shadow: var(--shadow);
+	}
+	/* the one being added stays highlighted behind its Add dialog (until it closes) */
+	.pick.chosen,
+	.pick.chosen:hover {
+		border-color: var(--accent);
+		background: color-mix(in srgb, var(--accent) 9%, var(--surface));
+		box-shadow: 0 0 0 1px var(--accent);
 	}
 	.owned {
 		flex: none;
