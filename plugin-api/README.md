@@ -23,3 +23,6 @@ class HelloPlugin(Plugin):
 
 Within API 1 everything here only grows: nothing is removed, renamed or changes meaning.
 Fetchbox includes this package, so a plugin needs only `fetchbox-plugin-api` as a dependency.
+
+The guide, with everything the API offers and the test kit:
+[Writing Fetchbox plugins](https://github.com/MichaelYagi/fetchbox/blob/main/docs/plugins.md).
