@@ -91,7 +91,9 @@ async def test_an_import_rename_and_delete_as_plugins_see_them(
         assert (await c.put("/library/naming/movie", json={"patterns": simple})).status_code == 200
         allow = {"storage": {"rename_existing": True}}
         assert (await c.patch("/system/config", json=allow)).status_code == 200
-        assert (await c.post("/library/rename/movie", json={})).status_code == 200
+        r = await c.post("/library/rename/movie", json={})
+        assert r.status_code == 200 and r.json()["failed"] == [], r.text
+        assert [x["file_id"] for x in r.json()["renamed"]] == [f["id"]], r.text
         await until(lambda: _has(seen, "file.renamed"))
         [ren] = [e for e in seen if e.type == "file.renamed"]
         assert ren.file_ids == [f["id"]] and ren.title_id == movie["id"]
