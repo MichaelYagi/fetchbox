@@ -113,6 +113,8 @@ class NotificationsService:
         self.providers = providers
         self.provider_kwargs: dict[str, Any] = {}  # tests: a fake transport
         self.public_only: Callable[[], bool] = lambda: False  # Settings > Network
+        # events plugins add (plugin messages): offered while a plugin is running
+        self.extra_events: Callable[[], dict[str, str]] = dict
         self._tasks: set[asyncio.Task[None]] = set()
 
         @bus.on(*EVENTS)
@@ -193,18 +195,23 @@ class NotificationsService:
     def view(self, row: NotificationTarget) -> dict[str, Any]:
         return mask_settings(self.providers.get("notifier", row.kind).Settings, row.settings)
 
-    @staticmethod
-    def _events(events: list[str] | None) -> list[str]:
+    def event_kinds(self) -> list[tuple[str, str, bool]]:
+        """(event, label, chosen by default): Fetchbox's, then plugins'."""
+        core = [(k, v[0], v[1]) for k, v in EVENTS.items()]
+        return core + [(k, label, False) for k, label in self.extra_events().items()]
+
+    def _events(self, events: list[str] | None) -> list[str]:
         if events is None:
             return list(DEFAULT_EVENTS)
-        unknown = sorted(set(events) - set(EVENTS))
+        known = [k for k, _, _ in self.event_kinds()]
+        unknown = sorted(set(events) - set(known))
         if unknown:
             raise ProblemError(
                 422, "Validation Failed", slug="validation",
                 errors=[FieldError(field="body.events",
                                    message=f"unknown event(s) {', '.join(unknown)}")],
             )  # fmt: skip
-        return [e for e in EVENTS if e in events]  # catalogue order
+        return [e for e in known if e in events]  # catalogue order
 
     async def all(self) -> list[NotificationTarget]:
         async with self.db.sessionmaker() as s:

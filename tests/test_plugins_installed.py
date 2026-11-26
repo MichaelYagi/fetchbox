@@ -24,7 +24,7 @@ MODULE = "fbtest_greeter"
 
 CODE = """
 from fetchbox_plugin import (
-    Addon, Field, Permission, Plugin, PublicEvent, Secret, Settings, action, on,
+    Addon, Field, Panel, Permission, Plugin, PublicEvent, Secret, Settings, action, on, panel,
 )
 
 
@@ -46,6 +46,13 @@ class Greeter(Addon):
     @on("title.added")
     async def added(self, ctx, event: PublicEvent):
         return {{"said": self.settings.word}}
+
+    @panel(on="title", title="Greetings")
+    async def greetings(self, ctx, title_id):
+        if title_id == "boom":
+            raise RuntimeError("no greetings today")
+        return Panel(status=f"{{self.settings.word}} there", table=[{{"Who": "you"}}],
+                     actions=["Greet"])
 
     @action("Greet", on="title")
     async def greet(self, ctx, item):
@@ -270,3 +277,37 @@ async def test_a_real_plugin_wheel(settings: Settings, tmp_path: Path) -> None:
         await c.delete("/plugins/subtitles")
     for m in [m for m in sys.modules if m.startswith("fetchbox_subtitles")]:
         del sys.modules[m]
+
+
+async def test_panels_messages_and_health(server: Any, c: Any) -> None:
+    """With a plugin running: its panel on a title page, plugin messages offered to
+    notification targets, and its line in Health. None of it without a running plugin."""
+    from tests.pipeline import _movie
+
+    events = {e["event"] for e in (await c.get("/notifications/events")).json()}
+    assert "plugin.message" not in events  # no plugin: nothing new
+    health = (await c.get("/system/health")).json()
+    assert "plugins" not in json.dumps(health)
+
+    assert (await _install(c, wheel())).status_code == 201
+    movie = await _movie(c)
+    [p] = (await c.get("/plugins/panels", params={"on": "title", "id": movie["id"]})).json()
+    assert (p["plugin"], p["title"], p["status"], p["table"], p["actions"], p["error"]) == (
+        "greeter",
+        "Greetings",
+        "Hello there",
+        [{"Who": "you"}],
+        ["Greet"],
+        None,
+    )
+    assert (await c.get("/plugins/panels", params={"on": "title", "id": "nope"})).json() == []
+
+    events = {e["event"]: e for e in (await c.get("/notifications/events")).json()}
+    assert events["plugin.message"]["default"] is False
+    health = json.dumps((await c.get("/system/health")).json())
+    assert "1 plugin(s) running" in health  # (its link to Settings shows when not ok)
+
+    await c.patch("/plugins/greeter", json={"enabled": False})
+    assert "plugin.message" not in {
+        e["event"] for e in (await c.get("/notifications/events")).json()
+    }

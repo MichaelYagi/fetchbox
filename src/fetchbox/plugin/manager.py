@@ -25,10 +25,13 @@ from pydantic import BaseModel, ValidationError
 from sqlalchemy import select
 
 from fetchbox.core.db import Database
+from fetchbox.core.health import HealthRegistry
+from fetchbox.core.providers import HealthStatus
 from fetchbox.core.secrets import MASK, SecretBox, is_encrypted
 from fetchbox.modules.plugins.models import PluginRecord
 from fetchbox.modules.plugins.store import PluginStore
 from fetchbox.plugin.host import PluginHost, PluginLoadError
+from fetchbox.plugin.services import PLUGIN_MESSAGE
 from fetchbox_plugin import Addon, MediaKind, Plugin, Secret, Settings
 from fetchbox_plugin.manifest import PERMISSION_WORDS, SUPPORTED_APIS
 
@@ -36,6 +39,7 @@ log = structlog.get_logger(__name__)
 
 GROUP = "fetchbox.plugins"
 NATIVE = (".so", ".pyd", ".dylib", ".dll")
+PANEL_SECONDS = 10
 
 
 class PluginError(Exception):
@@ -77,7 +81,14 @@ def secret_fields(model: type[BaseModel]) -> list[str]:
 
 class PluginManager:
     def __init__(
-        self, *, db: Database, box: SecretBox, host: PluginHost, data_dir: Path, enabled: bool
+        self,
+        *,
+        db: Database,
+        box: SecretBox,
+        host: PluginHost,
+        data_dir: Path,
+        enabled: bool,
+        health: HealthRegistry | None = None,
     ) -> None:
         self.db = db
         self.box = box
@@ -86,7 +97,12 @@ class PluginManager:
         self.enabled = enabled  # False: started with --no-plugins
         self.found: dict[str, Found] = {}
         self.records: dict[str, PluginRecord] = {}
+        self.health_registry = health
         host.settings_for = self._settings_for
+        # "A message from a plugin" is offered to notification targets while one runs
+        host.services.notifications.extra_events = lambda: (
+            {PLUGIN_MESSAGE: "A message from a plugin"} if host.loaded else {}
+        )
 
     # ---- discovery and startup -----------------------------------------------------------
 
@@ -127,6 +143,7 @@ class PluginManager:
             for r in rows.values():
                 s.expunge(r)
         self.records = rows
+        self._watch_health()
         if not self.enabled:
             log.warning("plugins.off", reason="started with --no-plugins")
             return
@@ -155,6 +172,24 @@ class PluginManager:
                 log.exception("plugin.load_failed", plugin=pid)
         await self._set(pid, error=error)
 
+    def _watch_health(self) -> None:
+        """Health shows the plugins once there are any (nothing new before)."""
+        if self.health_registry is not None and self.records:
+            self.health_registry.register("plugins", self.health, fix_url="/settings/plugins")
+
+    async def health(self) -> HealthStatus:
+        failing = [
+            f"{self.describe(pid)['name']}: {r.error}"
+            for pid, r in self.records.items()
+            if r.approved and r.enabled and pid not in self.host.loaded and r.error
+        ]
+        if not self.enabled:
+            return HealthStatus(status="warning", message="Plugins are off (--no-plugins)")
+        if failing:
+            return HealthStatus(status="warning", message="; ".join(failing))
+        running = len(self.host.loaded)
+        return HealthStatus(status="ok", message=f"{running} plugin(s) running")
+
     async def _set(self, pid: str, **values: Any) -> PluginRecord:
         async with self.db.sessionmaker() as s:
             row = await s.get(PluginRecord, pid)
@@ -167,6 +202,7 @@ class PluginManager:
             await s.refresh(row)
             s.expunge(row)
         self.records[pid] = row
+        self._watch_health()
         return row
 
     # ---- settings --------------------------------------------------------------------------
@@ -372,6 +408,46 @@ class PluginManager:
                 await s.delete(row)
                 await s.commit()
         self.records.pop(pid, None)
+
+    # ---- panels on the title page ---------------------------------------------------------
+
+    async def panels(self, on: str, target: str) -> list[dict[str, Any]]:
+        """Each running add-on's panel for a title (or an item): what it says, or why not."""
+        import asyncio
+
+        kind: str | None = None
+        try:
+            media = self.host.services.media
+            if on == "title":
+                kind = (await media.get_title(target)).kind
+            elif on == "item":
+                kind = (await media.get_title((await media.get_wanted(target)).title_id)).kind
+        except Exception:  # an unknown title: no panels
+            return []
+        out = []
+        for pid, got in list(self.host.loaded.items()):
+            for addon_id, addon in got.addons.items():
+                if addon.applies_to and kind not in addon.applies_to:
+                    continue
+                for method, spec in type(addon).handlers()["panel"]:
+                    if spec.level != on:
+                        continue
+                    row: dict[str, Any] = {
+                        "plugin": pid, "addon": addon_id, "method": method, "title": spec.title,
+                        "status": "", "table": [], "actions": [], "error": None,
+                    }  # fmt: skip
+                    try:
+                        async with asyncio.timeout(PANEL_SECONDS):
+                            panel = await getattr(addon, method)(got.ctx, target)
+                        row |= {"status": panel.status, "table": list(panel.table)[:200],
+                                "actions": list(panel.actions)}  # fmt: skip
+                    except TimeoutError:
+                        row["error"] = f"didn't answer in {PANEL_SECONDS} s"
+                    except Exception as exc:  # the plugin's failure, shown in its panel
+                        row["error"] = f"{type(exc).__name__}: {exc}"
+                        log.warning("plugin.panel_failed", plugin=pid, error=str(exc))
+                    out.append(row)
+        return out
 
     # ---- what the API shows ----------------------------------------------------------------
 

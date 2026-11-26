@@ -6,6 +6,7 @@
 	import Path from '#lib/Path.svelte';
 	import { profileMedia } from '#lib/kinds.ts';
 	import ReleasesTable from '#lib/ReleasesTable.svelte';
+	import PluginBits, { pluginActions, type Act } from '#lib/PluginBits.svelte';
 	import { ago, ApiError, bytes, del, duration, get, patch, post, put, type S, type Title } from '#lib/api.ts';
 
 	const id = $derived(page.params.id ?? '');
@@ -52,6 +53,19 @@
 	let error = $state('');
 	let message = $state('');
 	let busy = $state('');
+	// Plugins' actions for one episode (none when no plugin offers any)
+	let itemActions = $state<Act[]>([]);
+	$effect(() => {
+		pluginActions().then((a) => (itemActions = a.filter((x) => x.on === 'item')));
+	});
+	async function runItem(a: Act, item: string) {
+		try {
+			await post(`/plugins/${a.plugin}/actions/${a.addon}/${a.method}`, { item });
+			message = `${a.label}: started (see Activity)`;
+		} catch (e) {
+			error = e instanceof ApiError ? e.message : String(e);
+		}
+	}
 	// Change: another folder for it (full path), moving what's there or not
 	let editingFolder = $state(false);
 	let newFolder = $state('');
@@ -564,6 +578,7 @@
 											</td>
 											<td>
 												<button class="small" onclick={() => chooseEpisode(x.number, e)} disabled={!!busy || !aired(e)} title="Search and choose a release">Search</button>
+												{#each itemActions as a (`${a.plugin}/${a.addon}/${a.method}`)}<button class="small" onclick={() => runItem(a, e.wanted.id)}>{a.label}</button>{/each}
 											</td>
 										</tr>
 									{/each}
@@ -583,6 +598,8 @@
 			</div>
 			<ReleasesTable result={releases} busy={!!busy} onGrab={grab} />
 		{/if}
+
+		<PluginBits titleId={title.id} itemId={title.kind === 'movie' ? (title.wanted[0]?.id ?? null) : null} />
 
 		<h2>Files</h2>
 		{#if files.length === 0}

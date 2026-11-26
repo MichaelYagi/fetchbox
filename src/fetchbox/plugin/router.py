@@ -3,9 +3,9 @@ installing and removing."""
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
-from fastapi import APIRouter, Depends, File, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Query, Request, UploadFile
 from pydantic import BaseModel, Field
 
 from fetchbox.core.errors import FieldError, NotFoundError, ProblemError
@@ -104,6 +104,27 @@ def _out(m: PluginManager, pid: str) -> PluginOut:
 
 def _problem(exc: PluginError) -> ProblemError:
     return ProblemError(409, "Conflict", str(exc), slug="conflict")
+
+
+class PanelOut(BaseModel):
+    plugin: str
+    addon: str
+    method: str
+    title: str
+    status: str
+    table: list[dict[str, Any]]
+    actions: list[str] = Field(description="Labels of the add-on's actions to offer")
+    error: str | None = Field(description="Why the panel couldn't be drawn")
+
+
+@router.get("/panels", response_model=list[PanelOut], dependencies=_read)
+async def panels(
+    request: Request,
+    on: Literal["title", "group", "item"] = Query("title"),
+    id: str = Query(..., description="The title's, group's or item's id"),
+) -> list[PanelOut]:
+    """The running add-ons' panels for a title page (none when no plugin has one)."""
+    return [PanelOut.model_validate(p) for p in await _mgr(request).panels(on, id)]
 
 
 @router.get("", response_model=list[PluginOut], dependencies=_read)
