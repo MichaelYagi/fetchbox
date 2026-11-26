@@ -85,7 +85,12 @@ async def test_grab_downloads_to_completion(
     await until(lambda: _has(c, "completed"), within=30)
     d = await _download(c, "completed")
     assert d is not None and d["progress"] == 1.0 and d["completed_at"] and d["size"] == 2 * MB + 50
-    assert d["live"] is not None and d["live"]["state"] == "seeding"
+    # still in the engine it's seeding; with seeding off it's stopped (no live status) as
+    # soon as it's imported, which a fast machine does before this reads it
+    if d["live"] is not None:
+        assert d["live"]["state"] == "seeding"
+    else:
+        assert d["seeded_at"], d
     # straight into the movie's library folder (a hidden .incomplete folder there)
     root = settings.downloads_dir / "Movies" / ".incomplete"
     assert d["save_path"] == str(root)
