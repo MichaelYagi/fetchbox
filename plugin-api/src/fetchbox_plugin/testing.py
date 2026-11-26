@@ -75,7 +75,7 @@ NONE = "-"  # in a parse_cases table: the kind doesn't take this release (parse 
 def parse_cases(kind: type[MediaKind], table: str | Path) -> list[Any]:
     """Table-driven tests for ``parse``: one release name per line, then what it should
     give, separated by ``|``: title | numbers | year | quality (empty: not checked; ``-``
-    on its own: parse gives None). ``#`` starts a comment.
+    on its own: parse gives None). A line starting with ``#`` is a comment.
 
         Saga 061 (2023) (Digital).cbz | Saga | 61 | 2023 |
         Saga 001-006 (2012) TPB.cbr   | Saga | 1,2,3,4,5,6 | 2012
@@ -87,8 +87,8 @@ def parse_cases(kind: type[MediaKind], table: str | Path) -> list[Any]:
     text = Path(table).read_text("utf-8") if is_file else str(table)
     out = []
     for n, raw in enumerate(text.splitlines(), 1):
-        line = raw.split("#", 1)[0].strip()
-        if not line:
+        line = raw.strip()
+        if not line or line.startswith("#"):  # a comment line ("#" elsewhere is the name's)
             continue
         name, *fields = [f.strip() for f in line.split("|")]
         out.append(pytest.param(name, fields, id=f"{kind.id}:{n}:{name[:40]}"))
