@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import socket
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -96,6 +97,20 @@ def test_supervisor_starts_and_stops_a_real_server(
             sup.proc.kill()
 
 
+def _pids(proc: subprocess.Popen[bytes] | None) -> set[int]:
+    """The process and, where a launcher started the server as its child, the child."""
+    assert proc is not None
+    pids = {proc.pid}
+    if sys.platform == "win32":
+        out = subprocess.run(
+            ["powershell", "-NoProfile", "-Command",
+             f"(Get-CimInstance Win32_Process -Filter 'ParentProcessId={proc.pid}').ProcessId"],
+            capture_output=True, text=True, check=False,
+        ).stdout  # fmt: skip
+        pids |= {int(x) for x in out.split() if x.isdigit()}
+    return pids
+
+
 def _real_server(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Supervisor:
     monkeypatch.setenv("FETCHBOX_DOWNLOADS_ROOT", str(tmp_path / "Downloads"))
     monkeypatch.setenv("FETCHBOX_TORRENT_ISOLATED", "1")
@@ -122,7 +137,8 @@ def test_the_next_tray_uses_this_versions_server_and_an_update_stops_it(
         _healthy(first)
         info = read_handover(first.settings.data_dir, first.settings.port)
         assert info is not None and info["version"] == fetchbox.__version__
-        assert info["pid"] == first.proc.pid and info["token"] == first.token  # type: ignore[union-attr]
+        # the server's own pid (on Windows a venv's python.exe starts it as a child)
+        assert info["pid"] in _pids(first.proc) and info["token"] == first.token  # type: ignore[arg-type]
         if sys.platform != "win32":
             assert (first.settings.data_dir / HANDOVER_FILE).stat().st_mode & 0o077 == 0
 
@@ -161,7 +177,7 @@ def test_a_newer_tray_replaces_an_older_versions_server(
         assert not new.attached and new.proc is not None
         _healthy(new)
         info = read_handover(new.settings.data_dir, new.settings.port)
-        assert info is not None and info["pid"] == new.proc.pid
+        assert info is not None and info["pid"] in _pids(new.proc)
         new.stop()
     finally:
         for p in (old.proc, locals().get("old_proc"), new.proc if new else None):
