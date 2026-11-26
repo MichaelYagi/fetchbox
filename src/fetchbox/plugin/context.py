@@ -17,10 +17,11 @@ import time
 from collections import OrderedDict
 from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import Any, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 
 import httpx
 import structlog
+from fetchbox_plugin.context import Context as ApiContext
 
 from fetchbox import __version__
 from fetchbox.core.db import Database
@@ -219,3 +220,9 @@ class PluginContext:
 
     async def aclose(self) -> None:
         await self.http.aclose()
+
+
+if TYPE_CHECKING:  # mypy: the context Fetchbox passes is what the plugin API promises
+
+    def _is_the_api(ctx: PluginContext) -> ApiContext:
+        return ctx

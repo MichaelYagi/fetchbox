@@ -27,6 +27,7 @@ datas = (
 )
 hidden = (
     collect_submodules("fetchbox")
+    + collect_submodules("fetchbox_plugin")  # the plugin API, for plugins loaded at run time
     + collect_submodules("uvicorn")
     + collect_submodules("sqlalchemy.dialects.sqlite")
     + ["aiosqlite", "libtorrent", "argon2", "psutil"]

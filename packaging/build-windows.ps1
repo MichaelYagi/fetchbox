@@ -14,7 +14,7 @@ foreach ($d in ".venv-build", "build\pyi", "build\icons", "dist") {
 python -m venv .venv-build; Check "venv"
 $py = ".\.venv-build\Scripts\python.exe"
 & $py -m pip install --quiet --upgrade pip; Check "pip upgrade"
-& $py -m pip install --quiet ".[desktop]" "pyinstaller>=6.10"; Check "pip install"
+& $py -m pip install --quiet ./plugin-api ".[desktop]" "pyinstaller>=6.10"; Check "pip install"  # the plugin API: from here, not PyPI
 & $py packaging\make_icons.py build\icons; Check "icons"
 & .\.venv-build\Scripts\pyinstaller.exe packaging\fetchbox.spec --noconfirm --distpath dist --workpath build\pyi
 Check "pyinstaller"

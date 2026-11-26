@@ -5,7 +5,8 @@ name: Release
 # published, so a tag on a broken commit never becomes a release. The version lives in
 # pyproject.toml (and web/package.json); the tag must match it.
 #
-# Published here (public): the wheel and sdist (pip install, then `fetchbox serve`)
+# Published here (public): the wheels (Fetchbox and the plugin API it needs: pip install
+# both, then `fetchbox serve`) and the sdists
 # and a source zip, all with the web interface already built; and the Docker image
 # ghcr.io/michaelyagi/fetchbox (linux/amd64 + arm64; tags X.Y.Z, X.Y, latest). The desktop apps are
 # built and released in the private fetchbox-artifacts repo (see notify-desktop.yml).
@@ -61,14 +62,15 @@ jobs:
       - name: Wheel and sdist
         run: |
           uv build --python 3.12 --out-dir release
+          uv build --python 3.12 --package fetchbox-plugin-api --out-dir release  # Fetchbox needs it
           rm -f release/.gitignore   # uv writes one; it isn't a release file
       - name: Both packages contain the web interface
         run: |
           python3 - <<'PY'
           import glob, tarfile, zipfile
-          whl = zipfile.ZipFile(glob.glob("release/*.whl")[0]).namelist()
+          whl = zipfile.ZipFile(glob.glob("release/fetchbox-[0-9]*.whl")[0]).namelist()
           assert "fetchbox/static/index.html" in whl, "the wheel has no web interface"
-          sdist = tarfile.open(glob.glob("release/*.tar.gz")[0]).getnames()
+          sdist = tarfile.open(glob.glob("release/fetchbox-[0-9]*.tar.gz")[0]).getnames()
           assert any(n.endswith("src/fetchbox/static/index.html") for n in sdist), "nor the sdist"
           PY
       - name: Source zip (with the built web interface)

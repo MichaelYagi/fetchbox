@@ -26,6 +26,7 @@ dependencies = [
     "lxml>=5.3",
     "python-multipart>=0.0.9",
     "mutagen>=1.47",
+    "fetchbox-plugin-api>=1.0.0.dev0,<2",  # the plugin API (plugin-api/, version = API)
 ]
 
 [project.optional-dependencies]
@@ -57,6 +58,12 @@ dev = [
     "aiosmtpd>=1.4.6",
     "trustme>=1.2.1",
 ]
+
+[tool.uv.workspace]
+members = ["plugin-api"]
+
+[tool.uv.sources]
+fetchbox-plugin-api = { workspace = true }
 
 [build-system]
 requires = ["hatchling>=1.25"]
@@ -97,13 +104,17 @@ select = ["E", "F", "W", "I", "UP", "B", "SIM", "ASYNC", "RUF"]
 
 [tool.mypy]
 python_version = "3.12"
-packages = ["fetchbox"]
-mypy_path = "src"
+packages = ["fetchbox", "fetchbox_plugin"]
+mypy_path = "src:plugin-api/src"
 warn_unused_ignores = true
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
 module = "fetchbox.core.*"
+strict = true
+
+[[tool.mypy.overrides]]
+module = "fetchbox_plugin.*"  # what plugin authors type-check against
 strict = true
 
 [[tool.mypy.overrides]]
@@ -121,7 +132,7 @@ module = ["fetchbox.modules.library.music_files"]
 disallow_untyped_calls = false
 
 [tool.importlinter]
-root_package = "fetchbox"
+root_packages = ["fetchbox", "fetchbox_plugin"]
 
 [[tool.importlinter.contracts]]
 name = "Layers: entry points > plugin API > modules > providers > core"
@@ -134,3 +145,9 @@ layers = [
     "fetchbox.providers",
     "fetchbox.core",
 ]
+
+[[tool.importlinter.contracts]]
+name = "The plugin API package stands alone (plugins install it without Fetchbox)"
+type = "forbidden"
+source_modules = ["fetchbox_plugin"]
+forbidden_modules = ["fetchbox"]

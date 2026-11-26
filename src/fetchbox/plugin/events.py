@@ -1,4 +1,5 @@
-"""Public events: the stable view of what happens in Fetchbox that plugins react to.
+"""Public events: the stable view of what happens in Fetchbox that plugins react to (the
+types themselves are in the plugin API package, fetchbox_plugin.events).
 
 Fetchbox's own events are internal (names and data may change); plugins see these instead,
 translated from them here. Nothing is added to the bus for this, so the Activity log,
@@ -8,42 +9,10 @@ notifications, webhooks and the event stream are exactly as they were.
 from __future__ import annotations
 
 from collections.abc import AsyncIterator, Callable
-from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, Field
-
 from fetchbox.core.events import Event, EventBus
-
-# public type -> what it means (the docs' table)
-PUBLIC_EVENTS: dict[str, str] = {
-    "title.added": "A title was added",
-    "title.updated": "A title's details or settings changed",
-    "title.removed": "A title was removed (its files stay on disk)",
-    "release.grabbed": "A release was sent to a download client",
-    "release.blocklisted": "A release was blocklisted",
-    "download.completed": "A download finished",
-    "download.failed": "A download failed",
-    "file.imported": "Files were filed into the library (an album: every track)",
-    "file.upgraded": "A file replaced a worse copy",
-    "file.renamed": "A file was renamed or moved by the naming",
-    "file.deleted": "A file was deleted or recycled",
-    "library.folder_changed": "Files in library folders changed",
-    "system.started": "Fetchbox started",
-    "system.stopping": "Fetchbox is shutting down",
-}
-
-
-class PublicEvent(BaseModel):
-    """One event as plugins see it."""
-
-    id: str
-    type: str
-    occurred_at: datetime
-    title_id: str | None = None
-    kind: str | None = Field(default=None, description="The title's media kind")
-    file_ids: list[str] = Field(default_factory=list)
-    data: dict[str, Any] = Field(default_factory=dict)
+from fetchbox_plugin.events import PUBLIC_EVENTS, PublicEvent
 
 
 def _pick(*keys: str) -> Callable[[Event], dict[str, Any]]:

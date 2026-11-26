@@ -2,6 +2,12 @@ version = 1
 revision = 5
 requires-python = ">=3.12, <3.14"
 
+[manifest]
+members = [
+    "fetchbox",
+    "fetchbox-plugin-api",
+]
+
 [[package]]
 name = "aiosmtpd"
 version = "1.4.6"
@@ -370,6 +376,7 @@ dependencies = [
     { name = "certifi" },
     { name = "cryptography" },
     { name = "fastapi" },
+    { name = "fetchbox-plugin-api" },
     { name = "httpx" },
     { name = "libtorrent" },
     { name = "lxml" },
@@ -422,6 +429,7 @@ requires-dist = [
     { name = "certifi", specifier = ">=2024.2" },
     { name = "cryptography", specifier = ">=43" },
     { name = "fastapi", specifier = ">=0.115" },
+    { name = "fetchbox-plugin-api", editable = "plugin-api" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "keyring", marker = "extra == 'desktop'", specifier = ">=25" },
     { name = "libtorrent", specifier = ">=2.0.10,<2.2" },
@@ -456,6 +464,21 @@ dev = [
     { name = "types-psutil", specifier = ">=7.2.2.20261111" },
     { name = "types-pyyaml", specifier = ">=6.0.12.20261113" },
     { name = "websockets", specifier = ">=13" },
+]
+
+[[package]]
+name = "fetchbox-plugin-api"
+version = "1.0.0.dev0"
+source = { editable = "plugin-api" }
+dependencies = [
+    { name = "httpx" },
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "httpx", specifier = ">=0.27" },
+    { name = "pydantic", specifier = ">=2.8" },
 ]
 
 [[package]]
