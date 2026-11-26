@@ -37,6 +37,9 @@ file each, no copies. Set `PUID`/`PGID` to the owner of your media folder. The
 password is only used on first start; change it in the web UI. A compose file is in
 `docker/compose.yaml`.
 
+Plugins: `-e FETCHBOX_PLUGINS=fetchbox-comics,fetchbox-subtitles` installs them at start
+into `/config`, so they come back after an image update (see [Writing plugins](docs/plugins.md)).
+
 ### Desktop apps
 
 Each release has a Windows installer (and a portable .zip), macOS disk images (Apple

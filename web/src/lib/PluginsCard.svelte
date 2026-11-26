@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { ask } from '#lib/dialogs.svelte.ts';
 	import PluginSettingsForm from './PluginSettingsForm.svelte';
-	import { ApiError, del, get, patch, upload, type S } from './api.ts';
+	import { ApiError, del, get, patch, post, upload, type S } from './api.ts';
 
 	// Plugins: what's installed, on or off, what each uses, its settings; install from a
 	// wheel file. Plugins run with Fetchbox's full access, so the install and the first time
@@ -60,6 +60,18 @@
 		if (ok) await act(p.id, () => del(`/plugins/${p.id}`));
 	}
 
+	let url = $state('');
+	async function fromUrl(e: SubmitEvent) {
+		e.preventDefault();
+		const u = url.trim();
+		if (!u) return;
+		const ok = await ask(`Install the plugin at ${u}?\n\n${TRUST}`, 'Install');
+		if (ok) {
+			await act('install', () => post('/plugins/install-url', { url: u }));
+			if (!error) url = '';
+		}
+	}
+
 	async function onFile(e: Event) {
 		const input = e.currentTarget as HTMLInputElement;
 		const file = input.files?.[0];
@@ -76,6 +88,10 @@
 		<a href="https://github.com/MichaelYagi/fetchbox/blob/main/docs/plugins.md" target="_blank" rel="noreferrer">Writing plugins</a>
 	</p>
 	<label class="small">Install from a file (.whl): <input type="file" accept=".whl" onchange={onFile} disabled={!!busy} /></label>
+	<form class="row small" onsubmit={fromUrl}>
+		<input class="grow" type="url" bind:value={url} placeholder="…or its address: https://…/fetchbox_comics-1.0.0-py3-none-any.whl" aria-label="Plugin address" />
+		<button disabled={!url.trim() || !!busy}>Install</button>
+	</form>
 	{#if error}<p class="notice error small">{error}</p>{/if}
 	{#if plugins === null}
 		<p class="muted small">Loading…</p>

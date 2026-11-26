@@ -4060,6 +4060,20 @@
     "title": "InstallOut",
     "type": "object"
    },
+   "InstallUrlIn": {
+    "properties": {
+     "url": {
+      "description": "The plugin's wheel (.whl) address",
+      "title": "Url",
+      "type": "string"
+     }
+    },
+    "required": [
+     "url"
+    ],
+    "title": "InstallUrlIn",
+    "type": "object"
+   },
    "InteractiveOut": {
     "properties": {
      "failures": {
@@ -18883,6 +18897,70 @@
      }
     ],
     "summary": "Install",
+    "tags": [
+     "plugins"
+    ]
+   }
+  },
+  "/api/v1/plugins/install-url": {
+   "post": {
+    "description": "Install a plugin from its wheel's address (a release page's .whl link).",
+    "operationId": "install_url_api_v1_plugins_install_url_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/InstallUrlIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PluginOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Conflict"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Install Url",
     "tags": [
      "plugins"
     ]

@@ -420,6 +420,24 @@ async def install(request: Request, file: UploadFile = File(...)) -> PluginOut: 
     return _out(m, pid)
 
 
+class InstallUrlIn(BaseModel):
+    url: str = Field(description="The plugin's wheel (.whl) address")
+
+
+@router.post(
+    "/install-url", response_model=PluginOut, status_code=201, dependencies=_write,
+    responses=pr(409),
+)  # fmt: skip
+async def install_url(body: InstallUrlIn, request: Request) -> PluginOut:
+    """Install a plugin from its wheel's address (a release page's .whl link)."""
+    m = _mgr(request)
+    try:
+        pid = await m.install_url(body.url)
+    except PluginError as exc:
+        raise _problem(exc) from None
+    return _out(m, pid)
+
+
 @router.delete("/{plugin_id}", status_code=204, dependencies=_write, responses=pr(404))
 async def remove(plugin_id: str, request: Request, keep_settings: bool = False) -> None:
     m = _mgr(request)

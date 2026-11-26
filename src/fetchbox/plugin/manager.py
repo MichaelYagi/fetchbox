@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import importlib
 import importlib.metadata as md
+import os
 import shutil
 import sys
 import zipfile
@@ -41,6 +42,7 @@ log = structlog.get_logger(__name__)
 GROUP = "fetchbox.plugins"
 NATIVE = (".so", ".pyd", ".dylib", ".dll")
 PANEL_SECONDS = 10
+MAX_WHEEL = 50 * 1024 * 1024
 
 
 class PluginError(Exception):
@@ -133,6 +135,8 @@ class PluginManager:
     async def start(self) -> None:
         """At startup: note what's installed, run what's approved and turned on."""
         self.discover()
+        if (spec := os.environ.get("FETCHBOX_PLUGINS", "").strip()) and self.enabled:
+            await self.install_from_env(spec)
         async with self.db.sessionmaker() as s:
             rows = {r.id: r for r in (await s.execute(select(PluginRecord))).scalars()}
             for pid, f in self.found.items():
@@ -376,6 +380,64 @@ class PluginManager:
         if self.enabled and self.found[pid].cls is not None:
             await self._load(pid)
         return pid
+
+    async def install_url(self, url: str, *, transport: Any = None) -> str:
+        """A plugin's wheel from an address: fetched, then installed as from a file."""
+        import httpx
+
+        if not url.startswith(("https://", "http://")):
+            raise PluginError("a plugin's address starts with https:// (or http://)")
+        try:
+            client = httpx.AsyncClient(timeout=60, follow_redirects=True, transport=transport)
+            async with client as http, http.stream("GET", url) as r:
+                if r.status_code != 200:
+                    raise PluginError(f"{url}: the server answered {r.status_code}")
+                data = b""
+                async for chunk in r.aiter_bytes():
+                    data += chunk
+                    if len(data) > MAX_WHEEL:
+                        raise PluginError("a plugin wheel is at most 50 MB")
+        except httpx.HTTPError as exc:
+            raise PluginError(f"{url}: couldn't be fetched ({exc})") from None
+        name = url.split("?")[0].rsplit("/", 1)[-1] or "plugin.whl"
+        return await self.install_wheel(data, name)
+
+    async def install_from_env(self, spec: str, *, transport: Any = None) -> list[str]:
+        """FETCHBOX_PLUGINS (Docker): "fetchbox-comics,fetchbox-subtitles==1.2.0", or wheel
+        addresses. Each one not installed yet (or of another version) is fetched from PyPI
+        and installed, approved by being listed; once installed it's simply kept."""
+        import httpx
+
+        done = []
+        for raw in [x.strip() for x in spec.split(",") if x.strip()]:
+            try:
+                if raw.startswith(("https://", "http://")):
+                    done.append(await self.install_url(raw, transport=transport))
+                    continue
+                name, _, want = raw.partition("==")
+                have = next(
+                    (f for f in self.found.values() if f.dist and _norm(f.dist) == _norm(name)),
+                    None,
+                )
+                if have is not None and (not want or have.version == want):
+                    continue  # there already
+                api = f"https://pypi.org/pypi/{name}/{want + '/' if want else ''}json"
+                async with httpx.AsyncClient(timeout=30, transport=transport) as http:
+                    r = await http.get(api)
+                if r.status_code != 200:
+                    raise PluginError(f"{name}: not found on PyPI ({r.status_code})")
+                wheels = [
+                    u
+                    for u in r.json().get("urls") or []
+                    if u.get("packagetype") == "bdist_wheel"
+                    and u.get("filename", "").endswith("-none-any.whl")
+                ]
+                if not wheels:
+                    raise PluginError(f"{name}: no pure-Python wheel on PyPI")
+                done.append(await self.install_url(wheels[0]["url"], transport=transport))
+            except PluginError as exc:
+                log.warning("plugins.env_install_failed", plugin=raw, error=str(exc))
+        return done
 
     async def remove(self, pid: str, *, keep_settings: bool) -> None:
         """Turn it off for good: unloaded; its files deleted when installed from a file;

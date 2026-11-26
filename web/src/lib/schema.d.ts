@@ -1899,6 +1899,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/plugins/install-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Install Url
+         * @description Install a plugin from its wheel's address (a release page's .whl link).
+         */
+        post: operations["install_url_api_v1_plugins_install_url_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/plugins/kinds": {
         parameters: {
             query?: never;
@@ -4363,6 +4383,14 @@ export interface components {
              * @description The version being installed
              */
             version: string;
+        };
+        /** InstallUrlIn */
+        InstallUrlIn: {
+            /**
+             * Url
+             * @description The plugin's wheel (.whl) address
+             */
+            url: string;
         };
         /** InteractiveOut */
         InteractiveOut: {
@@ -12046,6 +12074,49 @@ export interface operations {
         requestBody: {
             content: {
                 "multipart/form-data": components["schemas"]["Body_install_api_v1_plugins_install_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    install_url_api_v1_plugins_install_url_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InstallUrlIn"];
             };
         };
         responses: {

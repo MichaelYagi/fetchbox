@@ -4,7 +4,7 @@ A plugin adds to Fetchbox without changing it: subtitles for your movies, a new 
 
 This is the plugin API, **version 1**. Within API 1 it only grows: nothing you use is removed, renamed or changes meaning.
 
-> **Installing.** In Fetchbox: Settings > Plugins > *Install from a file* with your plugin's wheel (`uv build`). It asks for its settings when it needs any; its media kind gets a button on the Add page, its add-on's actions and panels show on title pages. On a server, `pip install fetchbox-<name>` into Fetchbox's environment works too (then turn it on in Settings > Plugins). `fetchbox serve --no-plugins` starts with every plugin off.
+> **Installing.** In Fetchbox: Settings > Plugins, *Install from a file* with your plugin's wheel (`uv build`), or its address (a release's `.whl` link). It asks for its settings when it needs any. On a server, `pip install fetchbox-<name>` into Fetchbox's environment works too (then turn it on in Settings > Plugins). In Docker, `FETCHBOX_PLUGINS=fetchbox-comics,fetchbox-subtitles` installs them from PyPI at start (wheel addresses work too) into `/config`, so they survive image updates. `fetchbox serve --no-plugins` starts with every plugin off. A plugin that fails five times within an hour pauses for an hour; Health and Settings > Plugins say why.
 
 ## Quick start
 
@@ -30,7 +30,7 @@ A plugin is an ordinary Python package. It has one entry point and one `Plugin` 
 | **Media kind** | People collect a new kind of thing | Metadata lookup, release name parsing, file rules, naming | An Add page button, title pages, the Calendar, and the download pipeline: search, grab, download, import |
 | **Provider** | You connect one more service (an indexer, a notifier) | A client class with `test()` | Settings form, Test button, Health |
 
-Providers keep using Fetchbox's existing `fetchbox.providers` entry point.
+A provider is a class with Fetchbox's provider contract (`fetchbox.core.providers`: `category`, `kind`, a `Settings` model, `test()`), listed in `contributes` like the rest: offered in Settings beside the built-in ones while the plugin runs. Being Fetchbox's own contract, it needs `fetchbox` as a dependency. The older `fetchbox.providers` entry point keeps working.
 
 ### The package
 
@@ -222,6 +222,8 @@ class Comics(MediaKind):
 | 4 | `parse` | From a release name: title words, item numbers, year, quality (`Parsed`); `None` when it isn't yours | required |
 | 5 | `pick` | Which file of a download is which item: `{file path: item ref}` | one item: the largest file of your types; several: numbers in file names (`061` is 61) |
 | 6 | `name_tokens` | The values your naming's tokens stand for | required |
+
+Each title of the kind has its own accepted qualities and cutoff, on its page: an item whose file is below the cutoff is upgraded when a better release turns up. A release your `parse` reads as a whole group (a group number, no item numbers) covers that group's wanted items. Titles are searched every 6 hours and offered the RSS releases too.
 
 `movie`, `series` and `music` are built in and can't be taken. A kind is checked when it's declared, and every problem comes back in one message. A naming pattern can't use a token it doesn't declare.
 
