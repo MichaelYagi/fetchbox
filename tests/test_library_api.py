@@ -156,6 +156,12 @@ async def test_gate_add_movie_get_named_file(
     assert f["quality"]["name"] == "WEBDL-1080p" and f["release_group"] == "FLUX"
     assert f["custom_format_score"] == 5 and f["wanted_item_ids"] == [wanted["id"]]
 
+    # the import job records itself as done a moment after the file is filed (and the
+    # movie acquired): on a slow machine that moment can come after the checks above
+    async def recorded() -> bool:
+        return bool((await c.get("/imports")).json()[0]["status"] == "imported")
+
+    await until(recorded, within=15)
     [imp] = (await c.get("/imports")).json()
     assert imp["status"] == "imported" and imp["imported_at"]
     # the queue says where it was imported to
