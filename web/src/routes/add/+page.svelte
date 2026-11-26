@@ -65,6 +65,20 @@
 	$effect(() => {
 		if (pending && dialog && !dialog.open) dialog.showModal();
 	});
+	// A few scenes from the movie or show (TMDB backdrops), to tell it apart from others
+	// with the same name. Shown when TMDB has some; the dialog never waits for them.
+	let shots = $state<string[]>([]);
+	$effect(() => {
+		const p = pending;
+		shots = [];
+		if (!p || p.kind === 'music') return;
+		const path = p.kind === 'movie' ? `/discovery/movies/${p.r.tmdb_id}` : `/discovery/series/${p.r.tmdb_id}`;
+		get<S['MovieDetail'] | S['SeriesDetail']>(path)
+			.then((d) => {
+				if (pending === p) shots = (d.backdrop_urls ?? []).slice(0, 4);
+			})
+			.catch(() => {});
+	});
 	// The title's own folder in the library folder: one already there (its id or title in
 	// the name) is offered first, so new files join it; else the naming's new folder.
 	let own = $state<S['FolderChoicesOut'] | null>(null);
@@ -386,6 +400,11 @@
 						</p>
 					</div>
 				</div>
+				{#if shots.length}
+					<div class="shots" aria-hidden="true">
+						{#each shots as url (url)}<img src={url} alt="" loading="lazy" />{/each}
+					</div>
+				{/if}
 
 				<label class="field">
 					Quality
@@ -508,6 +527,23 @@
 </main>
 
 <style>
+	.shots {
+		display: grid;
+		grid-template-columns: repeat(4, 1fr);
+		gap: 0.4rem;
+	}
+	.shots img {
+		width: 100%;
+		aspect-ratio: 16 / 9;
+		object-fit: cover;
+		border-radius: 6px;
+		background: var(--surface-2, rgb(128 128 128 / 0.15));
+	}
+	@media (max-width: 560px) {
+		.shots {
+			grid-template-columns: repeat(2, 1fr);
+		}
+	}
 	.head {
 		display: flex;
 		gap: 1rem;
