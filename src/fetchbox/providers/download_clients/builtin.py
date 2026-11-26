@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import random
 import re
 import time
 from pathlib import Path
@@ -219,7 +220,22 @@ class BuiltinClient(DownloadClientProvider):
         ]
         if self.cfg.interface:
             self._tasks.append(asyncio.create_task(self._watch_interface(), name="builtin-vpn"))
+        if _listen_port(self.cfg.listen_interfaces) == 0:  # a random port was asked for
+            self._tasks.append(asyncio.create_task(self._ensure_listening(), name="builtin-listen"))
         log.info("builtin.started", port=self.listen_port, torrents=len(self._handles))
+
+    async def _ensure_listening(self) -> None:
+        """A random port (":0") can be one Windows reserves (Hyper-V's excluded ranges): the
+        bind is refused, nothing listens, and without a listen socket libtorrent makes no
+        connections either. Then try other random ports, outside the dynamic range."""
+        host = self.cfg.listen_interfaces.split(",")[0].rsplit(":", 1)[0]
+        for _ in range(5):
+            await asyncio.sleep(2.0)
+            if self._session is None or self.listen_port:
+                return
+            port = random.randint(20000, 40000)
+            log.info("builtin.listen_retry", port=port)
+            self._session.apply_settings({"listen_interfaces": f"{host}:{port}"})
 
     async def stop(self) -> None:
         if self._session is None:

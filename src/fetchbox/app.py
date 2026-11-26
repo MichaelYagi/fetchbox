@@ -6,6 +6,7 @@ import asyncio
 import os
 from collections.abc import AsyncIterator, Callable, Sequence
 from contextlib import asynccontextmanager
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
@@ -17,11 +18,11 @@ from fetchbox import migrations
 from fetchbox.config import Settings
 from fetchbox.core.db import Database
 from fetchbox.core.errors import install_error_handlers
-from fetchbox.core.events import EventBus
+from fetchbox.core.events import Actor, EventBus
 from fetchbox.core.health import HealthRegistry
 from fetchbox.core.jobs import JobRunner
 from fetchbox.core.providers import registry as provider_registry
-from fetchbox.core.schedules import Scheduler
+from fetchbox.core.schedules import ScheduleDef, Scheduler
 from fetchbox.core.secrets import load_or_create as load_secrets
 from fetchbox.core.state import AppState
 from fetchbox.modules.auth import router as auth_router
@@ -317,6 +318,27 @@ def create_app(
         from fetchbox.plugin.titles import PluginTitles
 
         app.state.plugin_titles = PluginTitles(plugin_host, storage)
+        from fetchbox.plugin.pipeline import SEARCH_MISSING, PluginPipeline
+
+        pipeline = PluginPipeline(
+            app.state.plugin_titles, sources=sources, grabs=grabs, library=library
+        )
+        app.state.plugin_pipeline = pipeline
+        library.plugin_import = pipeline.import_download
+
+        @state.jobs.handler(SEARCH_MISSING)
+        async def _search_missing(ctx: Any) -> dict[str, Any]:
+            return await pipeline.search_missing(actor=Actor(type="system", id="plugins"))
+
+        state.scheduler.define(
+            ScheduleDef(
+                name=SEARCH_MISSING,
+                job_type=SEARCH_MISSING,
+                every=timedelta(hours=6),
+                description="Search for plugin media kinds' missing items",
+            )
+        )
+        await state.scheduler.sync()
         if os.environ.get("FETCHBOX_DB_GUARD"):  # debug: report what blocks the loop
             from fetchbox.core import watchdog
 

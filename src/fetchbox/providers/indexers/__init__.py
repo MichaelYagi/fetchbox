@@ -31,7 +31,7 @@ class IndexerError(Exception):
 class SearchQuery:
     """What an indexer is asked for; indexers ignore the fields they can't use."""
 
-    kind: Literal["movie", "series", "music"]
+    kind: str  # movie, series, music, or a plugin's media kind (comics)
     terms: tuple[str, ...]  # music: "artist album"
     year: int | None = None
     season: int | None = None
@@ -39,6 +39,7 @@ class SearchQuery:
     absolute: int | None = None
     air_date: date | None = None
     ids: dict[str, str] = field(default_factory=dict)  # tmdb / imdb / tvdb
+    categories: tuple[int, ...] = ()  # a plugin's media kind: the Newznab categories to ask
 
 
 class ReleaseCandidate(BaseModel):

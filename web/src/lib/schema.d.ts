@@ -2007,6 +2007,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/plugins/titles/{title_id}/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Search Title
+         * @description Search now for a plugin kind's title's missing items, and grab the best releases.
+         */
+        post: operations["search_title_api_v1_plugins_titles__title_id__search_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/plugins/{plugin_id}": {
         parameters: {
             query?: never;
@@ -5177,6 +5197,21 @@ export interface components {
              * @description On (approves it) or off
              */
             enabled: boolean;
+        };
+        /** PluginSearchOut */
+        PluginSearchOut: {
+            /** Grabbed */
+            grabbed: number;
+            /**
+             * Results
+             * @description Releases the indexers gave
+             */
+            results: number;
+            /**
+             * Searched
+             * @description Queries asked
+             */
+            searched: number;
         };
         /** PluginTitleIn */
         PluginTitleIn: {
@@ -12255,6 +12290,47 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Problem"];
                     "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    search_title_api_v1_plugins_titles__title_id__search_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                title_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginSearchOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

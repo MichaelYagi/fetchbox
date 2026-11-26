@@ -60,6 +60,15 @@ async def test_library_folders_are_swept(
     client: httpx.AsyncClient, server: Running, tmp_path: Path
 ) -> None:
     storage = server.app.state.storage
+    from fetchbox.modules.storage.service import MAC_FILES_JOB
+
+    # the sweep at startup first (it runs on its own): it would otherwise take these files
+    for _ in range(200):
+        jobs = (await client.get("/jobs", params={"limit": 100})).json()
+        rows = jobs.get("items", jobs) if isinstance(jobs, dict) else jobs
+        if any(j["type"] == MAC_FILES_JOB and j["status"] in ("succeeded", "failed") for j in rows):
+            break
+        await asyncio.sleep(0.05)
     tv = next(d for d in await storage.destinations() if d.media_kind == "series")
     show = _junk(Path(tv.path).parent)
     assert Path(tv.path) == show.parent.parent  # TV/Show/Season 3

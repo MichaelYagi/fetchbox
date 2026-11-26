@@ -4,7 +4,7 @@ A plugin adds to Fetchbox without changing it: subtitles for your movies, a new 
 
 This is the plugin API, **version 1**. Within API 1 it only grows: nothing you use is removed, renamed or changes meaning.
 
-> **Where it is now.** You can write, test, check and run plugins today (`fetchbox plugin new / test / check / dev`, below). Installing them from Settings → Plugins comes in a coming release, together with the parts of the web page plugins add: action buttons, panels, settings tabs, and a media kind's Add button and Library tab.
+> **Installing.** In Fetchbox: Settings > Plugins > *Install from a file* with your plugin's wheel (`uv build`). It asks for its settings when it needs any; its media kind gets a button on the Add page, its add-on's actions and panels show on title pages. On a server, `pip install fetchbox-<name>` into Fetchbox's environment works too (then turn it on in Settings > Plugins). `fetchbox serve --no-plugins` starts with every plugin off.
 
 ## Quick start
 
@@ -27,7 +27,7 @@ A plugin is an ordinary Python package. It has one entry point and one `Plugin` 
 | Building block | Use it when | You write | Fetchbox gives you |
 |---|---|---|---|
 | **Add-on** | You add something to titles Fetchbox already has | Event handlers, actions, scheduled jobs | Events, sidecar files that follow their owner, settings, the job list |
-| **Media kind** | People collect a new kind of thing | Metadata lookup, release name parsing, file rules, naming | The download pipeline (with the coming release: Add page, Library tab, title pages) |
+| **Media kind** | People collect a new kind of thing | Metadata lookup, release name parsing, file rules, naming | An Add page button, title pages, the Calendar, and the download pipeline: search, grab, download, import |
 | **Provider** | You connect one more service (an indexer, a notifier) | A client class with `test()` | Settings form, Test button, Health |
 
 Providers keep using Fetchbox's existing `fetchbox.providers` entry point.
