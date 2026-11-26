@@ -4,6 +4,7 @@
 	import { page } from '$app/state';
 	import Badge from '#lib/Badge.svelte';
 	import Path from '#lib/Path.svelte';
+	import { profileMedia } from '#lib/kinds.ts';
 	import ReleasesTable from '#lib/ReleasesTable.svelte';
 	import { ago, ApiError, bytes, del, duration, get, patch, post, put, type S, type Title } from '#lib/api.ts';
 
@@ -346,7 +347,7 @@
 						<label class="inline">
 							Quality
 							<select value={title.profile_id} onchange={(e) => setProfile(e.currentTarget.value)} disabled={!!busy}>
-								{#each profiles.filter((x) => x.media === (title?.kind === 'music' ? 'music' : 'video')) as p (p.id)}<option value={p.id} selected={p.id === title.profile_id}>{p.name}</option>{/each}
+								{#each profiles.filter((x) => x.media === profileMedia(title?.kind ?? '')) as p (p.id)}<option value={p.id} selected={p.id === title.profile_id}>{p.name}</option>{/each}
 							</select>
 						</label>
 						<label class="inline">
@@ -420,7 +421,7 @@
 						<label class="inline">
 							Quality
 							<select value={title.profile_id} onchange={(e) => setProfile(e.currentTarget.value)} disabled={!!busy}>
-								{#each profiles.filter((x) => x.media === (title?.kind === 'music' ? 'music' : 'video')) as p (p.id)}<option value={p.id} selected={p.id === title.profile_id}>{p.name}</option>{/each}
+								{#each profiles.filter((x) => x.media === profileMedia(title?.kind ?? '')) as p (p.id)}<option value={p.id} selected={p.id === title.profile_id}>{p.name}</option>{/each}
 							</select>
 						</label>
 						<label class="inline">

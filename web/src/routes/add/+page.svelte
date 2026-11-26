@@ -2,13 +2,14 @@
 	import { goto } from '$app/navigation';
 	import { ApiError, get, post, type S, type Title } from '#lib/api.ts';
 	import FolderTest from '#lib/FolderTest.svelte';
+	import { CORE_KINDS, kindOf, type CoreKind } from '#lib/kinds.ts';
 
 	let q = $state('');
 	let results = $state<S['TitleSummary'][] | null>(null);
 	let profiles = $state<S['ProfileOut'][]>([]);
 	let profile = $state('');
 	let searchNow = $state(true);
-	let kind = $state<'movie' | 'series' | 'music'>('movie');
+	let kind = $state<CoreKind>('movie');
 	let artists = $state<S['ArtistHit'][] | null>(null);
 	let artistMode = $state('future');
 	let albumKinds = $state<string[]>(['album']);
@@ -42,7 +43,8 @@
 		['in_cinemas', 'Once in cinemas'],
 		['announced', 'Right away']
 	];
-	const noun = $derived(kind === 'movie' ? 'movie' : kind === 'series' ? 'TV show' : 'music artist');
+	const info = $derived(kindOf(kind));
+	const noun = $derived(info.noun);
 	let error = $state<ApiError | null>(null);
 	let busy = $state(false);
 	let adding = $state<number | null>(null);
@@ -137,10 +139,9 @@
 	}
 
 	$effect(() => {
-		const media = kind === 'music' ? 'music' : 'video';
+		const { profileMedia: media, defaultProfile: pick } = info;
 		get<S['ProfileOut'][]>('/quality-profiles', { media }).then((p) => {
 			profiles = p;
-			const pick = media === 'music' ? 'Lossless' : '1080p';
 			profile = (p.find((x) => x.name === pick) ?? p[0])?.id ?? '';
 		});
 	});
@@ -249,13 +250,13 @@
 <main>
 	<h1>Add a {noun}</h1>
 	<div class="tabs" role="tablist">
-		{#each [['movie', 'Movies'], ['series', 'TV shows'], ['music', 'Music']] as [k, label] (k)}
+		{#each CORE_KINDS as { key: k, tab: label } (k)}
 			<button
 				role="tab"
 				aria-selected={kind === k}
 				class:active={kind === k}
 				onclick={() => {
-					kind = k as 'movie' | 'series' | 'music';
+					kind = k;
 					results = null;
 					artists = null;
 					searched = '';
@@ -269,11 +270,7 @@
 		<div class="row">
 			<input
 				class="grow"
-				placeholder={kind === 'movie'
-					? 'Movie title, e.g. Dune'
-					: kind === 'series'
-						? 'Show title, e.g. Severance'
-						: 'Artist, e.g. Massive Attack'}
+				placeholder={info.placeholder}
 				bind:value={q}
 				aria-label="Search"
 			/>
@@ -334,7 +331,7 @@
 
 	{#if results !== null}
 		{#if results.length === 0}
-			<p class="empty">No {kind === 'movie' ? 'movies' : 'TV shows'} found for “{searched}”.</p>
+			<p class="empty">No {info.plural} found for “{searched}”.</p>
 		{:else}
 			<div class="results">
 				{#each results as r (r.tmdb_id)}
@@ -381,7 +378,7 @@
 					<div>
 						<h2 id="add-title">Add {name}</h2>
 						<p class="muted small">
-							{pending.kind === 'movie' ? 'Movie' : pending.kind === 'series' ? 'TV show' : 'Music artist'} · nothing is
+							{kindOf(pending.kind).label} · nothing is
 							added or downloaded until you confirm
 						</p>
 					</div>
@@ -443,11 +440,11 @@
 
 				{#if own && own.suggested !== null}
 					<fieldset class="own">
-						<legend>{pending.kind === 'movie' ? 'Movie folder' : pending.kind === 'series' ? 'Show folder' : 'Artist folder'}</legend>
+						<legend>{kindOf(pending.kind).folder}</legend>
 						{#if own.own}
 							{@const it = own.own}
 							<div class="notice warn stack">
-								<span><strong>{it.name}</strong> looks like the {pending.kind === 'movie' ? "movie's" : pending.kind === 'series' ? "show's" : "artist's"} own folder ({found(pending.kind, it)}), not a library folder.</span>
+								<span><strong>{it.name}</strong> looks like the {kindOf(pending.kind).possessive} own folder ({found(pending.kind, it)}), not a library folder.</span>
 								<button type="button" onclick={() => (folder = it.library_folder)}>Use {it.library_folder} as the library folder</button>
 							</div>
 						{/if}
