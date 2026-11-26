@@ -21,7 +21,6 @@ from typing import TYPE_CHECKING, Any, TypeVar
 
 import httpx
 import structlog
-from fetchbox_plugin.context import Context as ApiContext
 
 from fetchbox import __version__
 from fetchbox.core.db import Database
@@ -33,6 +32,7 @@ from fetchbox.plugin.services import (
     PluginNotify,
     Services,
 )
+from fetchbox_plugin.context import Context as ApiContext
 
 T = TypeVar("T")
 

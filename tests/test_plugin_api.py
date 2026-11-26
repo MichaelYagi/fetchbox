@@ -6,8 +6,11 @@ from __future__ import annotations
 from datetime import timedelta
 from typing import Any
 
-import fetchbox_plugin
 import pytest
+from pydantic import ValidationError
+
+import fetchbox.plugin
+import fetchbox_plugin
 from fetchbox_plugin import (
     PERMISSION_WORDS,
     Addon,
@@ -26,9 +29,6 @@ from fetchbox_plugin import (
     panel,
 )
 from fetchbox_plugin.settings import has_test
-from pydantic import ValidationError
-
-import fetchbox.plugin
 
 
 def test_fetchbox_plugin_is_the_same_api() -> None:
