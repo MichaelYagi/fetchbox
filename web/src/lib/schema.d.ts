@@ -4374,6 +4374,20 @@ export interface components {
              */
             wanted_item_id: string | null;
         };
+        /** ItemStats */
+        ItemStats: {
+            /** Acquired */
+            acquired: number;
+            /** Items */
+            items: number;
+            /**
+             * Missing
+             * @description Wanted, released, no file yet
+             */
+            missing: number;
+            /** Monitored */
+            monitored: number;
+        };
         /** JobOut */
         JobOut: {
             /** Attempts */
@@ -5177,8 +5191,18 @@ export interface components {
             homepage: string | null;
             /** Id */
             id: string;
+            /**
+             * Last Error
+             * @description Its last failed job's error
+             */
+            last_error?: string | null;
             /** Name */
             name: string;
+            /**
+             * Paused Until
+             * @description Failing repeatedly: its jobs wait until then
+             */
+            paused_until?: string | null;
             /** Permissions */
             permissions: components["schemas"]["PermissionOut"][];
             /** Running */
@@ -6333,6 +6357,8 @@ export interface components {
             id: string;
             /** Imdb Id */
             imdb_id: string | null;
+            /** @description A plugin media kind's title: counts (see /plugins/titles/{id}/items) */
+            items?: components["schemas"]["ItemStats"] | null;
             /** Kind */
             kind: string;
             /**

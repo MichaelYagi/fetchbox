@@ -153,3 +153,10 @@ async def test_issues_on_the_calendar(zines: Any, c: httpx.AsyncClient) -> None:
         ("2012-03-14", "item", "zines", "Saga", 1, "Chapter One"),
         ("2012-04-11", "item", "zines", "Saga", 2, "Chapter Two"),
     ]
+
+
+async def test_counts_in_the_titles_list(zines: Any, c: httpx.AsyncClient) -> None:
+    tid = (await c.post("/plugins/kinds/zines/titles", json={"ref": "saga"})).json()["id"]
+    [t] = [x for x in (await c.get("/titles")).json()["items"] if x["id"] == tid]
+    assert t["items"] == {"items": 2, "monitored": 2, "acquired": 0, "missing": 2}
+    assert t["episodes"] is None and t["albums"] is None

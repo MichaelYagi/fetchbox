@@ -4129,6 +4129,35 @@
     "title": "InteractiveOut",
     "type": "object"
    },
+   "ItemStats": {
+    "properties": {
+     "acquired": {
+      "title": "Acquired",
+      "type": "integer"
+     },
+     "items": {
+      "title": "Items",
+      "type": "integer"
+     },
+     "missing": {
+      "description": "Wanted, released, no file yet",
+      "title": "Missing",
+      "type": "integer"
+     },
+     "monitored": {
+      "title": "Monitored",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "items",
+     "monitored",
+     "acquired",
+     "missing"
+    ],
+    "title": "ItemStats",
+    "type": "object"
+   },
    "JobOut": {
     "properties": {
      "attempts": {
@@ -6094,9 +6123,34 @@
       "title": "Id",
       "type": "string"
      },
+     "last_error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Its last failed job's error",
+      "title": "Last Error"
+     },
      "name": {
       "title": "Name",
       "type": "string"
+     },
+     "paused_until": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Failing repeatedly: its jobs wait until then",
+      "title": "Paused Until"
      },
      "permissions": {
       "items": {
@@ -8776,6 +8830,17 @@
        }
       ],
       "title": "Imdb Id"
+     },
+     "items": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ItemStats"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "A plugin media kind's title: counts (see /plugins/titles/{id}/items)"
      },
      "kind": {
       "title": "Kind",

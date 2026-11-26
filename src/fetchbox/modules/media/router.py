@@ -68,6 +68,13 @@ class SeriesStats(BaseModel):
     missing: int = Field(description="Monitored, aired, no file yet")
 
 
+class ItemStats(BaseModel):
+    items: int
+    monitored: int
+    acquired: int
+    missing: int = Field(description="Wanted, released, no file yet")
+
+
 class AlbumStats(BaseModel):
     albums: int
     monitored: int
@@ -113,6 +120,10 @@ class TitleOut(_Versioned):
     albums: AlbumStats | None = Field(
         default=None, description="For an artist: counts (see /titles/{id}/albums for the list)"
     )
+    items: ItemStats | None = Field(
+        default=None,
+        description="A plugin media kind's title: counts (see /plugins/titles/{id}/items)",
+    )
 
 
 def title_out(
@@ -120,6 +131,7 @@ def title_out(
     wanted: list[WantedItem] | None = None,
     stats: dict[str, int] | None = None,
     album_stats: dict[str, int] | None = None,
+    item_stats: dict[str, int] | None = None,
 ) -> TitleOut:
     meta = t.meta or {}
     return TitleOut(
@@ -154,6 +166,7 @@ def title_out(
         wanted=[WantedOut.model_validate(w) for w in wanted or []] if t.kind == "movie" else [],
         episodes=SeriesStats(**stats) if stats is not None else None,
         albums=AlbumStats(**album_stats) if album_stats is not None else None,
+        items=ItemStats(**item_stats) if item_stats is not None else None,
     )
 
 
@@ -162,7 +175,12 @@ async def _many(svc: MediaService, titles: list[Title]) -> list[TitleOut]:
     wanted = await svc.wanted_for(movies)
     stats = await svc.series_stats([t.id for t in titles if t.kind == "series"])
     albums = await svc.album_stats([t.id for t in titles if t.kind == "music"])
-    return [title_out(t, wanted.get(t.id, []), stats.get(t.id), albums.get(t.id)) for t in titles]
+    core = ("movie", "series", "music")
+    items = await svc.plugin_item_stats([t.id for t in titles if t.kind not in core])
+    return [
+        title_out(t, wanted.get(t.id, []), stats.get(t.id), albums.get(t.id), items.get(t.id))
+        for t in titles
+    ]
 
 
 def _future(d: date | None) -> date | None:
