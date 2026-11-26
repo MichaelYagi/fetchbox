@@ -170,6 +170,20 @@
 		dialog?.close();
 		pending = null;
 	}
+	// Esc is Cancel: the same close (and, like Cancel, not while an add is running)
+	function cancelKey(e: Event) {
+		e.preventDefault();
+		if (adding === null && addingArtist === null) close();
+	}
+	// Closing gives the focus back to the result box that opened the dialog, which then
+	// shows as highlighted (after a key, the browser shows focus): let it go
+	function closed() {
+		pending = null;
+		setTimeout(() => {
+			const el = document.activeElement;
+			if (el instanceof HTMLElement && el.classList.contains('pick')) el.blur();
+		}, 0);
+	}
 
 	async function confirmAdd(e: SubmitEvent) {
 		e.preventDefault();
@@ -416,7 +430,7 @@
 			</div>
 		{/if}
 	{/if}
-	<dialog bind:this={dialog} onclose={() => (pending = null)} aria-labelledby="add-title">
+	<dialog bind:this={dialog} onclose={closed} oncancel={cancelKey} aria-labelledby="add-title">
 		{#if pending}
 			{@const isMusic = pending.kind === 'music'}
 			{@const name = pending.kind === 'music' ? pending.a.name : `${pending.r.name}${pending.r.year ? ` (${pending.r.year})` : ''}`}
