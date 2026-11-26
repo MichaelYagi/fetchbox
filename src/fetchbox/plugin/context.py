@@ -4,9 +4,9 @@ Every method a plugin writes receives one. What's on it is public (API 1); anyth
 plugin reaches past it for is internal and may change in any release. Each plugin gets its
 own context, so whatever it does is attributed to it in logs.
 
-Here so far: ``http``, ``cache``, ``store``, ``folder`` and ``log``. The services that
-work on the library (``files``, ``library``, ``jobs``, ``notify``) and ``settings`` join
-in the next steps.
+``http``, ``cache``, ``store``, ``folder`` and ``log`` work on their own; ``files``,
+``library``, ``jobs`` and ``notify`` work through Fetchbox's services (see services.py).
+``settings`` joins with plugin settings tabs.
 """
 
 from __future__ import annotations
@@ -25,6 +25,13 @@ import structlog
 from fetchbox import __version__
 from fetchbox.core.db import Database
 from fetchbox.modules.plugins.store import PluginStore
+from fetchbox.plugin.services import (
+    PluginFiles,
+    PluginJobs,
+    PluginLibrary,
+    PluginNotify,
+    Services,
+)
 
 T = TypeVar("T")
 
@@ -171,9 +178,11 @@ class PluginContext:
         *,
         db: Database,
         data_dir: Path,
+        services: Services | None = None,
         transport: httpx.AsyncBaseTransport | None = None,
     ) -> None:
         self.plugin_id = check_id(plugin_id)
+        self._services = services
         self.log = structlog.get_logger("fetchbox.plugin").bind(plugin=plugin_id)
         self.http = PluginHttp(plugin_id, transport=transport)
         self.cache = PluginCache()
@@ -186,6 +195,27 @@ class PluginContext:
         files). Made the first time it's asked for."""
         self._folder.mkdir(parents=True, exist_ok=True)
         return self._folder
+
+    def _need(self) -> Services:
+        if self._services is None:
+            raise RuntimeError("this context has no Fetchbox services (made outside the app)")
+        return self._services
+
+    @property
+    def files(self) -> PluginFiles:
+        return PluginFiles(self.plugin_id, self._need())
+
+    @property
+    def library(self) -> PluginLibrary:
+        return PluginLibrary(self.plugin_id, self._need())
+
+    @property
+    def jobs(self) -> PluginJobs:
+        return PluginJobs(self.plugin_id, self._need().jobs)
+
+    @property
+    def notify(self) -> PluginNotify:
+        return PluginNotify(self.plugin_id, self._need().notifications)
 
     async def aclose(self) -> None:
         await self.http.aclose()
