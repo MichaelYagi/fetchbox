@@ -4222,10 +4222,57 @@ export interface components {
              */
             wanted_item_id: string | null;
         };
+        /** JobOut */
+        JobOut: {
+            /** Attempts */
+            attempts: number;
+            /** Cancel Requested */
+            cancel_requested: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Dedupe Key */
+            dedupe_key: string | null;
+            /** Error */
+            error: string | null;
+            /** Finished At */
+            finished_at: string | null;
+            /** Id */
+            id: string;
+            /** Max Attempts */
+            max_attempts: number;
+            /** Parent Id */
+            parent_id: string | null;
+            /** Payload */
+            payload: {
+                [key: string]: unknown;
+            };
+            /** Progress */
+            progress: number | null;
+            /** Queue */
+            queue: string;
+            /** Result */
+            result: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Run After
+             * Format: date-time
+             */
+            run_after: string;
+            /** Started At */
+            started_at: string | null;
+            /** Status */
+            status: string;
+            /** Type */
+            type: string;
+        };
         /** JobPage */
         JobPage: {
             /** Items */
-            items: components["schemas"]["fetchbox__modules__system__jobs_router__JobOut"][];
+            items: components["schemas"]["JobOut"][];
             /** Next Cursor */
             next_cursor: string | null;
         };
@@ -4890,6 +4937,11 @@ export interface components {
             unchanged: string[];
             /** Update */
             update: string[];
+        };
+        /** PluginJobOut */
+        PluginJobOut: {
+            /** Job Id */
+            job_id: string | null;
         };
         /** PluginOut */
         PluginOut: {
@@ -6404,58 +6456,6 @@ export interface components {
              */
             password?: string | null;
         };
-        /** JobOut */
-        fetchbox__modules__system__jobs_router__JobOut: {
-            /** Attempts */
-            attempts: number;
-            /** Cancel Requested */
-            cancel_requested: boolean;
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at: string;
-            /** Dedupe Key */
-            dedupe_key: string | null;
-            /** Error */
-            error: string | null;
-            /** Finished At */
-            finished_at: string | null;
-            /** Id */
-            id: string;
-            /** Max Attempts */
-            max_attempts: number;
-            /** Parent Id */
-            parent_id: string | null;
-            /** Payload */
-            payload: {
-                [key: string]: unknown;
-            };
-            /** Progress */
-            progress: number | null;
-            /** Queue */
-            queue: string;
-            /** Result */
-            result: {
-                [key: string]: unknown;
-            } | null;
-            /**
-             * Run After
-             * Format: date-time
-             */
-            run_after: string;
-            /** Started At */
-            started_at: string | null;
-            /** Status */
-            status: string;
-            /** Type */
-            type: string;
-        };
-        /** JobOut */
-        fetchbox__plugin__router__JobOut: {
-            /** Job Id */
-            job_id: string | null;
-        };
     };
     responses: never;
     parameters: never;
@@ -7327,7 +7327,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["fetchbox__modules__system__jobs_router__JobOut"];
+                    "application/json": components["schemas"]["JobOut"];
                 };
             };
             /** @description Not Found */
@@ -10298,7 +10298,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["fetchbox__modules__system__jobs_router__JobOut"];
+                    "application/json": components["schemas"]["JobOut"];
                 };
             };
             /** @description Not Found */
@@ -10339,7 +10339,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["fetchbox__modules__system__jobs_router__JobOut"];
+                    "application/json": components["schemas"]["JobOut"];
                 };
             };
             /** @description Not Found */
@@ -10380,7 +10380,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["fetchbox__modules__system__jobs_router__JobOut"];
+                    "application/json": components["schemas"]["JobOut"];
                 };
             };
             /** @description Not Found */
@@ -10429,7 +10429,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["fetchbox__modules__system__jobs_router__JobOut"];
+                    "application/json": components["schemas"]["JobOut"];
                 };
             };
             /** @description Conflict */
@@ -10533,7 +10533,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["fetchbox__modules__system__jobs_router__JobOut"];
+                    "application/json": components["schemas"]["JobOut"];
                 };
             };
             /** @description Not Found */
@@ -10587,7 +10587,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["fetchbox__modules__system__jobs_router__JobOut"];
+                    "application/json": components["schemas"]["JobOut"];
                 };
             };
             /** @description Conflict */
@@ -10631,7 +10631,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["fetchbox__modules__system__jobs_router__JobOut"];
+                    "application/json": components["schemas"]["JobOut"];
                 };
             };
             /** @description Conflict */
@@ -10904,7 +10904,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["fetchbox__modules__system__jobs_router__JobOut"];
+                    "application/json": components["schemas"]["JobOut"];
                 };
             };
             /** @description Not Found */
@@ -11925,7 +11925,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["fetchbox__plugin__router__JobOut"];
+                    "application/json": components["schemas"]["PluginJobOut"];
                 };
             };
             /** @description Not Found */
@@ -12790,7 +12790,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["fetchbox__modules__system__jobs_router__JobOut"];
+                    "application/json": components["schemas"]["JobOut"];
                 };
             };
             /** @description Validation Error */
@@ -13603,7 +13603,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["fetchbox__modules__system__jobs_router__JobOut"];
+                    "application/json": components["schemas"]["JobOut"];
                 };
             };
             /** @description Not Found */
@@ -13704,7 +13704,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["fetchbox__modules__system__jobs_router__JobOut"];
+                    "application/json": components["schemas"]["JobOut"];
                 };
             };
             /** @description Not Found */
@@ -13913,7 +13913,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["fetchbox__modules__system__jobs_router__JobOut"];
+                    "application/json": components["schemas"]["JobOut"];
                 };
             };
             /** @description Not Found */

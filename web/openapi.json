@@ -4061,11 +4061,159 @@
     "title": "InteractiveOut",
     "type": "object"
    },
+   "JobOut": {
+    "properties": {
+     "attempts": {
+      "title": "Attempts",
+      "type": "integer"
+     },
+     "cancel_requested": {
+      "title": "Cancel Requested",
+      "type": "boolean"
+     },
+     "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+     },
+     "dedupe_key": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Dedupe Key"
+     },
+     "error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Error"
+     },
+     "finished_at": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Finished At"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "max_attempts": {
+      "title": "Max Attempts",
+      "type": "integer"
+     },
+     "parent_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Parent Id"
+     },
+     "payload": {
+      "additionalProperties": true,
+      "title": "Payload",
+      "type": "object"
+     },
+     "progress": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Progress"
+     },
+     "queue": {
+      "title": "Queue",
+      "type": "string"
+     },
+     "result": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Result"
+     },
+     "run_after": {
+      "format": "date-time",
+      "title": "Run After",
+      "type": "string"
+     },
+     "started_at": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Started At"
+     },
+     "status": {
+      "title": "Status",
+      "type": "string"
+     },
+     "type": {
+      "title": "Type",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "type",
+     "queue",
+     "status",
+     "payload",
+     "result",
+     "error",
+     "progress",
+     "attempts",
+     "max_attempts",
+     "run_after",
+     "cancel_requested",
+     "parent_id",
+     "dedupe_key",
+     "created_at",
+     "started_at",
+     "finished_at"
+    ],
+    "title": "JobOut",
+    "type": "object"
+   },
    "JobPage": {
     "properties": {
      "items": {
       "items": {
-       "$ref": "#/components/schemas/fetchbox__modules__system__jobs_router__JobOut"
+       "$ref": "#/components/schemas/JobOut"
       },
       "title": "Items",
       "type": "array"
@@ -5621,6 +5769,26 @@
      "unchanged"
     ],
     "title": "PlanPart",
+    "type": "object"
+   },
+   "PluginJobOut": {
+    "properties": {
+     "job_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Job Id"
+     }
+    },
+    "required": [
+     "job_id"
+    ],
+    "title": "PluginJobOut",
     "type": "object"
    },
    "PluginOut": {
@@ -9441,174 +9609,6 @@
     ],
     "title": "ImportIn",
     "type": "object"
-   },
-   "fetchbox__modules__system__jobs_router__JobOut": {
-    "properties": {
-     "attempts": {
-      "title": "Attempts",
-      "type": "integer"
-     },
-     "cancel_requested": {
-      "title": "Cancel Requested",
-      "type": "boolean"
-     },
-     "created_at": {
-      "format": "date-time",
-      "title": "Created At",
-      "type": "string"
-     },
-     "dedupe_key": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Dedupe Key"
-     },
-     "error": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Error"
-     },
-     "finished_at": {
-      "anyOf": [
-       {
-        "format": "date-time",
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Finished At"
-     },
-     "id": {
-      "title": "Id",
-      "type": "string"
-     },
-     "max_attempts": {
-      "title": "Max Attempts",
-      "type": "integer"
-     },
-     "parent_id": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Parent Id"
-     },
-     "payload": {
-      "additionalProperties": true,
-      "title": "Payload",
-      "type": "object"
-     },
-     "progress": {
-      "anyOf": [
-       {
-        "type": "number"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Progress"
-     },
-     "queue": {
-      "title": "Queue",
-      "type": "string"
-     },
-     "result": {
-      "anyOf": [
-       {
-        "additionalProperties": true,
-        "type": "object"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Result"
-     },
-     "run_after": {
-      "format": "date-time",
-      "title": "Run After",
-      "type": "string"
-     },
-     "started_at": {
-      "anyOf": [
-       {
-        "format": "date-time",
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Started At"
-     },
-     "status": {
-      "title": "Status",
-      "type": "string"
-     },
-     "type": {
-      "title": "Type",
-      "type": "string"
-     }
-    },
-    "required": [
-     "id",
-     "type",
-     "queue",
-     "status",
-     "payload",
-     "result",
-     "error",
-     "progress",
-     "attempts",
-     "max_attempts",
-     "run_after",
-     "cancel_requested",
-     "parent_id",
-     "dedupe_key",
-     "created_at",
-     "started_at",
-     "finished_at"
-    ],
-    "title": "JobOut",
-    "type": "object"
-   },
-   "fetchbox__plugin__router__JobOut": {
-    "properties": {
-     "job_id": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Job Id"
-     }
-    },
-    "required": [
-     "job_id"
-    ],
-    "title": "JobOut",
-    "type": "object"
    }
   },
   "securitySchemes": {
@@ -11090,7 +11090,7 @@
       "content": {
        "application/json": {
         "schema": {
-         "$ref": "#/components/schemas/fetchbox__modules__system__jobs_router__JobOut"
+         "$ref": "#/components/schemas/JobOut"
         }
        }
       },
@@ -16052,7 +16052,7 @@
       "content": {
        "application/json": {
         "schema": {
-         "$ref": "#/components/schemas/fetchbox__modules__system__jobs_router__JobOut"
+         "$ref": "#/components/schemas/JobOut"
         }
        }
       },
@@ -16116,7 +16116,7 @@
       "content": {
        "application/json": {
         "schema": {
-         "$ref": "#/components/schemas/fetchbox__modules__system__jobs_router__JobOut"
+         "$ref": "#/components/schemas/JobOut"
         }
        }
       },
@@ -16180,7 +16180,7 @@
       "content": {
        "application/json": {
         "schema": {
-         "$ref": "#/components/schemas/fetchbox__modules__system__jobs_router__JobOut"
+         "$ref": "#/components/schemas/JobOut"
         }
        }
       },
@@ -16245,7 +16245,7 @@
       "content": {
        "application/json": {
         "schema": {
-         "$ref": "#/components/schemas/fetchbox__modules__system__jobs_router__JobOut"
+         "$ref": "#/components/schemas/JobOut"
         }
        }
       },
@@ -16474,7 +16474,7 @@
       "content": {
        "application/json": {
         "schema": {
-         "$ref": "#/components/schemas/fetchbox__modules__system__jobs_router__JobOut"
+         "$ref": "#/components/schemas/JobOut"
         }
        }
       },
@@ -16550,7 +16550,7 @@
       "content": {
        "application/json": {
         "schema": {
-         "$ref": "#/components/schemas/fetchbox__modules__system__jobs_router__JobOut"
+         "$ref": "#/components/schemas/JobOut"
         }
        }
       },
@@ -16615,7 +16615,7 @@
       "content": {
        "application/json": {
         "schema": {
-         "$ref": "#/components/schemas/fetchbox__modules__system__jobs_router__JobOut"
+         "$ref": "#/components/schemas/JobOut"
         }
        }
       },
@@ -17079,7 +17079,7 @@
       "content": {
        "application/json": {
         "schema": {
-         "$ref": "#/components/schemas/fetchbox__modules__system__jobs_router__JobOut"
+         "$ref": "#/components/schemas/JobOut"
         }
        }
       },
@@ -18731,7 +18731,7 @@
       "content": {
        "application/json": {
         "schema": {
-         "$ref": "#/components/schemas/fetchbox__plugin__router__JobOut"
+         "$ref": "#/components/schemas/PluginJobOut"
         }
        }
       },
@@ -20185,7 +20185,7 @@
       "content": {
        "application/json": {
         "schema": {
-         "$ref": "#/components/schemas/fetchbox__modules__system__jobs_router__JobOut"
+         "$ref": "#/components/schemas/JobOut"
         }
        }
       },
@@ -21538,7 +21538,7 @@
       "content": {
        "application/json": {
         "schema": {
-         "$ref": "#/components/schemas/fetchbox__modules__system__jobs_router__JobOut"
+         "$ref": "#/components/schemas/JobOut"
         }
        }
       },
@@ -21727,7 +21727,7 @@
       "content": {
        "application/json": {
         "schema": {
-         "$ref": "#/components/schemas/fetchbox__modules__system__jobs_router__JobOut"
+         "$ref": "#/components/schemas/JobOut"
         }
        }
       },
@@ -22170,7 +22170,7 @@
       "content": {
        "application/json": {
         "schema": {
-         "$ref": "#/components/schemas/fetchbox__modules__system__jobs_router__JobOut"
+         "$ref": "#/components/schemas/JobOut"
         }
        }
       },

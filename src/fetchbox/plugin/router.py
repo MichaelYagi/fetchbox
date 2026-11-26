@@ -87,7 +87,7 @@ class ActionIn(BaseModel):
     item: str | None = Field(None, description="The title, group or item it's run for")
 
 
-class JobOut(BaseModel):
+class PluginJobOut(BaseModel):
     job_id: str | None
 
 
@@ -170,14 +170,14 @@ async def test_settings(plugin_id: str, part: str, body: SettingsIn, request: Re
 
 @router.post(
     "/{plugin_id}/actions/{addon}/{method}",
-    response_model=JobOut,
+    response_model=PluginJobOut,
     status_code=202,
     dependencies=_write,
     responses=pr(404, 409),
 )
 async def run_action(
     plugin_id: str, addon: str, method: str, body: ActionIn, request: Request
-) -> JobOut:
+) -> PluginJobOut:
     m = _mgr(request)
     _out(m, plugin_id)
     try:
@@ -186,7 +186,7 @@ async def run_action(
         raise ProblemError(
             409, "Conflict", f"{exc} (is the plugin running?)", slug="conflict"
         ) from None
-    return JobOut(job_id=job)
+    return PluginJobOut(job_id=job)
 
 
 @router.post(

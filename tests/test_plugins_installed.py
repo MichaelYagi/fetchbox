@@ -23,7 +23,9 @@ from tests.conftest import Running, running
 MODULE = "fbtest_greeter"
 
 CODE = """
-from fetchbox_plugin import Addon, Field, Permission, Plugin, PublicEvent, Secret, Settings, action, on
+from fetchbox_plugin import (
+    Addon, Field, Permission, Plugin, PublicEvent, Secret, Settings, action, on,
+)
 
 
 class GreeterSettings(Settings):

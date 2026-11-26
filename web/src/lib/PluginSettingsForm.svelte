@@ -62,7 +62,7 @@
 			message = 'Saved';
 			onsaved();
 		} catch (e) {
-			error = e instanceof ApiError ? [e.message, ...(e.errors ?? []).map((x) => x.message)].join(' · ') : String(e);
+			error = e instanceof ApiError ? [e.message, ...e.fields.map((x) => x.message)].join(' · ') : String(e);
 		} finally {
 			busy = false;
 		}
