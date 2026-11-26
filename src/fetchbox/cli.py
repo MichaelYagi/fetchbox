@@ -56,6 +56,13 @@ def _parser() -> argparse.ArgumentParser:
 
     sub.add_parser("openapi", help="print the API's OpenAPI document (for client generation)")
 
+    plugin = sub.add_parser("plugin", help="tools for writing Fetchbox plugins")
+    plugin_sub = plugin.add_subparsers(dest="plugin_command", required=True)
+    check = plugin_sub.add_parser(
+        "check", help="check a plugin against the plugin API and say how to fix each problem"
+    )
+    check.add_argument("path", help="the plugin's project folder (where its pyproject.toml is)")
+
     # `--data` also works after the command (`fetchbox serve --data ./data`).
     for cmd in (serve, mig, rp):
         cmd.add_argument(
@@ -195,6 +202,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _parse_names(args.names, show_all=args.all)
     if args.command == "openapi":
         return _openapi()
+    if args.command == "plugin":
+        from fetchbox_plugin.check import check_plugin
+
+        report = check_plugin(args.path)
+        print(report.text())
+        return 0 if report.ok else 1
     # Imports deferred so `fetchbox --version` stays fast.
     from fetchbox.config import load_settings
     from fetchbox.core.logging import configure_logging

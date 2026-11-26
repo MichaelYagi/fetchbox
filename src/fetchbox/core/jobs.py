@@ -403,6 +403,9 @@ class JobRunner:
             await self._finish(job, "succeeded", result=result)
         finally:
             heartbeat.cancel()
+            # wait for it to stop: cancelled mid-write, it would still be using the
+            # database after the job (and, at shutdown, after the database is closed)
+            await asyncio.wait([heartbeat])
             self._running.pop(job.id, None)
             self._last_progress_emit.pop(job.id, None)
 
