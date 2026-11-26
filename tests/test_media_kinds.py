@@ -137,3 +137,14 @@ def test_a_second_plugin_cant_take_a_kind(plugin_kind):
 def test_an_unknown_kind_is_an_error():
     with pytest.raises(KindError, match="not a media kind"):
         kinds.get("ebook")
+
+
+def test_the_web_pages_list_the_same_kinds():
+    """web/src/lib/kinds.ts mirrors this list: same kinds, same order, same profiles."""
+    import re
+    from pathlib import Path
+
+    src = (Path(__file__).parents[1] / "web" / "src" / "lib" / "kinds.ts").read_text("utf-8")
+    body = src.split("export const CORE_KINDS", 1)[1].split("];", 1)[0]
+    found = re.findall(r"key: '(\w+)'.*?profileMedia: '(\w+)'", body, re.S)
+    assert found == [(k.key, k.profile_media) for k in kinds.CORE]

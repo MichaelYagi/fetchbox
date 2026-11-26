@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import Path from '#lib/Path.svelte';
+	import { kindOf } from '#lib/kinds.ts';
 	import { ApiError, bytes, get, post, type S } from '#lib/api.ts';
 
 	// Import what's already in a library folder: scan (changes nothing), review, import.
@@ -62,10 +63,10 @@
 	});
 	$effect(() => {
 		if (!dest) return;
-		const media = dest.media_kind === 'music' ? 'music' : 'video';
+		const { profileMedia: media, defaultProfile } = kindOf(dest.media_kind);
 		get<S['ProfileOut'][]>('/quality-profiles', { media }).then((p) => {
 			profiles = p;
-			profile = (p.find((x) => x.name === (media === 'music' ? 'Lossless' : '1080p')) ?? p[0])?.id ?? '';
+			profile = (p.find((x) => x.name === defaultProfile) ?? p[0])?.id ?? '';
 		});
 	});
 
