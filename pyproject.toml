@@ -1,6 +1,6 @@
 [project]
 name = "fetchbox"
-version = "0.9.24"
+version = "0.9.25"
 description = "Self-hosted media manager for movies and TV with a built-in torrent engine"
 readme = "README.md"
 license = "MIT"
