@@ -291,10 +291,22 @@ def main(argv: Sequence[str] | None = None) -> int:
             server.should_exit = True
 
         fastapi_app.state.request_shutdown = request_shutdown
+        from fetchbox.modules.auth.deps import TRAY_ENV
+
+        handover = os.environ.get(TRAY_ENV)  # started by the desktop tray
+        if handover:
+            from fetchbox.tray import write_handover
+
+            write_handover(settings.data_dir, port=settings.port, token=handover)
         try:
             server.run()
         except SystemExit as exc:  # uvicorn exits(3) when lifespan startup fails
             return int(exc.code) if isinstance(exc.code, int) else 2
+        finally:
+            if handover:
+                from fetchbox.tray import clear_handover
+
+                clear_handover(settings.data_dir)
         return 0
 
     if args.command == "reset-password":
