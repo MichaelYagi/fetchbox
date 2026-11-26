@@ -45,6 +45,53 @@ Windows and macOS start in the tray / menu bar, open Fetchbox in your browser, a
 update themselves from the tray menu. They're unsigned: the bundled README.txt explains
 getting past SmartScreen or Gatekeeper. Building them yourself: `packaging/README.md`.
 
+### Recommended setup: a Mac, a NAS and Plex
+
+The setup Fetchbox is used and tested with day to day: one always-on Mac runs Fetchbox
+and Plex, and the media lives on a NAS.
+
+```
+  NAS (SMB shares)                    Mac (always on)
+  ├─ Movies/  ◀──── downloads, ────── Fetchbox desktop app (menu bar)
+  ├─ TV/            files, seeds        └─ built-in torrent engine
+  └─ Music/                           Plex Media Server ◀── "rescan this folder"
+                                      Prowlarr (this Mac or another machine)
+```
+
+1. **The Mac.** Install the macOS desktop app. In its menu bar menu, turn on **Start at
+   login**, and keep **Allow access from other devices** on to use Fetchbox from a
+   phone or another computer. In System Settings, stop the Mac from sleeping on its own
+   (downloads and searches pause while it sleeps).
+2. **The NAS.** Connect its shares in Finder (Go → Connect to Server, e.g.
+   `smb://nas.local/Media`) and add them to your Login Items, so they're mounted at the
+   same `/Volumes/...` path after every restart. Movies, TV and music can be on different
+   shares.
+3. **Library folders.** In Settings → Library, set the Movies, TV shows and Music folders
+   to the folders on the NAS (e.g. `/Volumes/Media/Movies`). Already have media there?
+   **Import what's already here** adds it without moving anything.
+4. **Sources.** In Settings → Sources, paste your TMDB key and add Prowlarr as an indexer
+   (see [What you need](#what-you-need)). Leave the built-in download client on: it
+   downloads straight into the library folder on the NAS, files the finished download in
+   place and seeds from there, so there's one copy of each file and nothing to move
+   between a download folder and the library.
+5. **Plex.** Point Plex's libraries at the same NAS folders. In Settings → Connections →
+   Media servers, add Plex with its address (`http://127.0.0.1:32400` on the same Mac)
+   and its token (the form says where to find it), then **Test**. Fetchbox finds which
+   Plex library holds each of its folders, even though Plex on a Mac may spell them
+   `/Volumes/Macintosh HD/Volumes/...`, and asks Plex to rescan just the folder it
+   changed after each import or rename.
+
+What Fetchbox does for this setup by itself:
+
+- **The NAS is off or disconnected:** its folders show as *unmounted* in Settings →
+  Library and imports wait until it's back. Nothing is written to the Mac's own disk in
+  its place.
+- **macOS's `._` files** (written next to files on a share that can't keep a Mac file's
+  extra details): Fetchbox doesn't create them for what it imports, never takes them for
+  media, and clears leftovers from the library folders after each import and once a day.
+- **Updates:** **Install** in Settings → General (or the menu bar menu) downloads the new
+  version, replaces the app and restarts it, the server included.
+
 ### Behind a reverse proxy
 
 In Settings → Network, list the proxy's address (or its Docker network, e.g.
@@ -79,9 +126,9 @@ internet addresses** in the same place.
 
 | | Needed for | Where to get it |
 | --- | --- | --- |
-| **TMDB API key** (free) | Always: finding titles, years and episode lists | [themoviedb.org/settings/api](https://www.themoviedb.org/settings/api); paste it in Settings → Movie information |
-| **Prowlarr** (or Jackett) | Mainstream movies and shows | [Prowlarr](https://prowlarr.com), set up with the sites you use. In Settings → Indexers, add **Prowlarr** with the address you open it at (e.g. `http://192.168.1.10:9696`) and its API key (Prowlarr: Settings → General → Security). Every enabled Prowlarr indexer is searched, including ones added later. For Jackett or a single feed, use **Torznab feed** with that feed's URL |
-| Download client | Nothing: the built-in engine works on its own | Optional: qBittorrent, Transmission or Deluge in Settings → Download clients |
+| **TMDB API key** (free) | Always: finding titles, years and episode lists | [themoviedb.org/settings/api](https://www.themoviedb.org/settings/api); paste it in Settings → Sources |
+| **Prowlarr** (or Jackett) | Mainstream movies and shows | [Prowlarr](https://prowlarr.com), set up with the sites you use. In Settings → Sources → Indexers, add **Prowlarr** with the address you open it at (e.g. `http://192.168.1.10:9696`) and its API key (Prowlarr: Settings → General → Security). Every enabled Prowlarr indexer is searched, including ones added later. For Jackett or a single feed, use **Torznab feed** with that feed's URL |
+| Download client | Nothing: the built-in engine works on its own | Optional: qBittorrent, Transmission or Deluge in Settings → Sources → Download clients |
 
 Without Prowlarr or Jackett, Fetchbox searches only:
 
