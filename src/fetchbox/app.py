@@ -307,6 +307,7 @@ def create_app(
 
         plugin_host = PluginHost(
             db=db, bus=bus, scheduler=state.scheduler, data_dir=settings.data_dir,
+            providers=state.providers,
             services=Services(library=library, media=media, jobs=jobs,
                               notifications=notifications, autosearch=autosearch),
         )  # fmt: skip

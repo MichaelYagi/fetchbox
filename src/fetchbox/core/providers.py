@@ -13,7 +13,7 @@ from importlib.metadata import entry_points
 from typing import Any, ClassVar, Literal
 
 import structlog
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 log = structlog.get_logger(__name__)
 
@@ -74,6 +74,13 @@ class ProviderRegistry:
         self._by_key[key] = cls
         return cls
 
+    def unregister(self, cls: type[Provider]) -> None:
+        """A provider gone (its plugin turned off). What was set up with it stays, shown as
+        it was, and says plainly that it can't be used until the plugin is back."""
+        key = (cls.category, cls.kind)
+        if self._by_key.get(key) is cls:
+            self._by_key[key] = _unavailable(cls)
+
     def get(self, category: ProviderCategory, kind: str) -> type[Provider]:
         try:
             return self._by_key[(category, kind)]
@@ -81,7 +88,10 @@ class ProviderRegistry:
             raise LookupError(f"no {category} provider of kind {kind!r}") from None
 
     def of(self, category: ProviderCategory) -> list[type[Provider]]:
-        return [c for (cat, _), c in sorted(self._by_key.items()) if cat == category]
+        return [
+            c for (cat, _), c in sorted(self._by_key.items())
+            if cat == category and not getattr(c, "unavailable", False)
+        ]  # fmt: skip
 
     def __iter__(self) -> Iterator[type[Provider]]:
         return iter(self._by_key.values())
@@ -109,3 +119,37 @@ class ProviderRegistry:
 
 
 registry = ProviderRegistry()
+
+
+class ProviderUnavailable(RuntimeError):
+    pass
+
+
+def _unavailable(gone: type[Provider]) -> type[Provider]:
+    """A stand-in for a plugin's provider while the plugin is off: its settings (any shape)
+    still read, and every use says why it can't work."""
+    why = f"{gone.kind}: the plugin that provides it is off"
+
+    class Settings(BaseModel):
+        model_config = ConfigDict(extra="allow")
+
+    class Unavailable(Provider):
+        category = gone.category
+        kind = gone.kind
+        unavailable = True
+
+        async def test(self) -> TestResult:
+            return TestResult(ok=False, message=why)
+
+        async def health(self) -> HealthStatus:
+            return HealthStatus(status="warning", message=why)
+
+        def __getattr__(self, name: str) -> Any:
+            async def fails(*_a: Any, **_k: Any) -> Any:
+                raise ProviderUnavailable(why)
+
+            return fails
+
+    Unavailable.Settings = Settings
+    Unavailable.__qualname__ = f"Unavailable[{gone.__qualname__}]"
+    return Unavailable

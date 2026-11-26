@@ -29,6 +29,7 @@ from fetchbox.core import kinds
 from fetchbox.core.db import Database
 from fetchbox.core.events import Event, EventBus
 from fetchbox.core.jobs import JobContext, PermanentJobError
+from fetchbox.core.providers import ProviderRegistry
 from fetchbox.core.schedules import ScheduleDef, Scheduler
 from fetchbox.plugin.context import PluginContext, check_id
 from fetchbox.plugin.events import INTERNAL_TYPES, to_public
@@ -71,6 +72,7 @@ class Loaded:
     failures: list[float] = field(default_factory=list)  # when its recent jobs failed
     paused_until: float | None = None  # failing too often: its jobs wait until then
     last_error: str | None = None
+    providers: list[Any] = field(default_factory=list)  # indexers, notifiers it added
 
     def paused(self) -> bool:
         if self.paused_until is not None and time.time() >= self.paused_until:
@@ -88,6 +90,7 @@ class PluginHost:
         services: Services,
         data_dir: Path,
         settings_for: Callable[[str, str], dict[str, Any]] = lambda plugin, part: {},
+        providers: ProviderRegistry | None = None,
     ) -> None:
         self.db = db
         self.bus = bus
@@ -95,6 +98,7 @@ class PluginHost:
         self.services = services
         self.data_dir = data_dir
         self.settings_for = settings_for  # (plugin id, contribution id) -> stored settings
+        self.providers = providers  # where a plugin's indexers and notifiers join the built-in
         self.loaded: dict[str, Loaded] = {}
 
     # ---- loading ------------------------------------------------------------------------
@@ -109,7 +113,10 @@ class PluginHost:
                     self._add_kind(got, part)
                 elif isinstance(part, type) and issubclass(part, Addon):
                     self._add_addon(got, part)
-                # providers keep loading through the fetchbox.providers entry point
+                elif isinstance(part, type) and all(
+                    hasattr(part, a) for a in ("category", "kind", "Settings")
+                ):
+                    self._add_provider(got, part)
             if got.on:
                 got.bus_handler = self._on_events(got)
                 self.bus.on(*INTERNAL_TYPES)(got.bus_handler)
@@ -203,6 +210,17 @@ class PluginHost:
         for name, _spec in found["action"]:
             job = self._job(got, f"plugin.{pid}.{part.id}.{name}", addon, name, "action")
             got.actions[(part.id, name)] = job
+
+    def _add_provider(self, got: Loaded, part: type) -> None:
+        """An indexer, notifier or download client: offered in Settings like the built-in
+        ones while its plugin runs."""
+        if self.providers is None:
+            return
+        try:
+            self.providers.register(part)
+        except (TypeError, ValueError) as exc:
+            raise PluginLoadError(f"{got.ctx.plugin_id}: {exc}") from None
+        got.providers.append(part)
 
     def _settings(self, pid: str, part: str, model: type[Settings] | None) -> Settings | None:
         if model is None:
@@ -300,6 +318,9 @@ class PluginHost:
         for t in got.job_types:
             self.services.jobs.unregister(t)
         kinds.unregister(got.ctx.plugin_id)
+        for p in got.providers:
+            if self.providers is not None:
+                self.providers.unregister(p)
 
 
 def _short(plugin_id: str, job_type: str) -> str:
