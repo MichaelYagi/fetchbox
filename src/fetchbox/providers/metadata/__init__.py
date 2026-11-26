@@ -47,6 +47,8 @@ class MovieDetail(TitleSummary):
     physical_date: date | None = None
     genres: list[str] = []
     alt_titles: list[str] = []
+    # Wide scene images (TMDB backdrops), best first; empty when there are none
+    backdrop_urls: list[str] = []
 
 
 class EpisodeDetail(BaseModel):
@@ -55,6 +57,7 @@ class EpisodeDetail(BaseModel):
     name: str | None = None
     air_date: date | None = None
     runtime: int | None = None
+    still_url: str | None = None  # a frame from the episode
 
 
 class SeasonDetail(BaseModel):
@@ -74,6 +77,7 @@ class SeriesDetail(TitleSummary):
     runtime: int | None = None  # typical episode runtime, minutes
     genres: list[str] = []
     alt_titles: list[str] = []
+    backdrop_urls: list[str] = []
     seasons: list[SeasonDetail] = []
 
 

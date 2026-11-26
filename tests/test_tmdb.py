@@ -30,6 +30,22 @@ async def test_search_and_movie_detail() -> None:
     assert m.alt_titles == ["Dune: Part One", "Dune : Première partie"]
     sent = fake.requests[-1].url.params
     assert sent["api_key"] == V3_KEY and sent["language"] == "en-US"
+    # backdrops come in the same request: ones without text first, then by rating, at most 8
+    assert "images" in sent["append_to_response"].split(",")
+    assert sent["include_image_language"] == "null,en"
+    big = "https://image.tmdb.org/t/p/w1280"
+    assert m.backdrop_urls[:3] == [f"{big}/worm.jpg", f"{big}/sand.jpg", f"{big}/more0.jpg"]
+    assert len(m.backdrop_urls) == 8 and f"{big}/titled.jpg" not in m.backdrop_urls
+    assert (await p.get_movie("194")).backdrop_urls == []  # a title without images
+    await p.aclose()
+
+
+async def test_images_in_the_chosen_language_too() -> None:
+    fake = FakeTmdb()
+    p = TmdbProvider(TmdbSettings(api_key=SecretStr(V3_KEY), language="fr-FR"),
+                     transport=fake.transport)  # fmt: skip
+    await p.get_movie("438631")
+    assert fake.requests[-1].url.params["include_image_language"] == "null,en,fr"
     await p.aclose()
 
 
@@ -75,6 +91,9 @@ async def test_series_with_seasons() -> None:
     assert s.tvdb_id == 371980 and s.year == 2022 and not s.ended
     assert [(x.number, x.episode_count) for x in s.seasons] == [(1, 9), (2, 10)]
     assert s.seasons[0].episodes[0].name == "Ep 1"
+    assert s.seasons[0].episodes[0].still_url == "https://image.tmdb.org/t/p/w300/s1e1.jpg"
+    assert s.seasons[0].episodes[1].still_url is None  # an episode without a still
+    assert s.backdrop_urls == []
     assert s.alt_titles == []  # only the primary name, which is excluded
 
 

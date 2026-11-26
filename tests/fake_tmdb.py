@@ -27,6 +27,15 @@ DUNE: dict[str, Any] = {
             {"iso_3166_1": "GB", "title": "Dune", "type": ""},
         ]
     },
+    # (what append_to_response=images adds; a title may have none)
+    "images": {
+        "backdrops": [
+            {"file_path": "/titled.jpg", "iso_639_1": "en", "vote_average": 9.0},
+            {"file_path": "/sand.jpg", "iso_639_1": None, "vote_average": 5.5},
+            {"file_path": "/worm.jpg", "iso_639_1": None, "vote_average": 7.1},
+        ]
+        + [{"file_path": f"/more{i}.jpg", "iso_639_1": None, "vote_average": 1} for i in range(9)]
+    },
 }
 
 AMELIE = {
@@ -63,7 +72,12 @@ class FakeTmdb:
         # (series id, season) -> episodes; tests add specials, future episodes, seasons
         self.seasons: dict[tuple[int, int], list[dict[str, Any]]] = {
             (95396, n): [
-                {"episode_number": e, "name": f"Ep {e}", "air_date": f"2022-0{n}-1{e % 10}"}
+                {
+                    "episode_number": e,
+                    "name": f"Ep {e}",
+                    "air_date": f"2022-0{n}-1{e % 10}",
+                    **({"still_path": f"/s{n}e{e}.jpg"} if e == 1 else {}),
+                }
                 for e in range(1, (9 if n == 1 else 10) + 1)
             ]
             for n in (1, 2)

@@ -2311,6 +2311,17 @@
      "season": {
       "title": "Season",
       "type": "integer"
+     },
+     "still_url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Still Url"
      }
     },
     "required": [
@@ -4799,6 +4810,14 @@
       "title": "Alt Titles",
       "type": "array"
      },
+     "backdrop_urls": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Backdrop Urls",
+      "type": "array"
+     },
      "digital_date": {
       "anyOf": [
        {
@@ -7147,6 +7166,14 @@
        "type": "string"
       },
       "title": "Alt Titles",
+      "type": "array"
+     },
+     "backdrop_urls": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Backdrop Urls",
       "type": "array"
      },
      "ended": {
