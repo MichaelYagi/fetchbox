@@ -79,6 +79,11 @@ class Scheduler:
         validate_interval(int(d.every.total_seconds()))
         self._defs[d.name] = d
 
+    def undefine(self, name: str) -> None:
+        """Stop firing a schedule (a plugin being unloaded); its row and settings stay, so
+        it carries on as it was when it's defined again."""
+        self._defs.pop(name, None)
+
     @property
     def definitions(self) -> dict[str, ScheduleDef]:
         return dict(self._defs)
