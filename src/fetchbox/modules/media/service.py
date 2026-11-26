@@ -11,6 +11,7 @@ from sqlalchemy import Select, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from fetchbox.core import kinds
 from fetchbox.core.concurrency import check_if_match
 from fetchbox.core.db import Database, utcnow
 from fetchbox.core.errors import ConflictError, FieldError, NotFoundError, ProblemError
@@ -550,9 +551,7 @@ class MediaService:
         async with self.db.sessionmaker() as s:
             kind = (await self._title(s, title_id)).kind
         if "profile_id" in changes:
-            await self._check_profile(
-                changes["profile_id"], "music" if kind == "music" else "video"
-            )
+            await self._check_profile(changes["profile_id"], kinds.get(kind).profile_media)
         async with self.db.sessionmaker() as s:
             row = await self._title(s, title_id)
             check_if_match(row, if_match)

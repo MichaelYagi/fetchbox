@@ -12,10 +12,9 @@ import os
 from pathlib import Path
 from typing import Any
 
+from fetchbox.core import kinds
 from fetchbox.modules.library.existing import folder_hints
-from fetchbox.modules.library.music_files import is_audio
 from fetchbox.modules.library.naming import season_of_folder
-from fetchbox.modules.library.service import VIDEO_EXTS
 from fetchbox.modules.releases.decision import title_key
 from fetchbox.modules.storage.service import RECYCLE_DIR
 
@@ -24,14 +23,12 @@ MAX_FILES = 5000  # counting stops here: a huge folder isn't walked to the end
 
 def _counts(folder: Path, kind: str) -> tuple[int, int]:
     """(media files, season folders) in a folder."""
+    media = kinds.get(kind)
     files = 0
     for _dir, dirnames, filenames in os.walk(folder):
         dirnames[:] = [d for d in dirnames if not d.startswith(".")]
         for f in filenames:
-            ext = os.path.splitext(f)[1].lower().lstrip(".")
-            if (
-                is_audio(f) if kind == "music" else ext in VIDEO_EXTS and not f.startswith("._")
-            ) and "sample" not in f.lower():
+            if media.is_media_file(f) and "sample" not in f.lower():
                 files += 1
         if files >= MAX_FILES:
             break

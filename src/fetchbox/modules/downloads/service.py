@@ -33,6 +33,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
+from fetchbox.core import kinds
 from fetchbox.core.concurrency import check_if_match
 from fetchbox.core.db import Database, utcnow
 from fetchbox.core.errors import ConflictError, FieldError, NotFoundError, ProblemError
@@ -113,7 +114,6 @@ def in_library(d: Download) -> bool:
     return bool(path) and PurePosixPath(path).name == INCOMPLETE
 
 
-CATEGORY = {"movie": "fetchbox-movies", "series": "fetchbox-tv", "music": "fetchbox-music"}
 BUILTIN_NAME = "Built-in"
 DIRECT_NAME = "Direct downloads"
 
@@ -613,16 +613,17 @@ class DownloadsService:
                     f"the library folder {folder} isn't available (offline or missing); "
                     "the download starts when it's back",
                 )
+            category = kinds.get(media_kind).category
             save: Path | None = (
                 folder / INCOMPLETE if folder is not None
-                else self.save_root(row) / CATEGORY[media_kind] if built_in or policy.save_path
+                else self.save_root(row) / category if built_in or policy.save_path
                 else None
             )  # fmt: skip
             ref = await client.add(
                 src,
                 AddOptions(
                     save_path=policy.to_client(str(save)) if save else None,
-                    category=CATEGORY[media_kind],
+                    category=category,
                     paused=True,
                 ),
             )
