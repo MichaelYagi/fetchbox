@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import random
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -67,15 +68,17 @@ async def seeder(made: Made) -> BuiltinClient:
 
 
 async def listening(e: BuiltinClient) -> None:
-    """Until the engine has a port others can connect to. On Windows CI a new session
-    sometimes never opens its listen socket (port 0: no peer can reach it, and a test
-    download waits forever): open it again."""
-    for _ in range(5):
+    """Until the engine has a port others can connect to. On Windows a random port (":0")
+    can land in a range Windows reserves (Hyper-V's excluded ports): the bind fails with
+    "access forbidden", the engine has port 0, and no peer can reach it. Then try a
+    port outside the dynamic range (a different value, so libtorrent really reopens)."""
+    for _ in range(6):
         for _ in range(30):
             if e.listen_port:
                 return
             await asyncio.sleep(0.1)
-        e._s().apply_settings({"listen_interfaces": LOOPBACK["listen_interfaces"]})
+        port = random.randint(20000, 40000)
+        e._s().apply_settings({"listen_interfaces": f"127.0.0.1:{port}"})
     raise RuntimeError("the engine never opened a listen port")
 
 

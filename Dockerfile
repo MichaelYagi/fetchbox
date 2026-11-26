@@ -18,6 +18,7 @@ ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy UV_PYTHON_DOWNLOADS=never
 WORKDIR /app
 COPY pyproject.toml uv.lock README.md LICENSE ./
 COPY src/ src/
+COPY plugin-api/ plugin-api/
 COPY --from=web /src/src/fetchbox/static src/fetchbox/static
 RUN uv sync --frozen --no-dev --no-editable && rm -rf /root/.cache
 

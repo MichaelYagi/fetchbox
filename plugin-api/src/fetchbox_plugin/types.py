@@ -1,0 +1,41 @@
+"""What ``ctx`` hands a plugin: plain read-only values, never Fetchbox's database rows, so
+a plugin can't change the library behind Fetchbox's back and internal columns can change
+without breaking it."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from datetime import datetime
+from pathlib import Path
+from typing import Any
+
+
+@dataclass(frozen=True)
+class TitleInfo:
+    id: str
+    kind: str  # "movie", "series", "music" or a plugin's kind
+    name: str
+    year: int | None
+    ids: dict[str, Any] = field(default_factory=dict)  # tmdb, tvdb, imdb, mbid: those it has
+    monitored: bool = True
+    folder: str | None = None  # its own folder in the library folder, once decided
+
+
+@dataclass(frozen=True)
+class FileInfo:
+    id: str
+    title_id: str | None
+    path: Path  # where it is now
+    size: int
+    quality: str  # "WEBDL-1080p", "FLAC"
+    item_ids: tuple[str, ...]  # the wanted items (episode, movie, album) it is
+    imported_at: datetime
+
+
+@dataclass(frozen=True)
+class SidecarInfo:
+    file_id: str
+    suffix: str  # "en.srt"
+    path: Path
+    plugin: str  # the plugin that added it
+    meta: dict[str, Any] = field(default_factory=dict)

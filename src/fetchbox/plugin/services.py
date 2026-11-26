@@ -18,7 +18,7 @@ from fetchbox.core.jobs import JobContext, JobRunner
 from fetchbox.modules.library.models import MediaFile, MediaFileSidecar
 from fetchbox.modules.library.sidecars import sidecar_rel
 from fetchbox.modules.media.models import Title
-from fetchbox.plugin.types import FileInfo, SidecarInfo, TitleInfo
+from fetchbox_plugin.types import FileInfo, SidecarInfo, TitleInfo
 
 if TYPE_CHECKING:
     from fetchbox.modules.automation.search import AutoSearch
