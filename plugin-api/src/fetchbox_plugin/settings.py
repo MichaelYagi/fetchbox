@@ -95,7 +95,8 @@ def Field(
 class Settings(BaseModel):
     """Base for a plugin's settings. Validated on every save; unknown fields are refused."""
 
-    model_config = ConfigDict(extra="forbid", validate_assignment=True)
+    # defaults are checked too: a Secret with a default is a Secret, not a str
+    model_config = ConfigDict(extra="forbid", validate_assignment=True, validate_default=True)
 
     async def test(self, ctx: Context) -> str:
         """Optional: the Test button. Return what worked; raise to show what didn't."""

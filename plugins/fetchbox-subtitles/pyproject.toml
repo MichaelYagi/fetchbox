@@ -1,0 +1,26 @@
+[project]
+name = "fetchbox-subtitles"
+version = "0.1.0"
+description = "Subtitles from OpenSubtitles for movies and episodes, filed beside them."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = ["fetchbox-plugin-api>=1,<2"]
+
+[project.entry-points."fetchbox.plugins"]
+subtitles = "fetchbox_subtitles:SubtitlesPlugin"
+
+[dependency-groups]
+# the test kit runs a real Fetchbox, offline
+dev = ["fetchbox", "pytest>=8", "pytest-asyncio>=0.24"]
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/fetchbox_subtitles"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+pythonpath = ["src"]

@@ -268,3 +268,29 @@ async def test_an_import_runs_the_addon_with_its_settings(
     assert file_id == f["id"]
     path = await host.loaded["hello"].ctx.files.path(file_id)
     assert path.with_suffix(".hello.txt").read_text() == "Hi\n"  # the stored settings
+
+
+async def test_settings_that_dont_validate_say_which(server: Running, settings: Any) -> None:
+    class Needs(Settings):
+        api_key: str = Field(title="Key")
+
+    class Keyed(Addon):
+        id = "keyed"
+        name = "Keyed"
+        settings = Needs
+
+        @on("title.added")
+        async def added(self, ctx: Any, event: PublicEvent) -> None: ...
+
+    class KeyedPlugin(Plugin):
+        id = "keyed"
+        name = "Keyed"
+        contributes: ClassVar[list[type[Any]]] = [Keyed]
+
+    h = _host(server, settings)
+    with pytest.raises(
+        PluginLoadError,
+        match=r"keyed: its settings aren't complete or valid \(api_key: Field required\)",
+    ):
+        await h.load(KeyedPlugin)
+    assert "keyed" not in h.loaded

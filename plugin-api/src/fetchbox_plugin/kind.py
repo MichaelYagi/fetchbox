@@ -164,11 +164,16 @@ class MediaKind:
     grab_level: ClassVar[Literal["item", "group"]] = "item"  # music grabs whole albums
     qualities: ClassVar[Qualities]
     naming: ClassVar[Naming]
-    settings: ClassVar[type[Settings] | None] = None
+    settings_model: ClassVar[type[Settings] | None] = None
     categories: ClassVar[tuple[int, ...]] = ()  # indexer categories searched by default
+
+    settings: Any = None  # the validated settings, set by Fetchbox before any method runs
 
     def __init_subclass__(cls, **kw: Any) -> None:
         super().__init_subclass__(**kw)
+        model = cls.__dict__.get("settings")
+        if isinstance(model, type) and issubclass(model, Settings):
+            cls.settings_model = model  # `settings = MySettings` declares the model
         if "id" in cls.__dict__:
             check_kind(cls)
 
