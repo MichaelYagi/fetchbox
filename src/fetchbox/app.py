@@ -314,6 +314,9 @@ def create_app(
             enabled=not settings.no_plugins, health=state.health,
         )  # fmt: skip
         await app.state.plugins.start()
+        from fetchbox.plugin.titles import PluginTitles
+
+        app.state.plugin_titles = PluginTitles(plugin_host, storage)
         if os.environ.get("FETCHBOX_DB_GUARD"):  # debug: report what blocks the loop
             from fetchbox.core import watchdog
 

@@ -93,6 +93,28 @@
 
 	const series = $derived(title?.kind === 'series');
 	const music = $derived(title?.kind === 'music');
+	// A plugin media kind's title (a comic series): its items, as the plugin listed them
+	const pluginTitle = $derived(!!title && !['movie', 'series', 'music'].includes(title.kind));
+	let pluginItems = $state<S['PluginItemOut'][]>([]);
+	let itemWord = $state('item'); // the kind's word for them: "issue"
+	$effect(() => {
+		if (pluginTitle && title)
+			get<S['MediaKindOut'][]>('/plugins/kinds')
+				.then((ks) => (itemWord = ks.find((k) => k.id === title?.kind)?.levels.at(-1) ?? 'item'))
+				.catch(() => {});
+	});
+	$effect(() => {
+		if (pluginTitle && title) get<S['PluginItemOut'][]>(`/plugins/titles/${title.id}/items`).then((x) => (pluginItems = x)).catch(() => {});
+	});
+	const refreshPlugin = () => act('refresh', async () => {
+		await post(`/plugins/titles/${id}/refresh`);
+		pluginItems = await get<S['PluginItemOut'][]>(`/plugins/titles/${id}/items`);
+	});
+	const monitorItem = (i: S['PluginItemOut'], on: boolean) =>
+		act('monitor', async () => {
+			await patch(`/wanted/${i.id}`, { monitored: on });
+			pluginItems = await get<S['PluginItemOut'][]>(`/plugins/titles/${id}/items`);
+		});
 	const wanted = $derived(series || music ? null : (title?.wanted[0] ?? null));
 	const profileName = $derived(profiles.find((p) => p.id === title?.profile_id)?.name ?? '');
 
@@ -474,6 +496,17 @@
 						<button class="primary" onclick={searchNow} disabled={!!busy} title="Every season with aired episodes still to get">Search all missing</button>
 						<button class="danger" onclick={remove} disabled={!!busy}>Remove</button>
 					</div>
+				{:else if pluginTitle}
+					{#if pluginItems.length}
+						<div class="row small">
+							<span class="badge ok">{pluginItems.filter((i) => i.state === 'acquired').length} downloaded</span>
+							<span class="muted">{pluginItems.filter((i) => i.monitored).length} of {pluginItems.length} wanted</span>
+						</div>
+					{/if}
+					<div class="row">
+						<button onclick={refreshPlugin} disabled={!!busy} title="Ask the plugin again for its items">Refresh</button>
+						<button class="danger" onclick={remove} disabled={!!busy}>Remove</button>
+					</div>
 				{/if}
 			</div>
 		</div>
@@ -536,6 +569,26 @@
 					{/each}
 				{/if}
 			{/each}
+		{/if}
+
+		{#if pluginTitle && pluginItems.length}
+			<h2>{pluginItems.length} {itemWord}{pluginItems.length === 1 ? '' : 's'}</h2>
+			<div class="table-wrap">
+				<table class="episodes">
+					<tbody>
+						{#each pluginItems as i (i.id)}
+							<tr class:unmonitored={!i.monitored}>
+								<td class="num muted">{i.number ?? ''}</td>
+								<td>{i.name ?? `#${i.number ?? ''}`}</td>
+								<td class="muted small date">{i.released ?? ''}</td>
+								<td><Badge state={i.state} /></td>
+								<td><input type="checkbox" title="Wanted" aria-label="Wanted" checked={i.monitored} onchange={(ev) => monitorItem(i, ev.currentTarget.checked)} disabled={!!busy} /></td>
+								<td>{#each itemActions as a (`${a.plugin}/${a.addon}/${a.method}`)}<button class="small" onclick={() => runItem(a, i.id)}>{a.label}</button>{/each}</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			</div>
 		{/if}
 
 		{#if series}

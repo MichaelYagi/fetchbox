@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { ApiError, get, post, type S, type Title } from '#lib/api.ts';
 	import FolderTest from '#lib/FolderTest.svelte';
+	import PluginKindAdd from '#lib/PluginKindAdd.svelte';
 	import { CORE_KINDS, kindOf, type CoreKind } from '#lib/kinds.ts';
 
 	let q = $state('');
@@ -10,6 +11,15 @@
 	let profile = $state('');
 	let searchNow = $state(true);
 	let kind = $state<CoreKind>('movie');
+	// Media kinds running plugins add (a button each, beside Music; none without one)
+	let pluginKinds = $state<S['MediaKindOut'][]>([]);
+	let plugin = $state<string | null>(null);
+	const pluginKind = $derived(pluginKinds.find((k) => k.id === plugin) ?? null);
+	$effect(() => {
+		get<S['MediaKindOut'][]>('/plugins/kinds')
+			.then((k) => (pluginKinds = k))
+			.catch(() => (pluginKinds = []));
+	});
 	let artists = $state<S['ArtistHit'][] | null>(null);
 	let artistMode = $state('future');
 	let albumKinds = $state<string[]>(['album']);
@@ -306,14 +316,15 @@
 </script>
 
 <main>
-	<h1>Add a {noun}</h1>
+	<h1>{pluginKind ? `Add to ${pluginKind.name}` : `Add a ${noun}`}</h1>
 	<div class="tabs" role="tablist">
 		{#each CORE_KINDS as { key: k, tab: label } (k)}
 			<button
 				role="tab"
-				aria-selected={kind === k}
-				class:active={kind === k}
+				aria-selected={!pluginKind && kind === k}
+				class:active={!pluginKind && kind === k}
 				onclick={() => {
+					plugin = null;
 					kind = k;
 					results = null;
 					artists = null;
@@ -323,7 +334,13 @@
 				}}>{label}</button
 			>
 		{/each}
+		{#each pluginKinds as pk (pk.id)}
+			<button role="tab" aria-selected={plugin === pk.id} class:active={plugin === pk.id} onclick={() => (plugin = pk.id)}>{pk.name}</button>
+		{/each}
 	</div>
+	{#if pluginKind}
+		<PluginKindAdd kind={pluginKind} />
+	{:else}
 	<form class="card stack" onsubmit={search}>
 		<div class="row">
 			<input
@@ -589,6 +606,7 @@
 			</div>
 		{/if}
 	</dialog>
+	{/if}
 </main>
 
 <style>

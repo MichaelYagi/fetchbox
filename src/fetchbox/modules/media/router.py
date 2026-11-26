@@ -591,7 +591,7 @@ async def title_history(
 
 class CalendarEntry(BaseModel):
     date: date
-    kind: Literal["episode", "movie", "album"]
+    kind: Literal["episode", "movie", "album", "item"]  # item: a plugin media kind's
     title_id: str
     name: str
     poster_url: str | None
@@ -604,6 +604,9 @@ class CalendarEntry(BaseModel):
     state: str
     monitored: bool
     album: str | None = Field(default=None, description="Music: the album (name is the artist)")
+    media_kind: str | None = Field(
+        default=None, description="An item's media kind (a plugin's, such as comics)"
+    )
 
 
 @router.get("/calendar", response_model=list[CalendarEntry], dependencies=_read, responses=pr(422))

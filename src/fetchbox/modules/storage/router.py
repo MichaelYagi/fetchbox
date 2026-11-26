@@ -49,7 +49,7 @@ class DestinationOut(_Versioned):
     node_id: str
     name: str
     path: str
-    media_kind: Kind
+    media_kind: str = Field(description="movie, series, music, or a plugin's media kind")
     naming_template_id: str | None
     link_mode: LinkMode
     free_space_min: int | None = Field(description="Bytes; null = 5% / 20 GB default")
