@@ -173,6 +173,8 @@ class BuiltinClient(DownloadClientProvider):
         self._flushed: set[ClientRef] = set()  # finished and on disk
         self._resume_after_flush: set[ClientRef] = set()
         self._counters: dict[tuple[ClientRef, str], tuple[int, int]] = {}
+        # a torrent whose files are being moved: removing it waits for the move to finish
+        self._moving: dict[ClientRef, asyncio.Lock] = {}
         self._pending_saves = 0
         self._tasks: list[asyncio.Task[None]] = []
         self.blocked: str | None = None  # why the kill switch has paused everything
@@ -327,6 +329,9 @@ class BuiltinClient(DownloadClientProvider):
                 ref = ref_of(a.handle.info_hashes())
                 new = a.new_name() if callable(a.new_name) else a.new_name  # method in lt 2.0
                 self._renamed.setdefault(ref, {})[int(a.index)] = str(new)
+            elif isinstance(a, lt.listen_failed_alert):
+                # nothing can connect in: downloads only reach peers Fetchbox connects to
+                log.warning("builtin.listen_failed", error=a.message())
             elif isinstance(a, lt.file_rename_failed_alert) and a.handle.is_valid():
                 self._rename_failed[ref_of(a.handle.info_hashes())] = a.message()
             elif (
@@ -534,6 +539,15 @@ class BuiltinClient(DownloadClientProvider):
         h.resume()
 
     async def remove(self, ref: ClientRef, delete_data: bool) -> None:
+        # a move in progress (a rename in the library) finishes first, else it never would
+        async with self._move_lock(ref):
+            self._remove(ref, delete_data)
+        self._moving.pop(ref, None)
+
+    def _move_lock(self, ref: ClientRef) -> asyncio.Lock:
+        return self._moving.setdefault(ref, asyncio.Lock())
+
+    def _remove(self, ref: ClientRef, delete_data: bool) -> None:
         h = self._handles.pop(ref, None)
         self._errors.pop(ref, None)
         self._flushing.discard(ref)
@@ -552,6 +566,10 @@ class BuiltinClient(DownloadClientProvider):
     async def relocate(self, ref: ClientRef, moves: dict[str, str]) -> None:
         """Have the engine move files into the library (same drive: a rename) and keep
         seeding them there; the new paths are saved in the resume data."""
+        async with self._move_lock(ref):
+            await self._relocate(ref, moves)
+
+    async def _relocate(self, ref: ClientRef, moves: dict[str, str]) -> None:
         h = self._handle(ref)
         ti = h.torrent_file()
         if ti is None:

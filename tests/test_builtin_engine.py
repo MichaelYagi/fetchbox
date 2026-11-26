@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 
 import pytest
@@ -238,3 +239,25 @@ async def test_files_moved_into_the_library_seed_from_there_across_a_restart(
             await leech.stop()
     finally:
         await e2.stop()
+
+
+async def test_removing_a_torrent_waits_for_a_move_in_progress(tmp_path: Path) -> None:
+    """A rename in the library moves a seeding file through the engine; if the torrent is
+    stopped at that moment (seeding is off, it was just filed) the move still finishes.
+    It used to fail with "the engine didn't move the files in time"."""
+    made = make_torrent(tmp_path / "seedroot", "Movie.2021", {"Movie.2021.mkv": 200_000})
+    s = await seeder(made)
+    try:
+        dst = tmp_path / "lib" / "Movie (2021)" / "Movie (2021).mkv"
+        move = asyncio.create_task(
+            s.relocate(made.info_hash, {"Movie.2021/Movie.2021.mkv": str(dst)})
+        )
+        await asyncio.sleep(0)  # the move has started
+        await s.remove(made.info_hash, False)
+        await move
+        assert digest(dst.read_bytes()) == digest(made.payload["Movie.2021.mkv"])
+        assert await s.status([made.info_hash]) == []
+        with pytest.raises(DownloadClientError):  # gone, like any removed torrent
+            await s.relocate(made.info_hash, {"Movie.2021/Movie.2021.mkv": str(dst)})
+    finally:
+        await s.stop()
