@@ -11744,16 +11744,6 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description Request Entity Too Large */
-            413: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Problem"];
-                    "application/problem+json": unknown;
-                };
-            };
             /** @description Validation Error */
             422: {
                 headers: {

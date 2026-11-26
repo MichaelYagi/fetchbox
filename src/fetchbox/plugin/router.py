@@ -194,7 +194,7 @@ async def run_action(
     response_model=PluginOut,
     status_code=201,
     dependencies=_write,
-    responses=pr(409, 413),
+    responses=pr(409),  # (413 for a too large file: its name differs by Python version)
 )
 async def install(request: Request, file: UploadFile = File(...)) -> PluginOut:  # noqa: B008
     """Install a plugin from its wheel (.whl). It's approved and turned on; plugins run
