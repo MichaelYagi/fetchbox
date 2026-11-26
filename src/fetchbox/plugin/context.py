@@ -12,7 +12,6 @@ own context, so whatever it does is attributed to it in logs.
 from __future__ import annotations
 
 import asyncio
-import re
 import time
 from collections import OrderedDict
 from collections.abc import Awaitable, Callable
@@ -33,10 +32,10 @@ from fetchbox.plugin.services import (
     Services,
 )
 from fetchbox_plugin.context import Context as ApiContext
+from fetchbox_plugin.manifest import PLUGIN_ID
 
 T = TypeVar("T")
 
-PLUGIN_ID = re.compile(r"^[a-z][a-z0-9_-]{1,39}$")
 
 TIMEOUT = httpx.Timeout(20.0, connect=10.0)
 RETRIES = 2  # a GET that fails to connect, times out, or answers 429/502/503/504

@@ -12,8 +12,14 @@ so ``fetchbox plugin check`` can read it without running the plugin.
 
 from __future__ import annotations
 
+import re
 from enum import StrEnum
 from typing import Any, ClassVar
+
+# A plugin id is permanent (its settings, data and URLs hang off it): 2 to 40 lowercase
+# letters, digits, - or _, starting with a letter.
+PLUGIN_ID = re.compile(r"^[a-z][a-z0-9_-]{1,39}$")
+SUPPORTED_APIS = frozenset({1})  # the plugin API versions this package describes
 
 
 class Permission(StrEnum):
