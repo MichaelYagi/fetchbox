@@ -86,8 +86,11 @@ async def test_delete_all_data_keeps_the_settings(
         return any(m.startswith("All data deleted") for m in await _activity(c))
 
     await until(logged, within=10)
-    messages = await _activity(c)
-    assert len(messages) == 1, messages
+    messages = await _activity(c)  # newest first
+    # nothing from before the reset is left; what happened since (a health check that
+    # finished just after it) is new, and may be there
+    assert messages[-1].startswith("All data deleted"), messages
+    assert sum(m.startswith("All data deleted") for m in messages) == 1, messages
 
     # and Fetchbox carries on: the same movie can be added again
     again = await _movie(c)
