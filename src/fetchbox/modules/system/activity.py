@@ -29,6 +29,7 @@ SKIP = (
     "search.started",
     "download.started",
     "import.started",
+    "file.renamed",  # per file; library.renamed is the one line for a rename
 )
 BATCH = 200
 DEFAULT_RETENTION = timedelta(days=90)

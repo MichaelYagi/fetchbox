@@ -709,6 +709,7 @@ class LibraryService:
                 await s.delete(await s.merge(of))
             await s.flush()
             first: MediaFile | None = None
+            album_files: list[str] = []
             for t, rel, dst, mode, af in placed:
                 st = await asyncio.to_thread(dst.stat)
                 row = MediaFile(
@@ -727,6 +728,7 @@ class LibraryService:
                 await s.flush()
                 s.add(MediaFileItem(media_file_id=row.id, wanted_item_id=w.id))
                 first = first or row
+                album_files.append(row.id)
             await s.execute(
                 update(WantedItem)
                 .where(WantedItem.id == w.id)
@@ -760,7 +762,9 @@ class LibraryService:
             )
             await s.commit()
         assert first is not None
-        await self._announce(title, dest, first, placed[0][1], quality, mode, replaced)
+        await self._announce(
+            title, dest, first, placed[0][1], quality, mode, replaced, file_ids=album_files
+        )
         return {
             "album": album.name,
             "tracks": len(placed),
@@ -963,6 +967,8 @@ class LibraryService:
         quality: str,
         mode: str,
         replaced: list[str],
+        *,
+        file_ids: list[str] | None = None,
     ) -> None:
         subject = Subject(type="media_file", id=mf.id)
         await self.bus.emit(
@@ -970,6 +976,9 @@ class LibraryService:
             subject=subject,
             name=title.name,
             year=title.year,
+            title_id=title.id,
+            kind=title.kind,
+            file_ids=file_ids or [mf.id],  # an album: every track placed
             path=rel,
             destination=dest.name,
             destination_id=dest.id,
@@ -979,7 +988,13 @@ class LibraryService:
         )
         if replaced:
             await self.bus.emit(
-                "file.upgraded", subject=subject, name=title.name, path=rel, replaced=replaced
+                "file.upgraded",
+                subject=subject,
+                name=title.name,
+                path=rel,
+                replaced=replaced,
+                title_id=title.id,
+                kind=title.kind,
             )
 
     async def _import_episodes(
@@ -1474,9 +1489,11 @@ class LibraryService:
             row = await s.get(MediaFile, file_id)
             if row is not None:
                 await s.delete(row)
+            title_id: str | None = None
             for wid in items:
                 w = await s.get(WantedItem, wid)
                 if w is not None:
+                    title_id = title_id or w.title_id
                     s.add(
                         HistoryEvent(
                             wanted_item_id=wid,
@@ -1495,6 +1512,7 @@ class LibraryService:
             subject=Subject(type="media_file", id=file_id),
             actor=actor,
             path=f.relative_path,
+            title_id=title_id,
             from_disk=delete_from_disk,
         )
 
@@ -1710,6 +1728,16 @@ class LibraryService:
                     mf.relative_path = p["new"]
                     await s.commit()
             renamed.append(p)
+            await self.bus.emit(  # one per file (Activity skips it: library.renamed sums up)
+                "file.renamed",
+                subject=Subject(type="media_file", id=p["file_id"]),
+                actor=actor,
+                title_id=p.get("title_id"),
+                kind=kind,
+                old=p["current"],
+                new=p["new"],
+                destination_id=p.get("destination_id"),
+            )
         # the titles now live where the naming puts them: their folder moves along
         moved = {p["title_id"]: p["new"].split("/")[0] for p in renamed if "/" in p["new"]}
         if moved:
