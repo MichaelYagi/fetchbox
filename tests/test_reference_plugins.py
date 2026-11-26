@@ -17,7 +17,7 @@ PLUGINS = sorted(
 
 
 def test_there_are_reference_plugins() -> None:
-    assert {p.name for p in PLUGINS} >= {"fetchbox-subtitles"}
+    assert {p.name for p in PLUGINS} >= {"fetchbox-subtitles", "fetchbox-comics"}
 
 
 @pytest.mark.parametrize("plugin", PLUGINS, ids=lambda p: p.name)

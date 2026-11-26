@@ -146,9 +146,11 @@ Every method you write receives `ctx`, the only way a plugin talks to Fetchbox. 
 | `folder` | Your plugin's own folder in Fetchbox's data folder, for downloaded models, indexes, temp files |
 | `log` | A logger tagged with your plugin's id: `ctx.log.info("synced", count=3)` |
 | `files` | `path(file_id)`; `add_sidecar`, `sidecars(file_id, suffix=)`, `remove_sidecar` |
-| `library` | `titles(kind=)`, `title(id)`, `files(title_id)`, `file(id)`: plain read-only values. `wanted(item_id, monitored)` and `search(item_id)` act as the web page does |
+| `library` | `titles(kind=)`, `title(id)`, `items(title_id)`, `item(id)`, `files(title_id)`, `file(id)`: plain read-only values (`TitleInfo`, `ItemInfo` with an episode's season and number, `FileInfo`). `wanted(item_id, monitored)` and `search(item_id)` act as the web page does |
 | `jobs` | Your own background jobs: `@ctx.jobs.job("sync")` and `await ctx.jobs.enqueue("sync", payload)` |
 | `notify` | `await ctx.notify(title, body, level="info")`: a message to the notification targets that chose plugin messages |
+
+When something isn't there (any more), `ctx` raises `NotFound` (a `LookupError`); when a plugin may not do something, such as changing another plugin's sidecar, `Refused` (a `PermissionError`). Both come from `fetchbox_plugin`.
 
 ## Settings
 
@@ -179,7 +181,7 @@ class SubtitleSettings(Settings):
 | `Folder` | Fetchbox's library folder picker |
 | `Url` | An address field with a reachability test |
 
-Unknown fields are refused, and settings are validated on every change.
+Unknown fields are refused, and settings (their defaults too) are validated on every change. Add-ons and media kinds both declare theirs with `settings = MySettings`; when a plugin runs, `self.settings` holds the validated values. A plugin whose settings aren't complete isn't loaded, and says which setting is missing.
 
 ## Media kinds
 
@@ -246,8 +248,10 @@ async def test_any_event(fetchbox_app):
 | Helper | Gives |
 |---|---|
 | `fetchbox_app(plugins=, settings=)` | A running Fetchbox with your plugins; `settings` per plugin id (or per contribution id) |
-| `app.add_file(name, year, kind=, path=, quality=, imported=True)` | A title with a file in its library folder, as if downloaded; then `file.imported`, its handlers run |
+| `app.add_file(name, year, kind=, season=, episode=, tmdb_id=, imdb_id=, path=, quality=, imported=True)` | A title with a file in its library folder, as if downloaded (for a series, `season` and `episode` make it that episode's); then `file.imported`, its handlers run |
 | `app.emit(type, title_id=, kind=, file_ids=, **data)` | Any event, its handlers run and waited for. A handler that raised fails the test with its error; `check=False` gives each outcome instead |
+| `app.run(plugin_id, method, item=None)` | Runs an `@every` or `@action` method now, as a job, and waits: `.status`, `.result`, `.error` |
+| `app.fake_http(plugin_id, handler)` | Answers your plugin's `ctx.http` with `handler(request) -> httpx.Response` instead of the network; gives the list of requests it made |
 | `app.client` | Fetchbox's API (`/api/v1`), signed in |
 | `app.ctx(plugin_id)` | Your plugin's `ctx`, to look at what it stored |
 | `app.library_file(path, kind=)` | Where a file is in a library folder |
@@ -267,6 +271,13 @@ def test_parse(name, want):
 ```
 
 An empty field isn't checked; `-` on its own means `parse` should give `None`. A line starting with `#` is a comment. The table can also be a file.
+
+## Reference plugins
+
+Two complete plugins in this repository, built with the API alone and tested with the kit, to read and copy from:
+
+- [`plugins/fetchbox-subtitles`](../plugins/fetchbox-subtitles): an add-on. Subtitles from OpenSubtitles for imported movies and episodes, as sidecars; a daily retry, an action, settings with a Test button, and a fake OpenSubtitles in its tests.
+- [`plugins/fetchbox-comics`](../plugins/fetchbox-comics): a media kind. Comic series and issues from ComicVine, a release name parser with a table of real names, and the naming.
 
 ## Commands
 

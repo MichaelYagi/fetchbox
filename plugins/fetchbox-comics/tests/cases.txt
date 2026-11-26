@@ -1,0 +1,14 @@
+# release name                                              | title            | issues      | year | quality
+Saga 061 (2023) (Digital) (Zone-Empire).cbz                 | Saga             | 61          | 2023 | CBZ
+The Walking Dead #193 (2019) (digital-Empire).cbr           | The Walking Dead | 193         | 2019 | CBR
+Saga v01 001-006 (2012).cbz                                 | Saga             | 1,2,3,4,5,6 | 2012 | CBZ
+Paper Girls 030 (2019).cb7                                  | Paper Girls      | 30          | 2019 | CB7
+Monstress 050.5 (2024) (Digital).cbz                        | Monstress        | 50.5        | 2024 | CBZ
+Batman 001 (of 12) (2016).cbz                               | Batman           | 1           | 2016 | CBZ
+Saga 054 (2018)                                             | Saga             | 54          | 2018 |
+Saga_062_(2023)_(Digital).cbz                               | Saga             | 62          | 2023 | CBZ
+# collected editions and annuals aren't issues
+Saga Vol. 1 TPB (2012).cbz                                  | -
+Saga Compendium Omnibus (2019).cbz                          | -
+Batman Annual 01 (2016).cbz                                 | -
+Dune.2021.1080p.WEB-DL.mkv                                  | -

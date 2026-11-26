@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import Any
 
 import structlog
+from pydantic import ValidationError
 
 from fetchbox.core import kinds
 from fetchbox.core.db import Database
@@ -31,7 +32,7 @@ from fetchbox.core.schedules import ScheduleDef, Scheduler
 from fetchbox.plugin.context import PluginContext, check_id
 from fetchbox.plugin.events import INTERNAL_TYPES, to_public
 from fetchbox.plugin.services import Services
-from fetchbox_plugin import Addon, MediaKind, Plugin, PublicEvent
+from fetchbox_plugin import Addon, MediaKind, Plugin, PublicEvent, Settings
 from fetchbox_plugin.manifest import SUPPORTED_APIS
 
 log = structlog.get_logger(__name__)
@@ -161,13 +162,14 @@ class PluginHost:
             )
         except kinds.KindError as exc:
             raise PluginLoadError(f"{pid}: {exc}") from None
-        got.kinds[part.id] = part()
+        kind = part()
+        kind.settings = self._settings(pid, part.id, part.settings_model)
+        got.kinds[part.id] = kind
 
     def _add_addon(self, got: Loaded, part: type[Addon]) -> None:
         pid = got.ctx.plugin_id
         addon = part()
-        if part.settings_model is not None:
-            addon.settings = part.settings_model.model_validate(self.settings_for(pid, part.id))
+        addon.settings = self._settings(pid, part.id, part.settings_model)
         got.addons[part.id] = addon
         found = part.handlers()
         for name, spec in found["on"]:
@@ -189,6 +191,19 @@ class PluginHost:
         for name, _spec in found["action"]:
             job = self._job(got, f"plugin.{pid}.{part.id}.{name}", addon, name, "action")
             got.actions[(part.id, name)] = job
+
+    def _settings(self, pid: str, part: str, model: type[Settings] | None) -> Settings | None:
+        if model is None:
+            return None
+        try:
+            return model.model_validate(self.settings_for(pid, part))
+        except ValidationError as exc:
+            wrong = "; ".join(
+                f"{'.'.join(map(str, e['loc'])) or part}: {e['msg']}" for e in exc.errors()
+            )
+            raise PluginLoadError(
+                f"{pid}: its settings aren't complete or valid ({wrong})"
+            ) from None
 
     def _job(self, got: Loaded, job_type: str, addon: Addon, method: str, how: str) -> str:
         if len(job_type) > MAX_JOB_TYPE:
