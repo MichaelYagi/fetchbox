@@ -64,7 +64,8 @@ class Title(IdMixin, VersionMixin, Base):
     refreshed_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
 
     __table_args__ = (
-        CheckConstraint("kind IN ('movie', 'series', 'music')", name="kind"),
+        # Any kind name: which kinds exist is fetchbox.core.kinds (a plugin may add one)
+        CheckConstraint("length(kind) BETWEEN 2 AND 10 AND kind = lower(kind)", name="kind"),
         UniqueConstraint("kind", "tmdb_id", name="uq_title_kind_tmdb_id"),
         Index("ix_title_sort_name", "sort_name"),
     )

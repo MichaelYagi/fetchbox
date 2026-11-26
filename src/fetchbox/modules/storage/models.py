@@ -49,7 +49,10 @@ class Destination(IdMixin, VersionMixin, Base):
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
 
     __table_args__ = (
-        CheckConstraint("media_kind IN ('movie', 'series', 'music')", name="media_kind"),
+        CheckConstraint(  # any kind name: which kinds exist is fetchbox.core.kinds
+            "length(media_kind) BETWEEN 2 AND 10 AND media_kind = lower(media_kind)",
+            name="media_kind",
+        ),
         CheckConstraint(
             "link_mode IN ('hardlink_or_copy', 'hardlink_only', 'copy', 'move', 'symlink')",
             name="link_mode",
