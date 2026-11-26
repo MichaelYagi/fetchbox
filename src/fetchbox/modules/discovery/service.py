@@ -27,7 +27,7 @@ DETAIL_TTL = 3600.0
 log = structlog.get_logger(__name__)
 SEARCH_TTL = 300.0
 CACHE_SIZE = 512
-FIX_URL = "/settings/general#tmdb"
+FIX_URL = "/settings/sources#tmdb"
 
 
 class _TTLCache:

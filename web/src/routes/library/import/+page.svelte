@@ -165,7 +165,7 @@
 </script>
 
 <main>
-	<p><a href="/settings#library">← Library settings</a></p>
+	<p><a href="/settings/library">← Library settings</a></p>
 	<h1>Import existing {noun}</h1>
 	{#if !destId}
 		<p class="notice error">No library folder chosen.</p>

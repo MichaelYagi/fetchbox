@@ -12,7 +12,43 @@
 	import NotificationsCard from '#lib/NotificationsCard.svelte';
 	import Path from '#lib/Path.svelte';
 	import { session } from '#lib/session.svelte.ts';
+	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 
+	// Tabs, one per group of settings, each at its own address (/settings/library). Every
+	// tab stays loaded, only hidden, so an unsaved edit survives switching tabs.
+	const TABS = [
+		['general', 'General'],
+		['sources', 'Sources'],
+		['library', 'Library'],
+		['connections', 'Connections'],
+		['network', 'Network'],
+		['data', 'Data']
+	] as const;
+	type Tab = (typeof TABS)[number][0];
+	const SECTION_TAB: Record<string, Tab> = {
+		computer: 'general',
+		health: 'general',
+		tmdb: 'sources',
+		indexers: 'sources',
+		'download-clients': 'sources',
+		library: 'library',
+		'media-servers': 'connections',
+		notifications: 'connections',
+		network: 'network',
+		backups: 'data',
+		'move-settings': 'data',
+		'delete-all-data': 'data'
+	};
+	const isTab = (t: string | undefined): t is Tab => TABS.some(([k]) => k === t);
+	const tab = $derived<Tab>(isTab(page.params.tab) ? page.params.tab : 'general');
+	// Older links (/settings#tmdb) and unknown tabs: to the tab that has it.
+	$effect(() => {
+		const t = page.params.tab;
+		const h = page.url.hash.slice(1);
+		if (!t && h && SECTION_TAB[h]) goto(`/settings/${SECTION_TAB[h]}#${h}`, { replaceState: true });
+		else if (t && !isTab(t)) goto('/settings', { replaceState: true });
+	});
 	type Cfg = {
 		tmdb: { api_key: string | null; language: string };
 		updates?: { check: boolean };
@@ -298,6 +334,15 @@
 		);
 	}
 
+	// A dot on a tab with something to fix (from Health: each problem says where).
+	const tabOf = (url: string | null | undefined): Tab | null => {
+		const m = url?.match(/^\/settings\/([a-z-]+)/);
+		return m && isTab(m[1]) ? m[1] : null;
+	};
+	const attention = $derived(
+		new Set((health?.checks ?? []).filter((c) => c.status !== 'ok').map((c) => tabOf(c.fix_url) ?? 'general'))
+	);
+
 	const tone = (s: string) => (s === 'ok' || s === 'online' ? 'ok' : s === 'warning' || s === 'low_space' || s === 'degraded' ? 'warn' : 'error');
 	const defn = $derived(definitions.find((d) => d.slug === newIndexer.definition));
 	const needsKey = $derived(defn?.settings.some((s) => s.name === 'api_key') ?? false);
@@ -308,6 +353,16 @@
 	{#if error}<p class="notice error">{error}</p>{/if}
 	{#if saved}<p class="notice">{saved}</p>{/if}
 
+	<div class="layout">
+	<nav class="tabs" aria-label="Settings">
+		{#each TABS as [k, label] (k)}
+			<a href="/settings/{k}" class:active={tab === k} aria-current={tab === k ? 'page' : undefined}
+				>{label}{#if attention.has(k)}<span class="dot" title="Something here needs attention"></span>{/if}</a
+			>
+		{/each}
+	</nav>
+	<div class="panes">
+	<div hidden={tab !== 'general'}>
 	{#if session.host}
 		<section id="computer">
 			<h2>This computer</h2>
@@ -381,6 +436,7 @@
 								<td class="w"><span class="badge {tone(c.status)}">{c.status}</span></td>
 								<td class="w"><strong>{c.name}</strong></td>
 								<td class="small">{c.message}</td>
+								<td class="w">{#if c.status !== 'ok' && c.fix_url}<a href={c.fix_url}>Fix</a>{/if}</td>
 							</tr>
 						{/each}
 					</tbody>
@@ -388,7 +444,9 @@
 			</div>
 		{/if}
 	</section>
+	</div>
 
+	<div hidden={tab !== 'sources'}>
 	<section id="tmdb">
 		<h2>Movie and show information (TMDB)</h2>
 		<form class="card stack" onsubmit={saveTmdb}>
@@ -423,7 +481,7 @@
 		</form>
 	</section>
 
-	<section>
+	<section id="indexers">
 		<h2>Indexers</h2>
 		<div class="card table-wrap">
 			{#if indexers.length === 0}
@@ -513,7 +571,7 @@
 		</form>
 	</section>
 
-	<section>
+	<section id="download-clients">
 		<h2>Download clients</h2>
 		<div class="card table-wrap">
 			<table>
@@ -680,7 +738,9 @@
 			</div>
 		</form>
 	</section>
+	</div>
 
+	<div hidden={tab !== 'library'}>
 	<section id="library">
 		<h2>Library</h2>
 		<p class="muted small">
@@ -700,7 +760,9 @@
 			</div>
 		{/if}
 	</section>
+	</div>
 
+	<div hidden={tab !== 'connections'}>
 	<section id="media-servers">
 		<h2>Media servers</h2>
 		<MediaServersCard {destinations} />
@@ -710,12 +772,16 @@
 		<h2>Notifications</h2>
 		<NotificationsCard />
 	</section>
+	</div>
 
+	<div hidden={tab !== 'network'}>
 	<section id="network">
 		<h2>Network</h2>
 		<NetworkCard />
 	</section>
+	</div>
 
+	<div hidden={tab !== 'data'}>
 	<section id="backups">
 		<h2>Backups</h2>
 		{#key resets}<BackupsCard />{/key}
@@ -730,9 +796,68 @@
 		<h2 class="danger-title">Delete all data</h2>
 		<ResetDataCard ondone={() => (resets++, load())} />
 	</section>
+	</div>
+	</div>
+	</div>
 </main>
 
 <style>
+	.layout {
+		display: grid;
+		grid-template-columns: 11rem minmax(0, 1fr);
+		gap: 1.5rem;
+		align-items: start;
+	}
+	.tabs {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		position: sticky;
+		top: 4.5rem;
+	}
+	.tabs a {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 0.5rem 0.75rem;
+		border-radius: var(--radius);
+		color: var(--muted);
+		text-decoration: none;
+		white-space: nowrap;
+	}
+	.tabs a:hover {
+		color: var(--text);
+		background: var(--surface-2);
+	}
+	.tabs a.active {
+		color: var(--text);
+		background: var(--surface-2);
+		font-weight: 600;
+	}
+	.panes > div > section:first-child > :global(h2) {
+		margin-top: 0.45rem;
+	}
+	.dot {
+		width: 0.45rem;
+		height: 0.45rem;
+		border-radius: 50%;
+		background: var(--warn);
+		flex: none;
+	}
+	@media (max-width: 760px) {
+		.layout {
+			grid-template-columns: minmax(0, 1fr);
+			gap: 1rem;
+		}
+		.tabs {
+			flex-direction: row;
+			overflow-x: auto;
+			position: static;
+			margin: 0 -1rem;
+			padding: 0 1rem 0.25rem;
+			scrollbar-width: none;
+		}
+	}
 	.inline-check {
 		display: flex;
 		gap: 0.4rem;

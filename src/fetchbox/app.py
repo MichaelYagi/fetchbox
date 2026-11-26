@@ -181,7 +181,7 @@ def create_app(
         app.state.config = config
         discovery = DiscoveryService(config)
         app.state.discovery = discovery
-        state.health.register("metadata", discovery.health, fix_url="/settings/general#tmdb")
+        state.health.register("metadata", discovery.health, fix_url="/settings/sources#tmdb")
         media = MediaService(db, bus, discovery, profiles)
         media.register_jobs(jobs, state.scheduler)
         app.state.media = media
@@ -191,7 +191,7 @@ def create_app(
         sources = SourcesService(db, bus, box, provider_registry)
         await sources.sync_definitions(seed=settings.seed_indexers)
         app.state.sources = sources
-        state.health.register("indexers", sources.health, fix_url="/settings/indexers")
+        state.health.register("indexers", sources.health, fix_url="/settings/sources#indexers")
         grabs = GrabsService(db, bus)
         app.state.grabs = grabs
         releases = ReleasesService(db, bus, grabs, media, profiles, config, sources)
@@ -283,9 +283,9 @@ def create_app(
         register_core_checks(state)
         # Replaces the core "bindings import" check with the running engine's state.
         state.health.register(
-            "torrent_engine", downloads.health, fix_url="/settings/download-clients"
+            "torrent_engine", downloads.health, fix_url="/settings/sources#download-clients"
         )
-        state.health.register("storage", storage.health, fix_url="/settings/storage")
+        state.health.register("storage", storage.health, fix_url="/settings/library")
         app.state.fb = state
         system_jobs.register(state)
         for hook in job_handler_hooks:

@@ -291,7 +291,7 @@
 				— get a free key at
 				<a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noreferrer"
 					>themoviedb.org/settings/api</a
-				>, then <a href="/settings#tmdb">paste it in Settings</a>.
+				>, then <a href="/settings/sources#tmdb">paste it in Settings</a>.
 			{/if}
 		</div>
 	{/if}
