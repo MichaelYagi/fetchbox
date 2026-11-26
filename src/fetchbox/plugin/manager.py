@@ -17,6 +17,7 @@ import shutil
 import sys
 import zipfile
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -182,7 +183,10 @@ class PluginManager:
             f"{self.describe(pid)['name']}: {r.error}"
             for pid, r in self.records.items()
             if r.approved and r.enabled and pid not in self.host.loaded and r.error
-        ]
+        ] + [
+            f"{got.plugin.name} is paused for an hour after failing repeatedly: {got.last_error}"
+            for got in self.host.loaded.values() if got.paused()
+        ]  # fmt: skip
         if not self.enabled:
             return HealthStatus(status="warning", message="Plugins are off (--no-plugins)")
         if failing:
@@ -516,6 +520,12 @@ class PluginManager:
             "approved": bool(rec and rec.approved),
             "enabled": bool(rec and rec.enabled),
             "running": loaded is not None,
+            "paused_until": (
+                datetime.fromtimestamp(loaded.paused_until, UTC)
+                if loaded is not None and loaded.paused() and loaded.paused_until
+                else None
+            ),
+            "last_error": loaded.last_error if loaded is not None else None,
             "error": (rec.error if rec else None) or (f.error if f else "not installed any more"),
             "settings": parts,
             "actions": actions,

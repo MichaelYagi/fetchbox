@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -38,6 +39,9 @@ from fetchbox_plugin.manifest import SUPPORTED_APIS
 log = structlog.get_logger(__name__)
 
 JOB_TIME_LIMIT = 600.0  # seconds: a plugin's job that runs longer is stopped (and retried)
+PAUSE_AFTER = 5  # failed jobs within PAUSE_WINDOW pause a plugin for PAUSE_FOR
+PAUSE_WINDOW = 3600.0
+PAUSE_FOR = 3600
 MAX_JOB_TYPE = 100  # the job table's type column
 MAX_SCHEDULE_NAME = 64
 
@@ -64,6 +68,14 @@ class Loaded:
     schedules: list[str] = field(default_factory=list)
     actions: dict[tuple[str, str], str] = field(default_factory=dict)  # (addon, method) -> job
     bus_handler: Any = None
+    failures: list[float] = field(default_factory=list)  # when its recent jobs failed
+    paused_until: float | None = None  # failing too often: its jobs wait until then
+    last_error: str | None = None
+
+    def paused(self) -> bool:
+        if self.paused_until is not None and time.time() >= self.paused_until:
+            self.paused_until, self.failures = None, []
+        return self.paused_until is not None
 
 
 class PluginHost:
@@ -212,27 +224,47 @@ class PluginHost:
         ctx = got.ctx
 
         async def run(job: JobContext) -> dict[str, Any]:
-            async with asyncio.timeout(JOB_TIME_LIMIT):
-                if how == "event":
-                    try:
-                        event = PublicEvent.model_validate(job.payload["event"])
-                    except (KeyError, ValueError) as exc:
-                        raise PermanentJobError(f"not an event: {exc}") from None
-                    out = await fn(ctx, event)
-                elif how == "action":
-                    out = await fn(ctx, job.payload.get("item"))
-                else:
-                    out = await fn(ctx)
+            if got.paused():
+                return {"skipped": f"{got.plugin.name} is paused after failing repeatedly"}
+            try:
+                async with asyncio.timeout(JOB_TIME_LIMIT):
+                    if how == "event":
+                        try:
+                            event = PublicEvent.model_validate(job.payload["event"])
+                        except (KeyError, ValueError) as exc:
+                            raise PermanentJobError(f"not an event: {exc}") from None
+                        out = await fn(ctx, event)
+                    elif how == "action":
+                        out = await fn(ctx, job.payload.get("item"))
+                    else:
+                        out = await fn(ctx)
+            except (asyncio.CancelledError, PermanentJobError):
+                raise
+            except Exception as exc:
+                self._failed(got, f"{type(exc).__name__}: {exc}")
+                raise
+            got.failures.clear()
             return out if isinstance(out, dict) else {}
 
         self.services.jobs.register(job_type, run, queue="io")
         got.job_types.append(job_type)
         return job_type
 
+    def _failed(self, got: Loaded, error: str) -> None:
+        """Failing PAUSE_AFTER times within an hour pauses a plugin's jobs for an hour (one
+        that keeps failing would otherwise fill the job list and the log)."""
+        now = time.time()
+        got.last_error = error
+        got.failures = [t for t in got.failures if now - t < PAUSE_WINDOW] + [now]
+        if len(got.failures) >= PAUSE_AFTER and got.paused_until is None:
+            got.paused_until = now + PAUSE_FOR
+            log.warning("plugin.paused", plugin=got.ctx.plugin_id, error=error,
+                        minutes=PAUSE_FOR // 60)  # fmt: skip
+
     def _on_events(self, got: Loaded) -> Any:
         async def handle(ev: Event) -> None:
             pub = to_public(ev)
-            if pub is not None:
+            if pub is not None and not got.paused():
                 await self._dispatch_to(got, pub)
 
         return handle
@@ -242,7 +274,8 @@ class PluginHost:
         ids of the jobs queued (the test kit's emit)."""
         ids: list[str] = []
         for got in list(self.loaded.values()):
-            ids += await self._dispatch_to(got, event)
+            if not got.paused():
+                ids += await self._dispatch_to(got, event)
         return ids
 
     async def _dispatch_to(self, got: Loaded, pub: PublicEvent) -> list[str]:

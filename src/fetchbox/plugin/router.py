@@ -3,7 +3,7 @@ installing and removing."""
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, File, Query, Request, UploadFile
@@ -68,6 +68,10 @@ class PluginOut(BaseModel):
     approved: bool
     enabled: bool
     running: bool
+    paused_until: datetime | None = Field(
+        None, description="Failing repeatedly: its jobs wait until then"
+    )
+    last_error: str | None = Field(None, description="Its last failed job's error")
     error: str | None
     settings: list[SettingsOut]
     actions: list[ActionOut]
