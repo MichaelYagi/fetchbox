@@ -242,3 +242,31 @@ async def test_what_isnt_installed(settings: Settings, data: Any, name: str, why
         r = await _install(c, data() if callable(data) else data, name)
         assert r.status_code == 409 and why in r.json()["detail"], r.text
         assert (await c.get("/plugins")).json() == []
+
+
+async def test_a_real_plugin_wheel(settings: Settings, tmp_path: Path) -> None:
+    """The Subtitles reference plugin as `uv build` makes it, installed from Settings: it
+    waits for its API key, then runs."""
+    import shutil
+    import subprocess
+
+    uv = shutil.which("uv")
+    if uv is None:
+        pytest.skip("uv isn't installed")
+    project = Path(__file__).parents[1] / "plugins" / "fetchbox-subtitles"
+    import asyncio
+
+    cmd = [uv, "build", "--wheel", "-q", "-o", str(tmp_path), str(project)]
+    await asyncio.to_thread(subprocess.run, cmd, check=True)
+    [whl] = tmp_path.glob("*.whl")
+    async with running(settings) as server, server.client() as c:
+        r = await _install(c, whl.read_bytes(), whl.name)
+        assert r.status_code == 201, r.text
+        p = r.json()
+        assert (p["id"], p["version"], p["running"]) == ("subtitles", "0.1.0", False)
+        assert p["settings"][0]["missing"] == ["api_key"]
+        r = await c.put("/plugins/subtitles/settings/subtitles", json={"values": {"api_key": "k"}})
+        assert r.json()["running"] is True
+        await c.delete("/plugins/subtitles")
+    for m in [m for m in sys.modules if m.startswith("fetchbox_subtitles")]:
+        del sys.modules[m]
