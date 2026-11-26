@@ -94,6 +94,17 @@
 	const step = (by: number) => {
 		if (viewing !== null && shots.length) viewing = (viewing + by + shots.length) % shots.length;
 	};
+	// A search result is one big button: a click, Enter or Space opens the Add dialog
+	// (not while an add is running). One already in the library links to its page instead.
+	const pickIf = (ok: boolean, open: () => void) => {
+		if (ok) open();
+	};
+	const pickKey = (e: KeyboardEvent, ok: boolean, open: () => void) => {
+		if (e.key === 'Enter' || e.key === ' ') {
+			e.preventDefault();
+			pickIf(ok, open);
+		}
+	};
 	const viewerKey = (e: KeyboardEvent) => {
 		if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
 			e.preventDefault();
@@ -332,22 +343,23 @@
 		{:else}
 			<div class="results">
 				{#each artists as a (a.mbid)}
-					<div class="card result">
+					{@const open = () => ask({ kind: 'music', a })}
+					<svelte:element
+						this={a.in_library ? 'a' : 'div'}
+						href={a.in_library ? `/title/${a.in_library}` : undefined}
+						role={a.in_library ? undefined : 'button'}
+						tabindex="0"
+						class="card result pick"
+						class:busy={!a.in_library && (addingArtist !== null || !profile)}
+						aria-label={a.in_library ? `${a.name}: in your library` : `Add ${a.name}`}
+						onclick={a.in_library ? undefined : () => pickIf(addingArtist === null && !!profile, open)}
+						onkeydown={a.in_library ? undefined : (e: KeyboardEvent) => pickKey(e, addingArtist === null && !!profile, open)}
+					>
 						<div class="avatar" aria-hidden="true">{a.name.slice(0, 1)}</div>
 						<div class="body">
 							<div class="spread">
 								<strong>{a.name}</strong>
-								{#if a.in_library}
-									<a class="button" href="/title/{a.in_library}">In library</a>
-								{:else}
-									<button
-										class="primary"
-										disabled={addingArtist !== null || !profile}
-										onclick={() => ask({ kind: 'music', a })}
-									>
-										Add…
-									</button>
-								{/if}
+								{#if a.in_library}<span class="owned small">In library</span>{/if}
 							</div>
 							<div class="muted small">
 								{[a.type, a.country, a.begin_year ? `since ${a.begin_year}` : null]
@@ -356,7 +368,7 @@
 							</div>
 							{#if a.disambiguation}<p class="muted small overview">{a.disambiguation}</p>{/if}
 						</div>
-					</div>
+					</svelte:element>
 				{/each}
 			</div>
 		{/if}
@@ -368,7 +380,19 @@
 		{:else}
 			<div class="results">
 				{#each results as r (r.tmdb_id)}
-					<div class="card result">
+					{@const mine = owned.get(r.tmdb_id)}
+					{@const open = () => ask({ kind: kind as 'movie' | 'series', r })}
+					<svelte:element
+						this={mine ? 'a' : 'div'}
+						href={mine ? `/title/${mine}` : undefined}
+						role={mine ? undefined : 'button'}
+						tabindex="0"
+						class="card result pick"
+						class:busy={!mine && (adding !== null || !profile)}
+						aria-label={mine ? `${r.name}: in your library` : `Add ${r.name}${r.year ? ` (${r.year})` : ''}`}
+						onclick={mine ? undefined : () => pickIf(adding === null && !!profile, open)}
+						onkeydown={mine ? undefined : (e: KeyboardEvent) => pickKey(e, adding === null && !!profile, open)}
+					>
 						{#if r.poster_url}
 							<img src={r.poster_url} alt="" loading="lazy" />
 						{:else}
@@ -377,24 +401,14 @@
 						<div class="body">
 							<div class="spread">
 								<strong>{r.name} {r.year ? `(${r.year})` : ''}</strong>
-								{#if owned.has(r.tmdb_id)}
-									<a class="button" href="/title/{owned.get(r.tmdb_id)}">In library</a>
-								{:else}
-									<button
-										class="primary"
-										disabled={adding !== null || !profile}
-										onclick={() => ask({ kind: kind as 'movie' | 'series', r })}
-									>
-										Add…
-									</button>
-								{/if}
+								{#if mine}<span class="owned small">In library</span>{/if}
 							</div>
 							{#if r.original_name && r.original_name !== r.name}
 								<div class="muted small">{r.original_name}</div>
 							{/if}
 							<p class="muted small overview">{r.overview}</p>
 						</div>
-					</div>
+					</svelte:element>
 				{/each}
 			</div>
 		{/if}
@@ -746,6 +760,42 @@
 		display: flex;
 		gap: 1rem;
 		padding: 0.75rem;
+	}
+	/* Each result is the way in: the whole box opens the Add dialog (or, in the library,
+	   its page). Highlighted in the theme's own accent. */
+	.pick {
+		color: inherit;
+		text-decoration: none;
+		cursor: pointer;
+		transition:
+			border-color 0.12s,
+			background-color 0.12s,
+			box-shadow 0.12s;
+	}
+	.pick:hover,
+	.pick:focus-visible {
+		border-color: var(--accent);
+		background: color-mix(in srgb, var(--accent) 9%, var(--surface));
+		box-shadow: 0 0 0 1px var(--accent);
+	}
+	.pick:focus-visible {
+		outline: none;
+	}
+	.pick.busy {
+		cursor: progress;
+	}
+	.pick.busy:hover {
+		border-color: var(--border);
+		background: var(--surface);
+		box-shadow: var(--shadow);
+	}
+	.owned {
+		flex: none;
+		padding: 0.15rem 0.55rem;
+		border-radius: 999px;
+		border: 1px solid var(--border);
+		color: var(--muted);
+		white-space: nowrap;
 	}
 	img,
 	.noposter {
