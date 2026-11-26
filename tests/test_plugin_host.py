@@ -153,10 +153,14 @@ async def test_an_event_handler_runs_as_a_job(
     assert (title_id, kind, name) == (movie["id"], "movie", "Dune")
     assert await host.loaded["hello"].ctx.store.get("last") == movie["id"]
     assert [k for k, _ in SEEN].count("shows") == 0  # applies only to series
-    jobs = (await c.get("/jobs", params={"limit": 100})).json()
-    items = jobs.get("items", jobs)
-    types = {j["type"]: j for j in items}
-    assert types["plugin.hello.watcher.added"]["status"] == "succeeded"
+
+    async def succeeded() -> bool:  # the handler ran; the job records itself just after
+        jobs = (await c.get("/jobs", params={"limit": 100})).json()
+        items = jobs.get("items", jobs)
+        return any(j["type"] == "plugin.hello.watcher.added" and j["status"] == "succeeded"
+                   for j in items)  # fmt: skip
+
+    await until(succeeded, within=15)
 
 
 async def test_a_failing_handler_fails_alone(c: httpx.AsyncClient, host: PluginHost) -> None:
