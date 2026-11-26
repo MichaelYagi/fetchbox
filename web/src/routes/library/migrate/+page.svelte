@@ -81,7 +81,7 @@
 </script>
 
 <main>
-	<p><a href="/settings#library">← Library settings</a></p>
+	<p><a href="/settings/library">← Library settings</a></p>
 	<h1>Move from Radarr or Sonarr</h1>
 	<p class="muted small">
 		Fetchbox reads your movies or shows, what's monitored, your quality profiles and which files you have, and adds them

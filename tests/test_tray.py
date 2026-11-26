@@ -4,13 +4,16 @@ from __future__ import annotations
 
 import asyncio
 import socket
+import subprocess
+import sys
 import time
 from pathlib import Path
 
 import pytest
 
+import fetchbox
 from fetchbox.config import load_settings
-from fetchbox.tray import Supervisor, server_command
+from fetchbox.tray import HANDOVER_FILE, Supervisor, read_handover, server_command
 from tests.conftest import Running
 
 
@@ -92,6 +95,94 @@ def test_supervisor_starts_and_stops_a_real_server(
     finally:
         if sup.proc is not None:
             sup.proc.kill()
+
+
+def _pids(proc: subprocess.Popen[bytes] | None) -> set[int]:
+    """The process and, where a launcher started the server as its child, the child."""
+    assert proc is not None
+    pids = {proc.pid}
+    if sys.platform == "win32":
+        out = subprocess.run(
+            ["powershell", "-NoProfile", "-Command",
+             f"(Get-CimInstance Win32_Process -Filter 'ParentProcessId={proc.pid}').ProcessId"],
+            capture_output=True, text=True, check=False,
+        ).stdout  # fmt: skip
+        pids |= {int(x) for x in out.split() if x.isdigit()}
+    return pids
+
+
+def _real_server(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Supervisor:
+    monkeypatch.setenv("FETCHBOX_DOWNLOADS_ROOT", str(tmp_path / "Downloads"))
+    monkeypatch.setenv("FETCHBOX_TORRENT_ISOLATED", "1")
+    monkeypatch.setenv("FETCHBOX_SEED_INDEXERS", "0")
+    return Supervisor(load_settings(tmp_path / "data", port=_free_port()))
+
+
+def _healthy(sup: Supervisor) -> None:
+    deadline = time.monotonic() + 60
+    while time.monotonic() < deadline:
+        sup.poll()
+        if sup.healthy:
+            return
+        time.sleep(0.5)
+    raise AssertionError(sup.status)
+
+
+def test_the_next_tray_uses_this_versions_server_and_an_update_stops_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    first = _real_server(tmp_path, monkeypatch)
+    first.start()
+    try:
+        _healthy(first)
+        info = read_handover(first.settings.data_dir, first.settings.port)
+        assert info is not None and info["version"] == fetchbox.__version__
+        # the server's own pid (on Windows a venv's python.exe starts it as a child)
+        assert info["pid"] in _pids(first.proc) and info["token"] == first.token  # type: ignore[arg-type]
+        if sys.platform != "win32":
+            assert (first.settings.data_dir / HANDOVER_FILE).stat().st_mode & 0o077 == 0
+
+        # the tray quits without stopping it (an update before this fix, a crash)
+        proc, first.proc = first.proc, None
+        second = Supervisor(first.settings)
+        second.start()
+        assert second.attached and second.running and second.healthy
+        assert second.token == first.token  # so the tray's own requests still work
+        r = second.call("POST", "/system/tray/requests")
+        assert r is not None and r.status_code == 200
+
+        second.stop()  # as an update does: the server it's using stops
+        assert proc is not None and proc.wait(30) == 0
+        assert not second.ping() and second.status == "Stopped" and not second.running
+        assert not (first.settings.data_dir / HANDOVER_FILE).exists()
+    finally:
+        for p in (first.proc, locals().get("proc")):
+            if p is not None and p.poll() is None:
+                p.kill()
+
+
+def test_a_newer_tray_replaces_an_older_versions_server(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    old = _real_server(tmp_path, monkeypatch)
+    old.start()
+    new: Supervisor | None = None
+    try:
+        _healthy(old)
+        old_proc, old.proc = old.proc, None
+        monkeypatch.setattr(fetchbox, "__version__", "99.0.0")  # the tray after an update
+        new = Supervisor(old.settings)
+        new.start()
+        assert old_proc is not None and old_proc.wait(30) == 0  # asked to stop, and did
+        assert not new.attached and new.proc is not None
+        _healthy(new)
+        info = read_handover(new.settings.data_dir, new.settings.port)
+        assert info is not None and info["pid"] in _pids(new.proc)
+        new.stop()
+    finally:
+        for p in (old.proc, locals().get("old_proc"), new.proc if new else None):
+            if p is not None and p.poll() is None:
+                p.kill()
 
 
 def test_icon_draws() -> None:

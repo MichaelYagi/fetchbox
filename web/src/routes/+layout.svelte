@@ -147,7 +147,7 @@
 				{#if health}
 					<a
 						class="badge {health.status === 'ok' ? 'ok' : health.status === 'warning' ? 'warn' : 'error'}"
-						href="/settings#health"
+						href="/settings/general#health"
 						title={problems.map((p) => `${p.name}: ${p.message}`).join('\n') || 'All checks pass'}
 					>
 						{health.status === 'ok' ? 'Healthy' : `${problems.length} issue${problems.length === 1 ? '' : 's'}`}
@@ -164,7 +164,7 @@
 			Fetchbox{session.version ? ` ${session.version}` : ''} is running on <strong>{session.host.name}</strong>
 			({session.host.wsl_distro ? `Linux, ${session.host.wsl_distro} in WSL` : session.host.os}): every
 			folder shown here is on that machine.
-			<a href="/settings#computer">Details</a>
+			<a href="/settings/general#computer">Details</a>
 		</footer>
 	{/if}
 {:else if open.includes(page.url.pathname)}

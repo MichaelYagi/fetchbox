@@ -70,7 +70,7 @@
 			<p>Nothing here yet.</p>
 			<p><a class="button primary" href="/add">Add your first movie or show</a></p>
 			<p class="muted small">
-				Already have movies or shows on disk? <a href="/settings#library">Import them</a> from your library folders,
+				Already have movies or shows on disk? <a href="/settings/library">Import them</a> from your library folders,
 				or <a href="/library/migrate">move from Radarr or Sonarr</a>.
 			</p>
 		</div>

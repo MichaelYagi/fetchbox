@@ -7,6 +7,11 @@ server gracefully through ``POST /system/shutdown`` with a token it hands the se
 when starting it (no API key or password needed, and it works on Windows, where
 killing a process isn't graceful).
 
+That server also writes ``server.json`` in the data folder (its pid, port, version and
+token; readable by this user only), so a tray that didn't start it (the next version,
+after an update) can tell what's answering on the port: the same version is used as is,
+an older one is stopped and replaced.
+
 Needs the ``desktop`` extra (pystray, Pillow). pystray is LGPL-3.0, used unmodified;
 Fetchbox's source and build scripts are public, so a frozen build can be rebuilt with
 a different pystray.
@@ -15,8 +20,10 @@ a different pystray.
 from __future__ import annotations
 
 import contextlib
+import json
 import os
 import secrets
+import signal
 import socket
 import subprocess
 import sys
@@ -33,6 +40,7 @@ from fetchbox import updater
 from fetchbox.config import Settings, write_config_value
 
 POLL_SECONDS = 3.0
+HANDOVER_FILE = "server.json"
 STOP_GRACE_SECONDS = 40.0
 ACCENT = (37, 99, 235)  # the web UI's --accent
 
@@ -84,8 +92,38 @@ def lan_address() -> str | None:
     return None
 
 
+def write_handover(data_dir: Path, *, port: int, token: str) -> Path:
+    """By the server a tray started: what a later tray needs to use or stop it."""
+    path = data_dir / HANDOVER_FILE
+    tmp = path.with_suffix(".tmp")
+    info = {"pid": os.getpid(), "port": port, "version": fetchbox.__version__, "token": token}
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w") as f:
+        json.dump(info, f)
+    os.replace(tmp, path)
+    return path
+
+
+def clear_handover(data_dir: Path) -> None:
+    """On the server's way out (only its own file: a newer server may have replaced it)."""
+    path = data_dir / HANDOVER_FILE
+    with contextlib.suppress(OSError, ValueError):
+        if json.loads(path.read_text()).get("pid") == os.getpid():
+            path.unlink()
+
+
+def read_handover(data_dir: Path, port: int) -> dict[str, Any] | None:
+    try:
+        info = json.loads((data_dir / HANDOVER_FILE).read_text())
+    except (OSError, ValueError):
+        return None
+    if not isinstance(info, dict) or info.get("port") != port or not info.get("token"):
+        return None
+    return info
+
+
 class Supervisor:
-    """Starts, watches and stops the server process."""
+    """Starts, watches and stops the server process (or one a tray before it started)."""
 
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
@@ -96,6 +134,8 @@ class Supervisor:
         self.status = "Starting…"
         self.healthy = False
         self.exit_code: int | None = None
+        self.attached = False  # using a server this tray didn't start (see server.json)
+        self.other_pid: int | None = None
         self._lock = threading.Lock()
 
     def ping(self) -> bool:
@@ -107,14 +147,13 @@ class Supervisor:
 
     @property
     def running(self) -> bool:
-        return self.proc is not None and self.proc.poll() is None
+        return (self.proc is not None and self.proc.poll() is None) or self.attached
 
     def start(self) -> None:
         with self._lock:
             if self.running:
                 return
-            if self.ping():  # someone else's server already answers here: use it
-                self.status, self.healthy = f"Running at {self.url}", True
+            if self.ping() and not self._take_over():
                 return
             logs = self.settings.data_dir / "logs"
             logs.mkdir(parents=True, exist_ok=True)
@@ -130,8 +169,56 @@ class Supervisor:
             self.exit_code = None
             self.status, self.healthy = "Starting…", False
 
+    def _take_over(self) -> bool:
+        """A server already answers here. This version's (a tray started it): use it.
+        Another version's: stop it, so this one starts (True). Unknown (not started by a
+        tray, or by one before server.json): use it, as before."""
+        info = read_handover(self.settings.data_dir, self.settings.port)
+        if info is None or info.get("version") == fetchbox.__version__:
+            if info is not None:
+                self.token, self.other_pid = str(info["token"]), info.get("pid")
+            self.attached = True
+            self.status, self.healthy = f"Running at {self.url}", True
+            return False
+        self.status = f"Stopping Fetchbox {info.get('version')}…"
+        self._shut_down_other(str(info["token"]), info.get("pid"))
+        if self.ping():
+            self.status = (
+                f"Fetchbox {info.get('version')} still answers at {self.url}: quit it, "
+                "then Start server"
+            )
+            return False
+        return True
+
+    def _shut_down_other(self, token: str, pid: Any) -> None:
+        """Gracefully through its token; if it won't go, its pid is told to stop."""
+        with contextlib.suppress(httpx.HTTPError):
+            httpx.post(f"{self.url}/api/v1/system/shutdown",
+                       headers={"X-Fetchbox-Supervisor": token}, timeout=5.0)  # fmt: skip
+        if self._gone_within(STOP_GRACE_SECONDS):
+            return
+        if isinstance(pid, int) and pid > 0:
+            with contextlib.suppress(OSError):
+                os.kill(pid, signal.SIGTERM)
+            self._gone_within(10.0)
+
+    def _gone_within(self, seconds: float) -> bool:
+        deadline = time.monotonic() + seconds
+        while self.ping():
+            if time.monotonic() > deadline:
+                return False
+            time.sleep(0.5)
+        return True
+
     def stop(self) -> None:
         with self._lock:
+            if self.attached and self.proc is None:  # one a tray before this started
+                self.status = "Stopping…"
+                self._shut_down_other(self.token, self.other_pid)
+                self.attached, self.other_pid = False, None
+                self.token = secrets.token_urlsafe(32)  # its token went with it
+                self.status, self.healthy = "Stopped", False
+                return
             proc = self.proc
             if proc is None or proc.poll() is not None:
                 return
@@ -202,13 +289,16 @@ class Supervisor:
             )
             return
         if self.proc is None and (
-            self.status == "Stopped" or self.status.startswith("Server stopped")
+            self.status == "Stopped" or self.status.startswith(("Server stopped", "Fetchbox "))
         ):
             return
         ok = self.ping()
         self.healthy = ok
         if ok:
             self.status = f"Running at {self.url}"
+        elif self.attached:  # the server it was using went away
+            self.attached, self.other_pid = False, None
+            self.status = "Server stopped: Start server to run it again"
         elif self.running:
             self.status = "Starting…"
 
