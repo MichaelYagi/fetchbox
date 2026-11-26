@@ -4,6 +4,7 @@
 	import BackupsCard from '#lib/BackupsCard.svelte';
 	import ConfigTransferCard from '#lib/ConfigTransferCard.svelte';
 	import ResetDataCard from '#lib/ResetDataCard.svelte';
+	import PluginsCard from '#lib/PluginsCard.svelte';
 	import LibraryCard from '#lib/LibraryCard.svelte';
 	import LibraryCheckCard from '#lib/LibraryCheckCard.svelte';
 	import MediaServersCard from '#lib/MediaServersCard.svelte';
@@ -23,6 +24,7 @@
 		['library', 'Library'],
 		['connections', 'Connections'],
 		['network', 'Network'],
+		['plugins', 'Plugins'],
 		['data', 'Data']
 	] as const;
 	type Tab = (typeof TABS)[number][0];
@@ -36,6 +38,7 @@
 		'media-servers': 'connections',
 		notifications: 'connections',
 		network: 'network',
+		plugins: 'plugins',
 		backups: 'data',
 		'move-settings': 'data',
 		'delete-all-data': 'data'
@@ -778,6 +781,13 @@
 	<section id="network">
 		<h2>Network</h2>
 		<NetworkCard />
+	</section>
+	</div>
+
+	<div hidden={tab !== 'plugins'}>
+	<section id="plugins">
+		<h2>Plugins</h2>
+		<PluginsCard />
 	</section>
 	</div>
 

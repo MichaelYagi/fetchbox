@@ -1,6 +1,53 @@
 {
  "components": {
   "schemas": {
+   "ActionIn": {
+    "properties": {
+     "item": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "The title, group or item it's run for",
+      "title": "Item"
+     }
+    },
+    "title": "ActionIn",
+    "type": "object"
+   },
+   "ActionOut": {
+    "properties": {
+     "addon": {
+      "title": "Addon",
+      "type": "string"
+     },
+     "label": {
+      "title": "Label",
+      "type": "string"
+     },
+     "method": {
+      "title": "Method",
+      "type": "string"
+     },
+     "on": {
+      "description": "title, group or item",
+      "title": "On",
+      "type": "string"
+     }
+    },
+    "required": [
+     "addon",
+     "method",
+     "label",
+     "on"
+    ],
+    "title": "ActionOut",
+    "type": "object"
+   },
    "ActivityOut": {
     "properties": {
      "action": {
@@ -949,6 +996,20 @@
     "title": "BlockOut",
     "type": "object"
    },
+   "Body_install_api_v1_plugins_install_post": {
+    "properties": {
+     "file": {
+      "contentMediaType": "application/octet-stream",
+      "title": "File",
+      "type": "string"
+     }
+    },
+    "required": [
+     "file"
+    ],
+    "title": "Body_install_api_v1_plugins_install_post",
+    "type": "object"
+   },
    "Body_upload_backup_api_v1_backups_upload_post": {
     "properties": {
      "file": {
@@ -1431,6 +1492,30 @@
      "overridden"
     ],
     "title": "ConfigOut",
+    "type": "object"
+   },
+   "ContributionOut": {
+    "properties": {
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "kind": {
+      "description": "media_kind, addon or provider",
+      "title": "Kind",
+      "type": "string"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "name",
+     "kind"
+    ],
+    "title": "ContributionOut",
     "type": "object"
    },
    "Count": {
@@ -5625,6 +5710,24 @@
     "title": "PatternCondition",
     "type": "object"
    },
+   "PermissionOut": {
+    "properties": {
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "words": {
+      "title": "Words",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "words"
+    ],
+    "title": "PermissionOut",
+    "type": "object"
+   },
    "Ping": {
     "properties": {
      "status": {
@@ -5666,6 +5769,168 @@
      "unchanged"
     ],
     "title": "PlanPart",
+    "type": "object"
+   },
+   "PluginJobOut": {
+    "properties": {
+     "job_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Job Id"
+     }
+    },
+    "required": [
+     "job_id"
+    ],
+    "title": "PluginJobOut",
+    "type": "object"
+   },
+   "PluginOut": {
+    "properties": {
+     "actions": {
+      "items": {
+       "$ref": "#/components/schemas/ActionOut"
+      },
+      "title": "Actions",
+      "type": "array"
+     },
+     "api": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Api"
+     },
+     "api_supported": {
+      "title": "Api Supported",
+      "type": "boolean"
+     },
+     "approved": {
+      "title": "Approved",
+      "type": "boolean"
+     },
+     "contributes": {
+      "items": {
+       "$ref": "#/components/schemas/ContributionOut"
+      },
+      "title": "Contributes",
+      "type": "array"
+     },
+     "description": {
+      "title": "Description",
+      "type": "string"
+     },
+     "enabled": {
+      "title": "Enabled",
+      "type": "boolean"
+     },
+     "error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Error"
+     },
+     "homepage": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Homepage"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "permissions": {
+      "items": {
+       "$ref": "#/components/schemas/PermissionOut"
+      },
+      "title": "Permissions",
+      "type": "array"
+     },
+     "running": {
+      "title": "Running",
+      "type": "boolean"
+     },
+     "settings": {
+      "items": {
+       "$ref": "#/components/schemas/SettingsOut"
+      },
+      "title": "Settings",
+      "type": "array"
+     },
+     "source": {
+      "title": "Source",
+      "type": "string"
+     },
+     "version": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Version"
+     }
+    },
+    "required": [
+     "id",
+     "name",
+     "description",
+     "version",
+     "homepage",
+     "api",
+     "api_supported",
+     "permissions",
+     "contributes",
+     "source",
+     "approved",
+     "enabled",
+     "running",
+     "error",
+     "settings",
+     "actions"
+    ],
+    "title": "PluginOut",
+    "type": "object"
+   },
+   "PluginPatch": {
+    "properties": {
+     "enabled": {
+      "description": "On (approves it) or off",
+      "title": "Enabled",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "enabled"
+    ],
+    "title": "PluginPatch",
     "type": "object"
    },
    "Policy": {
@@ -7364,6 +7629,79 @@
     "title": "SessionOut",
     "type": "object"
    },
+   "SettingsIn": {
+    "properties": {
+     "values": {
+      "additionalProperties": true,
+      "title": "Values",
+      "type": "object"
+     }
+    },
+    "required": [
+     "values"
+    ],
+    "title": "SettingsIn",
+    "type": "object"
+   },
+   "SettingsOut": {
+    "properties": {
+     "has_test": {
+      "title": "Has Test",
+      "type": "boolean"
+     },
+     "id": {
+      "description": "The contribution the settings are for",
+      "title": "Id",
+      "type": "string"
+     },
+     "kind": {
+      "title": "Kind",
+      "type": "string"
+     },
+     "missing": {
+      "description": "Settings still needed before it can run",
+      "items": {
+       "type": "string"
+      },
+      "title": "Missing",
+      "type": "array"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "schema": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "The settings form, as JSON Schema",
+      "title": "Schema"
+     },
+     "values": {
+      "additionalProperties": true,
+      "description": "Stored values; Secrets as \u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022 when set",
+      "title": "Values",
+      "type": "object"
+     }
+    },
+    "required": [
+     "id",
+     "name",
+     "kind",
+     "schema",
+     "values",
+     "missing",
+     "has_test"
+    ],
+    "title": "SettingsOut",
+    "type": "object"
+   },
    "SetupIn": {
     "properties": {
      "password": {
@@ -7842,6 +8180,24 @@
      }
     },
     "title": "TemplatePatch",
+    "type": "object"
+   },
+   "TestOut": {
+    "properties": {
+     "message": {
+      "title": "Message",
+      "type": "string"
+     },
+     "ok": {
+      "title": "Ok",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "ok",
+     "message"
+    ],
+    "title": "TestOut",
     "type": "object"
    },
    "TestResult": {
@@ -18002,6 +18358,610 @@
     "summary": "Test Target",
     "tags": [
      "notifications"
+    ]
+   }
+  },
+  "/api/v1/plugins": {
+   "get": {
+    "operationId": "list_plugins_api_v1_plugins_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/PluginOut"
+         },
+         "title": "Response List Plugins Api V1 Plugins Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "List Plugins",
+    "tags": [
+     "plugins"
+    ]
+   }
+  },
+  "/api/v1/plugins/install": {
+   "post": {
+    "description": "Install a plugin from its wheel (.whl). It's approved and turned on; plugins run\nwith Fetchbox's full access, so install only those from people you trust.",
+    "operationId": "install_api_v1_plugins_install_post",
+    "requestBody": {
+     "content": {
+      "multipart/form-data": {
+       "schema": {
+        "$ref": "#/components/schemas/Body_install_api_v1_plugins_install_post"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PluginOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Conflict"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Install",
+    "tags": [
+     "plugins"
+    ]
+   }
+  },
+  "/api/v1/plugins/{plugin_id}": {
+   "delete": {
+    "operationId": "remove_api_v1_plugins__plugin_id__delete",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "plugin_id",
+      "required": true,
+      "schema": {
+       "title": "Plugin Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "keep_settings",
+      "required": false,
+      "schema": {
+       "default": false,
+       "title": "Keep Settings",
+       "type": "boolean"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Remove",
+    "tags": [
+     "plugins"
+    ]
+   },
+   "get": {
+    "operationId": "get_plugin_api_v1_plugins__plugin_id__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "plugin_id",
+      "required": true,
+      "schema": {
+       "title": "Plugin Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PluginOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Get Plugin",
+    "tags": [
+     "plugins"
+    ]
+   },
+   "patch": {
+    "operationId": "set_plugin_api_v1_plugins__plugin_id__patch",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "plugin_id",
+      "required": true,
+      "schema": {
+       "title": "Plugin Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PluginPatch"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PluginOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Conflict"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Set Plugin",
+    "tags": [
+     "plugins"
+    ]
+   }
+  },
+  "/api/v1/plugins/{plugin_id}/actions/{addon}/{method}": {
+   "post": {
+    "operationId": "run_action_api_v1_plugins__plugin_id__actions__addon___method__post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "plugin_id",
+      "required": true,
+      "schema": {
+       "title": "Plugin Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "addon",
+      "required": true,
+      "schema": {
+       "title": "Addon",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "method",
+      "required": true,
+      "schema": {
+       "title": "Method",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ActionIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "202": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PluginJobOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Conflict"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Run Action",
+    "tags": [
+     "plugins"
+    ]
+   }
+  },
+  "/api/v1/plugins/{plugin_id}/settings/{part}": {
+   "put": {
+    "operationId": "save_settings_api_v1_plugins__plugin_id__settings__part__put",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "plugin_id",
+      "required": true,
+      "schema": {
+       "title": "Plugin Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "part",
+      "required": true,
+      "schema": {
+       "title": "Part",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/SettingsIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PluginOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Conflict"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Unprocessable Content"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Save Settings",
+    "tags": [
+     "plugins"
+    ]
+   }
+  },
+  "/api/v1/plugins/{plugin_id}/settings/{part}/test": {
+   "post": {
+    "operationId": "test_settings_api_v1_plugins__plugin_id__settings__part__test_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "plugin_id",
+      "required": true,
+      "schema": {
+       "title": "Plugin Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "part",
+      "required": true,
+      "schema": {
+       "title": "Part",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/SettingsIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TestOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Conflict"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Test Settings",
+    "tags": [
+     "plugins"
     ]
    }
   },

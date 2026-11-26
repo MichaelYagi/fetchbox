@@ -1860,6 +1860,114 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/plugins": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Plugins */
+        get: operations["list_plugins_api_v1_plugins_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/plugins/install": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Install
+         * @description Install a plugin from its wheel (.whl). It's approved and turned on; plugins run
+         *     with Fetchbox's full access, so install only those from people you trust.
+         */
+        post: operations["install_api_v1_plugins_install_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/plugins/{plugin_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Plugin */
+        get: operations["get_plugin_api_v1_plugins__plugin_id__get"];
+        put?: never;
+        post?: never;
+        /** Remove */
+        delete: operations["remove_api_v1_plugins__plugin_id__delete"];
+        options?: never;
+        head?: never;
+        /** Set Plugin */
+        patch: operations["set_plugin_api_v1_plugins__plugin_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/plugins/{plugin_id}/actions/{addon}/{method}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Run Action */
+        post: operations["run_action_api_v1_plugins__plugin_id__actions__addon___method__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/plugins/{plugin_id}/settings/{part}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Save Settings */
+        put: operations["save_settings_api_v1_plugins__plugin_id__settings__part__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/plugins/{plugin_id}/settings/{part}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Test Settings */
+        post: operations["test_settings_api_v1_plugins__plugin_id__settings__part__test_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/qualities": {
         parameters: {
             query?: never;
@@ -2632,6 +2740,28 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** ActionIn */
+        ActionIn: {
+            /**
+             * Item
+             * @description The title, group or item it's run for
+             */
+            item?: string | null;
+        };
+        /** ActionOut */
+        ActionOut: {
+            /** Addon */
+            addon: string;
+            /** Label */
+            label: string;
+            /** Method */
+            method: string;
+            /**
+             * On
+             * @description title, group or item
+             */
+            on: string;
+        };
         /** ActivityOut */
         ActivityOut: {
             /** Action */
@@ -2945,6 +3075,11 @@ export interface components {
             /** Title Id */
             title_id: string | null;
         };
+        /** Body_install_api_v1_plugins_install_post */
+        Body_install_api_v1_plugins_install_post: {
+            /** File */
+            file: string;
+        };
         /** Body_upload_backup_api_v1_backups_upload_post */
         Body_upload_backup_api_v1_backups_upload_post: {
             /** File */
@@ -3143,6 +3278,18 @@ export interface components {
              * @description Fields set by environment variables
              */
             overridden: string[];
+        };
+        /** ContributionOut */
+        ContributionOut: {
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @description media_kind, addon or provider
+             */
+            kind: string;
+            /** Name */
+            name: string;
         };
         /** Count */
         Count: {
@@ -4767,6 +4914,13 @@ export interface components {
              */
             type: "edition" | "release_group" | "release_title";
         };
+        /** PermissionOut */
+        PermissionOut: {
+            /** Id */
+            id: string;
+            /** Words */
+            words: string;
+        };
         /** Ping */
         Ping: {
             /**
@@ -4783,6 +4937,54 @@ export interface components {
             unchanged: string[];
             /** Update */
             update: string[];
+        };
+        /** PluginJobOut */
+        PluginJobOut: {
+            /** Job Id */
+            job_id: string | null;
+        };
+        /** PluginOut */
+        PluginOut: {
+            /** Actions */
+            actions: components["schemas"]["ActionOut"][];
+            /** Api */
+            api: number | null;
+            /** Api Supported */
+            api_supported: boolean;
+            /** Approved */
+            approved: boolean;
+            /** Contributes */
+            contributes: components["schemas"]["ContributionOut"][];
+            /** Description */
+            description: string;
+            /** Enabled */
+            enabled: boolean;
+            /** Error */
+            error: string | null;
+            /** Homepage */
+            homepage: string | null;
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Permissions */
+            permissions: components["schemas"]["PermissionOut"][];
+            /** Running */
+            running: boolean;
+            /** Settings */
+            settings: components["schemas"]["SettingsOut"][];
+            /** Source */
+            source: string;
+            /** Version */
+            version: string | null;
+        };
+        /** PluginPatch */
+        PluginPatch: {
+            /**
+             * Enabled
+             * @description On (approves it) or off
+             */
+            enabled: boolean;
         };
         /** Policy */
         Policy: {
@@ -5529,6 +5731,46 @@ export interface components {
             /** User */
             user: string;
         };
+        /** SettingsIn */
+        SettingsIn: {
+            /** Values */
+            values: {
+                [key: string]: unknown;
+            };
+        };
+        /** SettingsOut */
+        SettingsOut: {
+            /** Has Test */
+            has_test: boolean;
+            /**
+             * Id
+             * @description The contribution the settings are for
+             */
+            id: string;
+            /** Kind */
+            kind: string;
+            /**
+             * Missing
+             * @description Settings still needed before it can run
+             */
+            missing: string[];
+            /** Name */
+            name: string;
+            /**
+             * Schema
+             * @description The settings form, as JSON Schema
+             */
+            schema: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Values
+             * @description Stored values; Secrets as •••••••• when set
+             */
+            values: {
+                [key: string]: unknown;
+            };
+        };
         /** SetupIn */
         SetupIn: {
             /** Password */
@@ -5703,6 +5945,13 @@ export interface components {
             patterns?: {
                 [key: string]: string;
             } | null;
+        };
+        /** TestOut */
+        TestOut: {
+            /** Message */
+            message: string;
+            /** Ok */
+            ok: boolean;
         };
         /** TestResult */
         TestResult: {
@@ -11424,6 +11673,376 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_plugins_api_v1_plugins_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginOut"][];
+                };
+            };
+        };
+    };
+    install_api_v1_plugins_install_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_install_api_v1_plugins_install_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_plugin_api_v1_plugins__plugin_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plugin_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remove_api_v1_plugins__plugin_id__delete: {
+        parameters: {
+            query?: {
+                keep_settings?: boolean;
+            };
+            header?: never;
+            path: {
+                plugin_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_plugin_api_v1_plugins__plugin_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plugin_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PluginPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    run_action_api_v1_plugins__plugin_id__actions__addon___method__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plugin_id: string;
+                addon: string;
+                method: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginJobOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_settings_api_v1_plugins__plugin_id__settings__part__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plugin_id: string;
+                part: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SettingsIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    test_settings_api_v1_plugins__plugin_id__settings__part__test_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plugin_id: string;
+                part: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SettingsIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TestOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

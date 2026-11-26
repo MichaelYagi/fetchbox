@@ -24,6 +24,13 @@ def _parser() -> argparse.ArgumentParser:
     serve.add_argument("--db-url", help="database URL (default SQLite in the data dir)")
     serve.add_argument("--log-level", choices=["debug", "info", "warning", "error"])
     serve.add_argument("--log-format", choices=["auto", "json", "console"])
+    serve.add_argument(
+        "--no-plugins",
+        action="store_const",
+        const=True,
+        default=None,
+        help="start with every plugin off (when one stops Fetchbox from starting)",
+    )
 
     bk = sub.add_parser("backup", help="back up the database and settings now")
     bk.add_argument("--with-key", action="store_true",

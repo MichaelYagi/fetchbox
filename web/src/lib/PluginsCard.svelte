@@ -1,0 +1,151 @@
+<script lang="ts">
+	import { ask } from '#lib/dialogs.svelte.ts';
+	import PluginSettingsForm from './PluginSettingsForm.svelte';
+	import { ApiError, del, get, patch, upload, type S } from './api.ts';
+
+	// Plugins: what's installed, on or off, what each uses, its settings; install from a
+	// wheel file. Plugins run with Fetchbox's full access, so the install and the first time
+	// one is turned on say so plainly.
+	type P = S['PluginOut'];
+	let plugins = $state<P[] | null>(null);
+	let error = $state('');
+	let busy = $state('');
+	let open = $state<Record<string, boolean>>({});
+
+	async function load() {
+		try {
+			plugins = await get<P[]>('/plugins');
+		} catch (e) {
+			error = e instanceof ApiError ? e.message : String(e);
+		}
+	}
+	$effect(() => {
+		load();
+	});
+
+	const TRUST = 'Plugins run inside Fetchbox with its full access: your settings, your files, the network. Only install plugins from people you trust.';
+	const uses = (p: P) => (p.permissions.length ? p.permissions.map((x) => x.words).join('; ') : 'Nothing beyond Fetchbox itself');
+
+	function status(p: P): [string, string] {
+		if (p.running) return ['Running', 'ok'];
+		if (!p.approved) return ['Not approved', 'warn'];
+		if (!p.enabled) return ['Off', 'muted'];
+		if (p.settings.some((s) => s.missing.length)) return ['Needs settings', 'warn'];
+		return ['Not running', 'error'];
+	}
+
+	async function act(name: string, fn: () => Promise<unknown>) {
+		busy = name;
+		error = '';
+		try {
+			await fn();
+			await load();
+		} catch (e) {
+			error = e instanceof ApiError ? e.message : String(e);
+		} finally {
+			busy = '';
+		}
+	}
+
+	async function toggle(p: P) {
+		if (!p.enabled && !p.approved) {
+			const ok = await ask(`Turn on ${p.name}?\n\nIt uses: ${uses(p)}.\n\n${TRUST}`, 'Turn on');
+			if (!ok) return;
+		}
+		await act(p.id, () => patch(`/plugins/${p.id}`, { enabled: !p.enabled }));
+	}
+
+	async function remove(p: P) {
+		const ok = await ask(`Remove ${p.name}? Its settings and what it stored are deleted too. Files it filed stay where they are.`, 'Remove', true);
+		if (ok) await act(p.id, () => del(`/plugins/${p.id}`));
+	}
+
+	async function onFile(e: Event) {
+		const input = e.currentTarget as HTMLInputElement;
+		const file = input.files?.[0];
+		input.value = '';
+		if (!file) return;
+		const ok = await ask(`Install ${file.name}?\n\n${TRUST}`, 'Install');
+		if (ok) await act('install', () => upload('/plugins/install', file));
+	}
+</script>
+
+<div class="card stack">
+	<p class="muted small">
+		Plugins add to Fetchbox: subtitles, a new kind of thing to collect, one more service. {TRUST}
+		<a href="https://github.com/MichaelYagi/fetchbox/blob/main/docs/plugins.md" target="_blank" rel="noreferrer">Writing plugins</a>
+	</p>
+	<label class="small">Install from a file (.whl): <input type="file" accept=".whl" onchange={onFile} disabled={!!busy} /></label>
+	{#if error}<p class="notice error small">{error}</p>{/if}
+	{#if plugins === null}
+		<p class="muted small">Loading…</p>
+	{:else if plugins.length === 0}
+		<p class="muted small">No plugins installed.</p>
+	{:else}
+		{#each plugins as p (p.id)}
+			{@const [label, tone] = status(p)}
+			<div class="plugin stack">
+				<div class="spread">
+					<div>
+						<strong>{p.name}</strong>
+						{#if p.version}<span class="muted small">{p.version}</span>{/if}
+						<span class="pill {tone} small">{label}</span>
+					</div>
+					<div class="row">
+						<button class="small" onclick={() => toggle(p)} disabled={!!busy || !p.api_supported}>{p.enabled ? 'Turn off' : 'Turn on'}</button>
+						<button class="small danger" onclick={() => remove(p)} disabled={!!busy}>Remove</button>
+					</div>
+				</div>
+				{#if p.description}<p class="small">{p.description}</p>{/if}
+				<p class="muted small">
+					Uses: {uses(p)}{#if p.contributes.length} · Adds: {p.contributes.map((c) => c.name).join(', ')}{/if}
+					{#if p.homepage} · <a href={p.homepage} target="_blank" rel="noreferrer">Homepage</a>{/if}
+				</p>
+				{#if !p.api_supported}
+					<p class="notice warn small">Written for plugin API {p.api}; this Fetchbox supports API 1. A newer Fetchbox may run it.</p>
+				{:else if p.error && p.enabled}
+					<p class="notice warn small">{p.error}</p>
+				{/if}
+				{#each p.settings.filter((s) => s.schema) as part (part.id)}
+					<details bind:open={open[`${p.id}/${part.id}`]}>
+						<summary>{p.settings.length > 1 ? `${part.name} settings` : 'Settings'}{#if part.missing.length}<span class="dot" title="Settings needed"></span>{/if}</summary>
+						<PluginSettingsForm plugin={p.id} {part} onsaved={load} />
+					</details>
+				{/each}
+			</div>
+		{/each}
+	{/if}
+</div>
+
+<style>
+	.plugin {
+		border-top: 1px solid var(--border);
+		padding-top: 0.75rem;
+	}
+	.pill {
+		margin-left: 0.4rem;
+		padding: 0.1rem 0.5rem;
+		border-radius: 999px;
+		border: 1px solid var(--border);
+	}
+	.pill.ok {
+		color: var(--ok, #3fb37f);
+	}
+	.pill.warn {
+		color: var(--warn, #d9a441);
+	}
+	.pill.error {
+		color: var(--danger, #e5534b);
+	}
+	.dot {
+		display: inline-block;
+		width: 0.5rem;
+		height: 0.5rem;
+		margin-left: 0.4rem;
+		border-radius: 50%;
+		background: var(--warn, #d9a441);
+	}
+	summary {
+		cursor: pointer;
+	}
+</style>

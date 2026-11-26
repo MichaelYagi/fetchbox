@@ -76,6 +76,10 @@ class Settings(BaseSettings):
         default=False,
         description="Built-in engine on loopback only, no DHT/LSD/UPnP (tests, development)",
     )
+    no_plugins: bool = Field(
+        default=False,
+        description="Start with every plugin off (when one stops Fetchbox from starting)",
+    )
     tmdb_api_key: SecretStr | None = Field(
         default=None, description="Overrides the TMDB key stored in /system/config"
     )
