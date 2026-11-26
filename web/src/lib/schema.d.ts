@@ -1776,7 +1776,8 @@ export interface paths {
         };
         /**
          * Event Kinds
-         * @description What can be notified about, with the default selection.
+         * @description What can be notified about, with the default selection (plugin messages too while a
+         *     plugin is running).
          */
         get: operations["event_kinds_api_v1_notifications_events_get"];
         put?: never;
@@ -1892,6 +1893,26 @@ export interface paths {
          *     with Fetchbox's full access, so install only those from people you trust.
          */
         post: operations["install_api_v1_plugins_install_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/plugins/panels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Panels
+         * @description The running add-ons' panels for a title page (none when no plugin has one).
+         */
+        get: operations["panels_api_v1_plugins_panels_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -4708,6 +4729,33 @@ export interface components {
              * @description Season folders in it (TV)
              */
             seasons: number;
+        };
+        /** PanelOut */
+        PanelOut: {
+            /**
+             * Actions
+             * @description Labels of the add-on's actions to offer
+             */
+            actions: string[];
+            /** Addon */
+            addon: string;
+            /**
+             * Error
+             * @description Why the panel couldn't be drawn
+             */
+            error: string | null;
+            /** Method */
+            method: string;
+            /** Plugin */
+            plugin: string;
+            /** Status */
+            status: string;
+            /** Table */
+            table: {
+                [key: string]: unknown;
+            }[];
+            /** Title */
+            title: string;
         };
         /** ParsedRelease */
         ParsedRelease: {
@@ -11742,6 +11790,39 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Problem"];
                     "application/problem+json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    panels_api_v1_plugins_panels_get: {
+        parameters: {
+            query: {
+                on?: "title" | "group" | "item";
+                /** @description The title's, group's or item's id */
+                id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PanelOut"][];
                 };
             };
             /** @description Validation Error */

@@ -311,7 +311,7 @@ def create_app(
         )  # fmt: skip
         app.state.plugins = PluginManager(
             db=db, box=box, host=plugin_host, data_dir=settings.data_dir,
-            enabled=not settings.no_plugins,
+            enabled=not settings.no_plugins, health=state.health,
         )  # fmt: skip
         await app.state.plugins.start()
         if os.environ.get("FETCHBOX_DB_GUARD"):  # debug: report what blocks the loop

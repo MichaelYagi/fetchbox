@@ -5277,6 +5277,70 @@
     "title": "OwnFolderOut",
     "type": "object"
    },
+   "PanelOut": {
+    "properties": {
+     "actions": {
+      "description": "Labels of the add-on's actions to offer",
+      "items": {
+       "type": "string"
+      },
+      "title": "Actions",
+      "type": "array"
+     },
+     "addon": {
+      "title": "Addon",
+      "type": "string"
+     },
+     "error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Why the panel couldn't be drawn",
+      "title": "Error"
+     },
+     "method": {
+      "title": "Method",
+      "type": "string"
+     },
+     "plugin": {
+      "title": "Plugin",
+      "type": "string"
+     },
+     "status": {
+      "title": "Status",
+      "type": "string"
+     },
+     "table": {
+      "items": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "title": "Table",
+      "type": "array"
+     },
+     "title": {
+      "title": "Title",
+      "type": "string"
+     }
+    },
+    "required": [
+     "plugin",
+     "addon",
+     "method",
+     "title",
+     "status",
+     "table",
+     "actions",
+     "error"
+    ],
+    "title": "PanelOut",
+    "type": "object"
+   },
    "ParsedRelease": {
     "properties": {
      "absolute_episodes": {
@@ -17928,7 +17992,7 @@
   },
   "/api/v1/notifications/events": {
    "get": {
-    "description": "What can be notified about, with the default selection.",
+    "description": "What can be notified about, with the default selection (plugin messages too while a\nplugin is running).",
     "operationId": "event_kinds_api_v1_notifications_events_get",
     "responses": {
      "200": {
@@ -18456,6 +18520,81 @@
      }
     ],
     "summary": "Install",
+    "tags": [
+     "plugins"
+    ]
+   }
+  },
+  "/api/v1/plugins/panels": {
+   "get": {
+    "description": "The running add-ons' panels for a title page (none when no plugin has one).",
+    "operationId": "panels_api_v1_plugins_panels_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "on",
+      "required": false,
+      "schema": {
+       "default": "title",
+       "enum": [
+        "title",
+        "group",
+        "item"
+       ],
+       "title": "On",
+       "type": "string"
+      }
+     },
+     {
+      "description": "The title's, group's or item's id",
+      "in": "query",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "description": "The title's, group's or item's id",
+       "title": "Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/PanelOut"
+         },
+         "title": "Response Panels Api V1 Plugins Panels Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Panels",
     "tags": [
      "plugins"
     ]

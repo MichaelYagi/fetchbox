@@ -11,7 +11,7 @@ from fetchbox.core.errors import problem_responses as pr
 from fetchbox.core.providers import TestResult
 from fetchbox.modules.auth.deps import CurrentPrincipal, require
 from fetchbox.modules.notifications.models import NotificationTarget
-from fetchbox.modules.notifications.service import EVENTS, NotificationsService
+from fetchbox.modules.notifications.service import NotificationsService
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 _read = [Depends(require("notifications:read"))]
@@ -71,9 +71,12 @@ def _out(svc: NotificationsService, row: NotificationTarget) -> TargetOut:
 
 
 @router.get("/events", response_model=list[EventKindOut], dependencies=_read)
-async def event_kinds() -> list[EventKindOut]:
-    """What can be notified about, with the default selection."""
-    return [EventKindOut(event=k, label=v[0], default=v[1]) for k, v in EVENTS.items()]
+async def event_kinds(request: Request) -> list[EventKindOut]:
+    """What can be notified about, with the default selection (plugin messages too while a
+    plugin is running)."""
+    return [
+        EventKindOut(event=k, label=label, default=d) for k, label, d in _svc(request).event_kinds()
+    ]
 
 
 @router.get("/kinds", response_model=list[str], dependencies=_read)
