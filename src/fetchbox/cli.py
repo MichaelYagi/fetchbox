@@ -69,6 +69,13 @@ def _parser() -> argparse.ArgumentParser:
     new.add_argument("--kind", choices=["addon", "media"], default="addon",
                      help="an add-on for titles Fetchbox has, or a new media kind")  # fmt: skip
     new.add_argument("--dir", default=".", help="where to create it (default: here)")
+    dev = plugin_sub.add_parser(
+        "dev", help="run Fetchbox with a plugin loaded from source, reloaded on save"
+    )
+    dev.add_argument("path", nargs="?", default=".", help="the plugin's project folder")
+    dev.add_argument("--port", type=int, default=8788, help="where Fetchbox listens (8788)")
+    dev.add_argument("--data", type=Path, help="keep its data here (default: a throwaway one)")
+    dev.add_argument("--no-browser", action="store_true", help="don't open the browser")
     ptest = plugin_sub.add_parser("test", help="run a plugin's tests with the test kit")
     ptest.add_argument("path", nargs="?", default=".", help="the plugin's project folder")
     ptest.add_argument("pytest_args", nargs="*", help="passed on to pytest (after --)")
@@ -224,6 +231,20 @@ def _plugin(args: argparse.Namespace) -> int:
         print(f"created {root}")
         print(f"next: fetchbox plugin test {root}  (then: fetchbox plugin check {root})")
         return 0
+    if args.plugin_command == "dev":
+        import asyncio
+
+        from fetchbox.plugin_dev import DevError, run
+
+        try:
+            return asyncio.run(
+                run(Path(args.path), port=args.port, data=args.data, browser=not args.no_browser)
+            )
+        except DevError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 2
+        except KeyboardInterrupt:
+            return 0
     # test: the plugin's own tests, with its src/ importable and the kit available
     import subprocess
 
