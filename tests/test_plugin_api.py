@@ -154,3 +154,13 @@ def test_an_event_knows_its_file() -> None:
     ev = PublicEvent(id="1", type="file.imported", occurred_at=datetime.now(UTC), file_ids=["f"])
     assert ev.file == "f"
     assert PublicEvent(id="2", type="system.started", occurred_at=ev.occurred_at).file is None
+
+
+def test_a_secret_with_a_default_is_a_secret() -> None:
+    """Found by the Subtitles plugin: an optional password defaulting to "" was a str."""
+
+    class Account(Settings):
+        password: Secret = Field("", title="Password")
+
+    s = Account()
+    assert isinstance(s.password, Secret) and s.password.value == "" and not s.password

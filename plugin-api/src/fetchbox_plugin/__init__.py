@@ -7,6 +7,7 @@ plugin; Fetchbox itself includes it (``fetchbox.plugin`` is the same thing).
 
 from fetchbox_plugin.addon import Addon, Panel, action, every, on, panel
 from fetchbox_plugin.context import Context
+from fetchbox_plugin.errors import NotFound, Refused
 from fetchbox_plugin.events import PUBLIC_EVENTS, PublicEvent
 from fetchbox_plugin.kind import (
     File,
@@ -23,7 +24,7 @@ from fetchbox_plugin.kind import (
 )
 from fetchbox_plugin.manifest import PERMISSION_WORDS, Permission, Plugin
 from fetchbox_plugin.settings import Field, Folder, Secret, Settings, Url
-from fetchbox_plugin.types import FileInfo, SidecarInfo, TitleInfo
+from fetchbox_plugin.types import FileInfo, ItemInfo, SidecarInfo, TitleInfo
 
 API_VERSION = 1
 
@@ -40,9 +41,11 @@ __all__ = [
     "Group",
     "Hit",
     "Item",
+    "ItemInfo",
     "KindDeclarationError",
     "MediaKind",
     "Naming",
+    "NotFound",
     "Panel",
     "Parsed",
     "Permission",
@@ -50,6 +53,7 @@ __all__ = [
     "PublicEvent",
     "Qualities",
     "Query",
+    "Refused",
     "Secret",
     "Settings",
     "SidecarInfo",

@@ -1,0 +1,220 @@
+"""Subtitles: subtitles from OpenSubtitles for movies and episodes, filed beside them.
+
+When a movie or an episode is imported (or upgraded), the subtitles in your languages are
+fetched and written beside it as ``<its name>.<language>.srt``. Fetchbox keeps them with the
+file from then on: renamed, moved and deleted together with it.
+
+A language not found yet is tried again once a day; "Search subtitles" on a movie or episode
+tries at once.
+"""
+
+from __future__ import annotations
+
+import asyncio
+from datetime import UTC, datetime
+from typing import Any, ClassVar
+
+from fetchbox_plugin import (
+    Addon,
+    Field,
+    FileInfo,
+    ItemInfo,
+    NotFound,
+    Permission,
+    Plugin,
+    PublicEvent,
+    Secret,
+    Settings,
+    action,
+    every,
+    on,
+)
+from fetchbox_subtitles.moviehash import moviehash
+from fetchbox_subtitles.opensubtitles import Found, OpenSubtitles, OpenSubtitlesError, QuotaReached
+
+MISSING = "missing"  # store: {file id: [languages not found yet]}
+PAUSED = "paused_until"  # store: when the daily downloads run out, until when
+RETRY_PER_DAY = 40  # files tried again a day (OpenSubtitles' free downloads are limited)
+
+
+class SubtitleSettings(Settings):
+    api_key: Secret = Field(
+        title="OpenSubtitles API key",
+        help="Free: sign up at opensubtitles.com, then API Consumers in your profile",
+    )
+    languages: list[str] = Field(["en"], title="Languages", help="Two-letter codes, like en or fr")
+    username: str = Field("", title="OpenSubtitles username", help="Optional: more downloads a day")
+    password: Secret = Field("", title="OpenSubtitles password")
+    hearing_impaired: bool = Field(False, title="Prefer hearing impaired subtitles")
+
+    async def test(self, ctx: Any) -> str:
+        """The Test button: the key (and the account, when given) work."""
+        return await OpenSubtitles(
+            ctx, self.api_key.value, self.username, self.password.value
+        ).check()
+
+
+def pick(found: list[Found], *, hearing_impaired: bool) -> Found | None:
+    """The best: timed to this exact file, made by people, as asked about hearing impaired,
+    then the most downloaded."""
+    if not found:
+        return None
+    return max(
+        found,
+        key=lambda f: (
+            f.hash_match,
+            not f.machine_made,
+            f.hearing_impaired == hearing_impaired,
+            f.downloads,
+        ),
+    )
+
+
+class Subtitles(Addon):
+    id = "subtitles"
+    name = "Subtitles"
+    applies_to: ClassVar[set[str]] = {"movie", "series"}
+    settings = SubtitleSettings
+
+    def _client(self, ctx: Any) -> OpenSubtitles:
+        s: SubtitleSettings = self.settings
+        return OpenSubtitles(ctx, s.api_key.value, s.username, s.password.value)
+
+    @on("file.imported", "file.upgraded")
+    async def fetch_new(self, ctx: Any, event: PublicEvent) -> dict[str, Any]:
+        got = 0
+        for file_id in event.file_ids:
+            got += await self.fetch(ctx, file_id)
+        return {"subtitles": got}
+
+    @action("Search subtitles", on="item")
+    async def search_now(self, ctx: Any, item: str) -> dict[str, Any]:
+        it = await ctx.library.item(item)
+        got = 0
+        for f in await ctx.library.files(it.title_id):
+            if item in f.item_ids:
+                got += await self.fetch(ctx, f.id)
+        return {"subtitles": got}
+
+    @every(hours=24)
+    async def retry_missing(self, ctx: Any) -> dict[str, Any]:
+        missing: dict[str, list[str]] = await ctx.store.get(MISSING, {})
+        got = 0
+        for file_id in list(missing)[:RETRY_PER_DAY]:
+            got += await self.fetch(ctx, file_id)
+        return {"subtitles": got, "still_missing": len(await ctx.store.get(MISSING, {}))}
+
+    async def fetch(self, ctx: Any, file_id: str) -> int:
+        """Subtitles for one file, in each language it doesn't have yet; how many were added."""
+        if await self._paused(ctx):
+            return 0
+        try:
+            f: FileInfo = await ctx.library.file(file_id)
+        except NotFound:
+            await self._forget(ctx, file_id)  # gone from the library
+            return 0
+        have = {s.suffix for s in await ctx.files.sidecars(file_id)}
+        wanted = [lang for lang in self.settings.languages if f"{lang}.srt" not in have]
+        if not wanted:
+            await self._forget(ctx, file_id)
+            return 0
+        query = await self._query(ctx, f)
+        if query is None:
+            ctx.log.info("no ids to search by", file=file_id)
+            return 0
+        client = self._client(ctx)
+        added, still = 0, []
+        for lang in wanted:
+            try:
+                best = pick(
+                    await client.search({**query, "languages": lang}),
+                    hearing_impaired=self.settings.hearing_impaired,
+                )
+                if best is None:
+                    still.append(lang)
+                    continue
+                data = await client.download(best.file_id)
+            except QuotaReached as exc:
+                await ctx.store.set(PAUSED, exc.reset)
+                ctx.log.warning("daily downloads used up", until=exc.reset)
+                still += [w for w in wanted if w not in still and f"{w}.srt" not in have]
+                break
+            except OpenSubtitlesError as exc:
+                ctx.log.warning("opensubtitles", error=str(exc))
+                still.append(lang)
+                continue
+            await ctx.files.add_sidecar(
+                file_id,
+                f"{lang}.srt",
+                data,
+                meta={
+                    "source": "OpenSubtitles",
+                    "release": best.release,
+                    "file_id": best.file_id,
+                    "hash_match": best.hash_match,
+                },
+            )
+            added += 1
+        await self._remember(ctx, file_id, sorted(set(still)))
+        return added
+
+    async def _query(self, ctx: Any, f: FileInfo) -> dict[str, Any] | None:
+        """What to search by: the file's hash, and the title's ids (an episode: the show's,
+        with its season and number)."""
+        if f.title_id is None:
+            return None
+        title = await ctx.library.title(f.title_id)
+        ids: dict[str, Any] = {}
+        tmdb, imdb = title.ids.get("tmdb_id"), title.ids.get("imdb_id")
+        item: ItemInfo | None = await ctx.library.item(f.item_ids[0]) if f.item_ids else None
+        if item is not None and item.level == "episode":
+            if tmdb:
+                ids["parent_tmdb_id"] = tmdb
+            elif imdb:
+                ids["parent_imdb_id"] = str(imdb).removeprefix("tt")
+            if item.season is None or item.number is None:
+                return None
+            ids |= {"season_number": item.season, "episode_number": item.number}
+        elif tmdb:
+            ids["tmdb_id"] = tmdb
+        elif imdb:
+            ids["imdb_id"] = str(imdb).removeprefix("tt")
+        if not ({"tmdb_id", "imdb_id", "parent_tmdb_id", "parent_imdb_id"} & set(ids)):
+            return None
+        if digest := await asyncio.to_thread(moviehash, f.path):
+            ids["moviehash"] = digest
+        return ids
+
+    async def _paused(self, ctx: Any) -> bool:
+        until = await ctx.store.get(PAUSED)
+        if not until:
+            return False
+        try:
+            when = datetime.fromisoformat(str(until).replace("Z", "+00:00"))
+        except ValueError:
+            when = None
+        if when is not None and when <= datetime.now(UTC):
+            await ctx.store.delete(PAUSED)
+            return False
+        return True
+
+    async def _remember(self, ctx: Any, file_id: str, langs: list[str]) -> None:
+        missing: dict[str, list[str]] = await ctx.store.get(MISSING, {})
+        if langs:
+            missing[file_id] = langs
+        else:
+            missing.pop(file_id, None)
+        await ctx.store.set(MISSING, missing)
+
+    async def _forget(self, ctx: Any, file_id: str) -> None:
+        await self._remember(ctx, file_id, [])
+
+
+class SubtitlesPlugin(Plugin):
+    id = "subtitles"
+    name = "Subtitles"
+    description = "Subtitles from OpenSubtitles for movies and episodes, filed beside them."
+    fetchbox_api = 1
+    homepage = "https://github.com/MichaelYagi/fetchbox/tree/main/plugins/fetchbox-subtitles"
+    permissions: ClassVar[set[Permission]] = {Permission.NETWORK, Permission.LIBRARY_FILES}
+    contributes: ClassVar[list[type[Any]]] = [Subtitles]

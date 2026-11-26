@@ -4,8 +4,10 @@ and sends the same events as the web UI."""
 
 from __future__ import annotations
 
+import functools
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -17,8 +19,9 @@ from fetchbox.core.events import Actor
 from fetchbox.core.jobs import JobContext, JobRunner
 from fetchbox.modules.library.models import MediaFile, MediaFileSidecar
 from fetchbox.modules.library.sidecars import sidecar_rel
-from fetchbox.modules.media.models import Title
-from fetchbox_plugin.types import FileInfo, SidecarInfo, TitleInfo
+from fetchbox.modules.media.models import Album, Episode, Season, Title, WantedItem
+from fetchbox_plugin.errors import NotFound, Refused
+from fetchbox_plugin.types import FileInfo, ItemInfo, SidecarInfo, TitleInfo
 
 if TYPE_CHECKING:
     from fetchbox.modules.automation.search import AutoSearch
@@ -29,8 +32,20 @@ if TYPE_CHECKING:
 PLUGIN_MESSAGE = "plugin.message"  # the notification event a plugin's messages go out as
 
 
-class PluginRefused(PermissionError):
-    """Something a plugin may not do (another plugin's sidecar, say)."""
+PluginRefused = Refused  # (its name before it was part of the plugin API)
+
+
+def _api_errors[F: Callable[..., Awaitable[Any]]](fn: F) -> F:
+    """Fetchbox's own "not found" reaches a plugin as the API's NotFound."""
+
+    @functools.wraps(fn)
+    async def wrapper(*args: Any, **kwargs: Any) -> Any:
+        try:
+            return await fn(*args, **kwargs)
+        except NotFoundError as exc:
+            raise NotFound(str(exc)) from None
+
+    return wrapper  # type: ignore[return-value]
 
 
 @dataclass
@@ -68,6 +83,7 @@ class PluginFiles:
         dest = await self._lib.storage.destination(f.destination_id)
         return Path(dest.path)
 
+    @_api_errors
     async def path(self, file_id: str) -> Path:
         f, _ = await self._lib.file(file_id)
         return await self._where(f) / f.relative_path
@@ -77,11 +93,13 @@ class PluginFiles:
         where = await self._where(f) / sidecar_rel(f.relative_path, row.suffix)
         return SidecarInfo(row.media_file_id, row.suffix, where, row.plugin, dict(row.meta or {}))
 
+    @_api_errors
     async def sidecars(self, file_id: str, *, suffix: str | None = None) -> list[SidecarInfo]:
         """The file's sidecars (every plugin's); ``suffix=".srt"`` keeps those ending so."""
         rows = await self._lib.sidecars(file_id)
         return [await self._info(r) for r in rows if suffix is None or r.suffix.endswith(suffix)]
 
+    @_api_errors
     async def add_sidecar(
         self, file_id: str, suffix: str, data: bytes, *, meta: dict[str, Any] | None = None
     ) -> SidecarInfo:
@@ -89,16 +107,17 @@ class PluginFiles:
         renamed, moved, recycled and deleted with the file."""
         mine = await self._owner(file_id, suffix)
         if mine not in (None, self.plugin_id):
-            raise PluginRefused(f"{suffix} on file {file_id} is the {mine} plugin's")
+            raise Refused(f"{suffix} on file {file_id} is the {mine} plugin's")
         row = await self._lib.add_sidecar(file_id, suffix, data, plugin=self.plugin_id, meta=meta)
         return await self._info(row)
 
+    @_api_errors
     async def remove_sidecar(self, file_id: str, suffix: str) -> bool:
         mine = await self._owner(file_id, suffix)
         if mine is None:
             return False
         if mine != self.plugin_id:
-            raise PluginRefused(f"{suffix} on file {file_id} is the {mine} plugin's")
+            raise Refused(f"{suffix} on file {file_id} is the {mine} plugin's")
         return await self._lib.remove_sidecar(file_id, suffix)
 
     async def _owner(self, file_id: str, suffix: str) -> str | None:
@@ -113,6 +132,7 @@ class PluginLibrary:
         self.plugin_id = plugin_id
         self._s = services
 
+    @_api_errors
     async def titles(self, *, kind: str | None = None) -> list[TitleInfo]:
         db = self._s.media.db
         async with db.sessionmaker() as s:
@@ -122,14 +142,80 @@ class PluginLibrary:
             rows = list((await s.execute(q)).scalars())
         return [_title(t, monitored=t.monitor_mode != "none") for t in rows]
 
+    @_api_errors
     async def title(self, title_id: str) -> TitleInfo:
         t = await self._s.media.get_title(title_id)
         return _title(t, monitored=t.monitor_mode != "none")
 
+    @_api_errors
+    async def items(self, title_id: str) -> list[ItemInfo]:
+        """A title's items: the movie, its episodes (by season and number), its albums."""
+        rows = await self._items(WantedItem.title_id == title_id)
+        rows.sort(key=lambda i: (i.season or 0, i.number or 0, i.released or date.min, i.id))
+        return rows
+
+    @_api_errors
+    async def item(self, item_id: str) -> ItemInfo:
+        rows = await self._items(WantedItem.id == item_id)
+        if not rows:
+            raise NotFoundError("item", item_id)
+        return rows[0]
+
+    async def _items(self, where: Any) -> list[ItemInfo]:
+        async with self._s.media.db.sessionmaker() as s:
+            q = (
+                select(WantedItem, Episode, Season, Album)
+                .outerjoin(Episode, Episode.id == WantedItem.episode_id)
+                .outerjoin(Season, Season.id == Episode.season_id)
+                .outerjoin(Album, Album.id == WantedItem.album_id)
+                .where(where)
+            )
+            rows = (await s.execute(q)).all()
+        out = []
+        for w, ep, season, album in rows:
+            if ep is not None:
+                out.append(
+                    ItemInfo(
+                        w.id,
+                        w.title_id,
+                        "episode",
+                        ep.name,
+                        season.number if season else None,
+                        ep.number,
+                        ep.air_date,
+                        w.monitored,
+                        w.state,
+                    )
+                )
+            elif album is not None:
+                out.append(
+                    ItemInfo(
+                        w.id,
+                        w.title_id,
+                        "album",
+                        album.name,
+                        None,
+                        None,
+                        album.release_date,
+                        w.monitored,
+                        w.state,
+                        {"mbid": album.mbid},
+                    )
+                )
+            else:
+                out.append(
+                    ItemInfo(
+                        w.id, w.title_id, "movie", None, None, None, None, w.monitored, w.state
+                    )
+                )
+        return out
+
+    @_api_errors
     async def files(self, title_id: str) -> list[FileInfo]:
         rows = await self._s.library.files(title_id)
         return [await self._file(f, items, title_id) for f, items in rows]
 
+    @_api_errors
     async def file(self, file_id: str) -> FileInfo:
         f, items = await self._s.library.file(file_id)
         title_id = None
@@ -143,12 +229,14 @@ class PluginLibrary:
         path = await where.path(f.id)
         return FileInfo(f.id, title_id, path, f.size, quality, tuple(items), f.imported_at)
 
+    @_api_errors
     async def wanted(self, item_id: str, monitored: bool = True) -> None:
         """Mark an item (a movie, an episode, an album) wanted, or not."""
         await self._s.media.update_wanted(
             item_id, monitored=monitored, if_match=None, actor=_actor(self.plugin_id)
         )
 
+    @_api_errors
     async def search(self, item_id: str) -> str | None:
         """Search for an item now, as Search does on its page; the search job's id."""
         if self._s.autosearch is None:
@@ -205,9 +293,15 @@ class PluginNotify:
         from fetchbox.providers.notifiers import Notification
 
         n = Notification.model_validate(
-            {"event": PLUGIN_MESSAGE, "title": title, "body": body, "level": level,
-             "occurred_at": utcnow(), "data": {"plugin": self.plugin_id}}
-        )  # fmt: skip
+            {
+                "event": PLUGIN_MESSAGE,
+                "title": title,
+                "body": body,
+                "level": level,
+                "occurred_at": utcnow(),
+                "data": {"plugin": self.plugin_id},
+            }
+        )
         return await self._n.send(n)
 
 

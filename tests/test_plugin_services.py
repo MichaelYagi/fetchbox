@@ -11,12 +11,12 @@ import httpx
 import pytest
 from sqlalchemy import update
 
-from fetchbox.core.errors import NotFoundError
 from fetchbox.core.jobs import JobContext
 from fetchbox.modules.notifications.models import NotificationTarget
 from fetchbox.plugin.context import PluginContext
 from fetchbox.plugin.services import PLUGIN_MESSAGE, PluginRefused, Services
 from fetchbox.providers.download_clients.builtin import BuiltinClient
+from fetchbox_plugin import NotFound
 from tests.conftest import Running
 from tests.pipeline import Fakes
 from tests.test_library_api import EXPECTED, _acquire, fast, made, seed  # noqa: F401
@@ -75,7 +75,7 @@ async def test_files_and_library_as_a_plugin_sees_them(
     assert f.quality == api_file["quality"]["name"]
     assert f.item_ids == (movie["wanted"][0]["id"],)
     assert await ctx.library.file(f.id) == f
-    with pytest.raises(NotFoundError):
+    with pytest.raises(NotFound):  # the API's, which a plugin can catch
         await ctx.library.title("nope")
 
     # files: a sidecar beside it, tied to it, the plugin's own

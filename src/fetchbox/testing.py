@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import os
-from collections.abc import AsyncIterator, Iterator, Sequence
+from collections.abc import AsyncIterator, Callable, Iterator, Sequence
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass
 from pathlib import Path
@@ -22,7 +22,7 @@ from fetchbox.app import create_app
 from fetchbox.config import load_settings
 from fetchbox.core.db import utcnow
 from fetchbox.core.ids import new_id
-from fetchbox.plugin.context import PluginContext
+from fetchbox.plugin.context import PluginContext, PluginHttp
 from fetchbox.plugin.host import PluginHost
 from fetchbox.plugin.services import PluginLibrary, Services
 from fetchbox_plugin import FileInfo, Plugin, PublicEvent
@@ -80,6 +80,21 @@ class App:
         """The plugin's ctx, to look at what it stored or wrote."""
         return self.host.loaded[plugin_id].ctx
 
+    def fake_http(
+        self, plugin_id: str, handler: Callable[[httpx.Request], httpx.Response]
+    ) -> list[httpx.Request]:
+        """Answer the plugin's ctx.http requests with ``handler`` (a function from request to
+        response) instead of the network; the requests it made, to look at."""
+        seen: list[httpx.Request] = []
+
+        def record(req: httpx.Request) -> httpx.Response:
+            seen.append(req)
+            return handler(req)
+
+        ctx = self.ctx(plugin_id)
+        ctx.http = PluginHttp(plugin_id, transport=httpx.MockTransport(record))
+        return seen
+
     async def emit(
         self,
         type: str,
@@ -102,6 +117,23 @@ class App:
         failed = [r for r in ran if r.status != "succeeded"]
         if check and failed:
             raise HandlerFailed("; ".join(f"{r.job_type}: {r.error}" for r in failed))
+        return ran
+
+    async def run(
+        self, plugin_id: str, method: str, item: Any = None, *, within: float = 30.0,
+        check: bool = True,
+    ) -> Ran:  # fmt: skip
+        """Run one of a plugin's @every or @action methods now, as Fetchbox does (a job),
+        and wait for it: ``await app.run("subtitles", "retry_missing")``."""
+        got = self.host.loaded[plugin_id]
+        types = [t for t in got.job_types if t.rsplit(".", 1)[-1] == method]
+        if not types:
+            raise LookupError(f"{plugin_id} has no @every or @action method {method!r}")
+        job = await self.host.services.jobs.enqueue(types[0], {"item": item})
+        assert job is not None
+        ran = await self._outcome(job.id, within)
+        if check and ran.status != "succeeded":
+            raise HandlerFailed(f"{ran.job_type}: {ran.error}")
         return ran
 
     async def _outcome(self, job_id: str, within: float) -> Ran:
@@ -127,17 +159,27 @@ class App:
         size: int = 1024,
         quality: str = "WEBDL-1080p",
         imported: bool = True,
+        season: int | None = None,
+        episode: int | None = None,
+        tmdb_id: int | None = None,
+        imdb_id: str | None = None,
     ) -> FileInfo:
         """A title with one file in its library folder, as if downloaded and imported (no
         metadata lookup, no download). With ``imported``, ``file.imported`` is fired and
-        the plugins' handlers for it have run when this returns."""
+        the plugins' handlers for it have run when this returns. For a series, ``season``
+        and ``episode`` make the file that episode's."""
         from fetchbox.modules.library.models import MediaFile, MediaFileItem
-        from fetchbox.modules.media.models import Title, WantedItem
+        from fetchbox.modules.media.models import Episode, Season, Title, WantedItem
         from fetchbox.modules.profiles.models import QualityProfile
 
         st = self.fastapi.state
         dest = await st.storage.default_destination(kind)
-        rel = path or (f"{name} ({year})/{name} ({year}).mkv" if year else f"{name}/{name}.mkv")
+        folder = f"{name} ({year})" if year else name
+        if kind == "series" and season is not None and episode is not None:
+            default = f"{folder}/Season {season:02}/{name} - S{season:02}E{episode:02}.mkv"
+        else:
+            default = f"{folder}/{folder}.mkv"
+        rel = path or default
         on_disk = Path(dest.path) / rel
         await asyncio.to_thread(_write, on_disk, size)
         async with st.fb.db.sessionmaker() as s:
@@ -146,10 +188,20 @@ class App:
                 select(QualityProfile.id).where(QualityProfile.media == media).limit(1)
             )
             title = Title(kind=kind, name=name, sort_name=name.lower(), year=year,
-                          profile_id=profile, destination_id=dest.id)  # fmt: skip
+                          profile_id=profile, destination_id=dest.id,
+                          tmdb_id=tmdb_id, imdb_id=imdb_id)  # fmt: skip
             s.add(title)
             await s.flush()
-            item = WantedItem(title_id=title.id, state="acquired")
+            ep_id = None
+            if kind == "series" and season is not None and episode is not None:
+                row = Season(title_id=title.id, number=season)
+                s.add(row)
+                await s.flush()
+                ep = Episode(season_id=row.id, number=episode, name=f"Episode {episode}")
+                s.add(ep)
+                await s.flush()
+                ep_id = ep.id
+            item = WantedItem(title_id=title.id, episode_id=ep_id, state="acquired")
             s.add(item)
             f = MediaFile(storage_node_id=dest.node_id, destination_id=dest.id,
                           relative_path=rel, size=size, quality={"name": quality})  # fmt: skip
