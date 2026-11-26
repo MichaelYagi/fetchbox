@@ -14,7 +14,7 @@ from typing import Any
 
 import structlog
 from pydantic import ValidationError
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 
 from fetchbox.core.concurrency import check_if_match
@@ -146,13 +146,22 @@ class NotificationsService:
             error = f"{type(exc).__name__}: {exc}"
         if error:
             log.warning("notify.failed", target=t.name, event_type=n.event, error=error)
+        await self._record(t.id, error)
+
+    async def _record(self, target_id: str, error: str | None) -> None:
+        """Keep a send's outcome on the target. It's bookkeeping, not an edit: written
+        without bumping the version, so it never makes a save of the target fail (412)."""
+        values: dict[str, Any] = {"last_error": error}
+        if error is None:
+            values["last_sent_at"] = utcnow()
         async with self.db.sessionmaker() as s:
-            row = await s.get(NotificationTarget, t.id)
-            if row is not None:
-                row.last_error = error
-                if error is None:
-                    row.last_sent_at = utcnow()
-                await s.commit()
+            await s.execute(
+                update(NotificationTarget)
+                .where(NotificationTarget.id == target_id)
+                .values(**values)
+                .execution_options(synchronize_session=False)
+            )
+            await s.commit()
 
     def _provider(self, row: NotificationTarget) -> NotifierProvider:
         cls = self.providers.get("notifier", row.kind)
@@ -279,11 +288,5 @@ class NotificationsService:
 
     async def test(self, target_id: str) -> TestResult:
         res = await self._provider(await self.get(target_id)).test()
-        async with self.db.sessionmaker() as s:
-            row = await s.get(NotificationTarget, target_id)
-            if row is not None:
-                row.last_error = None if res.ok else res.message
-                if res.ok:
-                    row.last_sent_at = utcnow()
-                await s.commit()
+        await self._record(target_id, None if res.ok else res.message)
         return res

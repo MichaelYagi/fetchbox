@@ -92,6 +92,37 @@ async def test_webhook_receives_the_events_it_wants(
     assert bad.status_code == 422
 
 
+async def test_a_send_never_makes_saving_the_target_fail(
+    c: httpx.AsyncClient, server: Running, receiver: Receiver
+) -> None:
+    """Recording that a message went out is bookkeeping: a save made with the ETag read
+    before the send still goes through (it was a 412 when the save and send overlapped)."""
+    r = await c.post("/notifications/targets", json={"kind": "webhook", "name": "Hook",
+                     "settings": {"url": receiver.url}})  # fmt: skip
+    assert r.status_code == 201, r.text
+    t = r.json()
+    tag = t["etag"]
+
+    await server.app.state.fb.bus.emit("import.completed", name="Dune", year=2021, path="x")
+
+    async def mine() -> dict[str, Any]:
+        return next(x for x in (await c.get("/notifications/targets")).json() if x["id"] == t["id"])
+
+    async def recorded() -> bool:
+        return (await mine())["last_sent_at"] is not None
+
+    await until(recorded, within=10)
+    r = await c.patch(f"/notifications/targets/{t['id']}", json={"name": "Renamed"},
+                      headers={"If-Match": tag})  # fmt: skip
+    assert r.status_code == 200, r.text
+    assert (await c.post(f"/notifications/targets/{t['id']}/test")).json()["ok"]
+    r = await c.patch(f"/notifications/targets/{t['id']}", json={"name": "Again"},
+                      headers={"If-Match": r.json()["etag"]})  # fmt: skip
+    assert r.status_code == 200, r.text
+    got = await mine()
+    assert got["name"] == "Again" and got["last_error"] is None
+
+
 async def test_discord_message_and_errors(c: httpx.AsyncClient, server: Running) -> None:
     sent: list[dict[str, Any]] = []
     status = [204]
