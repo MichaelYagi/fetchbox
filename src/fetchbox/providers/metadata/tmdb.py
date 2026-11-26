@@ -30,6 +30,9 @@ from fetchbox.providers.metadata import (
 
 API_URL = "https://api.themoviedb.org/3"
 IMAGE_URL = "https://image.tmdb.org/t/p/w500"
+BACKDROP_URL = "https://image.tmdb.org/t/p/w1280"
+STILL_URL = "https://image.tmdb.org/t/p/w300"
+MAX_BACKDROPS = 8
 TIMEOUT = httpx.Timeout(10.0, connect=5.0)
 MAX_RETRY_AFTER = 5.0
 ENDED = {"Ended", "Canceled"}
@@ -58,6 +61,17 @@ def _date(v: Any) -> date | None:
 
 def _poster(path: Any) -> str | None:
     return f"{IMAGE_URL}{path}" if isinstance(path, str) and path else None
+
+
+def _backdrops(block: Any) -> list[str]:
+    """The title's backdrops: ones without text first (a language of null), then best rated."""
+    shots = [b for b in (block or {}).get("backdrops") or [] if isinstance(b.get("file_path"), str)]
+    shots.sort(key=lambda b: (b.get("iso_639_1") is not None, -(b.get("vote_average") or 0)))
+    return [f"{BACKDROP_URL}{b['file_path']}" for b in shots[:MAX_BACKDROPS]]
+
+
+def _still(path: Any) -> str | None:
+    return f"{STILL_URL}{path}" if isinstance(path, str) and path else None
 
 
 def _release_dates(block: Any) -> dict[int, date]:
@@ -117,6 +131,10 @@ class TmdbProvider(MetadataProvider):
 
     async def aclose(self) -> None:
         await self._http.aclose()
+
+    def _image_languages(self) -> str:
+        """Images without text, then in English and in the chosen language."""
+        return ",".join(dict.fromkeys(["null", "en", self._params["language"][:2]]))
 
     async def _get(self, path: str, **params: Any) -> dict[str, Any]:
         query = {**self._params, **{k: v for k, v in params.items() if v is not None}}
@@ -197,7 +215,9 @@ class TmdbProvider(MetadataProvider):
 
     async def get_movie(self, ext_id: str) -> MovieDetail:
         r = await self._get(
-            f"/movie/{int(ext_id)}", append_to_response="alternative_titles,release_dates"
+            f"/movie/{int(ext_id)}",
+            append_to_response="alternative_titles,release_dates,images",
+            include_image_language=self._image_languages(),
         )
         dates = _release_dates(r.get("release_dates"))
         base = self._summary("movie", r)
@@ -212,11 +232,16 @@ class TmdbProvider(MetadataProvider):
             physical_date=dates.get(5),
             genres=[g["name"] for g in r.get("genres", []) if g.get("name")],
             alt_titles=_alt_titles(r.get("alternative_titles"), base.name, base.original_name),
+            backdrop_urls=_backdrops(r.get("images")),
         )
 
     async def get_series(self, ext_id: str) -> SeriesDetail:
         tv_id = int(ext_id)
-        r = await self._get(f"/tv/{tv_id}", append_to_response="alternative_titles,external_ids")
+        r = await self._get(
+            f"/tv/{tv_id}",
+            append_to_response="alternative_titles,external_ids,images",
+            include_image_language=self._image_languages(),
+        )
         base = self._summary("series", r)
         ids = r.get("external_ids") or {}
         runtimes = [x for x in r.get("episode_run_time") or [] if isinstance(x, int) and x > 0]
@@ -235,6 +260,7 @@ class TmdbProvider(MetadataProvider):
             runtime=min(runtimes) if runtimes else None,
             genres=[g["name"] for g in r.get("genres", []) if g.get("name")],
             alt_titles=_alt_titles(r.get("alternative_titles"), base.name, base.original_name),
+            backdrop_urls=_backdrops(r.get("images")),
             seasons=list(seasons),
         )
 
@@ -247,6 +273,7 @@ class TmdbProvider(MetadataProvider):
                 name=e.get("name"),
                 air_date=_date(e.get("air_date")),
                 runtime=e.get("runtime") or None,
+                still_url=_still(e.get("still_path")),
             )
             for e in s.get("episodes", [])
             if isinstance(e.get("episode_number"), int)

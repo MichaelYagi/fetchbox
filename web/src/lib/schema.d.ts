@@ -3454,6 +3454,8 @@ export interface components {
             runtime?: number | null;
             /** Season */
             season: number;
+            /** Still Url */
+            still_url?: string | null;
         };
         /** EpisodeOut */
         EpisodeOut: {
@@ -4407,6 +4409,11 @@ export interface components {
              * @default []
              */
             alt_titles: string[];
+            /**
+             * Backdrop Urls
+             * @default []
+             */
+            backdrop_urls: string[];
             /** Digital Date */
             digital_date?: string | null;
             /**
@@ -5443,6 +5450,11 @@ export interface components {
              * @default []
              */
             alt_titles: string[];
+            /**
+             * Backdrop Urls
+             * @default []
+             */
+            backdrop_urls: string[];
             /**
              * Ended
              * @default false

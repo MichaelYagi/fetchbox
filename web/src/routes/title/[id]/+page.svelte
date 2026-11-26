@@ -22,6 +22,31 @@
 	let open = $state<Record<number, boolean>>({});
 	let albums = $state<S['AlbumOut'][]>([]);
 	let openAlbum = $state<Record<string, boolean>>({});
+	// Pictures from TMDB, when it has them: a scene behind the header, a frame per episode.
+	// Fetched once per title (not with the 5-second refresh); nothing waits for them.
+	let backdrop = $state<string | null>(null);
+	let stills = $state<Record<string, string>>({});
+	let picturesFor = '';
+	$effect(() => {
+		const t = title;
+		if (!t || !t.tmdb_id || (t.kind !== 'movie' && t.kind !== 'series')) return;
+		const key = `${t.kind}:${t.tmdb_id}`;
+		if (key === picturesFor) return;
+		picturesFor = key;
+		backdrop = null;
+		stills = {};
+		const path = t.kind === 'movie' ? `/discovery/movies/${t.tmdb_id}` : `/discovery/series/${t.tmdb_id}`;
+		get<S['MovieDetail'] | S['SeriesDetail']>(path)
+			.then((d) => {
+				if (picturesFor !== key) return;
+				backdrop = d.backdrop_urls?.[0] ?? null;
+				const got: Record<string, string> = {};
+				for (const season of 'seasons' in d ? d.seasons : [])
+					for (const ep of season.episodes ?? []) if (ep.still_url) got[`${ep.season}:${ep.number}`] = ep.still_url;
+				stills = got;
+			})
+			.catch(() => {});
+	});
 	let editions = $state<Record<string, S['EditionOut'][]>>({});
 	let showKinds = $state<Record<string, boolean>>({});
 	let error = $state('');
@@ -283,7 +308,7 @@
 	{#if title === null}
 		{#if !error}<p class="muted">Loading…</p>{/if}
 	{:else}
-		<div class="head">
+		<div class="head" class:backdrop={!!backdrop} style:--backdrop={backdrop ? `url("${backdrop}")` : null}>
 			{#if title.poster_url}<img class="poster" src={title.poster_url} alt="" />{/if}
 			<div class="stack info">
 				<div>
@@ -524,7 +549,12 @@
 									{#each x.episodes as e (e.id)}
 										<tr class:unmonitored={!e.wanted.monitored}>
 											<td class="num muted">{e.number}</td>
-											<td>{e.name ?? `Episode ${e.number}`}</td>
+											<td>
+												<span class="ep-name">
+													{#if stills[`${x.number}:${e.number}`]}<img class="still" src={stills[`${x.number}:${e.number}`]} alt="" loading="lazy" />{/if}
+													<span>{e.name ?? `Episode ${e.number}`}</span>
+												</span>
+											</td>
 											<td class="muted small date">{e.air_date ?? ''}</td>
 											<td>
 												{#if epState(e)}<span class="muted small">{epState(e)}</span>{:else}<Badge state={e.wanted.state} />{/if}
@@ -604,6 +634,42 @@
 		display: flex;
 		gap: 1.5rem;
 		flex-wrap: wrap;
+	}
+	/* A scene from the title behind the header, faded into the page so text stays readable
+	   in every theme */
+	.head.backdrop {
+		padding: 1.25rem;
+		border-radius: var(--radius);
+		background-image:
+			linear-gradient(90deg, var(--bg) 30%, color-mix(in srgb, var(--bg) 72%, transparent)),
+			var(--backdrop);
+		background-size: cover;
+		background-position: center 25%;
+	}
+	@media (max-width: 760px) {
+		.head.backdrop {
+			background-image:
+				linear-gradient(0deg, var(--bg) 40%, color-mix(in srgb, var(--bg) 72%, transparent)),
+				var(--backdrop);
+		}
+	}
+	.ep-name {
+		display: flex;
+		align-items: center;
+		gap: 0.6rem;
+	}
+	.still {
+		width: 96px;
+		aspect-ratio: 16 / 9;
+		object-fit: cover;
+		border-radius: 4px;
+		flex: none;
+		background: var(--surface-2);
+	}
+	@media (max-width: 560px) {
+		.still {
+			width: 64px;
+		}
 	}
 	.poster {
 		width: 180px;
