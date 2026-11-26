@@ -60,9 +60,23 @@ async def seeder(made: Made) -> BuiltinClient:
 
     s = engine()
     await s.start()
+    await listening(s)
     await s.add(made.source(), AddOptions(save_path=str(made.root), paused=False))
     await until(lambda: _state(s, made.info_hash, "seeding"), within=15)
     return s
+
+
+async def listening(e: BuiltinClient) -> None:
+    """Until the engine has a port others can connect to. On Windows CI a new session
+    sometimes never opens its listen socket (port 0: no peer can reach it, and a test
+    download waits forever): open it again."""
+    for _ in range(5):
+        for _ in range(30):
+            if e.listen_port:
+                return
+            await asyncio.sleep(0.1)
+        e._s().apply_settings({"listen_interfaces": LOOPBACK["listen_interfaces"]})
+    raise RuntimeError("the engine never opened a listen port")
 
 
 async def _state(c: BuiltinClient, ref: str, state: str) -> bool:
