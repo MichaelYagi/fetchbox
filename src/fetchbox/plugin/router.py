@@ -220,6 +220,22 @@ async def title_items(title_id: str, request: Request) -> list[PluginItemOut]:
     return [PluginItemOut.model_validate(i) for i in await _titles(request).items(title_id)]
 
 
+class PluginSearchOut(BaseModel):
+    searched: int = Field(description="Queries asked")
+    results: int = Field(description="Releases the indexers gave")
+    grabbed: int
+
+
+@router.post(
+    "/titles/{title_id}/search", response_model=PluginSearchOut,
+    dependencies=[Depends(require("releases:write"))], responses=pr(404),
+)  # fmt: skip
+async def search_title(title_id: str, request: Request, who: CurrentPrincipal) -> PluginSearchOut:
+    """Search now for a plugin kind's title's missing items, and grab the best releases."""
+    pipeline = request.app.state.plugin_pipeline
+    return PluginSearchOut.model_validate(await pipeline.search(title_id, actor=who.actor()))
+
+
 @router.get("/panels", response_model=list[PanelOut], dependencies=_read)
 async def panels(
     request: Request,

@@ -362,6 +362,9 @@ class LibraryService:
         self.music_naming: Any = lambda: None
         # the MusicService (set by the app): fetches an album's track list at import
         self.music: Any = None
+        # Plugins' media kinds import through the plugin (set by the app when it has them):
+        # (download, grab, title, waiting items, destination) -> the import's result
+        self.plugin_import: Any = None
 
     # ---- lifecycle ----------------------------------------------------------------------------
 
@@ -535,6 +538,11 @@ class LibraryService:
             return await self._import_episodes(
                 d, grab, title, waiting, dest, parsed, quality, score
             )
+        if title.kind != "movie":  # a plugin's media kind (comics): its plugin says which file
+            if self.plugin_import is None:
+                raise ImportProblem(f"no plugin for {title.kind} is running")
+            result: dict[str, Any] = await self.plugin_import(d, grab, title, waiting, dest)
+            return result
 
         # movie: the biggest video file (samples ignored)
         video = pick_video(await self._files(d))

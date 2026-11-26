@@ -110,6 +110,11 @@
 		await post(`/plugins/titles/${id}/refresh`);
 		pluginItems = await get<S['PluginItemOut'][]>(`/plugins/titles/${id}/items`);
 	});
+	const searchPlugin = () => act('search', async () => {
+		const r = await post<S['PluginSearchOut']>(`/plugins/titles/${id}/search`);
+		message = r.grabbed ? `Grabbed ${r.grabbed} release${r.grabbed === 1 ? '' : 's'}` : r.results ? 'Nothing fitting found' : 'Nothing found';
+		pluginItems = await get<S['PluginItemOut'][]>(`/plugins/titles/${id}/items`);
+	});
 	const monitorItem = (i: S['PluginItemOut'], on: boolean) =>
 		act('monitor', async () => {
 			await patch(`/wanted/${i.id}`, { monitored: on });
@@ -504,7 +509,8 @@
 						</div>
 					{/if}
 					<div class="row">
-						<button onclick={refreshPlugin} disabled={!!busy} title="Ask the plugin again for its items">Refresh</button>
+						<button class="primary" onclick={searchPlugin} disabled={!!busy} title="Every wanted, released item still to get">Search all missing</button>
+		<button onclick={refreshPlugin} disabled={!!busy} title="Ask the plugin again for its items">Refresh</button>
 						<button class="danger" onclick={remove} disabled={!!busy}>Remove</button>
 					</div>
 				{/if}

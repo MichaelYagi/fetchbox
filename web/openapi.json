@@ -6167,6 +6167,31 @@
     "title": "PluginPatch",
     "type": "object"
    },
+   "PluginSearchOut": {
+    "properties": {
+     "grabbed": {
+      "title": "Grabbed",
+      "type": "integer"
+     },
+     "results": {
+      "description": "Releases the indexers gave",
+      "title": "Results",
+      "type": "integer"
+     },
+     "searched": {
+      "description": "Queries asked",
+      "title": "Searched",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "searched",
+     "results",
+     "grabbed"
+    ],
+    "title": "PluginSearchOut",
+    "type": "object"
+   },
    "PluginTitleIn": {
     "properties": {
      "monitor": {
@@ -19200,6 +19225,71 @@
      }
     ],
     "summary": "Refresh Title",
+    "tags": [
+     "plugins"
+    ]
+   }
+  },
+  "/api/v1/plugins/titles/{title_id}/search": {
+   "post": {
+    "description": "Search now for a plugin kind's title's missing items, and grab the best releases.",
+    "operationId": "search_title_api_v1_plugins_titles__title_id__search_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "title_id",
+      "required": true,
+      "schema": {
+       "title": "Title Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PluginSearchOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Search Title",
     "tags": [
      "plugins"
     ]

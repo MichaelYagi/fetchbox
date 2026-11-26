@@ -381,6 +381,10 @@ class TorznabProvider(IndexerProvider):
         caps = await self.caps()
         limit = self._limit(caps)
         text = q.terms[0] if q.terms else ""
+        if q.kind not in ("movie", "series", "music"):
+            # a plugin's media kind: a plain search, in the categories it gave
+            cats = {"cat": ",".join(str(c) for c in q.categories)} if q.categories else {}
+            return await self._items(t="search", limit=limit, q=text, **cats)
         if q.kind == "music":
             # A plain search in the music categories: every indexer takes it, and names
             # are judged against the album afterwards
