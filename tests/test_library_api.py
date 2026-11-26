@@ -115,6 +115,12 @@ async def _acquire(
             "DEBUG downloads",
             [(d["status"], d["save_path"], d["error"]) for d in (await c.get("/downloads")).json()],
         )
+        # did the two engines ever connect? (the Windows CI flake: a download that never starts)
+        for who, eng in (("downloader", _engine(server)), ("seeder", seed)):
+            for t in await eng.status():
+                print(f"DEBUG {who}", t.state, f"{t.progress:.0%}", f"seeds={t.seeds}",
+                      f"peers={t.peers}", f"down={t.downloaded}", f"up={t.uploaded}",
+                      f"port={eng.listen_port}", t.error)  # fmt: skip
         raise
     return movie
 
