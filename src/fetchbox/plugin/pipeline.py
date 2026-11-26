@@ -103,21 +103,7 @@ class PluginPipeline:
         those given), and grab the best releases."""
         title = await self.titles.media.get_title(title_id)
         kind, _got = self.titles.kind(title.kind)
-        rows = await self._rows(title_id)
-        today = date.today()
-        allowed, cutoff = self.qualities(title, kind)
-        files = await self.current([w.id for _p, w in rows if w.state == "acquired"])
-
-        def upgradable(w: WantedItem) -> bool:
-            have = files.get(w.id)
-            return have is not None and _rank(have, allowed) > _rank(cutoff, allowed)
-
-        wanted = [
-            (p, w) for p, w in rows
-            if (w.id in item_ids if item_ids else w.monitored)
-            and ((w.state == "missing" and (item_ids or p.released is None or p.released <= today))
-                 or (w.state == "acquired" and upgradable(w)))
-        ]  # fmt: skip
+        rows, wanted, allowed, files = await self._wanted(title, kind, item_ids)
         if not wanted:
             return {"searched": 0, "results": 0, "grabbed": 0}
         details = self._details(title, rows)
@@ -144,7 +130,38 @@ class PluginPipeline:
             title, kind, details, wanted, list(found.values()), allowed=allowed,
             current={w.id: _rank(files[w.id], allowed) for _p, w in wanted if w.id in files},
         )  # fmt: skip
-        grabbed = 0
+        grabbed = await self._grab(picks, wanted, actor)
+        return {"searched": len(queries), "results": len(found), "grabbed": len(grabbed)}
+
+    async def rss(self, releases: list[ReleaseCandidate]) -> tuple[int, list[str]]:
+        """The RSS sync's releases, offered to every plugin kind's title: (titles that had
+        any of theirs, releases grabbed)."""
+        actor = Actor(type="system", id="automation", name="RSS sync")
+        matched, grabbed = 0, []
+        for kind_id, kind, _got in self.titles.running():
+            async with self.db.sessionmaker() as s:
+                titles = list(
+                    (await s.execute(select(Title).where(Title.kind == kind_id))).scalars()
+                )
+            for title in titles:
+                rows, wanted, allowed, files = await self._wanted(title, kind, None)
+                if not wanted:
+                    continue
+                current = {w.id: _rank(files[w.id], allowed) for _p, w in wanted if w.id in files}
+                details = self._details(title, rows)
+                picks = await self.decide(
+                    title, kind, details, wanted, releases, allowed=allowed, current=current
+                )
+                if picks:
+                    matched += 1
+                    grabbed += await self._grab(picks, wanted, actor)
+        return matched, grabbed
+
+    async def _grab(
+        self, picks: list[Pick], wanted: list[tuple[PluginItem, WantedItem]], actor: Actor
+    ) -> list[str]:
+        """Grab the best releases until every wanted item is covered; their names."""
+        out: list[str] = []
         needed = {w.id for _p, w in wanted}
         for pick in picks:
             if not set(pick.items) <= needed:
@@ -162,11 +179,38 @@ class PluginPipeline:
                 log.info("plugin.grab_skipped", release=pick.candidate.title, why=str(exc))
                 continue
             if created:
-                grabbed += 1
+                out.append(pick.candidate.title)
                 needed -= set(pick.items)
             if not needed:
                 break
-        return {"searched": len(queries), "results": len(found), "grabbed": grabbed}
+        return out
+
+    async def _wanted(
+        self, title: Title, kind: MediaKind, item_ids: list[str] | None
+    ) -> tuple[
+        list[tuple[PluginItem, WantedItem]],
+        list[tuple[PluginItem, WantedItem]],
+        list[str],
+        dict[str, str],
+    ]:
+        """(all items, those to look for, accepted qualities, the files' qualities): the
+        missing ones out now, and those with a file below the cutoff (upgrades)."""
+        rows = await self._rows(title.id)
+        today = date.today()
+        allowed, cutoff = self.qualities(title, kind)
+        files = await self.current([w.id for _p, w in rows if w.state == "acquired"])
+
+        def upgradable(w: WantedItem) -> bool:
+            have = files.get(w.id)
+            return have is not None and _rank(have, allowed) > _rank(cutoff, allowed)
+
+        wanted = [
+            (p, w) for p, w in rows
+            if (w.id in item_ids if item_ids else w.monitored)
+            and ((w.state == "missing" and (item_ids or p.released is None or p.released <= today))
+                 or (w.state == "acquired" and upgradable(w)))
+        ]  # fmt: skip
+        return rows, wanted, allowed, files
 
     async def decide(
         self,

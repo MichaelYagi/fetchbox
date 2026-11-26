@@ -325,6 +325,7 @@ def create_app(
         )
         app.state.plugin_pipeline = pipeline
         library.plugin_import = pipeline.import_download
+        autosearch.plugin_rss = pipeline.rss
 
         @state.jobs.handler(SEARCH_MISSING)
         async def _search_missing(ctx: Any) -> dict[str, Any]:

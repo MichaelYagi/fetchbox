@@ -108,3 +108,17 @@ async def test_good_enough_isnt_upgraded(saga: str, server: Running, c: httpx.As
     )
     title = await server.app.state.media.get_title(saga)
     assert pipeline.qualities(title, kind) == (["CBZ", "CBR"], "CBR")
+
+
+async def test_rss_releases_reach_plugin_titles(saga: str, server: Running) -> None:
+    pipeline = server.app.state.plugin_pipeline
+
+    def rel(name: str) -> ReleaseCandidate:
+        return ReleaseCandidate(title=name, info_hash=name.encode().hex()[:40].ljust(40, "0"))
+
+    matched, grabbed = await pipeline.rss(
+        [rel("Saga 2.cbz"), rel("Other 2.cbz"), rel("Saga 9.cbz")]
+    )
+    assert (matched, grabbed) == (1, ["Saga 2.cbz"])  # its issue; not another series, nor #9
+    matched, grabbed = await pipeline.rss([rel("Saga 2.cbz")])
+    assert grabbed == []  # already grabbed: not twice

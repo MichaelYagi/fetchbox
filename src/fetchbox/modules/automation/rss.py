@@ -206,6 +206,13 @@ async def rss_sync(auto: AutoSearch) -> dict[str, Any]:
             ]
     music_matched, music_grabbed = await _music(auto, releases)
     grabbed += music_grabbed
+    if auto.plugin_rss is not None:  # plugins' media kinds (comics): their titles too
+        try:
+            plugin_matched, plugin_grabbed = await auto.plugin_rss(releases)
+            music_matched += plugin_matched
+            grabbed += plugin_grabbed
+        except Exception:  # never let a plugin kind stop the RSS sync
+            log.exception("rss.plugin_kinds_failed")
     out = {
         "indexers": n_sources,
         "releases": len(releases),
