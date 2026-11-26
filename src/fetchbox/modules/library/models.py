@@ -53,6 +53,26 @@ class MediaFile(IdMixin, Base):
     )
 
 
+class MediaFileSidecar(IdMixin, Base):
+    """A file that belongs to a media file (subtitles, say), added by a plugin. It sits
+    beside its owner as ``<owner's name without extension>.<suffix>``: its path is never
+    stored, so renaming or moving the owner moves it along by the same rule."""
+
+    __tablename__ = "media_file_sidecar"
+
+    media_file_id: Mapped[str] = mapped_column(ForeignKey("media_file.id", ondelete="CASCADE"))
+    suffix: Mapped[str] = mapped_column(String(64))  # "en.srt"
+    plugin: Mapped[str] = mapped_column(String(64))  # the plugin that added it
+    meta: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "media_file_id", "suffix", name="uq_media_file_sidecar_media_file_id_suffix"
+        ),
+    )
+
+
 class MediaFileItem(Base):
     __tablename__ = "media_file_item"
 
