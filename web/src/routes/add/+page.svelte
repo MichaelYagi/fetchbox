@@ -79,6 +79,25 @@
 			})
 			.catch(() => {});
 	});
+	// A scene opened large over everything (the Add dialog stays as it is behind it):
+	// ‹ › and the arrow keys step through the scenes; a click outside it or Esc closes it.
+	let viewing = $state<number | null>(null);
+	let viewer = $state<HTMLDialogElement | null>(null);
+	$effect(() => {
+		if (viewing !== null && viewer && !viewer.open) viewer.showModal();
+	});
+	$effect(() => {
+		if (!pending) viewing = null; // the Add dialog closed: so does the scene
+	});
+	const step = (by: number) => {
+		if (viewing !== null && shots.length) viewing = (viewing + by + shots.length) % shots.length;
+	};
+	const viewerKey = (e: KeyboardEvent) => {
+		if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+			e.preventDefault();
+			step(e.key === 'ArrowLeft' ? -1 : 1);
+		}
+	};
 	// The title's own folder in the library folder: one already there (its id or title in
 	// the name) is offered first, so new files join it; else the naming's new folder.
 	let own = $state<S['FolderChoicesOut'] | null>(null);
@@ -401,8 +420,12 @@
 					</div>
 				</div>
 				{#if shots.length}
-					<div class="shots" aria-hidden="true">
-						{#each shots as url (url)}<img src={url} alt="" loading="lazy" />{/each}
+					<div class="shots">
+						{#each shots as url, i (url)}
+							<button type="button" class="shot" onclick={() => (viewing = i)} aria-label="Show scene {i + 1} of {shots.length} larger">
+								<img src={url} alt="" loading="lazy" />
+							</button>
+						{/each}
 					</div>
 				{/if}
 
@@ -524,6 +547,21 @@
 			</form>
 		{/if}
 	</dialog>
+	<dialog class="viewer" bind:this={viewer} onclose={() => (viewing = null)} onkeydown={viewerKey} aria-label="Scene">
+		{#if viewing !== null && shots[viewing]}
+			<!-- a click anywhere but the picture or the arrows closes it (keys: Esc, ← →) -->
+			<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+			<div class="stage" onclick={(e) => { if (e.target === e.currentTarget) viewer?.close(); }}>
+				{#if shots.length > 1}
+					<button type="button" class="nav prev" onclick={() => step(-1)} aria-label="Previous scene">‹</button>
+				{/if}
+				<img src={shots[viewing]} alt="Scene {viewing + 1} of {shots.length}" />
+				{#if shots.length > 1}
+					<button type="button" class="nav next" onclick={() => step(1)} aria-label="Next scene">›</button>
+				{/if}
+			</div>
+		{/if}
+	</dialog>
 </main>
 
 <style>
@@ -532,7 +570,21 @@
 		grid-template-columns: repeat(4, 1fr);
 		gap: 0.4rem;
 	}
+	.shot {
+		padding: 0;
+		border: 0;
+		background: none;
+		cursor: zoom-in;
+		border-radius: 6px;
+		overflow: hidden;
+		display: block;
+	}
+	.shot:hover img,
+	.shot:focus-visible img {
+		filter: brightness(1.12);
+	}
 	.shots img {
+		display: block;
 		width: 100%;
 		aspect-ratio: 16 / 9;
 		object-fit: cover;
@@ -542,6 +594,67 @@
 	@media (max-width: 560px) {
 		.shots {
 			grid-template-columns: repeat(2, 1fr);
+		}
+	}
+	/* The scene viewer: the whole screen, the picture as large as fits, greyed around it */
+	dialog.viewer {
+		width: 100vw;
+		height: 100dvh;
+		max-width: none;
+		max-height: none;
+		margin: 0;
+		padding: 0;
+		border: 0;
+		border-radius: 0;
+		background: transparent;
+		overflow: hidden;
+	}
+	dialog.viewer::backdrop {
+		background: rgb(0 0 0 / 0.78);
+	}
+	.stage {
+		width: 100%;
+		height: 100%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.75rem;
+		padding: 1.5rem;
+		box-sizing: border-box;
+	}
+	.stage img {
+		max-width: min(100%, 1280px);
+		max-height: 100%;
+		min-width: 0;
+		object-fit: contain;
+		border-radius: 8px;
+		box-shadow: 0 10px 40px rgb(0 0 0 / 0.5);
+	}
+	.nav {
+		flex: none;
+		width: 2.75rem;
+		height: 2.75rem;
+		border-radius: 50%;
+		border: 0;
+		background: rgb(255 255 255 / 0.16);
+		color: #fff;
+		font-size: 1.9rem;
+		line-height: 1;
+		cursor: pointer;
+	}
+	.nav:hover,
+	.nav:focus-visible {
+		background: rgb(255 255 255 / 0.3);
+	}
+	@media (max-width: 560px) {
+		.stage {
+			padding: 0.75rem;
+			gap: 0.35rem;
+		}
+		.nav {
+			width: 2.25rem;
+			height: 2.25rem;
+			font-size: 1.5rem;
 		}
 	}
 	.head {
