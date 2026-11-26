@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, "release-*"]  # release branches: cut from a tag, CI runs on push
   pull_request:
 
 jobs:
