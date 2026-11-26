@@ -42,7 +42,12 @@ from fetchbox.core.events import Actor, EventBus, Subject
 from fetchbox.core.jobs import JobContext, JobRunner
 from fetchbox.modules.downloads.models import Download
 from fetchbox.modules.downloads.service import DownloadsService, in_library
-from fetchbox.modules.library.models import MediaFile, MediaFileItem, NamingTemplate
+from fetchbox.modules.library.models import (
+    MediaFile,
+    MediaFileItem,
+    MediaFileSidecar,
+    NamingTemplate,
+)
 from fetchbox.modules.library.naming import (
     DEFAULT_PATTERNS,
     KIND_KEYS,
@@ -57,6 +62,7 @@ from fetchbox.modules.library.naming import (
     validate_patterns,
 )
 from fetchbox.modules.library.probe import MediaInfo, probe
+from fetchbox.modules.library.sidecars import check_suffix, sidecar_rel, write_atomically
 from fetchbox.modules.media.models import Episode, HistoryEvent, Title, WantedItem
 from fetchbox.modules.media.service import MediaService
 from fetchbox.modules.profiles.service import ProfilesService, to_spec
@@ -643,6 +649,10 @@ class LibraryService:
             if of.destination_id == dest.id
         }
         recycle = str(Path(dest.path) / RECYCLE_DIR) if dest.recycle else None
+        old_sidecars = await self._sidecar_suffixes([of.id for of in old])
+        for of in old:  # the old tracks' sidecars go with them (the new files are new)
+            if of.destination_id == dest.id and (sc := old_sidecars.get(of.id)):
+                await self._drop_sidecar_files(dest, of.relative_path, sc)
         naming = self.music_naming() or mfiles.Naming()
         placed: list[tuple[mfiles.WantedTrack, str, Path, str, mfiles.AudioFile]] = []
         for t in tracks:
@@ -925,6 +935,8 @@ class LibraryService:
                     recycle = str(Path(old_dest.path) / RECYCLE_DIR) if old_dest.recycle else None
                     with contextlib.suppress(StorageError):
                         await self.storage.local.delete(str(old_path), recycle_dir=recycle)
+                    if sc := (await self._sidecar_suffixes([old.id])).get(old.id):
+                        await self._drop_sidecar_files(old_dest, old.relative_path, sc)
                     replaced.append(old.relative_path)
                 await s.delete(old)
             await s.execute(
@@ -1470,6 +1482,114 @@ class LibraryService:
             ).scalars()
             return f, list(items)
 
+    # ---- sidecars: files that belong to a media file (see sidecars.py) ------------------
+
+    async def add_sidecar(
+        self,
+        file_id: str,
+        suffix: str,
+        data: bytes,
+        *,
+        plugin: str,
+        meta: dict[str, Any] | None = None,
+    ) -> MediaFileSidecar:
+        """Write ``data`` beside the file as ``<its name>.<suffix>`` and record it as the
+        file's: from then on it's renamed, moved, recycled and deleted with the file."""
+        check_suffix(suffix)
+        f, _ = await self.file(file_id)
+        if not f.destination_id:
+            raise ConflictError(f"file {file_id} isn't in a library folder")
+        dest = await self.storage.destination(f.destination_id)
+        path = inside(Path(dest.path), sidecar_rel(f.relative_path, suffix))
+        await asyncio.to_thread(write_atomically, path, data)
+        async with self.db.sessionmaker() as s:
+            row = await s.scalar(
+                select(MediaFileSidecar).where(
+                    MediaFileSidecar.media_file_id == file_id, MediaFileSidecar.suffix == suffix
+                )
+            )
+            if row is None:
+                row = MediaFileSidecar(media_file_id=file_id, suffix=suffix, plugin=plugin)
+                s.add(row)
+            row.plugin, row.meta = plugin, dict(meta or {})
+            await s.commit()
+            await s.refresh(row)
+            return row
+
+    async def sidecars(self, file_id: str) -> list[MediaFileSidecar]:
+        async with self.db.sessionmaker() as s:
+            rows = await s.execute(
+                select(MediaFileSidecar)
+                .where(MediaFileSidecar.media_file_id == file_id)
+                .order_by(MediaFileSidecar.suffix)
+            )
+            return list(rows.scalars())
+
+    async def remove_sidecar(self, file_id: str, suffix: str) -> bool:
+        """Forget a sidecar and recycle its file (as the owner's folder recycles)."""
+        f, _ = await self.file(file_id)
+        async with self.db.sessionmaker() as s:
+            row = await s.scalar(
+                select(MediaFileSidecar).where(
+                    MediaFileSidecar.media_file_id == file_id, MediaFileSidecar.suffix == suffix
+                )
+            )
+            if row is None:
+                return False
+            await s.delete(row)
+            await s.commit()
+        if f.destination_id:
+            dest = await self.storage.destination(f.destination_id)
+            await self._drop_sidecar_files(dest, f.relative_path, [suffix])
+        return True
+
+    async def _sidecar_suffixes(self, file_ids: list[str]) -> dict[str, list[str]]:
+        if not file_ids:
+            return {}
+        async with self.db.sessionmaker() as s:
+            rows = await s.execute(
+                select(MediaFileSidecar.media_file_id, MediaFileSidecar.suffix).where(
+                    MediaFileSidecar.media_file_id.in_(file_ids)
+                )
+            )
+            out: dict[str, list[str]] = {}
+            for fid, suffix in rows:
+                out.setdefault(fid, []).append(suffix)
+            return out
+
+    async def _drop_sidecar_files(
+        self, dest: Destination, owner_rel: str, suffixes: list[str]
+    ) -> None:
+        """Recycle (or delete) the sidecar files of ``owner_rel``; one that isn't there is
+        skipped, and a failure never stops what the owner's change is doing."""
+        recycle = str(Path(dest.path) / RECYCLE_DIR) if dest.recycle else None
+        for suffix in suffixes:
+            path = Path(dest.path) / sidecar_rel(owner_rel, suffix)
+            if not await asyncio.to_thread(path.exists):
+                continue
+            try:
+                await self.storage.local.delete(str(path), recycle_dir=recycle)
+            except StorageError as exc:
+                log.warning("sidecar_delete_failed", path=str(path), error=exc.message)
+
+    async def _move_sidecar_files(
+        self, root: Path, old_rel: str, new_rel: str, suffixes: list[str]
+    ) -> list[str]:
+        """Move the sidecars of a file renamed from ``old_rel`` to ``new_rel``. Returns the
+        ones that couldn't move (they stay where they were)."""
+        failed = []
+        for suffix in suffixes:
+            src = root / sidecar_rel(old_rel, suffix)
+            dst = root / sidecar_rel(new_rel, suffix)
+            if src == dst or not await asyncio.to_thread(src.exists):
+                continue
+            try:
+                await asyncio.to_thread(_move, src, dst, root)
+            except OSError as exc:
+                log.warning("sidecar_move_failed", path=str(src), error=str(exc))
+                failed.append(suffix)
+        return failed
+
     async def delete_file(self, file_id: str, *, delete_from_disk: bool, actor: Actor) -> None:
         """Forget the file (and recycle it when asked). Its items stay locked: deleting a
         file is not a request to download again (that is redownload / unlock)."""
@@ -1485,6 +1605,8 @@ class LibraryService:
                 )
             except StorageError as exc:
                 raise ConflictError(f"could not delete the file: {exc.message}") from None
+            suffixes = (await self._sidecar_suffixes([file_id])).get(file_id, [])
+            await self._drop_sidecar_files(dest, f.relative_path, suffixes)
         async with self.db.sessionmaker() as s:
             row = await s.get(MediaFile, file_id)
             if row is not None:
@@ -1727,6 +1849,8 @@ class LibraryService:
                 if mf is not None:
                     mf.relative_path = p["new"]
                     await s.commit()
+            if suffixes := (await self._sidecar_suffixes([p["file_id"]])).get(p["file_id"]):
+                await self._move_sidecar_files(root, p["current"], p["new"], suffixes)
             renamed.append(p)
             await self.bus.emit(  # one per file (Activity skips it: library.renamed sums up)
                 "file.renamed",

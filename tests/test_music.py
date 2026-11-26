@@ -498,11 +498,20 @@ async def test_a_better_format_upgrades_the_album(
     folder = Path(dest["path"]) / "Portishead" / "Dummy (1994)"
     assert sorted(p.suffix for p in folder.iterdir()) == [".mp3"] * 11
 
+    # a plugin's sidecar on one MP3 (lyrics): it goes with its track when FLAC replaces it
+    mp3 = sorted((await c.get(f"/titles/{artist['id']}/files")).json(),
+                 key=lambda f: f["relative_path"])[0]  # fmt: skip
+    await server.app.state.library.add_sidecar(mp3["id"], "lrc", b"[00:01]Hi", plugin="lyrics")
+    lrc = (Path(dest["path"]) / mp3["relative_path"]).with_suffix(".lrc")
+    assert lrc.exists()
+
     second = await get("Portishead - Dummy (1994) [FLAC]", "flac16_1s.flac", ".flac", "flacidx")
     assert second["wanted"]["cutoff_met"]
     assert sorted(p.suffix for p in folder.iterdir()) == [".flac"] * 11  # the MP3s are gone
     recycled = list((Path(dest["path"]) / ".fetchbox-recycle").rglob("*.mp3"))
     assert len(recycled) == 11  # ...to the recycle folder
+    assert not lrc.exists()  # its sidecar with it
+    assert [p.name for p in (Path(dest["path"]) / ".fetchbox-recycle").rglob("*.lrc")] == [lrc.name]
     hist = (await c.get(f"/titles/{artist['id']}/history")).json()["items"]
     up = next(h for h in hist if h["type"] == "upgraded")
     assert up["data"]["quality"] == "FLAC" and len(up["data"]["replaced"]) == 11
