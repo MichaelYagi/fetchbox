@@ -157,6 +157,12 @@ to record what holds the database: write transactions held over a second, a task
 its own write, and any moment the server's event loop is blocked for over half a second,
 each with the code responsible. Attach that file to a bug report.
 
+## Writing plugins
+
+Plugins add to Fetchbox without changing it: subtitles, a new kind of thing to collect,
+one more service. Start with `fetchbox plugin new hello`, then read the guide:
+[docs/plugins.md](docs/plugins.md).
+
 ## Development
 
 ```sh
