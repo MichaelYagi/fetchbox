@@ -25,10 +25,11 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
+from fetchbox.core import kinds
 from fetchbox.core.concurrency import VersionMixin
 from fetchbox.core.db import Base, IdMixin, UTCDateTime, utcnow
 
-KINDS = ("movie", "series", "music")
+KINDS = kinds.CORE_KEYS
 ALBUM_KINDS = ("album", "ep", "single", "live", "compilation", "other")
 STATES = ("missing", "searching", "grabbed", "downloading", "importing", "acquired")
 LOCKS = ("acquired", "manual")

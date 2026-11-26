@@ -20,24 +20,11 @@ from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 from typing import Any
 
+from fetchbox.core import kinds
 from fetchbox.modules.library.naming import safe_component
 from fetchbox.modules.releases.music import norm
 
-AUDIO_EXTS = {
-    ".flac",
-    ".mp3",
-    ".m4a",
-    ".mp4",
-    ".aac",
-    ".ogg",
-    ".opus",
-    ".wav",
-    ".aiff",
-    ".aif",
-    ".wma",
-    ".ape",
-    ".wv",
-}
+AUDIO_EXTS = {f".{e}" for e in kinds.AUDIO_EXTS}  # with the dot, as Path.suffix has it
 LENGTH_SLACK_S = 6.0  # a file's length may differ this much from MusicBrainz's
 
 

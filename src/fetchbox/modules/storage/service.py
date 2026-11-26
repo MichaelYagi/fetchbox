@@ -24,7 +24,7 @@ import structlog
 from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 
-from fetchbox.core import macfiles
+from fetchbox.core import kinds, macfiles
 from fetchbox.core.concurrency import check_if_match
 from fetchbox.core.db import Database, utcnow
 from fetchbox.core.errors import ConflictError, FieldError, NotFoundError, ProblemError
@@ -241,7 +241,7 @@ class StorageService:
                 s.add(node)
                 await s.flush()
             if not await s.scalar(select(Destination.id).limit(1)):
-                for kind, folder in (("movie", "Movies"), ("series", "TV")):
+                for kind, folder in ((k, kinds.get(k).plural) for k in ("movie", "series")):
                     s.add(
                         Destination(
                             node_id=node.id,
@@ -264,7 +264,7 @@ class StorageService:
                     )
                 )
                 base = Path(movies.path).parent if movies else self.downloads_root
-                name = "Music"
+                name = kinds.get("music").plural
                 taken = set((await s.execute(select(Destination.name))).scalars())
                 n = 1
                 while name in taken:
@@ -275,7 +275,7 @@ class StorageService:
                         node_id=node.id,
                         name=name,
                         media_kind="music",
-                        path=str(base / "Music"),
+                        path=str(base / kinds.get("music").plural),
                         is_default=True,
                     )
                 )

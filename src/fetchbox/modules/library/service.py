@@ -34,7 +34,7 @@ from sqlalchemy import delete, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from fetchbox.core import macfiles
+from fetchbox.core import kinds, macfiles
 from fetchbox.core.concurrency import check_if_match
 from fetchbox.core.db import Database, utcnow
 from fetchbox.core.errors import ConflictError, FieldError, NotFoundError, ProblemError
@@ -78,7 +78,7 @@ log = structlog.get_logger(__name__)
 
 IMPORT_JOB = "library.import"
 DEFAULT_TEMPLATE = "Plex / Jellyfin"
-VIDEO_EXTS = {"mkv", "mp4", "m4v", "avi", "mov", "wmv", "ts", "m2ts", "webm", "mpg", "mpeg"}
+VIDEO_EXTS = kinds.VIDEO_EXTS
 
 
 def is_video(path: str) -> bool:
