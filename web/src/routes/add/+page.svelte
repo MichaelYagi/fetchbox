@@ -620,6 +620,12 @@
 		box-sizing: border-box;
 	}
 	.stage img {
+		/* its own size: not the search results' poster size (the img rule below: 72px, 2:3) */
+		width: auto;
+		height: auto;
+		aspect-ratio: auto;
+		flex: 0 1 auto;
+		background: none;
 		max-width: min(100%, 1280px);
 		max-height: 100%;
 		min-width: 0;
