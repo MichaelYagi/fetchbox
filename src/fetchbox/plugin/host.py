@@ -217,18 +217,32 @@ class PluginHost:
     def _on_events(self, got: Loaded) -> Any:
         async def handle(ev: Event) -> None:
             pub = to_public(ev)
-            if pub is None:
-                return
-            for h in got.on:
-                if pub.type not in h.events:
-                    continue
-                if h.applies_to is not None and pub.kind not in h.applies_to:
-                    continue
-                payload = {"event": pub.model_dump(mode="json")}
-                key = f"{h.job_type}:{pub.id}"  # one run per event
-                await self.services.jobs.enqueue(h.job_type, payload, dedupe_key=key)
+            if pub is not None:
+                await self._dispatch_to(got, pub)
 
         return handle
+
+    async def dispatch(self, event: PublicEvent) -> list[str]:
+        """Run every loaded plugin's handlers for a public event, as a real one would; the
+        ids of the jobs queued (the test kit's emit)."""
+        ids: list[str] = []
+        for got in list(self.loaded.values()):
+            ids += await self._dispatch_to(got, event)
+        return ids
+
+    async def _dispatch_to(self, got: Loaded, pub: PublicEvent) -> list[str]:
+        ids = []
+        for h in got.on:
+            if pub.type not in h.events:
+                continue
+            if h.applies_to is not None and pub.kind not in h.applies_to:
+                continue
+            payload = {"event": pub.model_dump(mode="json")}
+            key = f"{h.job_type}:{pub.id}"  # one run per event
+            job = await self.services.jobs.enqueue(h.job_type, payload, dedupe_key=key)
+            if job is not None:
+                ids.append(job.id)
+        return ids
 
     def _undo(self, got: Loaded) -> None:
         if got.bus_handler is not None:

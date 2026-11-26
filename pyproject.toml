@@ -105,6 +105,8 @@ select = ["E", "F", "W", "I", "UP", "B", "SIM", "ASYNC", "RUF"]
 [tool.ruff.lint.per-file-ignores]
 # Tests check files on disk directly; blocking the event loop briefly there is fine.
 "tests/**" = ["ASYNC240"]
+# uses the kit's fixture by importing it (plugins use pytest_plugins in conftest instead)
+"tests/test_plugin_testkit.py" = ["F811"]
 
 [tool.mypy]
 python_version = "3.12"
@@ -155,3 +157,5 @@ name = "The plugin API package stands alone (plugins install it without Fetchbox
 type = "forbidden"
 source_modules = ["fetchbox_plugin"]
 forbidden_modules = ["fetchbox"]
+# the test kit runs a real Fetchbox (and says so when it isn't installed)
+ignore_imports = ["fetchbox_plugin.testing -> fetchbox.testing"]
