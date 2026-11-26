@@ -124,11 +124,12 @@ disallow_untyped_calls = false
 root_package = "fetchbox"
 
 [[tool.importlinter.contracts]]
-name = "Layers: entry points > modules > providers > core"
+name = "Layers: entry points > plugin API > modules > providers > core"
 type = "layers"
 layers = [
     "fetchbox.cli",
     "fetchbox.app",
+    "fetchbox.plugin",
     "fetchbox.modules",
     "fetchbox.providers",
     "fetchbox.core",

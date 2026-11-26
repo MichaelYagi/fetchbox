@@ -42,7 +42,7 @@ DATA_TABLES = frozenset(
     {
         "title", "season", "episode", "album", "track", "wanted_item", "history_event",
         "media_file", "media_file_item", "download", "grab", "grab_item", "blocklist",
-        "activity", "idempotency_record",
+        "activity", "idempotency_record", "media_file_sidecar",
     }
 )  # fmt: skip
 # Jobs too, except one running right now (its runner owns that row).
