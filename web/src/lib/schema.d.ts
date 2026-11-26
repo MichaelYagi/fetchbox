@@ -1899,6 +1899,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/plugins/kinds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Media Kinds
+         * @description The media kinds running plugins add (none without one): Add page buttons, Library tabs.
+         */
+        get: operations["media_kinds_api_v1_plugins_kinds_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/plugins/kinds/{kind}/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search Kind */
+        get: operations["search_kind_api_v1_plugins_kinds__kind__search_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/plugins/kinds/{kind}/titles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add Title */
+        post: operations["add_title_api_v1_plugins_kinds__kind__titles_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/plugins/panels": {
         parameters: {
             query?: never;
@@ -1913,6 +1967,40 @@ export interface paths {
         get: operations["panels_api_v1_plugins_panels_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/plugins/titles/{title_id}/items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Title Items */
+        get: operations["title_items_api_v1_plugins_titles__title_id__items_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/plugins/titles/{title_id}/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Refresh Title */
+        post: operations["refresh_title_api_v1_plugins_titles__title_id__refresh_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3126,7 +3214,12 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "episode" | "movie" | "album";
+            kind: "episode" | "movie" | "album" | "item";
+            /**
+             * Media Kind
+             * @description An item's media kind (a plugin's, such as comics)
+             */
+            media_kind?: string | null;
             /** Monitored */
             monitored: boolean;
             /** Name */
@@ -3463,9 +3556,9 @@ export interface components {
             link_mode: "hardlink_or_copy" | "hardlink_only" | "copy" | "move" | "symlink";
             /**
              * Media Kind
-             * @enum {string}
+             * @description movie, series, music, or a plugin's media kind
              */
-            media_kind: "movie" | "series" | "music";
+            media_kind: string;
             /**
              * Mount Point
              * @description The share or drive it lives on, watched for unmounting
@@ -4013,6 +4106,24 @@ export interface components {
             /** Next Cursor */
             next_cursor: string | null;
         };
+        /** HitOut */
+        HitOut: {
+            /** Name */
+            name: string;
+            /** Overview */
+            overview: string;
+            /** Poster Url */
+            poster_url: string | null;
+            /** Ref */
+            ref: string;
+            /**
+             * Title Id
+             * @description Already in the library: its title
+             */
+            title_id?: string | null;
+            /** Year */
+            year: number | null;
+        };
         /**
          * HostInfo
          * @description Where Fetchbox runs: every path it shows is on this machine.
@@ -4417,6 +4528,19 @@ export interface components {
             type: string;
             /** Via */
             via: string;
+        };
+        /** MediaKindOut */
+        MediaKindOut: {
+            /** Id */
+            id: string;
+            /** Levels */
+            levels: string[];
+            /** Name */
+            name: string;
+            /** Plugin */
+            plugin: string;
+            /** Plural */
+            plural: string;
         };
         /** MediaServerIn */
         MediaServerIn: {
@@ -4986,6 +5110,26 @@ export interface components {
             /** Update */
             update: string[];
         };
+        /** PluginItemOut */
+        PluginItemOut: {
+            /**
+             * Id
+             * @description The wanted item
+             */
+            id: string;
+            /** Monitored */
+            monitored: boolean;
+            /** Name */
+            name: string | null;
+            /** Number */
+            number: number | null;
+            /** Ref */
+            ref: string;
+            /** Released */
+            released: string | null;
+            /** State */
+            state: string;
+        };
         /** PluginJobOut */
         PluginJobOut: {
             /** Job Id */
@@ -5033,6 +5177,25 @@ export interface components {
              * @description On (approves it) or off
              */
             enabled: boolean;
+        };
+        /** PluginTitleIn */
+        PluginTitleIn: {
+            /**
+             * Monitor
+             * @default all
+             * @enum {string}
+             */
+            monitor: "all" | "future" | "none";
+            /**
+             * Ref
+             * @description The kind's id for it, from search
+             */
+            ref: string;
+        };
+        /** PluginTitleOut */
+        PluginTitleOut: {
+            /** Id */
+            id: string;
         };
         /** Policy */
         Policy: {
@@ -11803,6 +11966,164 @@ export interface operations {
             };
         };
     };
+    media_kinds_api_v1_plugins_kinds_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaKindOut"][];
+                };
+            };
+        };
+    };
+    search_kind_api_v1_plugins_kinds__kind__search_get: {
+        parameters: {
+            query: {
+                q: string;
+            };
+            header?: never;
+            path: {
+                kind: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HitOut"][];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    add_title_api_v1_plugins_kinds__kind__titles_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PluginTitleIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginTitleOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
     panels_api_v1_plugins_panels_get: {
         parameters: {
             query: {
@@ -11832,6 +12153,108 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    title_items_api_v1_plugins_titles__title_id__items_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                title_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginItemOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    refresh_title_api_v1_plugins_titles__title_id__refresh_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                title_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginTitleOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
                 };
             };
         };

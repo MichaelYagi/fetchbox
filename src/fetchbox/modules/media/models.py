@@ -17,6 +17,7 @@ from sqlalchemy import (
     Boolean,
     CheckConstraint,
     Date,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -133,6 +134,22 @@ class Track(IdMixin, Base):
     )
 
 
+class PluginItem(IdMixin, Base):
+    """An item of a plugin media kind's title (an issue of a comic series): what the kind's
+    title() said about it. Wanted and downloaded through its WantedItem, like an episode."""
+
+    __tablename__ = "plugin_item"
+
+    title_id: Mapped[str] = mapped_column(ForeignKey("title.id", ondelete="CASCADE"))
+    ref: Mapped[str] = mapped_column(String(200))  # the kind's id for it
+    number: Mapped[float | None] = mapped_column(Float, nullable=True)
+    name: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    released: Mapped[date | None] = mapped_column(Date, nullable=True)
+    group_ref: Mapped[str | None] = mapped_column(String(200), nullable=True)
+
+    __table_args__ = (UniqueConstraint("title_id", "ref", name="uq_plugin_item_title_id_ref"),)
+
+
 class WantedItem(IdMixin, VersionMixin, Base):
     __tablename__ = "wanted_item"
 
@@ -142,6 +159,9 @@ class WantedItem(IdMixin, VersionMixin, Base):
     )
     album_id: Mapped[str | None] = mapped_column(
         ForeignKey("album.id", ondelete="CASCADE"), nullable=True
+    )
+    plugin_item_id: Mapped[str | None] = mapped_column(
+        ForeignKey("plugin_item.id", ondelete="CASCADE"), nullable=True
     )
     state: Mapped[str] = mapped_column(String(20), default="missing")
     monitored: Mapped[bool] = mapped_column(Boolean, default=True)
@@ -159,6 +179,9 @@ class WantedItem(IdMixin, VersionMixin, Base):
         CheckConstraint("lock IS NULL OR lock IN ('acquired', 'manual')", name="lock"),
         UniqueConstraint("title_id", "episode_id", name="uq_wanted_item_title_id_episode_id"),
         UniqueConstraint("title_id", "album_id", name="uq_wanted_item_title_id_album_id"),
+        UniqueConstraint(
+            "title_id", "plugin_item_id", name="uq_wanted_item_title_id_plugin_item_id"
+        ),
         Index("ix_wanted_search", "monitored", "lock", "state", "next_search_at"),
         Index("ix_wanted_item_title_id", "title_id"),
     )

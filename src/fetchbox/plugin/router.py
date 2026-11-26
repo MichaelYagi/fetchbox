@@ -3,15 +3,18 @@ installing and removing."""
 
 from __future__ import annotations
 
+from datetime import date
 from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, File, Query, Request, UploadFile
 from pydantic import BaseModel, Field
 
+from fetchbox.core import kinds
 from fetchbox.core.errors import FieldError, NotFoundError, ProblemError
 from fetchbox.core.errors import problem_responses as pr
-from fetchbox.modules.auth.deps import require
+from fetchbox.modules.auth.deps import CurrentPrincipal, require
 from fetchbox.plugin.manager import PluginError, PluginManager
+from fetchbox.plugin.titles import PluginTitles
 
 router = APIRouter(prefix="/plugins", tags=["plugins"])
 _read = [Depends(require("plugins:read"))]
@@ -115,6 +118,106 @@ class PanelOut(BaseModel):
     table: list[dict[str, Any]]
     actions: list[str] = Field(description="Labels of the add-on's actions to offer")
     error: str | None = Field(description="Why the panel couldn't be drawn")
+
+
+class MediaKindOut(BaseModel):
+    id: str
+    name: str
+    plural: str
+    levels: list[str]
+    plugin: str
+
+
+class HitOut(BaseModel):
+    ref: str
+    name: str
+    year: int | None
+    overview: str
+    poster_url: str | None
+    title_id: str | None = Field(None, description="Already in the library: its title")
+
+
+class PluginTitleIn(BaseModel):
+    ref: str = Field(description="The kind's id for it, from search")
+    monitor: Literal["all", "future", "none"] = "all"
+
+
+class PluginTitleOut(BaseModel):
+    id: str
+
+
+class PluginItemOut(BaseModel):
+    id: str = Field(description="The wanted item")
+    ref: str
+    number: float | None
+    name: str | None
+    released: date | None
+    state: str
+    monitored: bool
+
+
+def _titles(request: Request) -> PluginTitles:
+    t: PluginTitles = request.app.state.plugin_titles
+    return t
+
+
+@router.get("/kinds", response_model=list[MediaKindOut], dependencies=_read)
+async def media_kinds(request: Request) -> list[MediaKindOut]:
+    """The media kinds running plugins add (none without one): Add page buttons, Library tabs."""
+    out = []
+    for kid, _k, got in _titles(request).running():
+        d = kinds.get(kid)
+        out.append(MediaKindOut(id=kid, name=d.label, plural=d.plural, levels=list(d.levels),
+                           plugin=got.ctx.plugin_id))  # fmt: skip
+    return out
+
+
+@router.get(
+    "/kinds/{kind}/search",
+    response_model=list[HitOut],
+    dependencies=_read,
+    responses=pr(404, 502, 504),
+)
+async def search_kind(
+    kind: str, request: Request, q: str = Query(..., min_length=1)
+) -> list[HitOut]:
+    t = _titles(request)
+    hits = await t.search(kind, q)
+    out = []
+    for h in hits:
+        mine = await t._existing(kind, h.ref)
+        out.append(HitOut(ref=h.ref, name=h.name, year=h.year, overview=h.overview,
+                          poster_url=h.poster_url, title_id=mine.id if mine else None))  # fmt: skip
+    return out
+
+
+@router.post(
+    "/kinds/{kind}/titles", response_model=PluginTitleOut, status_code=201,
+    dependencies=[Depends(require("media:write"))], responses=pr(404, 409, 502, 504),
+)  # fmt: skip
+async def add_title(
+    kind: str, body: PluginTitleIn, request: Request, who: CurrentPrincipal
+) -> PluginTitleOut:
+    title = await _titles(request).add(kind, body.ref, monitor=body.monitor, actor=who.actor())
+    return PluginTitleOut(id=title.id)
+
+
+@router.post(
+    "/titles/{title_id}/refresh", response_model=PluginTitleOut,
+    dependencies=[Depends(require("media:write"))], responses=pr(404, 409, 502, 504),
+)  # fmt: skip
+async def refresh_title(title_id: str, request: Request, who: CurrentPrincipal) -> PluginTitleOut:
+    title = await _titles(request).refresh(title_id, actor=who.actor())
+    return PluginTitleOut(id=title.id)
+
+
+@router.get(
+    "/titles/{title_id}/items",
+    response_model=list[PluginItemOut],
+    dependencies=[Depends(require("media:read"))],
+)
+async def title_items(title_id: str, request: Request) -> list[PluginItemOut]:
+    return [PluginItemOut.model_validate(i) for i in await _titles(request).items(title_id)]
 
 
 @router.get("/panels", response_model=list[PanelOut], dependencies=_read)

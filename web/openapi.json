@@ -1069,10 +1069,23 @@
       "enum": [
        "episode",
        "movie",
-       "album"
+       "album",
+       "item"
       ],
       "title": "Kind",
       "type": "string"
+     },
+     "media_kind": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "An item's media kind (a plugin's, such as comics)",
+      "title": "Media Kind"
      },
      "monitored": {
       "title": "Monitored",
@@ -1841,11 +1854,7 @@
       "type": "string"
      },
      "media_kind": {
-      "enum": [
-       "movie",
-       "series",
-       "music"
-      ],
+      "description": "movie, series, music, or a plugin's media kind",
       "title": "Media Kind",
       "type": "string"
      },
@@ -3522,6 +3531,65 @@
     "title": "HistoryPage",
     "type": "object"
    },
+   "HitOut": {
+    "properties": {
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "overview": {
+      "title": "Overview",
+      "type": "string"
+     },
+     "poster_url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Poster Url"
+     },
+     "ref": {
+      "title": "Ref",
+      "type": "string"
+     },
+     "title_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Already in the library: its title",
+      "title": "Title Id"
+     },
+     "year": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Year"
+     }
+    },
+    "required": [
+     "ref",
+     "name",
+     "year",
+     "overview",
+     "poster_url"
+    ],
+    "title": "HitOut",
+    "type": "object"
+   },
    "HostInfo": {
     "description": "Where Fetchbox runs: every path it shows is on this machine.",
     "properties": {
@@ -4544,6 +4612,42 @@
      "via"
     ],
     "title": "Me",
+    "type": "object"
+   },
+   "MediaKindOut": {
+    "properties": {
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "levels": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Levels",
+      "type": "array"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "plugin": {
+      "title": "Plugin",
+      "type": "string"
+     },
+     "plural": {
+      "title": "Plural",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "name",
+     "plural",
+     "levels",
+     "plugin"
+    ],
+    "title": "MediaKindOut",
     "type": "object"
    },
    "MediaServerIn": {
@@ -5835,6 +5939,72 @@
     "title": "PlanPart",
     "type": "object"
    },
+   "PluginItemOut": {
+    "properties": {
+     "id": {
+      "description": "The wanted item",
+      "title": "Id",
+      "type": "string"
+     },
+     "monitored": {
+      "title": "Monitored",
+      "type": "boolean"
+     },
+     "name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Name"
+     },
+     "number": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Number"
+     },
+     "ref": {
+      "title": "Ref",
+      "type": "string"
+     },
+     "released": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Released"
+     },
+     "state": {
+      "title": "State",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "ref",
+     "number",
+     "name",
+     "released",
+     "state",
+     "monitored"
+    ],
+    "title": "PluginItemOut",
+    "type": "object"
+   },
    "PluginJobOut": {
     "properties": {
      "job_id": {
@@ -5995,6 +6165,43 @@
      "enabled"
     ],
     "title": "PluginPatch",
+    "type": "object"
+   },
+   "PluginTitleIn": {
+    "properties": {
+     "monitor": {
+      "default": "all",
+      "enum": [
+       "all",
+       "future",
+       "none"
+      ],
+      "title": "Monitor",
+      "type": "string"
+     },
+     "ref": {
+      "description": "The kind's id for it, from search",
+      "title": "Ref",
+      "type": "string"
+     }
+    },
+    "required": [
+     "ref"
+    ],
+    "title": "PluginTitleIn",
+    "type": "object"
+   },
+   "PluginTitleOut": {
+    "properties": {
+     "id": {
+      "title": "Id",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id"
+    ],
+    "title": "PluginTitleOut",
     "type": "object"
    },
    "Policy": {
@@ -18525,6 +18732,250 @@
     ]
    }
   },
+  "/api/v1/plugins/kinds": {
+   "get": {
+    "description": "The media kinds running plugins add (none without one): Add page buttons, Library tabs.",
+    "operationId": "media_kinds_api_v1_plugins_kinds_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/MediaKindOut"
+         },
+         "title": "Response Media Kinds Api V1 Plugins Kinds Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Media Kinds",
+    "tags": [
+     "plugins"
+    ]
+   }
+  },
+  "/api/v1/plugins/kinds/{kind}/search": {
+   "get": {
+    "operationId": "search_kind_api_v1_plugins_kinds__kind__search_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "kind",
+      "required": true,
+      "schema": {
+       "title": "Kind",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "q",
+      "required": true,
+      "schema": {
+       "minLength": 1,
+       "title": "Q",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/HitOut"
+         },
+         "title": "Response Search Kind Api V1 Plugins Kinds  Kind  Search Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     },
+     "502": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Bad Gateway"
+     },
+     "504": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Gateway Timeout"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Search Kind",
+    "tags": [
+     "plugins"
+    ]
+   }
+  },
+  "/api/v1/plugins/kinds/{kind}/titles": {
+   "post": {
+    "operationId": "add_title_api_v1_plugins_kinds__kind__titles_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "kind",
+      "required": true,
+      "schema": {
+       "title": "Kind",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PluginTitleIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PluginTitleOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Conflict"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     },
+     "502": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Bad Gateway"
+     },
+     "504": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Gateway Timeout"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Add Title",
+    "tags": [
+     "plugins"
+    ]
+   }
+  },
   "/api/v1/plugins/panels": {
    "get": {
     "description": "The running add-ons' panels for a title page (none when no plugin has one).",
@@ -18595,6 +19046,160 @@
      }
     ],
     "summary": "Panels",
+    "tags": [
+     "plugins"
+    ]
+   }
+  },
+  "/api/v1/plugins/titles/{title_id}/items": {
+   "get": {
+    "operationId": "title_items_api_v1_plugins_titles__title_id__items_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "title_id",
+      "required": true,
+      "schema": {
+       "title": "Title Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/PluginItemOut"
+         },
+         "title": "Response Title Items Api V1 Plugins Titles  Title Id  Items Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Title Items",
+    "tags": [
+     "plugins"
+    ]
+   }
+  },
+  "/api/v1/plugins/titles/{title_id}/refresh": {
+   "post": {
+    "operationId": "refresh_title_api_v1_plugins_titles__title_id__refresh_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "title_id",
+      "required": true,
+      "schema": {
+       "title": "Title Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PluginTitleOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Conflict"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     },
+     "502": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Bad Gateway"
+     },
+     "504": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Gateway Timeout"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Refresh Title",
     "tags": [
      "plugins"
     ]

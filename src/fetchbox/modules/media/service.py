@@ -855,6 +855,35 @@ async def calendar(db: Database, start: date, end: date) -> list[dict[str, Any]]
                 "album": album.name,
             }
         )
+    async with db.sessionmaker() as s:
+        from fetchbox.modules.media.models import PluginItem
+
+        plugin_items = (
+            await s.execute(
+                select(PluginItem, Title, WantedItem)
+                .join(Title, Title.id == PluginItem.title_id)
+                .join(WantedItem, WantedItem.plugin_item_id == PluginItem.id)
+                .where(PluginItem.released >= start, PluginItem.released <= end)
+            )
+        ).all()
+    for item, title, w in plugin_items:  # a plugin media kind's (an issue of a comic series)
+        n = item.number
+        out.append(
+            {
+                "date": item.released,
+                "kind": "item",
+                "media_kind": title.kind,
+                "title_id": title.id,
+                "name": title.name,
+                "poster_url": (title.meta or {}).get("poster_url"),
+                "season": None,
+                "episode": int(n) if n is not None and float(n).is_integer() else None,
+                "episode_name": item.name,
+                "release": None,
+                "state": w.state,
+                "monitored": w.monitored,
+            }
+        )
     for title, w in movies:
         meta = title.meta or {}
         for key, label in MOVIE_DATES:
