@@ -360,7 +360,7 @@ wheels = [
 
 [[package]]
 name = "fetchbox"
-version = "0.9.27"
+version = "0.9.28"
 source = { editable = "." }
 dependencies = [
     { name = "aiosqlite" },
