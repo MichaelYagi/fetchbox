@@ -68,6 +68,7 @@ from fetchbox.modules.system.portable import Portable
 from fetchbox.modules.system.reset import DataReset
 from fetchbox.modules.system.service import register_core_checks
 from fetchbox.modules.system.updates import UpdateChecker
+from fetchbox.plugin import router as plugins_router
 from fetchbox.providers import builtin as _builtin_providers  # noqa: F401 (registers them)
 from fetchbox.security_headers import SecurityHeaders
 from fetchbox.ui import STATIC_DIR, install_ui
@@ -99,6 +100,7 @@ API_ROUTERS: tuple[APIRouter, ...] = (
     library_router.router,
     integrations_router.router,
     notifications_router.router,
+    plugins_router.router,
     backups_router.router,
     config_router.router,
 )
@@ -297,6 +299,21 @@ def create_app(
         await library.start()
         await autosearch.start()
         await state.scheduler.start()
+        # Plugins last: everything they work through is running
+        from fetchbox.plugin.host import PluginHost
+        from fetchbox.plugin.manager import PluginManager
+        from fetchbox.plugin.services import Services
+
+        plugin_host = PluginHost(
+            db=db, bus=bus, scheduler=state.scheduler, data_dir=settings.data_dir,
+            services=Services(library=library, media=media, jobs=jobs,
+                              notifications=notifications, autosearch=autosearch),
+        )  # fmt: skip
+        app.state.plugins = PluginManager(
+            db=db, box=box, host=plugin_host, data_dir=settings.data_dir,
+            enabled=not settings.no_plugins,
+        )  # fmt: skip
+        await app.state.plugins.start()
         if os.environ.get("FETCHBOX_DB_GUARD"):  # debug: report what blocks the loop
             from fetchbox.core import watchdog
 
@@ -316,6 +333,7 @@ def create_app(
             await state.bus.emit("system.stopping")
             if (stop := getattr(app.state, "watchdog_stop", None)) is not None:
                 stop.set()
+            await app.state.plugins.stop()
             await app.state.integrations.stop()
             await app.state.notifications.stop()
             await state.scheduler.stop()

@@ -25,6 +25,7 @@ _RESOURCES: dict[str, str] = {
     # Spec lists only :write for these two; :read added so read-only dashboards work.
     "integrations": "Media-server connections",
     "notifications": "Notification targets",
+    "plugins": "Plugins: install, turn on and off, settings, actions",
     "system": "Health, logs, jobs, backups, updates, config export/import",
 }
 
