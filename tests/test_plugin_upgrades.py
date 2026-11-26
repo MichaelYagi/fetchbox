@@ -122,3 +122,65 @@ async def test_rss_releases_reach_plugin_titles(saga: str, server: Running) -> N
     assert (matched, grabbed) == (1, ["Saga 2.cbz"])  # its issue; not another series, nor #9
     matched, grabbed = await pipeline.rss([rel("Saga 2.cbz")])
     assert grabbed == []  # already grabbed: not twice
+
+
+class Volumes(MediaKind):
+    id = "volumes"
+    name = "Volumes"
+    levels = ("series", "volume", "issue")
+    file_types = frozenset({".cbz"})
+    grab_level = "group"
+    qualities = Qualities(["CBZ"])
+    naming = Naming("{series} #{issue}", tokens={"series", "issue"})
+
+    async def search(self, ctx: Any, text: str) -> list[Hit]:
+        return [Hit("saga", "Saga", 2012)]
+
+    async def title(self, ctx: Any, ref: str) -> TitleDetails:
+        from fetchbox_plugin import Group
+
+        groups = [Group("v1", 1, "Volume One"), Group("v2", 2, "Volume Two")]
+        items = [
+            Item("i1", 1, "One", date(2012, 3, 1), "v1"),
+            Item("i2", 2, "Two", date(2012, 4, 1), "v1"),
+            Item("i3", 3, "Three", date(2012, 5, 1), "v2"),
+        ]
+        return TitleDetails(ref, "Saga", 2012, groups=groups, items=items)
+
+    def parse(self, release_name: str) -> Parsed | None:
+        stem = release_name.rsplit(".", 1)[0]
+        word = stem.split()[1]
+        if word.startswith("v"):
+            return Parsed("Saga", (), group=float(word[1:]), quality="CBZ")
+        return Parsed("Saga", (float(word),), quality="CBZ")
+
+    def name_tokens(self, title: TitleDetails, item: Item) -> dict[str, object]:
+        return {"series": title.name, "issue": int(item.number or 0)}
+
+
+class VolumesPlugin(Plugin):
+    id = "volumes"
+    name = "Volumes"
+    contributes: ClassVar[list[type[Any]]] = [Volumes]
+
+
+async def test_a_whole_volume_is_its_issues(server: Running, c: httpx.AsyncClient) -> None:
+    await server.app.state.plugins.host.load(VolumesPlugin)
+    try:
+        tid = (await c.post("/plugins/kinds/volumes/titles", json={"ref": "saga"})).json()["id"]
+        pipeline = server.app.state.plugin_pipeline
+        title = await server.app.state.media.get_title(tid)
+        kind = server.app.state.plugin_titles.kind("volumes")[0]
+        rows = await pipeline._rows(tid)
+        ids = {p.number: w.id for p, w in rows}
+
+        def rel(name: str) -> ReleaseCandidate:
+            return ReleaseCandidate(title=name, info_hash=name.encode().hex()[:40].ljust(40, "0"))
+
+        found = [rel("Saga 1.cbz"), rel("Saga v1.cbz"), rel("Saga v2.cbz")]
+        picks = await pipeline.decide(title, kind, pipeline._details(title, rows), rows, found)
+        got = [(p.candidate.title, sorted(p.items)) for p in picks]
+        assert got[0] == ("Saga v1.cbz", sorted([ids[1], ids[2]]))  # the whole volume first
+        assert ("Saga v2.cbz", [ids[3]]) in got and ("Saga 1.cbz", [ids[1]]) in got
+    finally:
+        await server.app.state.plugins.host.unload("volumes")

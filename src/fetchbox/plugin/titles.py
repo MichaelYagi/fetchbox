@@ -22,6 +22,12 @@ from fetchbox.modules.storage.models import Destination, StorageNode
 from fetchbox.plugin.host import Loaded, PluginHost
 from fetchbox_plugin import Hit, MediaKind, TitleDetails
 
+
+def _groups(details: TitleDetails) -> list[dict[str, Any]]:
+    """The middle level (volumes), kept with the title: a release of a whole one is its items."""
+    return [{"ref": g.ref, "number": g.number, "name": g.name} for g in details.groups]
+
+
 LOOKUP_SECONDS = 30  # a kind's search or title() that takes longer is stopped
 MONITOR = ("all", "future", "none")
 
@@ -93,7 +99,8 @@ class PluginTitles:
                 kind=kind_id, name=details.name or ref, sort_name=(details.name or ref).lower(),
                 year=details.year, profile_id=profile, monitor_mode=monitor,
                 meta={"ref": ref, "plugin": got.ctx.plugin_id, "overview": details.overview,
-                      "poster_url": details.poster_url, "extra": details.extra},
+                      "poster_url": details.poster_url, "extra": details.extra,
+                      "groups": _groups(details)},
             )  # fmt: skip
             s.add(title)
             await s.flush()
@@ -114,7 +121,8 @@ class PluginTitles:
             assert row is not None
             row.name, row.year = details.name or row.name, details.year or row.year
             row.meta = {**(row.meta or {}), "overview": details.overview,
-                        "poster_url": details.poster_url, "extra": details.extra}  # fmt: skip
+                        "poster_url": details.poster_url, "extra": details.extra,
+                        "groups": _groups(details)}  # fmt: skip
             await self._items(s, row, details, row.monitor_mode)
             await s.commit()
             await s.refresh(row)

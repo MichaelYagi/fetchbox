@@ -25,7 +25,7 @@ from fetchbox.modules.releases.decision import Decision, title_key
 from fetchbox.modules.releases.parser import parse_release
 from fetchbox.plugin.titles import LOOKUP_SECONDS, PluginTitles
 from fetchbox.providers.indexers import ReleaseCandidate, SearchQuery
-from fetchbox_plugin import File, Item, MediaKind, TitleDetails
+from fetchbox_plugin import File, Group, Item, MediaKind, TitleDetails
 
 log = structlog.get_logger(__name__)
 
@@ -90,9 +90,10 @@ class PluginPipeline:
     def _details(title: Title, rows: list[tuple[PluginItem, WantedItem]]) -> TitleDetails:
         meta = title.meta or {}
         items = [Item(p.ref, p.number, p.name, p.released, p.group_ref) for p, _w in rows]
+        groups = [Group(g["ref"], g.get("number"), g.get("name")) for g in meta.get("groups") or []]
         return TitleDetails(meta.get("ref") or title.id, title.name, title.year,
-                            meta.get("overview") or "", meta.get("poster_url"), items=items,
-                            extra=dict(meta.get("extra") or {}))  # fmt: skip
+                            meta.get("overview") or "", meta.get("poster_url"), groups=groups,
+                            items=items, extra=dict(meta.get("extra") or {}))  # fmt: skip
 
     # ---- search, decide, grab --------------------------------------------------------------
 
@@ -229,6 +230,12 @@ class PluginPipeline:
         allowed = allowed or list(kind.qualities.names)
         current = current or {}
         by_number = {p.number: w.id for p, w in wanted if p.number is not None}
+        # a whole group (volume): its wanted items, by the group's number
+        in_group: dict[float, list[str]] = {}
+        group_number = {g.ref: g.number for g in details.groups if g.number is not None}
+        for p, w in wanted:
+            if p.group_ref in group_number:
+                in_group.setdefault(group_number[p.group_ref], []).append(w.id)
         entries = await self.grabs.blocklist(title.id)
         blocked = {(e.release_title or "").lower() for e in entries}
         blocked |= {e.info_hash for e in entries if e.info_hash}
@@ -255,10 +262,12 @@ class PluginPipeline:
             if quality is not None and quality not in allowed:
                 continue  # a quality the title doesn't accept
             rank = _rank(quality or "Unknown", allowed)
+            ids = [by_number[n] for n in parsed.numbers if n in by_number]
+            if not parsed.numbers and parsed.group is not None:
+                ids = in_group.get(parsed.group, [])  # a whole volume
             covered = [
-                by_number[n] for n in parsed.numbers if n in by_number
-                if by_number[n] not in current
-                or (quality is not None and rank < current[by_number[n]])
+                w for w in dict.fromkeys(ids)
+                if w not in current or (quality is not None and rank < current[w])
             ]  # fmt: skip
             if not covered:
                 continue
