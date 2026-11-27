@@ -180,3 +180,64 @@ async def test_replacing_one_episode_of_a_multi_episode_file(
         serves = set((await s.execute(q)).scalars())
         assert serves == {e6}
         assert await s.get(MediaFile, old_id) is not None
+
+
+async def test_an_upgrade_removes_the_old_file_only_once_saved(
+    c: httpx.AsyncClient, server: Running, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The old file goes after the new one is saved, never before: when saving fails, the
+    old file and its record both stay (not a record of a file that's gone)."""
+    from types import SimpleNamespace
+
+    from sqlalchemy import select
+
+    from fetchbox.modules.library import service as library_service
+    from fetchbox.modules.library.models import MediaFile, MediaFileItem
+
+    body = {"kind": "series", "tmdb_id": 95396, "monitor_mode": "all",
+            "profile_id": await standard_hd(c), "search": False}  # fmt: skip
+    t = (await c.post("/titles", json=body)).json()
+    seasons = (await c.get(f"/titles/{t['id']}/episodes")).json()
+    e1 = seasons[0]["episodes"][0]["wanted"]["id"]
+    lib, media = server.app.state.library, server.app.state.media
+    dest = await server.app.state.storage.default_destination("series")
+    old_rel = "Severance/Season 01/Severance - S01E01 - WEBRip.mkv"
+    old_path = Path(dest.path) / old_rel
+    old_path.parent.mkdir(parents=True, exist_ok=True)
+    old_path.write_bytes(b"old")
+    async with server.app.state.fb.db.sessionmaker() as s:
+        mf = MediaFile(storage_node_id=dest.node_id, destination_id=dest.id,
+                       relative_path=old_rel, size=3, quality={"name": "WEBRip-1080p"})  # fmt: skip
+        s.add(mf)
+        await s.flush()
+        s.add(MediaFileItem(media_file_id=mf.id, wanted_item_id=e1))
+        await s.commit()
+        old_id = mf.id
+    new_rel = "Severance/Season 01/Severance - S01E01 - WEBDL.mkv"
+    new_path = Path(dest.path) / new_rel
+    new_path.write_bytes(b"new")
+
+    async def record() -> Any:
+        return await lib._record(
+            SimpleNamespace(id="d"), SimpleNamespace(release_title="x"),
+            await media.get_title(t["id"]), dest, [await media.get_wanted(e1)], new_rel,
+            new_path, "hardlink", parse_release("Severance.S01E01.1080p.WEB-DL-NTb"),
+            "WEBDL-1080p", 0, None, "x.mkv",
+        )  # fmt: skip
+
+    def save_fails(**_: Any) -> Any:
+        raise RuntimeError("the save failed")
+
+    with monkeypatch.context() as m:  # the save fails partway (as a locked database would)
+        m.setattr(library_service, "HistoryEvent", save_fails)
+        with pytest.raises(RuntimeError, match="the save failed"):
+            await record()
+    assert old_path.read_bytes() == b"old"  # still there, and still the episode's file
+    async with server.app.state.fb.db.sessionmaker() as s:
+        q = select(MediaFileItem.wanted_item_id).where(MediaFileItem.media_file_id == old_id)
+        assert set((await s.execute(q)).scalars()) == {e1}
+
+    _, replaced, _ = await record()  # saved: now the old one goes (to the recycle folder)
+    assert replaced == [old_rel] and not old_path.exists() and new_path.exists()
+    async with server.app.state.fb.db.sessionmaker() as s:
+        assert await s.get(MediaFile, old_id) is None

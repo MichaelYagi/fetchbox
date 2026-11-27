@@ -237,7 +237,20 @@ class LibraryCheck:
             )
             await s.execute(delete(MediaFileItem).where(MediaFileItem.media_file_id.in_(gone)))
             await s.execute(delete(MediaFile).where(MediaFile.id.in_(gone)))
+            # Only what no other file still covers is wanted again: a movie whose other
+            # copy is there (or an episode in another file) keeps it, and isn't searched
+            covered = set(
+                (
+                    await s.execute(
+                        select(MediaFileItem.wanted_item_id).where(
+                            MediaFileItem.wanted_item_id.in_([w.id for w in items])
+                        )
+                    )
+                ).scalars()
+            )
             for w in items:
+                if w.id in covered:
+                    continue
                 w.state, w.lock, w.cutoff_met, w.next_search_at = "missing", None, False, None
                 s.add(HistoryEvent(wanted_item_id=w.id, title_id=w.title_id, type="deleted",
                                    data={"reason": "the file is missing from disk"}))  # fmt: skip
