@@ -717,12 +717,14 @@ class LibraryService:
         await self.downloads.release_files(
             {str(Path(dest.path) / of.relative_path) for of in old} - new_paths
         )
+        # Old tracks the new files don't replace in place go once this import is saved,
+        # never before: a failed save then leaves both, not records of files now gone
+        doomed: list[str] = []
         async with self.db.sessionmaker() as s:
             for of in old:
                 full = str(Path(dest.path) / of.relative_path)
-                if full not in new_paths:  # an old track the new files don't replace in place
-                    with contextlib.suppress(StorageError):
-                        await self.storage.local.delete(full, recycle_dir=recycle)
+                if full not in new_paths:
+                    doomed.append(full)
                     replaced.append(of.relative_path)
                 await s.delete(await s.merge(of))
             await s.flush()
@@ -779,6 +781,9 @@ class LibraryService:
                 )
             )
             await s.commit()
+        for full in doomed:
+            with contextlib.suppress(StorageError):
+                await self.storage.local.delete(full, recycle_dir=recycle)
         assert first is not None
         await self._announce(
             title, dest, first, placed[0][1], quality, mode, replaced, file_ids=album_files
@@ -853,6 +858,7 @@ class LibraryService:
             and (profile.cutoff_format_score is None or score >= profile.cutoff_format_score)
         )
         replaced: list[str] = []
+        doomed: list[tuple[Destination, str, list[str] | None]] = []  # folder, path, sidecars
         # The files this one replaces: stop any torrent still seeding them first, before
         # this transaction (stopping one writes too, and would wait on it)
         async with self.db.sessionmaker() as s:
@@ -939,12 +945,10 @@ class LibraryService:
                     await s.get(Destination, old.destination_id) if old.destination_id else None
                 )
                 if old_dest is not None:
-                    old_path = Path(old_dest.path) / old.relative_path
-                    recycle = str(Path(old_dest.path) / RECYCLE_DIR) if old_dest.recycle else None
-                    with contextlib.suppress(StorageError):
-                        await self.storage.local.delete(str(old_path), recycle_dir=recycle)
-                    if sc := (await self._sidecar_suffixes([old.id])).get(old.id):
-                        await self._drop_sidecar_files(old_dest, old.relative_path, sc)
+                    # removed once this import is saved (below), never before: a failed save
+                    # then leaves both files, not a record of a file that's gone
+                    sc = (await self._sidecar_suffixes([old.id])).get(old.id)
+                    doomed.append((old_dest, old.relative_path, sc))
                     replaced.append(old.relative_path)
                 await s.delete(old)
             await s.execute(
@@ -976,6 +980,14 @@ class LibraryService:
                     )
                 )
             await s.commit()
+        for old_dest, old_rel, sc in doomed:
+            recycle = str(Path(old_dest.path) / RECYCLE_DIR) if old_dest.recycle else None
+            with contextlib.suppress(StorageError):
+                await self.storage.local.delete(
+                    str(Path(old_dest.path) / old_rel), recycle_dir=recycle
+                )
+            if sc:
+                await self._drop_sidecar_files(old_dest, old_rel, sc)
         return mf, replaced, cutoff_met
 
     async def _announce(
