@@ -376,8 +376,9 @@
 		{#if !error}<p class="muted">Loading…</p>{/if}
 	{:else}
 		<div class="head" class:backdrop={!!backdrop} style:--backdrop={backdrop ? `url("${backdrop}")` : null}>
-			{#if title.poster_url}<img class="poster" src={title.poster_url} alt="" />{/if}
-			<div class="stack info">
+			<div class="info">
+				<!-- top right, everything in the header wrapping around it (phones: above the title) -->
+				{#if title.poster_url}<img class="poster" src={title.poster_url} alt="" />{/if}
 				<div>
 					<h1>{title.name} <span class="muted">{title.year ?? ''}</span></h1>
 					<div class="row muted small">
@@ -749,27 +750,21 @@
 		margin-left: auto;
 	}
 	.head {
-		display: flex;
-		gap: 1.5rem;
-		flex-wrap: wrap;
+		display: block;
 	}
-	/* A scene from the title behind the header, faded into the page so text stays readable
-	   in every theme */
+	/* A scene from the title behind the whole header, evenly toned down so the text on it
+	   stays readable in every theme; the poster sits on top of it */
 	.head.backdrop {
 		padding: 1.25rem;
 		border-radius: var(--radius);
 		background-image:
-			linear-gradient(90deg, var(--bg) 30%, color-mix(in srgb, var(--bg) 72%, transparent)),
+			linear-gradient(
+				color-mix(in srgb, var(--bg) 72%, transparent),
+				color-mix(in srgb, var(--bg) 72%, transparent)
+			),
 			var(--backdrop);
 		background-size: cover;
 		background-position: center 25%;
-	}
-	@media (max-width: 760px) {
-		.head.backdrop {
-			background-image:
-				linear-gradient(0deg, var(--bg) 40%, color-mix(in srgb, var(--bg) 72%, transparent)),
-				var(--backdrop);
-		}
 	}
 	.ep-name {
 		display: flex;
@@ -789,22 +784,35 @@
 			width: 64px;
 		}
 	}
-	/* Its own 2:3 shape, the whole poster: not stretched to the header's height (which
-	   cropped its sides when the overview or the buttons made the header tall) */
+	/* The whole poster, 2:3, in the header's top right corner; the text wraps around it */
 	.poster {
+		float: right;
 		width: 180px;
 		height: auto;
-		flex: none;
-		align-self: flex-start;
 		aspect-ratio: 2 / 3;
 		object-fit: cover;
+		margin: 0 0 1rem 1.5rem;
 		border-radius: var(--radius);
 		background: var(--surface-2);
 	}
+	/* Phones: above the title */
+	@media (max-width: 760px) {
+		.poster {
+			float: none;
+			display: block;
+			margin: 0 0 1rem;
+		}
+	}
 	.info {
-		flex: 1;
-		min-width: 18rem;
-		align-content: start;
+		display: flow-root; /* holds the floated poster */
+	}
+	.info > :not(.poster) {
+		margin-top: 0;
+		margin-bottom: 1rem;
+		min-width: 0;
+	}
+	.info > :last-child {
+		margin-bottom: 0;
 	}
 	h1 {
 		margin: 0 0 0.25rem;
