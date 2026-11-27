@@ -294,6 +294,15 @@ class PluginHost:
             title_id = item.partition(":")[0] if ":" in item else item
             with contextlib.suppress(Exception):  # an item's id: its title's (else a title's)
                 title_id = (await self.services.media.get_wanted(title_id)).title_id
+        label = spec.label if spec else fn.__name__
+        if title_id:  # in the title's history too
+            from fetchbox.modules.media.models import HistoryEvent
+
+            with contextlib.suppress(Exception):  # a title gone meanwhile: the log has it
+                async with self.services.media.db.sessionmaker() as s:
+                    data = {"plugin": got.plugin.name, "label": label, "message": str(said)}
+                    s.add(HistoryEvent(title_id=title_id, type="plugin_action", data=data))
+                    await s.commit()
         await self.bus.emit(
             "plugin.action_done",
             subject=Subject(type="title", id=title_id) if title_id else None,
@@ -301,7 +310,7 @@ class PluginHost:
                 type="system", id=f"plugin:{got.ctx.plugin_id}", name=f"{got.ctx.plugin_id} plugin"
             ),
             plugin=got.plugin.name,
-            label=spec.label if spec else fn.__name__,
+            label=label,
             message=str(said),
             title_id=title_id,
         )

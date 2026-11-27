@@ -3965,6 +3965,11 @@ export interface components {
             relative_path: string;
             /** Release Group */
             release_group: string | null;
+            /**
+             * Sidecars
+             * @description Files plugins added beside it (subtitles, say)
+             */
+            sidecars?: components["schemas"]["SidecarOut"][];
             /** Size */
             size: number;
             /** Wanted Item Ids */
@@ -6203,6 +6208,33 @@ export interface components {
             password: string;
             /** Username */
             username?: string | null;
+        };
+        /** SidecarOut */
+        SidecarOut: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Meta */
+            meta: {
+                [key: string]: unknown;
+            };
+            /**
+             * Plugin
+             * @description The plugin that added it
+             */
+            plugin: string;
+            /**
+             * Relative Path
+             * @description Beside its file, in the same library folder
+             */
+            relative_path: string;
+            /**
+             * Suffix
+             * @description After the file's name: "en.srt"
+             */
+            suffix: string;
         };
         /**
          * SizeCondition

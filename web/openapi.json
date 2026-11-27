@@ -2833,6 +2833,14 @@
       ],
       "title": "Release Group"
      },
+     "sidecars": {
+      "description": "Files plugins added beside it (subtitles, say)",
+      "items": {
+       "$ref": "#/components/schemas/SidecarOut"
+      },
+      "title": "Sidecars",
+      "type": "array"
+     },
      "size": {
       "title": "Size",
       "type": "integer"
@@ -8231,6 +8239,44 @@
      "password"
     ],
     "title": "SetupIn",
+    "type": "object"
+   },
+   "SidecarOut": {
+    "properties": {
+     "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+     },
+     "meta": {
+      "additionalProperties": true,
+      "title": "Meta",
+      "type": "object"
+     },
+     "plugin": {
+      "description": "The plugin that added it",
+      "title": "Plugin",
+      "type": "string"
+     },
+     "relative_path": {
+      "description": "Beside its file, in the same library folder",
+      "title": "Relative Path",
+      "type": "string"
+     },
+     "suffix": {
+      "description": "After the file's name: \"en.srt\"",
+      "title": "Suffix",
+      "type": "string"
+     }
+    },
+    "required": [
+     "suffix",
+     "relative_path",
+     "plugin",
+     "meta",
+     "created_at"
+    ],
+    "title": "SidecarOut",
     "type": "object"
    },
    "SizeCondition": {

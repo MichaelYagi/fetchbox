@@ -230,3 +230,16 @@ async def test_search_subtitles_says_what_it_did(fetchbox_app: Any) -> None:
     ran = await app.run("subtitles", "search_now", other.item_ids[0])
     assert ran.result is not None and ran.result["message"].startswith("1 subtitle")
     assert f.title_id != other.title_id
+
+
+async def test_the_status_panel(fetchbox_app: Any) -> None:
+    """On a title's page: each file and language, added or waiting."""
+    app, _seen = await _app(fetchbox_app, FakeOpenSubtitles())  # English found, French not
+    f = await app.add_file("Dune", 2021, tmdb_id=438631)
+    from fetchbox_subtitles import Subtitles
+
+    addon = app.host.loaded["subtitles"].addons["subtitles"]
+    assert isinstance(addon, Subtitles)
+    p = await addon.status(app.ctx("subtitles"), f.title_id)
+    assert p.status == "English: 1 of 1 · French: 0 of 1 · the rest tried again daily"
+    assert p.table == [{"File": f.path.name, "English": "✓", "French": "waiting (tried daily)"}]

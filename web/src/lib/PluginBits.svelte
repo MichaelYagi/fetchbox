@@ -38,7 +38,17 @@
 	// Plugins on a title page: their panels (drawn by Fetchbox: a status line, a table,
 	// buttons) and their actions. Nothing shows when no plugin has anything for it.
 	// hasFile: the title has a downloaded file (an item: its own); buttons that need one are off without
-	let { titleId, kind, itemId = null, hasFile = true }: { titleId: string; kind: string; itemId?: string | null; hasFile?: boolean } = $props();
+	// onchanged: after a button's job, so the page shows what it did (files, history)
+	let {
+		titleId,
+		kind,
+		itemId = null,
+		hasFile = true,
+		onchanged = () => {}
+	}: { titleId: string; kind: string; itemId?: string | null; hasFile?: boolean; onchanged?: () => unknown } = $props();
+	async function loadPanels() {
+		panels = await get<Panel[]>('/plugins/panels', { on: 'title', id: titleId }).catch(() => []);
+	}
 
 	type Panel = S['PanelOut'];
 	let actions = $state<Act[]>([]);
@@ -61,6 +71,8 @@
 		note = `${a.label}: working…`;
 		try {
 			note = await runAction(a, a.on === 'title' ? titleId : itemId);
+			await loadPanels(); // its status, as it is now
+			onchanged();
 		} catch (e) {
 			note = e instanceof ApiError ? e.message : String(e);
 		} finally {
