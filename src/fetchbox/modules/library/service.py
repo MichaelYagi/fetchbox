@@ -1520,12 +1520,12 @@ class LibraryService:
                 row = MediaFileSidecar(media_file_id=file_id, suffix=suffix, plugin=plugin)
                 s.add(row)
             row.plugin, row.meta = plugin, dict(meta or {})
-            await self._sidecar_history(
-                s, items, "sidecar_added", plugin, suffix, sidecar_rel(f.relative_path, suffix)
-            )
+            rel = sidecar_rel(f.relative_path, suffix)
+            title_id = await self._sidecar_history(s, items, "sidecar_added", plugin, suffix, rel)
             await s.commit()
             await s.refresh(row)
-            return row
+        await self._sidecar_event("file.sidecar_added", file_id, title_id, plugin, suffix, rel)
+        return row
 
     async def sidecars_of(self, file_ids: list[str]) -> dict[str, list[MediaFileSidecar]]:
         """Each file's sidecars, for listing files."""
@@ -1544,13 +1544,33 @@ class LibraryService:
 
     async def _sidecar_history(
         self, s: Any, items: list[str], type_: str, plugin: str, suffix: str, rel: str
-    ) -> None:
-        """A plugin's file beside a title's, in the title's history (added or removed)."""
+    ) -> str | None:
+        """A plugin's file beside a title's, in the title's history (added or removed); the
+        title's id."""
+        title_id = None
         for wid in items:
             w = await s.get(WantedItem, wid)
             if w is not None:
+                title_id = title_id or w.title_id
                 data = {"plugin": plugin, "suffix": suffix, "path": rel}
                 s.add(HistoryEvent(wanted_item_id=wid, title_id=w.title_id, type=type_, data=data))
+        return title_id
+
+    async def _sidecar_event(
+        self, type_: str, file_id: str, title_id: str | None, plugin: str, suffix: str, rel: str
+    ) -> None:
+        """Announced, for the activity log: the files plugins add or remove, automatic ones
+        (subtitles after an import) included."""
+        await self.bus.emit(
+            type_,
+            subject=Subject(type="media_file", id=file_id),
+            actor=Actor(type="system", id=f"plugin:{plugin}", name=f"{plugin} plugin"),
+            plugin=plugin,
+            suffix=suffix,
+            path=rel,
+            name=Path(rel).name,
+            title_id=title_id,
+        )
 
     async def sidecars(self, file_id: str) -> list[MediaFileSidecar]:
         async with self.db.sessionmaker() as s:
@@ -1572,19 +1592,14 @@ class LibraryService:
             )
             if row is None:
                 return False
-            await self._sidecar_history(
-                s,
-                items,
-                "sidecar_removed",
-                row.plugin,
-                suffix,
-                sidecar_rel(f.relative_path, suffix),
-            )
+            plugin, rel = row.plugin, sidecar_rel(f.relative_path, suffix)
+            title_id = await self._sidecar_history(s, items, "sidecar_removed", plugin, suffix, rel)
             await s.delete(row)
             await s.commit()
         if f.destination_id:
             dest = await self.storage.destination(f.destination_id)
             await self._drop_sidecar_files(dest, f.relative_path, [suffix])
+        await self._sidecar_event("file.sidecar_removed", file_id, title_id, plugin, suffix, rel)
         return True
 
     async def _sidecar_suffixes(self, file_ids: list[str]) -> dict[str, list[str]]:
