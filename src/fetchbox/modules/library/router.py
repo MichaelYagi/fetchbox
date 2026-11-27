@@ -667,6 +667,27 @@ async def check_library(request: Request) -> Response:
     return accepted(await checker.start())
 
 
+class CheckReportOut(BaseModel):
+    checked_at: str
+    files: int
+    not_checked: int
+    missing: list[dict[str, Any]]
+    duplicates: list[list[dict[str, Any]]]
+    unknown: list[dict[str, Any]]
+    unknown_count: int
+
+
+@router.get(
+    "/library/check/latest", response_model=CheckReportOut | None, dependencies=_read
+)  # fmt: skip
+async def latest_check(request: Request) -> CheckReportOut | None:
+    """The last check's report (it runs daily and when asked), less the missing files
+    dealt with since; null before the first."""
+    checker: LibraryCheck = request.app.state.library_check
+    report = await checker.latest()
+    return CheckReportOut.model_validate(report) if report else None
+
+
 @router.post("/library/check/forget", response_model=ForgetOut, dependencies=_write)
 async def forget_missing(body: ForgetIn, request: Request, p: CurrentPrincipal) -> ForgetOut:
     """Drop records of files that are missing from disk; their movies and episodes are

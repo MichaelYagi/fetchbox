@@ -22,6 +22,7 @@ import asyncio
 import os
 from collections import defaultdict
 from collections.abc import Callable, Coroutine
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
@@ -31,6 +32,8 @@ from fetchbox.core.db import Database
 from fetchbox.core.errors import ConflictError
 from fetchbox.core.events import Actor, EventBus, Subject
 from fetchbox.core.jobs import Job, JobContext, JobRunner
+from fetchbox.core.providers import HealthStatus
+from fetchbox.core.schedules import ScheduleDef, Scheduler
 from fetchbox.modules.library.models import MediaFile, MediaFileItem
 from fetchbox.modules.library.service import _SAMPLE, is_video
 from fetchbox.modules.media.models import HistoryEvent, Title, WantedItem
@@ -69,10 +72,50 @@ class LibraryCheck:
         self.jobs = jobs
         self.storage = storage
 
-    def register_jobs(self) -> None:
+    def register_jobs(self, scheduler: Scheduler | None = None) -> None:
         @self.jobs.handler(CHECK_JOB, queue="maintenance", max_attempts=1)
         async def run(ctx: JobContext) -> dict[str, Any]:
             return await self.check(progress=ctx.progress)
+
+        if scheduler is not None:  # daily, only reporting: Health says what's missing
+            scheduler.define(
+                ScheduleDef(
+                    "library_check", CHECK_JOB, timedelta(days=1),
+                    "Check the library for files missing from disk (changes nothing)",
+                )
+            )  # fmt: skip
+
+    async def latest(self) -> dict[str, Any] | None:
+        """The last finished check's report, without the missing files dealt with since
+        (forgotten, deleted, or their movie removed)."""
+        async with self.db.sessionmaker() as s:
+            job = await s.scalar(
+                select(Job)
+                .where(Job.type == CHECK_JOB, Job.status == "succeeded")
+                .order_by(Job.created_at.desc(), Job.id.desc())
+                .limit(1)
+            )
+            if job is None or not job.result:
+                return None
+            report = dict(job.result)
+            ids = [m["file_id"] for m in report.get("missing") or []]
+            still = set(
+                (await s.execute(select(MediaFile.id).where(MediaFile.id.in_(ids)))).scalars()
+            ) if ids else set()  # fmt: skip
+        report["missing"] = [m for m in report.get("missing") or [] if m["file_id"] in still]
+        report["checked_at"] = (job.finished_at or job.created_at).isoformat()
+        return report
+
+    async def health(self) -> HealthStatus:
+        report = await self.latest()
+        missing = len(report["missing"]) if report else 0
+        if missing:
+            return HealthStatus(
+                status="warning",
+                message=f"{missing} file{'s' if missing != 1 else ''} missing from disk "
+                "(found by the library check)",
+            )
+        return HealthStatus(status="ok", message="No files missing from disk")
 
     async def start(self) -> Job:
         job = await self.jobs.enqueue(CHECK_JOB, {}, dedupe_key="library-check")
