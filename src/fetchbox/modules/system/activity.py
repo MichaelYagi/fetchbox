@@ -101,6 +101,7 @@ MESSAGES: dict[str, str] = {
     "download_client.added": "Download client {name} added ({kind})",
     "download_client.removed": "Download client {name} removed",
     "search.completed": "Searched for {name}: {results} results, {accepted} acceptable",
+    "plugin.action_done": "{plugin}: {label}: {message}",
 }
 
 

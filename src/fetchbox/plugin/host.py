@@ -15,6 +15,7 @@ off in Settings) builds on this.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import hashlib
 import re
 import time
@@ -29,7 +30,7 @@ from pydantic import ValidationError
 from fetchbox import __version__
 from fetchbox.core import kinds
 from fetchbox.core.db import Database
-from fetchbox.core.events import Event, EventBus
+from fetchbox.core.events import Actor, Event, EventBus, Subject
 from fetchbox.core.jobs import JobContext, PermanentJobError
 from fetchbox.core.providers import ProviderRegistry
 from fetchbox.core.schedules import ScheduleDef, Scheduler
@@ -272,11 +273,38 @@ class PluginHost:
                 self._failed(got, f"{type(exc).__name__}: {exc}")
                 raise
             got.failures.clear()
-            return out if isinstance(out, dict) else {}
+            result = out if isinstance(out, dict) else {}
+            if how in ("action", "library"):  # someone pressed it: say how it went
+                await self._said(got, fn, job.payload.get("item"), result)
+            return result
 
         self.services.jobs.register(job_type, run, queue="io")
         got.job_types.append(job_type)
         return job_type
+
+    async def _said(self, got: Loaded, fn: Any, item: Any, result: dict[str, Any]) -> None:
+        """A plugin button's outcome in the activity log (finished jobs aren't logged): its
+        message, or what it returned; linked to the title it was pressed on, if any."""
+        spec = getattr(fn, "__fetchbox_action__", None)
+        said = result.get("message") or result.get("skipped")
+        if not said:
+            said = ", ".join(f"{k.replace('_', ' ')} {v}" for k, v in result.items()) or "done"
+        title_id = None
+        if isinstance(item, str) and item:
+            title_id = item.partition(":")[0] if ":" in item else item
+            with contextlib.suppress(Exception):  # an item's id: its title's (else a title's)
+                title_id = (await self.services.media.get_wanted(title_id)).title_id
+        await self.bus.emit(
+            "plugin.action_done",
+            subject=Subject(type="title", id=title_id) if title_id else None,
+            actor=Actor(
+                type="system", id=f"plugin:{got.ctx.plugin_id}", name=f"{got.ctx.plugin_id} plugin"
+            ),
+            plugin=got.plugin.name,
+            label=spec.label if spec else fn.__name__,
+            message=str(said),
+            title_id=title_id,
+        )
 
     def _failed(self, got: Loaded, error: str) -> None:
         """Failing PAUSE_AFTER times within an hour pauses a plugin's jobs for an hour (one

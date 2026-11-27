@@ -48,6 +48,12 @@
       "title": "Method",
       "type": "string"
      },
+     "needs_file": {
+      "default": false,
+      "description": "Only where there's a downloaded file (disabled elsewhere)",
+      "title": "Needs File",
+      "type": "boolean"
+     },
      "on": {
       "description": "title, group, item, or library (the plugin's card)",
       "title": "On",

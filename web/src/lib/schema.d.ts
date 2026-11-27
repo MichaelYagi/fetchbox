@@ -2976,6 +2976,12 @@ export interface components {
             /** Method */
             method: string;
             /**
+             * Needs File
+             * @description Only where there's a downloaded file (disabled elsewhere)
+             * @default false
+             */
+            needs_file: boolean;
+            /**
              * On
              * @description title, group, item, or library (the plugin's card)
              */

@@ -639,7 +639,8 @@ class PluginManager:
                     kinds = loaded.addons[addon].applies_to
                     actions.append(
                         {"addon": addon, "method": method, "label": spec.label, "on": spec.level,
-                         "kinds": sorted(kinds) if kinds else None}
+                         "kinds": sorted(kinds) if kinds else None,
+                         "needs_file": getattr(spec, "needs_file", False)}
                     )  # fmt: skip
         return {
             "id": pid,

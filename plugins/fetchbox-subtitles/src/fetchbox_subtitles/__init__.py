@@ -93,21 +93,31 @@ class Subtitles(Addon):
             got += await self.fetch(ctx, file_id)
         return {"subtitles": got}
 
-    @action("Search subtitles", on="item")
+    @action("Search subtitles", on="item", needs_file=True)
     async def search_now(self, ctx: Any, item: str) -> dict[str, Any]:
         it = await ctx.library.item(item)
-        got = 0
+        got, files = 0, []
         for f in await ctx.library.files(it.title_id):
             if item in f.item_ids:
+                files.append(f.id)
                 got += await self.fetch(ctx, f.id)
-        return {"subtitles": got}
+        waiting = await ctx.store.get(MISSING, {})
+        if not files:
+            message = "No file yet: subtitles come once it's downloaded"
+        elif got:
+            message = f"{got} subtitle(s) added"
+        elif any(f in waiting for f in files):
+            message = "None found yet; tried again daily"
+        else:
+            message = "It has subtitles in all your languages"
+        return {"subtitles": got, "message": message}
 
-    @action("Find missing subtitles", on="title")
+    @action("Find missing subtitles", on="title", needs_file=True)
     async def find_for_title(self, ctx: Any, title: str) -> dict[str, Any]:
         """Every file of a movie or show without subtitles in one of your languages."""
         return await self._find(ctx, [title])
 
-    @action("Find missing subtitles", on="group")
+    @action("Find missing subtitles", on="group", needs_file=True)
     async def find_for_season(self, ctx: Any, group: str) -> dict[str, Any]:
         """One season of a show ("<title id>:<season>")."""
         title_id, _, season = group.rpartition(":")
