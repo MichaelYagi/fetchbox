@@ -122,6 +122,57 @@ async def patch_config(
     return _config_out(view, response)
 
 
+class SetupFolder(BaseModel):
+    id: str
+    media_kind: str
+    name: str
+    path: str
+    etag: str
+
+
+class SetupStatus(BaseModel):
+    show: bool = Field(description="Open the setup by itself: a fresh install, not skipped")
+    dismissed: bool
+    tmdb: bool = Field(description="A TMDB key is set (movies and shows need it)")
+    indexers: int = Field(description="Indexers added (Prowlarr, Torznab feeds)")
+    download_clients: int = Field(description="Clients added besides the built-in ones")
+    media_servers: int
+    titles: int
+    folders: list[SetupFolder] = Field(description="The default library folder of each kind")
+
+
+@router.get("/setup", response_model=SetupStatus, dependencies=_read)
+async def setup_status(request: Request) -> SetupStatus:
+    """What the first-run setup's steps have set up already, and whether it opens by itself."""
+    st = request.app.state
+    cfg = _config(request).current
+    indexers = sum(1 for i in await st.sources.all() if i.kind in ("prowlarr", "torznab"))
+    clients = sum(
+        1 for c in await st.downloads.client_rows() if c.kind not in ("builtin", "direct")
+    )
+    servers = len(await st.integrations.all())
+    titles = len(await st.media.all_titles())
+    folders = [
+        SetupFolder(
+            id=d.id, media_kind=d.media_kind, name=d.name, path=d.path, etag=etag(d.version)
+        )
+        for d in await st.storage.destinations()
+        if d.is_default and d.media_kind in ("movie", "series", "music")
+    ]
+    tmdb = bool(st.discovery.configured)
+    fresh = not tmdb and not indexers and not titles
+    return SetupStatus(
+        show=fresh and not cfg.setup.dismissed,
+        dismissed=cfg.setup.dismissed,
+        tmdb=tmdb,
+        indexers=indexers,
+        download_clients=clients,
+        media_servers=servers,
+        titles=titles,
+        folders=folders,
+    )
+
+
 @router.post(
     "/shutdown",
     status_code=202,

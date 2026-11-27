@@ -8216,6 +8216,39 @@
     "title": "SettingsOut",
     "type": "object"
    },
+   "SetupFolder": {
+    "properties": {
+     "etag": {
+      "title": "Etag",
+      "type": "string"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "media_kind": {
+      "title": "Media Kind",
+      "type": "string"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "path": {
+      "title": "Path",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "media_kind",
+     "name",
+     "path",
+     "etag"
+    ],
+    "title": "SetupFolder",
+    "type": "object"
+   },
    "SetupIn": {
     "properties": {
      "password": {
@@ -8241,6 +8274,62 @@
      "password"
     ],
     "title": "SetupIn",
+    "type": "object"
+   },
+   "SetupStatus": {
+    "properties": {
+     "dismissed": {
+      "title": "Dismissed",
+      "type": "boolean"
+     },
+     "download_clients": {
+      "description": "Clients added besides the built-in ones",
+      "title": "Download Clients",
+      "type": "integer"
+     },
+     "folders": {
+      "description": "The default library folder of each kind",
+      "items": {
+       "$ref": "#/components/schemas/SetupFolder"
+      },
+      "title": "Folders",
+      "type": "array"
+     },
+     "indexers": {
+      "description": "Indexers added (Prowlarr, Torznab feeds)",
+      "title": "Indexers",
+      "type": "integer"
+     },
+     "media_servers": {
+      "title": "Media Servers",
+      "type": "integer"
+     },
+     "show": {
+      "description": "Open the setup by itself: a fresh install, not skipped",
+      "title": "Show",
+      "type": "boolean"
+     },
+     "titles": {
+      "title": "Titles",
+      "type": "integer"
+     },
+     "tmdb": {
+      "description": "A TMDB key is set (movies and shows need it)",
+      "title": "Tmdb",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "show",
+     "dismissed",
+     "tmdb",
+     "indexers",
+     "download_clients",
+     "media_servers",
+     "titles",
+     "folders"
+    ],
+    "title": "SetupStatus",
     "type": "object"
    },
    "SidecarOut": {
@@ -21693,6 +21782,39 @@
      }
     ],
     "summary": "Selftest",
+    "tags": [
+     "system"
+    ]
+   }
+  },
+  "/api/v1/system/setup": {
+   "get": {
+    "description": "What the first-run setup's steps have set up already, and whether it opens by itself.",
+    "operationId": "setup_status_api_v1_system_setup_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SetupStatus"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Setup Status",
     "tags": [
      "system"
     ]

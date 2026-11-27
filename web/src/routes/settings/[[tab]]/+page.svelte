@@ -366,6 +366,7 @@
 	</nav>
 	<div class="panes">
 	<div hidden={tab !== 'general'}>
+	<p class="muted small setup-again">New here, or starting over? <a href="/setup">Run the setup</a>: library folders, TMDB, an indexer, downloads and Plex, one step at a time.</p>
 	{#if session.host}
 		<section id="computer">
 			<h2>This computer</h2>

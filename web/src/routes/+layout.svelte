@@ -103,6 +103,23 @@
 		if (!session.me) check();
 	});
 
+	// A fresh install: the setup opens by itself, from the library, once a visit (skipping it
+	// or finishing it stops that for good)
+	let setupOffered = false;
+	$effect(() => {
+		if (!session.me || page.url.pathname !== '/' || setupOffered) return;
+		setupOffered = true;
+		try {
+			if (sessionStorage.getItem('fb-setup-offered')) return;
+			sessionStorage.setItem('fb-setup-offered', '1');
+		} catch {
+			// no storage: still once per page load
+		}
+		get<S['SetupStatus']>('/system/setup')
+			.then((s) => (s.show ? goto('/setup') : undefined))
+			.catch(() => {});
+	});
+
 	$effect(() => {
 		void page.url.pathname; // fresh on every page change, and once a minute
 		if (!session.me) return;
