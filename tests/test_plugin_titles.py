@@ -21,6 +21,7 @@ from fetchbox_plugin import (
     TitleDetails,
 )
 from tests.conftest import Running
+from tests.torrents import until
 
 SOON = date.today() + timedelta(days=30)
 ISSUES = [
@@ -160,3 +161,27 @@ async def test_counts_in_the_titles_list(zines: Any, c: httpx.AsyncClient) -> No
     [t] = [x for x in (await c.get("/titles")).json()["items"] if x["id"] == tid]
     assert t["items"] == {"items": 2, "monitored": 2, "acquired": 0, "missing": 2}
     assert t["episodes"] is None and t["albums"] is None
+
+
+async def test_titles_are_read_again_daily(
+    zines: Any, c: httpx.AsyncClient, server: Running
+) -> None:
+    """A newly announced issue appears without anyone pressing Refresh."""
+    from fetchbox.plugin.titles import REFRESH_ALL
+
+    tid = (await c.post("/plugins/kinds/zines/titles", json={"ref": "saga"})).json()["id"]
+    scheds = {s["name"]: s for s in (await c.get("/automation/schedules")).json()}
+    assert scheds[REFRESH_ALL]["interval_seconds"] == 24 * 3600
+    ISSUES.append(Item("i3", 3, "Chapter Three", SOON))
+    try:
+        assert (await c.post(f"/automation/schedules/{REFRESH_ALL}/run")).status_code in (200, 202)
+
+        async def three() -> bool:
+            items = (await c.get(f"/plugins/titles/{tid}/items")).json()
+            return [i["number"] for i in items] == [1.0, 2.0, 3.0]
+
+        await until(three, within=10)
+        items = (await c.get(f"/plugins/titles/{tid}/items")).json()
+        assert items[-1]["monitored"] is True  # wanted, as the title's monitor setting says
+    finally:
+        ISSUES.pop()

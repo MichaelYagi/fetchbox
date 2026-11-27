@@ -319,7 +319,7 @@ def create_app(
             enabled=not settings.no_plugins, health=state.health,
         )  # fmt: skip
         await app.state.plugins.start()
-        from fetchbox.plugin.titles import PluginTitles
+        from fetchbox.plugin.titles import REFRESH_ALL, PluginTitles
 
         app.state.plugin_titles = PluginTitles(plugin_host, storage)
         from fetchbox.plugin.pipeline import SEARCH_MISSING, PluginPipeline
@@ -341,6 +341,20 @@ def create_app(
                 job_type=SEARCH_MISSING,
                 every=timedelta(hours=6),
                 description="Search for plugin media kinds' missing items",
+            )
+        )
+        plugin_titles: PluginTitles = app.state.plugin_titles
+
+        @state.jobs.handler(REFRESH_ALL, queue="net", max_attempts=1)
+        async def _refresh_plugin_titles(ctx: Any) -> dict[str, Any]:
+            return await plugin_titles.refresh_all(actor=Actor(type="system", id="plugins"))
+
+        state.scheduler.define(
+            ScheduleDef(
+                name=REFRESH_ALL,
+                job_type=REFRESH_ALL,
+                every=timedelta(days=1),
+                description="Read plugin media kinds' titles again: new items appear",
             )
         )
         await state.scheduler.sync()
