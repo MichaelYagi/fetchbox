@@ -62,10 +62,10 @@
 <main>
 	<div class="spread">
 		<h1>Library</h1>
-		<div class="row">
+		<div class="row tools">
 			<input placeholder="Filter" bind:value={filter} aria-label="Filter titles" />
 			<select bind:value={show} aria-label="Show">
-				<option value="all">All</option>
+				<option value="all">Any status</option>
 				<option value="acquired">In library</option>
 				<option value="active">Downloading</option>
 				<option value="missing">Missing</option>
@@ -189,5 +189,22 @@
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
+	}
+	/* the filter, status and Add stay on one line, phones too */
+	.tools {
+		flex-wrap: nowrap;
+	}
+	.tools input {
+		min-width: 0;
+		flex: 1 1 8rem;
+	}
+	.tools select {
+		min-width: 0;
+		flex: 0 1 auto;
+	}
+	@media (max-width: 640px) {
+		.tools {
+			width: 100%;
+		}
 	}
 </style>

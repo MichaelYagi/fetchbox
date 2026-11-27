@@ -57,10 +57,14 @@
 		['none', 'Nothing (just keep what I have)']
 	];
 
+	let folders = $state<S['DestinationOut'][]>([]);
 	$effect(() => {
-		if (!destId) return;
-		get<S['DestinationOut'][]>('/destinations').then((d) => (dest = d.find((x) => x.id === destId) ?? null));
+		get<S['DestinationOut'][]>('/destinations').then((d) => {
+			folders = d;
+			dest = destId ? (d.find((x) => x.id === destId) ?? null) : null;
+		});
 	});
+	const FOLDER_KIND: Record<string, string> = { movie: 'Movies', series: 'TV shows', music: 'Music' };
 	$effect(() => {
 		if (!dest) return;
 		const { profileMedia: media, defaultProfile } = kindOf(dest.media_kind);
@@ -167,9 +171,17 @@
 
 <main>
 	<p><a href="/settings/library">← Library settings</a></p>
-	<h1>Import existing {noun}</h1>
+	<h1>Import existing {destId ? noun : 'files'}</h1>
 	{#if !destId}
-		<p class="notice error">No library folder chosen.</p>
+		<!-- opened without a folder: choose one -->
+		<p class="muted">Which library folder? Its files are adopted where they are.</p>
+		<div class="card stack">
+			{#each folders.filter((f) => f.media_kind in FOLDER_KIND).sort((a, b) => Object.keys(FOLDER_KIND).indexOf(a.media_kind) - Object.keys(FOLDER_KIND).indexOf(b.media_kind)) as f (f.id)}
+				<a class="row" href="?dest={f.id}"><strong>{FOLDER_KIND[f.media_kind]}</strong> <Path path={f.path} /></a>
+			{:else}
+				<p class="muted">No library folders yet: add one in <a href="/settings/library">Library settings</a>.</p>
+			{/each}
+		</div>
 	{:else if dest}
 		<p class="muted">From <Path path={dest.path} /></p>
 		<p class="muted small">
@@ -199,7 +211,7 @@
 			</div>
 		</div>
 	{:else if !scan}
-		<button class="primary" onclick={runScan} disabled={!!job || !dest}>
+		<button class="primary" hidden={!destId} onclick={runScan} disabled={!!job || !dest}>
 			{job ? `Scanning… ${job.progress != null ? Math.round(job.progress * 100) + '%' : ''}` : 'Scan this folder'}
 		</button>
 	{:else}

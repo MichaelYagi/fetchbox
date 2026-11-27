@@ -321,7 +321,7 @@ async def test_panels_messages_and_health(server: Any, c: Any) -> None:
     events = {e["event"]: e for e in (await c.get("/notifications/events")).json()}
     assert events["plugin.message"]["default"] is False
     health = json.dumps((await c.get("/system/health")).json())
-    assert "1 plugin(s) running" in health  # (its link to Settings shows when not ok)
+    assert "1 plugin running" in health  # (its link to Settings shows when not ok)
 
     await c.patch("/plugins/greeter", json={"enabled": False})
     assert "plugin.message" not in {

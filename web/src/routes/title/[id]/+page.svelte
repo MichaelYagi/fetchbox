@@ -1,12 +1,13 @@
 <script lang="ts">
 	import { ask } from '#lib/dialogs.svelte.ts';
+	const LINK: Record<string, string> = { existing: 'adopted where it was', hardlink: 'hardlinked', hardlink_or_copy: 'hardlinked', hardlink_only: 'hardlinked', copy: 'copied', move: 'moved', symlink: 'symlinked' };
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import Badge from '#lib/Badge.svelte';
 	import Path from '#lib/Path.svelte';
 	import { profileMedia } from '#lib/kinds.ts';
 	import ReleasesTable from '#lib/ReleasesTable.svelte';
-	import PluginBits, { NO_FILE, pluginActions, runAction, type Act } from '#lib/PluginBits.svelte';
+	import PluginBits, { pluginActions, runAction, type Act } from '#lib/PluginBits.svelte';
 	import { ago, ApiError, bytes, del, duration, get, patch, post, put, type S, type Title } from '#lib/api.ts';
 
 	const id = $derived(page.params.id ?? '');
@@ -185,7 +186,6 @@
 			pluginItems = await get<S['PluginItemOut'][]>(`/plugins/titles/${id}/items`);
 		});
 	const wanted = $derived(series || music ? null : (title?.wanted[0] ?? null));
-	const profileName = $derived(profiles.find((p) => p.id === title?.profile_id)?.name ?? '');
 
 	async function load() {
 		try {
@@ -291,7 +291,7 @@
 	}
 	function seasonCount(x: S['SeasonOut']): string {
 		const got = x.episodes.filter((e) => e.wanted.state === 'acquired').length;
-		return `${got} of ${x.episodes.length}`;
+		return x.episodes.length ? `${got} of ${x.episodes.length} downloaded` : 'no episodes yet';
 	}
 	// ---- music ----
 	const ARTIST_MODES: [string, string][] = [
@@ -444,10 +444,10 @@
 			<div class="stack info" bind:clientHeight={infoHeight}>
 				<div>
 					<h1>{title.name} <span class="muted">{title.year ?? ''}</span></h1>
-					<div class="row muted small">
-						{#each details as d, i (i)}<span>{i ? '· ' : ''}{d}</span>{/each}
+					<div class="row muted small dots">
+						{#each details as d, i (i)}<span>{d}</span>{/each}
 						{#if title.tmdb_id}
-							<span>{details.length ? '· ' : ''}<a href="https://www.themoviedb.org/{series ? 'tv' : 'movie'}/{title.tmdb_id}" target="_blank" rel="noreferrer">TMDB</a></span>
+							<span><a href="https://www.themoviedb.org/{series ? 'tv' : 'movie'}/{title.tmdb_id}" target="_blank" rel="noreferrer">TMDB</a></span>
 						{/if}
 					</div>
 				</div>
@@ -495,7 +495,7 @@
 							</span>
 						{/if}
 						<span class="muted small">
-							Searched {ago(wanted.last_search_at)}{wanted.next_search_at && wanted.state !== 'acquired' ? `, next ${ago(wanted.next_search_at)}` : ''}
+							{wanted.last_search_at ? `Searched ${ago(wanted.last_search_at)}` : 'Never searched'}{wanted.next_search_at && wanted.state !== 'acquired' ? `, next ${ago(wanted.next_search_at)}` : ''}
 						</span>
 					</div>
 					<div class="row">
@@ -531,10 +531,10 @@
 						{/if}
 					</div>
 					{#if title.theatrical_date || title.digital_date || title.physical_date}
-						<div class="row small muted">
+						<div class="row small muted dots">
 							{#if title.theatrical_date}<span>Cinemas {title.theatrical_date}</span>{/if}
-							{#if title.digital_date}<span>· Digital {title.digital_date}</span>{/if}
-							{#if title.physical_date}<span>· Disc {title.physical_date}</span>{/if}
+							{#if title.digital_date}<span>Digital {title.digital_date}</span>{/if}
+							{#if title.physical_date}<span>Disc {title.physical_date}</span>{/if}
 						</div>
 					{/if}
 				{:else if music}
@@ -707,7 +707,7 @@
 								<td><input type="checkbox" title="Wanted" aria-label="Wanted" checked={i.monitored} onchange={(ev) => monitorItem(i, ev.currentTarget.checked)} disabled={!!busy} /></td>
 								<td class="act">
 									<button class="small" onclick={() => searchPlugin([i.id])} disabled={!!busy} title="Search for this {itemWord} and grab the best release">Search</button>
-									{#each itemActionsHere as a (`${a.plugin}/${a.addon}/${a.method}`)}<button class="small plugin-act" onclick={() => runItem(a, i.id)} disabled={a.needs_file && i.state !== 'acquired'} title={a.needs_file && i.state !== 'acquired' ? NO_FILE : undefined}>{a.label}</button>{/each}
+									{#each itemActionsHere as a (`${a.plugin}/${a.addon}/${a.method}`)}{#if !a.needs_file || i.state === 'acquired'}<button class="small plugin-act" onclick={() => runItem(a, i.id)}>{a.label}</button>{/if}{/each}
 								</td>
 								<td class="rest"></td>
 							</tr>
@@ -733,12 +733,13 @@
 										<div class="season-name">
 											<button class="link" onclick={() => (open = { ...open, [x.number]: !open[x.number] })} aria-expanded={!!open[x.number]}>
 												{open[x.number] ? '▾' : '▸'} <strong>{seasonName(x.number)}</strong>
-												<span class="muted small">{seasonCount(x)} downloaded</span>
+												<span class="muted small">{seasonCount(x)}</span>
 											</button>
 											<button class="small" onclick={() => chooseSeason(x.number)} disabled={!!busy}><span class="long">Choose a release</span><span class="short">Choose</span></button>
 											{#each groupActionsHere as a (`${a.plugin}/${a.addon}/${a.method}`)}
-												{@const noFile = a.needs_file && !x.episodes.some((e) => e.wanted.state === 'acquired')}
-												<button class="small" onclick={() => runItem(a, `${title!.id}:${x.number}`)} disabled={!!busy || noFile} title={noFile ? NO_FILE : undefined}>{a.label}</button>
+												{#if !a.needs_file || x.episodes.some((e) => e.wanted.state === 'acquired')}
+													<button class="small" onclick={() => runItem(a, `${title!.id}:${x.number}`)} disabled={!!busy}>{a.label}</button>
+												{/if}
 											{/each}
 										</div>
 									</td>
@@ -757,11 +758,13 @@
 											<td>
 												<span class="ep-name">
 													{#if stills[`${x.number}:${e.number}`]}<img class="still" src={stills[`${x.number}:${e.number}`]} alt="" loading="lazy" />{/if}
-													<span>{e.name ?? `Episode ${e.number}`}</span>
+													<span>{e.name ?? `Episode ${e.number}`}
+														<span class="phone-state">{#if epState(e)}<span class="muted small">{epState(e)}</span>{:else}<Badge state={e.wanted.state} />{/if}</span>
+													</span>
 												</span>
 											</td>
 											<td class="muted small date">{e.air_date ?? ''}</td>
-											<td>
+											<td class="state">
 												{#if epState(e)}<span class="muted small">{epState(e)}</span>{:else}<Badge state={e.wanted.state} />{/if}
 											</td>
 											<td>
@@ -769,7 +772,7 @@
 											</td>
 											<td class="act">
 												<button class="small" onclick={() => chooseEpisode(x.number, e)} disabled={!!busy || !aired(e)} title="Search and choose a release">Search</button>
-												{#each itemActionsHere as a (`${a.plugin}/${a.addon}/${a.method}`)}<button class="small plugin-act" onclick={() => runItem(a, e.wanted.id)} disabled={a.needs_file && e.wanted.state !== 'acquired'} title={a.needs_file && e.wanted.state !== 'acquired' ? NO_FILE : undefined}>{a.label}</button>{/each}
+												{#each itemActionsHere as a (`${a.plugin}/${a.addon}/${a.method}`)}{#if !a.needs_file || e.wanted.state === 'acquired'}<button class="small plugin-act" onclick={() => runItem(a, e.wanted.id)}>{a.label}</button>{/if}{/each}
 											</td>
 											<td class="rest"></td>
 										</tr>
@@ -800,18 +803,18 @@
 			{#each files as f (f.id)}
 				<div class="card stack file">
 					<div><Path path={fullPath(f)} /></div>
-					<div class="row small muted">
+					<div class="row small muted dots">
 						<span class="badge">{f.quality.name}</span>
 						<span>{bytes(f.size)}</span>
 						{#if f.mediainfo}
 							{@const m = f.mediainfo as Record<string, any>}
-							<span>· {m.width}×{m.height} {m.video_codec ?? ''}</span>
-							{#if m.hdr?.length}<span>· {m.hdr.join(' ')}</span>{/if}
-							{#if m.audio_codecs?.length}<span>· {m.audio_codecs.join(', ')} {m.audio_channels ?? ''}</span>{/if}
-							{#if m.duration_seconds}<span>· {duration(m.duration_seconds)}</span>{/if}
+							<span>{m.width}×{m.height} {m.video_codec ?? ''}</span>
+							{#if m.hdr?.length}<span>{m.hdr.join(' ')}</span>{/if}
+							{#if m.audio_codecs?.length}<span>{m.audio_codecs.join(', ')} {m.audio_channels ?? ''}</span>{/if}
+							{#if m.duration_seconds}<span>{duration(m.duration_seconds)}</span>{/if}
 						{/if}
-						{#if f.link_mode}<span>· {f.link_mode}</span>{/if}
-						<span>· imported {ago(f.imported_at)}</span>
+						{#if f.link_mode}<span>{LINK[f.link_mode] ?? f.link_mode}</span>{/if}
+						<span>imported {ago(f.imported_at)}</span>
 						<button class="small danger delete" onclick={() => deleteFile(f)} disabled={!!busy}>Delete</button>
 					</div>
 					<!-- what plugins put beside it: subtitles, say; moved, renamed and deleted with it -->
@@ -820,7 +823,7 @@
 						<div class="sidecar small" title={fullPath(f, sc.relative_path)}>
 							<span class="badge">{sc.suffix.split('.').pop()?.toUpperCase()}</span>
 							<code>{sc.relative_path.split('/').pop()}</code>
-							<span class="muted">{[lang, `by ${sc.plugin}`, ago(sc.created_at)].filter(Boolean).map((x) => `· ${x}`).join(' ')}</span>
+							<span class="muted">{[lang, `by ${sc.plugin}`, ago(sc.created_at)].filter(Boolean).join(' · ')}</span>
 						</div>
 					{/each}
 				</div>
@@ -829,7 +832,7 @@
 
 		<h2>History</h2>
 		{#if history.length === 0}
-			<p class="muted">Nothing yet. {profileName ? `Quality: ${profileName}.` : ''}</p>
+			<p class="muted">Nothing yet.</p>
 		{:else}
 			<div class="card table-wrap">
 				<table>
@@ -838,7 +841,7 @@
 							<tr>
 								<td class="when muted small">{ago(h.created_at)}</td>
 								<td><strong>{EVENTS[h.type] ?? h.type}</strong>{#if n > 1}<span class="muted small count">{n} episodes</span>{/if}</td>
-								<td class="small">{describe(h)}</td>
+								<td class="small what">{describe(h)}</td>
 							</tr>
 						{/each}
 					</tbody>
@@ -888,6 +891,9 @@
 			var(--backdrop);
 		background-size: cover;
 		background-position: center 25%;
+	}
+	.phone-state {
+		display: none;
 	}
 	.ep-name {
 		display: flex;
@@ -976,6 +982,10 @@
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
+		max-width: 100%; /* phones: the select shrinks instead of running off the edge */
+	}
+	.inline > select {
+		min-width: 0;
 	}
 	.album {
 		margin-bottom: 0.5rem;
@@ -1112,8 +1122,27 @@
 			overflow: hidden;
 			font-size: 0;
 		}
+		/* the state goes under the name, the still goes: the name gets the row */
 		.episodes .c-state {
-			width: 6rem;
+			width: 0;
+		}
+		.episodes td.state {
+			padding: 0;
+			overflow: hidden;
+			font-size: 0;
+		}
+		.episodes td.state > * {
+			display: none;
+		}
+		.phone-state {
+			display: block !important;
+			margin-top: 0.2rem;
+		}
+		.still {
+			display: none;
+		}
+		.episodes .c-num {
+			width: 1.75rem;
 		}
 		.episodes .long {
 			display: none;

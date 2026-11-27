@@ -88,7 +88,7 @@
 	{#if message}<p class="notice">{message}</p>{/if}
 	<div class="row">
 		<button onclick={exportNow} disabled={!!busy || (password.length > 0 && password.length < 8)}>Export settings</button>
-		<input type="password" placeholder="Password to include secrets (optional)" bind:value={password} autocomplete="new-password" />
+		<input class="grow" type="password" placeholder="Password to include secrets (optional)" bind:value={password} autocomplete="new-password" />
 	</div>
 	<div class="row">
 		<label class="small muted">Import: <input type="file" accept=".json,application/json" onchange={onFile} /></label>

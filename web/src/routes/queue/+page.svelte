@@ -145,7 +145,7 @@
 <main>
 	<div class="spread">
 		<h1>Queue</h1>
-		<div class="row">
+		<div class="row" hidden={active.length === 0}>
 			<button onclick={() => act('pause', () => post('/downloads/pause-all'))} disabled={!!busy || active.length === 0}>Pause all</button>
 			<button onclick={() => act('resume', () => post('/downloads/resume-all'))} disabled={!!busy || active.length === 0}>Resume all</button>
 		</div>
@@ -226,6 +226,7 @@
 		</div>
 	{/if}
 
+	{#if done.length}
 	<h2>
 		<button class="link" onclick={() => (showDone = !showDone)}>
 			{showDone ? '▾' : '▸'} Finished ({done.length})
@@ -272,6 +273,7 @@
 				</tbody>
 			</table>
 		</div>
+	{/if}
 	{/if}
 </main>
 
