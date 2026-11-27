@@ -636,9 +636,11 @@ class PluginManager:
                     getattr(type(loaded.addons[addon]), method), "__fetchbox_action__", None
                 )
                 if spec:
+                    kinds = loaded.addons[addon].applies_to
                     actions.append(
-                        {"addon": addon, "method": method, "label": spec.label, "on": spec.level}
-                    )
+                        {"addon": addon, "method": method, "label": spec.label, "on": spec.level,
+                         "kinds": sorted(kinds) if kinds else None}
+                    )  # fmt: skip
         return {
             "id": pid,
             "name": getattr(cls, "name", pid),

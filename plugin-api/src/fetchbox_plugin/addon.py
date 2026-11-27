@@ -74,7 +74,9 @@ def on(*events: str) -> Callable[[F], F]:
 
 
 def action(label: str, *, on: Level = "item") -> Callable[[F], F]:
-    """A button on each title, group or item: ``async def m(self, ctx, item)``; or, with
+    """A button on each title, group or item: ``async def m(self, ctx, item)``. `item` is the
+    title's id, the item's id, or for a group "<title id>:<group>" (a show's season: its
+    number, "…:2"; shown on season rows from Fetchbox 0.10.4). Or, with
     ``on="library"``, one button for the whole library on the plugin's card in Settings >
     Plugins: ``async def m(self, ctx)`` (Fetchbox 0.10.4 or later). Runs as a job and shows
     its progress and result."""

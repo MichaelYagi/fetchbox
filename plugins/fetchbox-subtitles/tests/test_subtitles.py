@@ -207,3 +207,15 @@ def test_languages_are_picked_by_name() -> None:
     schema = SubtitleSettings.model_json_schema()["properties"]["languages"]
     choices = schema["x-fetchbox-choices"]
     assert choices["en"] == "English" and choices["pt-br"] == "Portuguese (Brazil)"
+
+
+async def test_finding_for_one_season(fetchbox_app: Any) -> None:
+    app, _seen = await _app(fetchbox_app, FakeOpenSubtitles())
+    s1 = await app.add_file("Severance", 2022, kind="series", season=1, episode=1,
+                            tmdb_id=95396, imported=False)  # fmt: skip
+    s2 = await app.add_file("Severance", 2022, kind="series", season=2, episode=1,
+                            tmdb_id=95396, imported=False)  # fmt: skip
+    assert s1.title_id == s2.title_id
+    ran = await app.run("subtitles", "find_for_season", f"{s1.title_id}:2")
+    assert ran.result is not None and (ran.result["checked"], ran.result["added"]) == (1, 1)
+    assert s2.path.with_suffix(".en.srt").is_file() and not s1.path.with_suffix(".en.srt").exists()

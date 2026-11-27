@@ -25,6 +25,21 @@
       "title": "Addon",
       "type": "string"
      },
+     "kinds": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "The media kinds its titles must be (the add-on's applies_to); null: any",
+      "title": "Kinds"
+     },
      "label": {
       "title": "Label",
       "type": "string"
@@ -5051,6 +5066,34 @@
     "title": "MigrateConnectIn",
     "type": "object"
    },
+   "MonitoredIn": {
+    "properties": {
+     "monitored": {
+      "description": "Every item of the title wanted, or none",
+      "title": "Monitored",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "monitored"
+    ],
+    "title": "MonitoredIn",
+    "type": "object"
+   },
+   "MonitoredOut": {
+    "properties": {
+     "changed": {
+      "description": "Items whose wanted flag changed",
+      "title": "Changed",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "changed"
+    ],
+    "title": "MonitoredOut",
+    "type": "object"
+   },
    "MountOut": {
     "properties": {
      "device": {
@@ -6303,6 +6346,27 @@
      "enabled"
     ],
     "title": "PluginPatch",
+    "type": "object"
+   },
+   "PluginSearchIn": {
+    "properties": {
+     "item_ids": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Wanted items to search for (missing or not); none: every missing one",
+      "title": "Item Ids"
+     }
+    },
+    "title": "PluginSearchIn",
     "type": "object"
    },
    "PluginSearchOut": {
@@ -19441,6 +19505,81 @@
     ]
    }
   },
+  "/api/v1/plugins/titles/{title_id}/monitored": {
+   "put": {
+    "description": "All of a plugin kind's title's items wanted, or none (its issues' checkboxes at once),\nby the same rules as one item's.",
+    "operationId": "set_title_monitored_api_v1_plugins_titles__title_id__monitored_put",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "title_id",
+      "required": true,
+      "schema": {
+       "title": "Title Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/MonitoredIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/MonitoredOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Set Title Monitored",
+    "tags": [
+     "plugins"
+    ]
+   }
+  },
   "/api/v1/plugins/titles/{title_id}/qualities": {
    "get": {
     "operationId": "title_qualities_api_v1_plugins_titles__title_id__qualities_get",
@@ -19678,7 +19817,7 @@
   },
   "/api/v1/plugins/titles/{title_id}/search": {
    "post": {
-    "description": "Search now for a plugin kind's title's missing items, and grab the best releases.",
+    "description": "Search now for a plugin kind's title's missing items (or the ones given), and grab\nthe best releases.",
     "operationId": "search_title_api_v1_plugins_titles__title_id__search_post",
     "parameters": [
      {
@@ -19691,6 +19830,23 @@
       }
      }
     ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "anyOf": [
+         {
+          "$ref": "#/components/schemas/PluginSearchIn"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "title": "Body"
+       }
+      }
+     }
+    },
     "responses": {
      "200": {
       "content": {

@@ -2031,6 +2031,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/plugins/titles/{title_id}/monitored": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set Title Monitored
+         * @description All of a plugin kind's title's items wanted, or none (its issues' checkboxes at once),
+         *     by the same rules as one item's.
+         */
+        put: operations["set_title_monitored_api_v1_plugins_titles__title_id__monitored_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/plugins/titles/{title_id}/qualities": {
         parameters: {
             query?: never;
@@ -2081,7 +2102,8 @@ export interface paths {
         put?: never;
         /**
          * Search Title
-         * @description Search now for a plugin kind's title's missing items, and grab the best releases.
+         * @description Search now for a plugin kind's title's missing items (or the ones given), and grab
+         *     the best releases.
          */
         post: operations["search_title_api_v1_plugins_titles__title_id__search_post"];
         delete?: never;
@@ -2944,6 +2966,11 @@ export interface components {
         ActionOut: {
             /** Addon */
             addon: string;
+            /**
+             * Kinds
+             * @description The media kinds its titles must be (the add-on's applies_to); null: any
+             */
+            kinds?: string[] | null;
             /** Label */
             label: string;
             /** Method */
@@ -4804,6 +4831,22 @@ export interface components {
              */
             url: string;
         };
+        /** MonitoredIn */
+        MonitoredIn: {
+            /**
+             * Monitored
+             * @description Every item of the title wanted, or none
+             */
+            monitored: boolean;
+        };
+        /** MonitoredOut */
+        MonitoredOut: {
+            /**
+             * Changed
+             * @description Items whose wanted flag changed
+             */
+            changed: number;
+        };
         /** MountOut */
         MountOut: {
             /** Device */
@@ -5320,6 +5363,14 @@ export interface components {
              * @description On (approves it) or off
              */
             enabled: boolean;
+        };
+        /** PluginSearchIn */
+        PluginSearchIn: {
+            /**
+             * Item Ids
+             * @description Wanted items to search for (missing or not); none: every missing one
+             */
+            item_ids?: string[] | null;
         };
         /** PluginSearchOut */
         PluginSearchOut: {
@@ -12436,6 +12487,51 @@ export interface operations {
             };
         };
     };
+    set_title_monitored_api_v1_plugins_titles__title_id__monitored_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                title_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MonitoredIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MonitoredOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     title_qualities_api_v1_plugins_titles__title_id__qualities_get: {
         parameters: {
             query?: never;
@@ -12603,7 +12699,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PluginSearchIn"] | null;
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
