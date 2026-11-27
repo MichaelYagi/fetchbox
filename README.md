@@ -1,7 +1,10 @@
 # Fetchbox
 
-Self-hosted media manager for movies and TV: discover a title, pick a quality profile, and
-Fetchbox downloads and organizes it. Works out of the box with a built-in torrent engine.
+Self-hosted media manager for movies, TV and music: the Sonarr, Radarr and Lidarr workflow
+in one app. Find a title, pick a quality, and Fetchbox searches your indexers, downloads it,
+then names and files it in your library (and tells Plex). It upgrades what it has when a
+better copy turns up, and plugins add more: subtitles, comics, or a kind of media of your
+own. Works out of the box with a built-in torrent engine, so there's nothing else to set up.
 
 <img width="1212" height="955" alt="Screenshot 2026-11-26 195628" src="https://github.com/user-attachments/assets/a607e985-9091-4315-8a1e-a1a832d043f8" />
 
