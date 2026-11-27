@@ -48,7 +48,7 @@ def _insert(conn: Any, table: str, **values: Any) -> str:
             values[name] = 1 if "INT" in typ.upper() else f"{name}-{uuid4().hex[:8]}"
     cols, params = ", ".join(values), ", ".join(f":{c}" for c in values)
     conn.execute(text(f"INSERT INTO {table} ({cols}) VALUES ({params})"), values)
-    return str(values["id"])
+    return str(values.get("id", ""))  # (link tables have none)
 
 
 def test_kind_columns_open_for_plugin_kinds_and_back(tmp_path: Path) -> None:
@@ -100,5 +100,96 @@ def test_kind_columns_open_for_plugin_kinds_and_back(tmp_path: Path) -> None:
             assert conn.exec_driver_sql("SELECT count(*) FROM destination").scalar() == 3
             with pytest.raises(IntegrityError):
                 _insert(conn, "title", kind="comic", name="after", **title)
+    finally:
+        engine.dispose()
+
+
+def _rebuild_points() -> list[str]:
+    """The revision just before each migration that rebuilds a table (SQLite batch mode:
+    copy, drop, rename), where a dropped table could take its linked rows with it."""
+    from alembic.script import ScriptDirectory
+
+    script = ScriptDirectory(str(migrations.HERE))
+    out = []
+    for rev in script.walk_revisions():
+        source = Path(rev.path).read_text(encoding="utf-8")
+        if "batch_alter_table" in source and rev.down_revision:
+            out.append(str(rev.down_revision))
+    return sorted(set(out))
+
+
+# Columns with a CHECK on their values: a value each allows
+_VALID = {
+    "kind": "movie", "media_kind": "movie", "state": "missing", "status": "queued",
+    "link_mode": "copy", "lock": None, "monitor_mode": "all", "media": "video",
+    "outcome": "ok", "role": "admin", "reason": "manual", "queue": "default",
+    "info_hash": "0" * 40,
+}  # fmt: skip
+
+
+def _fill_every_table(conn: Any) -> dict[str, str]:
+    """One row in every table, each linked to a row of every table it refers to (so a
+    cascade anywhere would show). Parents first. Returns {table: row id}."""
+    tables = [r[0] for r in conn.exec_driver_sql(
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' "
+        "AND name != 'alembic_version'")]  # fmt: skip
+    fks = {t: list(conn.exec_driver_sql(f"PRAGMA foreign_key_list({t})")) for t in tables}
+    ids: dict[str, str] = {}
+    pending = list(tables)
+    while pending:
+        ready = [t for t in pending if all(f[2] in ids or f[2] == t for f in fks[t])]
+        assert ready, f"circular references among {pending}"
+        for t in ready:
+            values: dict[str, Any] = {}
+            cols = {c[1]: c for c in conn.exec_driver_sql(f"PRAGMA table_info({t})")}
+            for f in fks[t]:
+                if f[2] != t and f[3] in cols:
+                    values[f[3]] = ids[f[2]]
+            for name in cols:
+                if name in _VALID and name not in values:
+                    values[name] = _VALID[name]
+            if t == "album":
+                values["kind"] = "album"
+            if "id" in cols:
+                values.setdefault("id", f"{t[:18]}-{uuid4().hex[:6]}")
+            try:
+                with conn.begin_nested():
+                    _insert(conn, t, **values)
+            except IntegrityError as exc:
+                raise AssertionError(f"couldn't fill {t}: {exc.orig}") from None
+            ids[t] = str(values.get("id", ""))
+            pending.remove(t)
+    return ids
+
+
+def _count(conn: Any, table: str) -> int:
+    return int(conn.exec_driver_sql(f"SELECT count(*) FROM {table}").scalar() or 0)
+
+
+@pytest.mark.parametrize("start", _rebuild_points())
+def test_upgrading_keeps_every_row(tmp_path: Path, start: str) -> None:
+    """Upgrading never deletes data. SQLite rebuilds a table to change it, and dropping the
+    old one with foreign keys on cascades: 0.10.1's 0022 rebuilt `title` and so deleted
+    every season, episode, album, track, wanted item, file link and blocklist entry of the
+    titles already there. Every row in every table must survive, links intact."""
+    url = f"sqlite+aiosqlite:///{(tmp_path / 'keep.db').as_posix()}"
+    migrations.upgrade(url, start)
+    engine = create_engine(url.replace("+aiosqlite", ""))
+    try:
+        with engine.begin() as conn:
+            conn.exec_driver_sql("PRAGMA foreign_keys=ON")
+            filled = _fill_every_table(conn)
+            before = {t: _count(conn, t) for t in filled}
+        engine.dispose()
+
+        migrations.upgrade(url)
+        with engine.connect() as conn:
+            version = conn.exec_driver_sql("SELECT version_num FROM alembic_version").scalar()
+            assert version == migrations.head_revision(), f"stayed at {version}: not upgraded"
+            after = {t: _count(conn, t) for t in filled}
+            lost = {t: f"{before[t]} → {after[t]}" for t in filled if after[t] < before[t]}
+            assert not lost, f"upgrading from {start} deleted rows: {lost}"
+            broken = list(conn.exec_driver_sql("PRAGMA foreign_key_check"))
+            assert not broken, f"links broken after upgrading from {start}: {broken}"
     finally:
         engine.dispose()
