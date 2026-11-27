@@ -3,6 +3,8 @@
 Self-hosted media manager for movies and TV: discover a title, pick a quality profile, and
 Fetchbox downloads and organizes it. Works out of the box with a built-in torrent engine.
 
+<img width="1212" height="955" alt="Screenshot 2026-11-26 195628" src="https://github.com/user-attachments/assets/a607e985-9091-4315-8a1e-a1a832d043f8" />
+
 Status: early development — see [PLAN.md](PLAN.md) and the engineering specification.
 
 ## Getting started
