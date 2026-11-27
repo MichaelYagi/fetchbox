@@ -92,6 +92,14 @@ class UpdatesConfig(BaseModel):
     )
 
 
+class SetupConfig(BaseModel):
+    dismissed: bool = Field(
+        default=False,
+        description="The first-run setup was finished or skipped (it opens by itself only "
+        "until then, and only on a fresh install)",
+    )
+
+
 class MusicConfig(BaseModel):
     folder: Literal["artist/album (year)", "artist/album", "artist - album (year)"] = Field(
         default="artist/album (year)", description="Album folders in the music library"
@@ -147,6 +155,7 @@ class SystemConfig(BaseModel):
     updates: UpdatesConfig = UpdatesConfig()
     network: NetworkConfig = NetworkConfig()
     music: MusicConfig = MusicConfig()
+    setup: SetupConfig = SetupConfig()
 
 
 SECRETS: tuple[tuple[str, str], ...] = (("tmdb", "api_key"), ("tvdb", "api_key"), ("tvdb", "pin"))

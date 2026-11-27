@@ -266,7 +266,9 @@ class PluginManager:
         if failing:
             return HealthStatus(status="warning", message="; ".join(failing))
         running = len(self.host.loaded)
-        return HealthStatus(status="ok", message=f"{running} plugin(s) running")
+        return HealthStatus(
+            status="ok", message=f"{running} plugin{'' if running == 1 else 's'} running"
+        )
 
     async def _set(self, pid: str, **values: Any) -> PluginRecord:
         async with self.db.sessionmaker() as s:

@@ -32,7 +32,7 @@
 	});
 
 	const TRUST = 'Plugins run inside Fetchbox with its full access: your settings, your files, the network. Only install plugins from people you trust.';
-	const uses = (p: P) => (p.permissions.length ? p.permissions.map((x) => x.words).join('; ') : 'Nothing beyond Fetchbox itself');
+	const uses = (p: P) => (p.permissions.length ? p.permissions.map((x) => x.words).join(' · ') : 'Nothing beyond Fetchbox itself');
 
 	function status(p: P): [string, string] {
 		if (p.running) return ['Running', 'ok'];
@@ -90,7 +90,7 @@
 
 	async function toggle(p: P) {
 		if (!p.enabled && !p.approved) {
-			const ok = await ask(`Turn on ${p.name}?\n\nIt uses: ${uses(p)}.\n\n${TRUST}`, 'Turn on');
+			const ok = await ask(`Turn on ${p.name}?\n\nWhat it can do: ${uses(p)}.\n\n${TRUST}`, 'Turn on');
 			if (!ok) return;
 		}
 		await act(p.id, () => patch(`/plugins/${p.id}`, { enabled: !p.enabled }));
@@ -160,7 +160,7 @@
 				</div>
 				{#if p.description}<p class="small">{p.description}</p>{/if}
 				<p class="muted small">
-					Uses: {uses(p)}{#if p.contributes.length} · Adds: {p.contributes.map((c) => c.name).join(', ')}{/if}
+					{uses(p)}{#if p.contributes.length}{' · '}Adds: {p.contributes.map((c) => c.name).join(', ')}{/if}
 					{#if p.homepage} · <a href={p.homepage} target="_blank" rel="noreferrer">Homepage</a>{/if}
 				</p>
 				{#if p.running}
@@ -192,6 +192,10 @@
 	.plugin {
 		border-top: 1px solid var(--border);
 		padding-top: 0.75rem;
+	}
+	/* its description and what it uses read as one block, not three spaced-out lines */
+	.plugin p {
+		margin: 0;
 	}
 	.pill {
 		margin-left: 0.4rem;

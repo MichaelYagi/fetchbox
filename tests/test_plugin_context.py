@@ -195,7 +195,9 @@ async def test_http_keeps_to_a_hosts_rate_limit() -> None:
         start = time.monotonic()
         for _ in range(4):
             await http.get("https://API.example.com/x")
-        assert time.monotonic() - start >= 0.14  # 3 gaps of 0.05 s
+        # 3 gaps of 0.05 s; Windows' clock ticks every ~16 ms, so each gap can measure a
+        # tick short there (it read 0.14 s once): 0.11 still proves the limit held
+        assert time.monotonic() - start >= 0.11
         start = time.monotonic()
         for _ in range(4):
             await http.get("https://other.example.com/x")  # no limit declared

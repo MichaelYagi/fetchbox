@@ -781,7 +781,9 @@ class StorageService:
             return HealthStatus(status="error", message="; ".join(bad + warn))
         if warn:
             return HealthStatus(status="warning", message="; ".join(warn))
-        return HealthStatus(status="ok", message=f"{len(rows)} destination(s) online")
+        return HealthStatus(
+            status="ok", message=f"{len(rows)} library folder{'' if len(rows) == 1 else 's'} online"
+        )
 
     async def _emit(self, type_: str, d: Destination, actor: Actor, **data: Any) -> None:
         await self.bus.emit(

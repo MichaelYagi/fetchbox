@@ -2502,6 +2502,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system/setup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Setup Status
+         * @description What the first-run setup's steps have set up already, and whether it opens by itself.
+         */
+        get: operations["setup_status_api_v1_system_setup_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/system/shutdown": {
         parameters: {
             query?: never;
@@ -6202,12 +6222,59 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /** SetupFolder */
+        SetupFolder: {
+            /** Etag */
+            etag: string;
+            /** Id */
+            id: string;
+            /** Media Kind */
+            media_kind: string;
+            /** Name */
+            name: string;
+            /** Path */
+            path: string;
+        };
         /** SetupIn */
         SetupIn: {
             /** Password */
             password: string;
             /** Username */
             username?: string | null;
+        };
+        /** SetupStatus */
+        SetupStatus: {
+            /** Dismissed */
+            dismissed: boolean;
+            /**
+             * Download Clients
+             * @description Clients added besides the built-in ones
+             */
+            download_clients: number;
+            /**
+             * Folders
+             * @description The default library folder of each kind
+             */
+            folders: components["schemas"]["SetupFolder"][];
+            /**
+             * Indexers
+             * @description Indexers added (Prowlarr, Torznab feeds)
+             */
+            indexers: number;
+            /** Media Servers */
+            media_servers: number;
+            /**
+             * Show
+             * @description Open the setup by itself: a fresh install, not skipped
+             */
+            show: boolean;
+            /** Titles */
+            titles: number;
+            /**
+             * Tmdb
+             * @description A TMDB key is set (movies and shows need it)
+             */
+            tmdb: boolean;
         };
         /** SidecarOut */
         SidecarOut: {
@@ -13808,6 +13875,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    setup_status_api_v1_system_setup_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SetupStatus"];
                 };
             };
         };

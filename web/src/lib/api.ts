@@ -42,12 +42,18 @@ export async function api<T>(
 		if (v !== null && v !== undefined && v !== '') qs.set(k, String(v));
 	}
 	const url = `/api/v1${path}${qs.size ? `?${qs}` : ''}`;
-	const r = await fetch(url, {
-		method,
-		headers,
-		credentials: 'same-origin',
-		body: opts.body === undefined ? undefined : JSON.stringify(opts.body)
-	});
+	let r: Response;
+	try {
+		r = await fetch(url, {
+			method,
+			headers,
+			credentials: 'same-origin',
+			body: opts.body === undefined ? undefined : JSON.stringify(opts.body)
+		});
+	} catch {
+		// the browser's own "Failed to fetch" says nothing useful
+		throw new ApiError(0, "Can't reach Fetchbox: is it running? Try again in a moment.", null, []);
+	}
 	if (r.status === 204) return undefined as T;
 	const text = await r.text();
 	const data = text ? JSON.parse(text) : null;

@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { ask } from '#lib/dialogs.svelte.ts';
+	const CLIENT_KINDS: Record<string, string> = { builtin: 'Built-in engine', direct: 'Direct', qbittorrent: 'qBittorrent', transmission: 'Transmission', deluge: 'Deluge' };
+	const CHECKS: Record<string, string> = { database: 'Database', indexers: 'Indexers', library_files: 'Library files', metadata: 'Movie and show information', plugins: 'Plugins', secrets_key: 'Secrets key', storage: 'Library folders', torrent_engine: 'Torrent engine', download_clients: 'Download clients', media_servers: 'Media servers', disk_space: 'Disk space' };
 	import { ApiError, del, get, patch, post, type S } from '#lib/api.ts';
 	import BackupsCard from '#lib/BackupsCard.svelte';
 	import ConfigTransferCard from '#lib/ConfigTransferCard.svelte';
@@ -366,6 +368,7 @@
 	</nav>
 	<div class="panes">
 	<div hidden={tab !== 'general'}>
+	<p class="muted small setup-again">New here, or starting over? <a href="/setup">Run the setup</a>: library folders, TMDB, an indexer, downloads and Plex, one step at a time.</p>
 	{#if session.host}
 		<section id="computer">
 			<h2>This computer</h2>
@@ -430,12 +433,12 @@
 		<h2>Health</h2>
 		{#if health}
 			<div class="card">
-				<table>
+				<table class="health">
 					<tbody>
 						{#each health.checks as c (c.name)}
 							<tr>
 								<td class="w"><span class="badge {tone(c.status)}">{c.status}</span></td>
-								<td class="w"><strong>{c.name}</strong></td>
+								<td class="w"><strong>{CHECKS[c.name] ?? c.name.replace(/_/g, ' ').replace(/^./, (m) => m.toUpperCase())}</strong></td>
 								<td class="small">{c.message}</td>
 								<td class="w">{#if c.status !== 'ok' && c.fix_url}<a href={c.fix_url}>Fix</a>{/if}</td>
 							</tr>
@@ -466,7 +469,7 @@
 				</div>
 			{/if}
 		</form>
-		<form class="card stack tvdb" onsubmit={saveTvdb}>
+		<form class="card stack tvdb" style:margin-top="0.75rem" onsubmit={saveTvdb}>
 			<p class="muted small">
 				<strong>Anime, optional:</strong> releases numbered by absolute episode (“Show - 1071”) need TheTVDB's numbering,
 				which TMDB doesn't have. Get an API key at
@@ -594,7 +597,7 @@
 									· {c.policy.seed ? 'keeps seeding after download' : 'stops when downloaded (no seeding)'}
 								</div>
 							</td>
-							<td class="muted">{c.kind}</td>
+							<td class="muted">{CLIENT_KINDS[c.kind] ?? c.kind}</td>
 							<td class="small">
 								<span class="badge {c.enabled ? (c.running ? 'ok' : 'warn') : ''}">{c.enabled ? (c.running ? 'Running' : 'Not running') : 'Disabled'}</span>
 								{#if tests[c.id]}<div class={tests[c.id].ok ? 'okt' : 'errt'}>{tests[c.id].message}</div>{/if}
@@ -688,7 +691,7 @@
 							<td><div class="row"><span class="order"></span><strong>{c.name}</strong>
 								{#if c.enabled && c.running}<span class="badge">Used for direct files</span>{/if}</div>
 								<div class="muted small where">Saves into each library folder</div></td>
-							<td class="muted">{c.kind}</td>
+							<td class="muted">{CLIENT_KINDS[c.kind] ?? c.kind}</td>
 							<td class="small">
 								<span class="badge {c.enabled ? (c.running ? 'ok' : 'warn') : ''}">{c.enabled ? (c.running ? 'Running' : 'Not running') : 'Disabled'}</span>
 								{#if tests[c.id]}<div class={tests[c.id].ok ? 'okt' : 'errt'}>{tests[c.id].message}</div>{/if}
@@ -894,6 +897,13 @@
 	.w {
 		width: 1%;
 		white-space: nowrap;
+	}
+	/* phones: the check's name may wrap, so its message keeps room */
+	@media (max-width: 640px) {
+		.health td.w:nth-child(2) {
+			white-space: normal;
+			min-width: 6rem;
+		}
 	}
 	.end {
 		justify-content: flex-end;

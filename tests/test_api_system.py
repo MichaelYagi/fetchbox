@@ -63,3 +63,18 @@ async def test_sqlite_wal_enabled(server: Running) -> None:
         assert (await conn.execute(text("PRAGMA journal_mode"))).scalar() == "wal"
         assert (await conn.execute(text("PRAGMA foreign_keys"))).scalar() == 1
         assert (await conn.execute(text("PRAGMA busy_timeout"))).scalar() == 30000
+
+
+async def test_the_setup_status(client: httpx.AsyncClient) -> None:
+    """A fresh install: the setup opens by itself until it's finished or skipped; what each
+    step has set up already."""
+    s = (await client.get("/system/setup")).json()
+    assert s["show"] is True and s["dismissed"] is False
+    assert (s["tmdb"], s["indexers"], s["download_clients"], s["titles"]) == (False, 0, 0, 0)
+    assert {f["media_kind"] for f in s["folders"]} == {"movie", "series", "music"}
+    assert all(f["etag"] and f["path"] for f in s["folders"])
+    # skipped (or finished): it doesn't open by itself again
+    r = await client.patch("/system/config", json={"setup": {"dismissed": True}})
+    assert r.status_code == 200
+    s = (await client.get("/system/setup")).json()
+    assert s["show"] is False and s["dismissed"] is True

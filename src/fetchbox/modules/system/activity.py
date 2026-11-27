@@ -104,6 +104,18 @@ MESSAGES: dict[str, str] = {
     "plugin.action_done": "{plugin}: {label}: {message}",
     "file.sidecar_added": "{plugin} added {name}",
     "file.sidecar_removed": "{plugin} removed {name}",
+    "library.imported_existing": "Imported what was already there: {files} files, {count} titles",
+    "library.missing_forgotten": "Forgot {count} files that were gone from disk",
+    "library.naming_updated": "Naming changed ({kind})",
+    "library.renamed": "Renamed {count} files to the new naming ({kind})",
+    "media_server.added": "Media server {name} added ({kind})",
+    "media_server.updated": "Media server {name} changed",
+    "media_server.removed": "Media server {name} removed",
+    "media_server.refreshed": "{name} told to rescan",
+    "media_server.refresh_failed": "{name} couldn't be told to rescan: {error}",
+    "notifications.target_added": "Notification {name} added ({kind})",
+    "system.config_imported": "Settings imported",
+    "system.restore_staged": "Backup restore ready: it happens at the next restart",
 }
 
 
@@ -138,7 +150,9 @@ def entry_for(ev: Event) -> ActivityEntry | None:
     category, _, action = ev.type.partition(".")
     action = action or "event"
     template = MESSAGES.get(ev.type)
-    message = template.format_map(_Default(ev.data)) if template else ev.type
+    # an event without its own text still reads as words, not a code
+    fallback = f"{category.replace('_', ' ').capitalize()}: {action.replace('_', ' ')}"
+    message = template.format_map(_Default(ev.data)) if template else fallback
     actor = ev.actor.name or ev.actor.type
     return ActivityEntry(
         id=ev.id,  # one entry per event; also makes writes idempotent

@@ -437,7 +437,7 @@ class SourcesService:
             return HealthStatus(
                 status="warning",
                 message=(
-                    "No indexers: add Prowlarr (or a Torznab feed) in Settings > Indexers "
+                    "No indexers: add Prowlarr (or a Torznab feed) in Settings > Sources "
                     "to search for releases"
                 ),
             )
