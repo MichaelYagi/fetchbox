@@ -11,6 +11,8 @@
 
 	const id = $derived(page.params.id ?? '');
 	let title = $state<Title | null>(null);
+	// The header's text, measured: the poster beside it is as tall (see .poster)
+	let infoHeight = $state(0);
 	let files = $state<S['FileOut'][]>([]);
 	// where its files go (or went): its library folder and its own folder in there
 	let folder = $state<S['TitleFolderOut'] | null>(null);
@@ -376,9 +378,8 @@
 		{#if !error}<p class="muted">Loading…</p>{/if}
 	{:else}
 		<div class="head" class:backdrop={!!backdrop} style:--backdrop={backdrop ? `url("${backdrop}")` : null}>
-			<div class="info">
-				<!-- top right, everything in the header wrapping around it (phones: above the title) -->
-				{#if title.poster_url}<img class="poster" src={title.poster_url} alt="" />{/if}
+			{#if title.poster_url}<img class="poster" src={title.poster_url} alt="" style:--info-height={infoHeight ? `${infoHeight}px` : null} />{/if}
+			<div class="stack info" bind:clientHeight={infoHeight}>
 				<div>
 					<h1>{title.name} <span class="muted">{title.year ?? ''}</span></h1>
 					<div class="row muted small">
@@ -750,7 +751,9 @@
 		margin-left: auto;
 	}
 	.head {
-		display: block;
+		display: flex;
+		gap: 1.5rem;
+		align-items: flex-start;
 	}
 	/* A scene from the title behind the whole header, evenly toned down so the text on it
 	   stays readable in every theme; the poster sits on top of it */
@@ -784,35 +787,36 @@
 			width: 64px;
 		}
 	}
-	/* The whole poster, 2:3, in the header's top right corner; the text wraps around it */
+	/* Beside the text and as tall as it, as wide as that makes a 2:3 poster: the whole
+	   poster, never cropped; between 270px and 540px tall */
 	.poster {
-		float: right;
-		width: 180px;
-		height: auto;
+		flex: none;
+		height: clamp(270px, var(--info-height, 270px), 540px);
+		width: auto;
 		aspect-ratio: 2 / 3;
 		object-fit: cover;
-		margin: 0 0 1rem 1.5rem;
 		border-radius: var(--radius);
 		background: var(--surface-2);
 	}
-	/* Phones: above the title */
-	@media (max-width: 760px) {
-		.poster {
-			float: none;
-			display: block;
-			margin: 0 0 1rem;
-		}
-	}
 	.info {
-		display: flow-root; /* holds the floated poster */
+		flex: 1;
+		min-width: 18rem;
+		align-content: start;
 	}
-	.info > :not(.poster) {
-		margin-top: 0;
-		margin-bottom: 1rem;
-		min-width: 0;
-	}
-	.info > :last-child {
-		margin-bottom: 0;
+	/* Phones: the poster above the title, 180px wide */
+	@media (max-width: 760px) {
+		.head {
+			flex-direction: column;
+			gap: 1rem;
+		}
+		.poster {
+			height: auto;
+			width: 180px;
+		}
+		.info {
+			min-width: 0;
+			align-self: stretch;
+		}
 	}
 	h1 {
 		margin: 0 0 0.25rem;
