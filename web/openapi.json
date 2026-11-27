@@ -7116,7 +7116,8 @@
        "not_an_upgrade",
        "rule",
        "wrong_album",
-       "disc_image"
+       "disc_image",
+       "no_client"
       ],
       "title": "Code",
       "type": "string"
@@ -7154,6 +7155,17 @@
        }
       ],
       "title": "Download Url"
+     },
+     "grabs": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Grabs"
      },
      "guid": {
       "anyOf": [
@@ -7223,6 +7235,15 @@
       "default": 25,
       "title": "Priority",
       "type": "integer"
+     },
+     "protocol": {
+      "default": "torrent",
+      "enum": [
+       "torrent",
+       "usenet"
+      ],
+      "title": "Protocol",
+      "type": "string"
      },
      "published_at": {
       "anyOf": [

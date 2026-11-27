@@ -5,6 +5,7 @@ from __future__ import annotations
 import fetchbox.providers.download_clients.builtin
 import fetchbox.providers.download_clients.direct
 import fetchbox.providers.download_clients.external
+import fetchbox.providers.download_clients.usenet
 import fetchbox.providers.indexers.definition
 import fetchbox.providers.indexers.prowlarr
 import fetchbox.providers.indexers.torznab

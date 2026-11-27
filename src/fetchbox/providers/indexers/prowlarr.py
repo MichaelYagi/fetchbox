@@ -3,7 +3,8 @@
 Prowlarr has no single feed for all its indexers, only one Torznab feed per indexer
 (``<address>/<id>/api``). This provider reads the list from Prowlarr's own API
 (``/api/v1/indexer``, refreshed every 10 minutes, so indexers added or disabled in
-Prowlarr follow along), and searches the enabled torrent ones together. One indexer
+Prowlarr follow along), and searches the enabled ones together: torrent indexers through
+their Torznab feed, Usenet ones through their Newznab feed (same address and API). One indexer
 failing doesn't fail the search; only all of them failing does.
 """
 
@@ -29,7 +30,11 @@ from fetchbox.providers.indexers import (
     SearchQuery,
     TorrentSource,
 )
-from fetchbox.providers.indexers.torznab import TorznabProvider, TorznabSettings
+from fetchbox.providers.indexers.torznab import (
+    NewznabProvider,
+    TorznabProvider,
+    TorznabSettings,
+)
 
 log = structlog.get_logger(__name__)
 
@@ -70,6 +75,7 @@ class _Child:
     id: int
     name: str
     provider: TorznabProvider
+    protocol: str = "torrent"
 
 
 class ProwlarrProvider(IndexerProvider):
@@ -136,7 +142,7 @@ class ProwlarrProvider(IndexerProvider):
         return [x for x in rows if isinstance(x, dict)]
 
     async def indexers(self, *, fresh: bool = False) -> list[_Child]:
-        """Prowlarr's enabled torrent indexers that can search."""
+        """Prowlarr's enabled indexers that can search, torrent and Usenet."""
         async with self._lock:
             if (
                 not fresh
@@ -146,20 +152,23 @@ class ProwlarrProvider(IndexerProvider):
                 return list(self._children.values())
             rows = await self._list()
             wanted = {
-                int(x["id"]): str(x.get("name") or f"indexer {x['id']}")
+                int(x["id"]): (str(x.get("name") or f"indexer {x['id']}"), str(x["protocol"]))
                 for x in rows
                 if x.get("enable")
-                and x.get("protocol") == "torrent"
+                and x.get("protocol") in ("torrent", "usenet")
                 and x.get("supportsSearch", True)
                 and isinstance(x.get("id"), int)
             }
             for gone in set(self._children) - set(wanted):
                 await self._children.pop(gone).provider.aclose()
-            for iid, name in wanted.items():
-                if iid in self._children:
+            for iid, (name, protocol) in wanted.items():
+                if iid in self._children and self._children[iid].protocol == protocol:
                     self._children[iid].name = name
                     continue
-                child = TorznabProvider(
+                if iid in self._children:  # (its protocol changed: a new feed)
+                    await self._children.pop(iid).provider.aclose()
+                feed = NewznabProvider if protocol == "usenet" else TorznabProvider
+                child = feed(
                     TorznabSettings(
                         url=f"{self.cfg.url}/{iid}",
                         api_key=self.cfg.api_key,
@@ -169,16 +178,14 @@ class ProwlarrProvider(IndexerProvider):
                     ),
                     transport=self._transport,
                 )
-                self._children[iid] = _Child(iid, name, child)
+                self._children[iid] = _Child(iid, name, child, protocol)
             self._listed_at = time.monotonic()
             return list(self._children.values())
 
     async def _all(self, call: Any) -> list[ReleaseCandidate]:
         children = await self.indexers()
         if not children:
-            raise IndexerError(
-                "config", "Prowlarr has no enabled torrent indexers: add some in Prowlarr"
-            )
+            raise IndexerError("config", "Prowlarr has no enabled indexers: add some in Prowlarr")
 
         async def one(c: _Child) -> list[ReleaseCandidate]:
             try:
@@ -217,7 +224,7 @@ class ProwlarrProvider(IndexerProvider):
         if not children:
             return TestResult(
                 ok=False,
-                message="Prowlarr has no enabled torrent indexers: add some in Prowlarr",
+                message="Prowlarr has no enabled indexers: add some in Prowlarr",
                 details={"kind": "config"},
             )
         names = sorted(c.name for c in children)
@@ -235,10 +242,10 @@ class ProwlarrProvider(IndexerProvider):
 
     async def resolve(self, c: ReleaseCandidate) -> TorrentSource:
         """Prowlarr's download links (``/<id>/download?...``) work through any of its
-        feeds: they redirect to a magnet or serve the .torrent."""
+        feeds: they redirect to a magnet, or serve the .torrent or the NZB."""
         children = await self.indexers()
         if not children:
-            raise IndexerError("config", "Prowlarr has no enabled torrent indexers")
+            raise IndexerError("config", "Prowlarr has no enabled indexers")
         return await children[0].provider.resolve(c)
 
 

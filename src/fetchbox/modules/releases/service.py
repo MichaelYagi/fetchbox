@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import time
 from collections import OrderedDict
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Literal
 
@@ -141,6 +142,9 @@ class ReleasesService:
         self.config = config
         self.sources = sources
         self.cache = ReleaseCache()
+        # What the download clients take (set by the app): a Usenet release with no Usenet
+        # client is rejected, saying so, instead of grabbed and stuck
+        self.protocols: Callable[[], Awaitable[frozenset[str]]] | None = None
 
     async def plan(self, items: list[WantedItem], *, season_query: bool = False) -> Plan:
         """Build a search for some wanted items of one title: a movie, one episode, or
@@ -208,6 +212,7 @@ class ReleasesService:
             grabbed=grabbed,
             min_seeders=cfg.min_seeders,
             season_pack_share=cfg.season_pack_share,
+            protocols=await self.protocols() if self.protocols else DecisionContext.protocols,
         )
         return Plan(title.id, target, query, ctx, by_key)
 

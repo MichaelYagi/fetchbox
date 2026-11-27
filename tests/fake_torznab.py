@@ -41,6 +41,7 @@ class Item:
     up: float | None = None
     category: int = 2040
     extra: dict[str, str] = field(default_factory=dict)
+    nzb: bool = False  # a Usenet post: its enclosure is an NZB
 
     def xml(self, n: int) -> str:
         attrs = {"category": str(self.category), **self.extra}
@@ -64,7 +65,8 @@ class Item:
             f"<link>{escape(link)}</link><comments>http://fake/details/{n}</comments>"
             f"<pubDate>Wed, 18 Nov 2026 10:00:00 +0000</pubDate>{size}"
             f'<enclosure url="{escape(link)}" length="{self.size or 0}" '
-            f'type="application/x-bittorrent"/>{a}</item>'
+            f'type="{"application/x-nzb" if self.nzb else "application/x-bittorrent"}"/>'
+            f"{a}</item>"
         )
 
 
@@ -75,6 +77,14 @@ def feed(items: list[Item]) -> str:
         'xmlns:torznab="http://torznab.com/schemas/2015/feed"><channel>'
         f"<title>Fake</title>{body}</channel></rss>"
     )
+
+
+NZB = (
+    b'<?xml version="1.0" encoding="UTF-8"?>\n<nzb xmlns="http://www.newzbin.com/DTD/2003/nzb">'
+    b'<file poster="p@fetchbox.test" date="1795000000" subject="Dune &quot;dune.mkv&quot; yEnc">'
+    b"<groups><group>alt.binaries.test</group></groups><segments>"
+    b'<segment bytes="300000" number="1">a@fetchbox.test</segment></segments></file></nzb>'
+)
 
 
 class FakeTorznab:
@@ -92,10 +102,14 @@ class FakeTorznab:
 
     def handle(self, req: httpx.Request) -> httpx.Response:
         self.requests.append(req)
-        if req.url.path.startswith("/dl/"):
+        if req.url.path.startswith("/dl/") or "/dl/" in req.url.path:  # (via Prowlarr: /<id>/dl/)
             n = req.url.path.rsplit("/", 1)[1]
             if n == "redirect":
                 return httpx.Response(302, headers={"location": "magnet:?xt=urn:btih:" + "c" * 40})
+            if any(i.nzb for i in self.items):
+                return httpx.Response(
+                    200, content=NZB, headers={"content-type": "application/x-nzb"}
+                )
             return httpx.Response(200, content=b"d8:announce3:urle")
         if self.fail:
             return httpx.Response(self.fail, headers={"Retry-After": "120"})

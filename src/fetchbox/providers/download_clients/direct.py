@@ -19,7 +19,7 @@ import os
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import Any, ClassVar, Literal
 from urllib.parse import unquote, urlsplit
 
 import httpx
@@ -94,6 +94,7 @@ def _filename(url: str) -> str:
 
 class DirectClient(DownloadClientProvider):
     kind: ClassVar[str] = "direct"
+    protocol: ClassVar[Literal["torrent", "usenet", "direct"]] = "direct"
     Settings: ClassVar[type[BaseModel]] = DirectSettings
 
     def __init__(

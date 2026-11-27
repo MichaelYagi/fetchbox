@@ -35,18 +35,18 @@
 {:else}
 	<div class="card table-wrap">
 		<table>
-			<thead><tr><th>Release</th><th>Quality</th><th>Size</th><th>Seeds</th><th>Indexer</th><th></th></tr></thead>
+			<thead><tr><th>Release</th><th>Quality</th><th>Size</th><th title="Seeders; for Usenet, how often it was downloaded">Seeds</th><th>Indexer</th><th></th></tr></thead>
 			<tbody>
 				{#each result.releases as r (r.release_id)}
 					<tr class:rejected={!r.accepted}>
 						<td>
-							<div class="name">{r.candidate.title}</div>
+							<div class="name">{#if r.candidate.protocol === 'usenet'}<span class="badge usenet" title="An NZB, for SABnzbd or NZBGet">Usenet</span> {/if}{r.candidate.title}</div>
 							{#if covers(r)}<div class="small muted">{covers(r)}</div>{/if}
 							{#each r.rejections as rej}<div class="small reason">{rej.message}</div>{/each}
 						</td>
 						<td>{r.quality}{r.format_score ? ` (${r.format_score > 0 ? '+' : ''}${r.format_score})` : ''}</td>
 						<td>{bytes(r.candidate.size)}</td>
-						<td>{r.candidate.seeders ?? '—'}</td>
+						<td>{r.candidate.protocol === 'usenet' ? (r.candidate.grabs != null ? `${r.candidate.grabs} grabs` : '—') : (r.candidate.seeders ?? '—')}</td>
 						<td class="muted">{r.candidate.source_name}</td>
 						<td>
 							<button
@@ -75,5 +75,9 @@
 	}
 	p {
 		margin: 0.25rem 0 0.5rem;
+	}
+	.usenet {
+		margin-right: 0.25rem;
+		vertical-align: 1px;
 	}
 </style>

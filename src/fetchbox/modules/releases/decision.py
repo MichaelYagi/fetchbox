@@ -57,7 +57,21 @@ RejectionCode = Literal[
     "rule",
     "wrong_album",
     "disc_image",
+    "no_client",
 ]
+
+
+_CLIENTS = {"usenet": "Usenet client (SABnzbd or NZBGet)", "torrent": "torrent client"}
+
+
+def _no_client(protocol: str) -> str:
+    return f"a {protocol} release, and no {_CLIENTS[protocol]} is set up and running"
+
+
+def _availability(c: ReleaseCandidate) -> int:
+    """How well-seeded, for ranking: a torrent's seeders. A Usenet post doesn't depend on
+    anyone being online (only on the news server's retention): ranked as well-seeded."""
+    return 100 if c.protocol == "usenet" else c.seeders or 0
 
 
 # ---- inputs ---------------------------------------------------------------------------------
@@ -147,6 +161,8 @@ class DecisionContext:
     season_pack_share: float = 1.0  # share of a season's episodes that must be wanted
     rules: Sequence[Rule] = ()
     year_tolerance: int = 1
+    # what the running download clients take: a Usenet release needs SABnzbd or NZBGet
+    protocols: frozenset[str] = frozenset({"torrent", "usenet"})
 
 
 # ---- outputs --------------------------------------------------------------------------------
@@ -305,6 +321,8 @@ def _decide_music(candidate: Candidate, target: Target, ctx: DecisionContext) ->
         reject("blocklisted", "this release is blocklisted")
     if any(k.matches(candidate) for k in ctx.grabbed):
         reject("already_grabbed", "this release was already grabbed")
+    if candidate.protocol not in ctx.protocols:
+        reject("no_client", _no_client(candidate.protocol))
     m = match_album(
         candidate.title,
         target.names[0],
@@ -360,7 +378,7 @@ def _decide_music(candidate: Candidate, target: Target, ctx: DecisionContext) ->
         rejections=out,
     )
     preferred = profile.size_limit(quality).preferred
-    seeders = candidate.seeders or 0
+    seeders = _availability(candidate)
     d._key = (
         bool(out),
         -(tier_index if tier_index is not None else -1),
@@ -392,6 +410,8 @@ def decide(candidate: Candidate, target: Target, ctx: DecisionContext) -> Decisi
         reject("blocklisted", "this release is blocklisted")
     if any(k.matches(candidate) for k in ctx.grabbed):
         reject("already_grabbed", "this release was already grabbed")
+    if candidate.protocol not in ctx.protocols:
+        reject("no_client", _no_client(candidate.protocol))
 
     # 3. title, year, media type, episodes
     keys = {title_key(n) for n in target.names}
@@ -504,7 +524,7 @@ def decide(candidate: Candidate, target: Target, ctx: DecisionContext) -> Decisi
         rejections=out,
     )
     preferred = profile.size_limit(ev.quality).preferred
-    seeders = candidate.seeders or 0
+    seeders = _availability(candidate)
     d._key = (
         bool(out),  # accepted first
         -(ev.tier_index if ev.tier_index is not None else -1),

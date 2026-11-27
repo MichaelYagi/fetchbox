@@ -146,6 +146,18 @@ def _scan(save_path: str, name: str) -> list[ClientFile]:
     return []
 
 
+def _scan_folder(folder: str) -> list[ClientFile]:
+    """Every file under a download's own folder (a Usenet job's), relative to it."""
+    root = Path(folder)
+    if not folder or not root.is_dir():
+        return []
+    return [
+        ClientFile(path=str(p.relative_to(root)), size=p.stat().st_size, progress=1.0)
+        for p in root.rglob("*")
+        if p.is_file() and not macfiles.is_appledouble(p.name)
+    ]
+
+
 class ImportProblem(Exception):
     """An import that can't proceed now; ``retry`` False means it never will."""
 
@@ -500,6 +512,9 @@ class LibraryService:
 
     async def _files(self, d: Download) -> list[ClientFile]:
         client = self.downloads.clients.get(d.client_id or "")
+        if client is not None and client.protocol == "usenet":
+            # A finished Usenet job's folder is its own (the client can't list it): all of it
+            return await asyncio.to_thread(_scan_folder, d.save_path or "")
         if client is not None:
             with contextlib.suppress(DownloadClientError):
                 return await client.files(d.client_ref)

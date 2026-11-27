@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { ask } from '#lib/dialogs.svelte.ts';
-	const CLIENT_KINDS: Record<string, string> = { builtin: 'Built-in engine', direct: 'Direct', qbittorrent: 'qBittorrent', transmission: 'Transmission', deluge: 'Deluge' };
+	const CLIENT_KINDS: Record<string, string> = { builtin: 'Built-in engine', direct: 'Direct', qbittorrent: 'qBittorrent', transmission: 'Transmission', deluge: 'Deluge', sabnzbd: 'SABnzbd', nzbget: 'NZBGet' };
 	const CHECKS: Record<string, string> = { database: 'Database', indexers: 'Indexers', library_files: 'Library files', metadata: 'Movie and show information', plugins: 'Plugins', secrets_key: 'Secrets key', storage: 'Library folders', torrent_engine: 'Torrent engine', download_clients: 'Download clients', media_servers: 'Media servers', disk_space: 'Disk space' };
 	import { ApiError, del, get, patch, post, type S } from '#lib/api.ts';
 	import BackupsCard from '#lib/BackupsCard.svelte';
@@ -77,7 +77,7 @@
 	let update = $state<S['UpdateOut'] | null>(null);
 	let tvdbPin = $state('');
 	let newIndexer = $state({ kind: 'prowlarr', name: '', url: '', api_key: '', definition: '' });
-	let newClient = $state({ kind: 'qbittorrent', name: '', url: '', username: '', password: '' });
+	let newClient = $state({ kind: 'qbittorrent', name: '', url: '', username: '', password: '', api_key: '' });
 	// Inline editing: one row at a time. Secrets left blank keep what is stored.
 	let editing = $state<string | null>(null);
 	let draft = $state({
@@ -140,7 +140,9 @@
 	// Torrent clients in the order they're tried; the first enabled, running one is used.
 	const torrentClients = $derived(clients.filter((c) => c.kind !== 'direct'));
 	const directClients = $derived(clients.filter((c) => c.kind === 'direct'));
-	const inUse = $derived(torrentClients.find((c) => c.enabled && c.running)?.id);
+	const isUsenet = (c: S['ClientOut']) => c.kind === 'sabnzbd' || c.kind === 'nzbget';
+	const inUse = $derived(torrentClients.find((c) => !isUsenet(c) && c.enabled && c.running)?.id);
+	const usenetInUse = $derived(torrentClients.find((c) => isUsenet(c) && c.enabled && c.running)?.id);
 
 	function move(c: S['ClientOut'], by: -1 | 1) {
 		const order = [...torrentClients];
@@ -161,7 +163,7 @@
 	function saveIndexer(e: SubmitEvent, i: S['IndexerOut']) {
 		e.preventDefault();
 		const settings: Record<string, unknown> = {};
-		if (i.kind === 'torznab' || i.kind === 'prowlarr') settings.url = draft.url;
+		if (FEEDS.includes(i.kind)) settings.url = draft.url;
 		if (draft.api_key.trim()) settings.api_key = draft.api_key.trim();
 		const body: Record<string, unknown> = { name: draft.name, priority: draft.priority };
 		if (Object.keys(settings).length) body.settings = settings;
@@ -306,14 +308,18 @@
 			tests[id] = await post<S['TestResult']>(`/${kind}/${id}/test`);
 		});
 
+	// Indexers given as an address and an API key
+	const FEEDS = ['prowlarr', 'torznab', 'newznab'];
+	const FEED_NAMES: Record<string, string> = { prowlarr: 'Prowlarr', torznab: 'Torznab', newznab: 'Newznab' };
+
 	function addIndexer(e: SubmitEvent) {
 		e.preventDefault();
 		const n = newIndexer;
 		const body =
-			n.kind === 'torznab' || n.kind === 'prowlarr'
+			FEEDS.includes(n.kind)
 				? {
 						kind: n.kind,
-						name: n.name || (n.kind === 'prowlarr' ? 'Prowlarr' : 'Torznab'),
+						name: n.name || FEED_NAMES[n.kind],
 						settings: { url: n.url, api_key: n.api_key || null }
 					}
 				: {
@@ -330,11 +336,14 @@
 		e.preventDefault();
 		const n = newClient;
 		const settings: Record<string, string> = { url: n.url };
-		if (n.username) settings.username = n.username;
-		if (n.password) settings.password = n.password;
+		if (n.kind === 'sabnzbd') settings.api_key = n.api_key;
+		else {
+			if (n.username) settings.username = n.username;
+			if (n.password) settings.password = n.password;
+		}
 		act('add-client', () => post('/download-clients', { kind: n.kind, name: n.name, settings }), 'Client added.').then(
 			() => {
-				if (!error) newClient = { kind: 'qbittorrent', name: '', url: '', username: '', password: '' };
+				if (!error) newClient = { kind: 'qbittorrent', name: '', url: '', username: '', password: '', api_key: '' };
 			}
 		);
 	}
@@ -523,7 +532,7 @@
 									<td colspan="4">
 										<form class="row" onsubmit={(e) => saveIndexer(e, i)}>
 											<label>Name <input bind:value={draft.name} required /></label>
-											{#if i.kind === 'torznab' || i.kind === 'prowlarr'}
+											{#if FEEDS.includes(i.kind)}
 												<label class="grow">URL <input bind:value={draft.url} required placeholder="http://localhost:9696/3" /></label>
 											{/if}
 											<label>API key <input type="password" bind:value={draft.api_key} placeholder="unchanged" autocomplete="off" /></label>
@@ -545,6 +554,7 @@
 				<select bind:value={newIndexer.kind} aria-label="Kind">
 					<option value="prowlarr">Prowlarr (all its indexers)</option>
 					<option value="torznab">Torznab feed (Jackett, one Prowlarr indexer…)</option>
+					<option value="newznab">Newznab (a Usenet indexer)</option>
 					<option value="definition">Built-in definition</option>
 				</select>
 				{#if newIndexer.kind === 'definition'}
@@ -558,8 +568,10 @@
 					<input class="grow" placeholder="Prowlarr address, e.g. http://192.168.1.10:9696" bind:value={newIndexer.url} required />
 				{:else if newIndexer.kind === 'torznab'}
 					<input class="grow" placeholder="Torznab URL" bind:value={newIndexer.url} required />
+				{:else if newIndexer.kind === 'newznab'}
+					<input class="grow" placeholder="Indexer address, e.g. https://api.nzbgeek.info" bind:value={newIndexer.url} required />
 				{/if}
-				{#if newIndexer.kind === 'torznab' || newIndexer.kind === 'prowlarr' || needsKey}
+				{#if FEEDS.includes(newIndexer.kind) || needsKey}
 					<input type="password" placeholder="API key" bind:value={newIndexer.api_key} autocomplete="off" />
 				{/if}
 				<button class="primary" disabled={busy === 'add-indexer'}>Add</button>
@@ -567,8 +579,14 @@
 			{#if newIndexer.kind === 'prowlarr'}
 				<p class="muted small">
 					The address you open Prowlarr at, and its API key from Prowlarr's Settings → General →
-					Security. Every enabled indexer in Prowlarr is searched; ones you add there later are
-					picked up automatically.
+					Security. Every enabled indexer in Prowlarr is searched, torrent and Usenet; ones you add
+					there later are picked up automatically.
+				</p>
+			{:else if newIndexer.kind === 'newznab'}
+				<p class="muted small">
+					A Usenet indexer's address and your API key from its profile page. Its releases are NZBs:
+					they need a Usenet client (SABnzbd or NZBGet) under Download clients, and a news server
+					account set up in that client.
 				</p>
 			{/if}
 			{#if defn}<p class="muted small">{defn.description}</p>{/if}
@@ -591,10 +609,11 @@
 									</div>
 									<strong>{c.name}</strong>
 									{#if c.id === inUse}<span class="badge info">Used for torrents</span>{/if}
+									{#if c.id === usenetInUse}<span class="badge info">Used for Usenet</span>{/if}
 								</div>
 								<div class="muted small where">
 									{#if c.kind === 'builtin'}Saves into each library folder{:else if c.saves_to}Saves to <Path path={c.saves_to} />{:else}Saves to {c.name}'s own download folder{/if}
-									· {c.policy.seed ? 'keeps seeding after download' : 'stops when downloaded (no seeding)'}
+									· {isUsenet(c) ? 'removed from it once filed' : c.policy.seed ? 'keeps seeding after download' : 'stops when downloaded (no seeding)'}
 								</div>
 							</td>
 							<td class="muted">{CLIENT_KINDS[c.kind] ?? c.kind}</td>
@@ -721,25 +740,40 @@
 			</table>
 		</div>
 		<p class="muted small hint">
-			Torrents go to the first client in this list that is enabled and running; use ▲ ▼ to
-			change the order. Direct downloads (web-seeded files, e.g. Internet Archive films) always
-			use the direct client.
+			Torrents go to the first torrent client in this list that is enabled and running, and
+			Usenet NZBs to the first SABnzbd or NZBGet; use ▲ ▼ to change the order. Direct downloads
+			(web-seeded files, e.g. Internet Archive films) always use the direct client.
 		</p>
 		<form class="card stack add" onsubmit={addClient}>
 			<strong>Add a download client</strong>
 			<p class="muted small">Optional: the built-in engine works on its own.</p>
 			<div class="row">
 				<select bind:value={newClient.kind} aria-label="Kind">
-					<option value="qbittorrent">qBittorrent</option>
-					<option value="transmission">Transmission</option>
-					<option value="deluge">Deluge</option>
+					<optgroup label="Torrents">
+						<option value="qbittorrent">qBittorrent</option>
+						<option value="transmission">Transmission</option>
+						<option value="deluge">Deluge</option>
+					</optgroup>
+					<optgroup label="Usenet">
+						<option value="sabnzbd">SABnzbd</option>
+						<option value="nzbget">NZBGet</option>
+					</optgroup>
 				</select>
 				<input placeholder="Name" bind:value={newClient.name} required />
-				<input class="grow" placeholder="URL, e.g. http://localhost:8080" bind:value={newClient.url} required />
-				{#if newClient.kind !== 'deluge'}<input placeholder="Username" bind:value={newClient.username} autocomplete="off" />{/if}
-				<input type="password" placeholder="Password" bind:value={newClient.password} autocomplete="off" />
+				<input class="grow" placeholder={`URL, e.g. http://localhost:${{ sabnzbd: 8080, nzbget: 6789 }[newClient.kind] ?? 8080}`} bind:value={newClient.url} required />
+				{#if newClient.kind === 'sabnzbd'}
+					<input type="password" placeholder="API key" bind:value={newClient.api_key} autocomplete="off" required />
+				{:else}
+					{#if newClient.kind !== 'deluge'}<input placeholder="Username" bind:value={newClient.username} autocomplete="off" />{/if}
+					<input type="password" placeholder="Password" bind:value={newClient.password} autocomplete="off" />
+				{/if}
 				<button class="primary" disabled={busy === 'add-client'}>Add</button>
 			</div>
+			{#if newClient.kind === 'sabnzbd'}
+				<p class="muted small">SABnzbd's API key is under Config → General → Security. Fetchbox hands it each NZB and files the finished download, then removes it from SABnzbd.</p>
+			{:else if newClient.kind === 'nzbget'}
+				<p class="muted small">NZBGet's ControlUsername and ControlPassword (Settings → Security; nzbget / tegbzn6789 unless you changed them). Fetchbox files each finished download, then removes it and its folder.</p>
+			{/if}
 		</form>
 	</section>
 	</div>

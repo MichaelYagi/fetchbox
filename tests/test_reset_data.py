@@ -87,10 +87,12 @@ async def test_delete_all_data_keeps_the_settings(
 
     await until(logged, within=10)
     messages = await _activity(c)  # newest first
-    # nothing from before the reset is left; what happened since (a health check that
-    # finished just after it) is new, and may be there
-    assert messages[-1].startswith("All data deleted"), messages
+    # nothing about the library from before the reset is left (the title added, its
+    # download, its import). System entries can follow it: a health check emitted just
+    # before the reset is written in the background, and may land just after it (seen
+    # on CI: "Destination TV is online" after "All data deleted").
     assert sum(m.startswith("All data deleted") for m in messages) == 1, messages
+    assert not [m for m in messages if m.startswith(("Added ", "Imported", "Grabbed"))], messages
 
     # and Fetchbox carries on: the same movie can be added again
     again = await _movie(c)

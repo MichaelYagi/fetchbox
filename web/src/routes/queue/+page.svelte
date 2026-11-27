@@ -8,6 +8,7 @@
 	// Which clients keep seeding after download (off by default): the others' torrents stop
 	// on their own once filed, so there's nothing to stop by hand.
 	let seeds = $state<Set<string>>(new Set());
+	let usenet = $state<Set<string>>(new Set()); // SABnzbd and NZBGet: no peers, nothing to share
 	let error = $state('');
 	let notice = $state('');
 	let busy = $state('');
@@ -22,6 +23,7 @@
 				get<S['ClientOut'][]>('/download-clients')
 			]);
 			seeds = new Set(clients.filter((c) => c.policy.seed).map((c) => c.id));
+			usenet = new Set(clients.filter((c) => c.kind === 'sabnzbd' || c.kind === 'nzbget').map((c) => c.id));
 			error = '';
 		} catch (e) {
 			error = e instanceof ApiError ? e.message : String(e);
@@ -213,7 +215,7 @@
 						{#if d.live}
 							<span>· ↓ {rate(d.live.download_rate)}</span>
 							<span>· ↑ {rate(d.live.upload_rate)}</span>
-							<span>· {d.live.seeds} seeds, {d.live.peers} peers</span>
+							{#if !usenet.has(d.client_id ?? '')}<span>· {d.live.seeds} seeds, {d.live.peers} peers</span>{/if}
 							{#if d.live.eta_seconds}<span>· {duration(d.live.eta_seconds)} left</span>{/if}
 						{/if}
 						{#if d.stalls}<span>· stalled {d.stalls}×</span>{/if}
@@ -256,7 +258,7 @@
 							</td>
 							<td><span class="badge {tone(d)}">{label(d)}</span></td>
 							<td>{bytes(d.size)}</td>
-							<td>{d.ratio?.toFixed(2) ?? '—'}</td>
+							<td>{usenet.has(d.client_id ?? '') ? '—' : (d.ratio?.toFixed(2) ?? '—')}</td>
 							<td class="muted small">{ago(d.completed_at ?? d.removed_at)}</td>
 							<td>
 								<div class="row">

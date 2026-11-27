@@ -146,7 +146,9 @@ async def setup_status(request: Request) -> SetupStatus:
     """What the first-run setup's steps have set up already, and whether it opens by itself."""
     st = request.app.state
     cfg = _config(request).current
-    indexers = sum(1 for i in await st.sources.all() if i.kind in ("prowlarr", "torznab"))
+    indexers = sum(
+        1 for i in await st.sources.all() if i.kind in ("prowlarr", "torznab", "newznab")
+    )
     clients = sum(
         1 for c in await st.downloads.client_rows() if c.kind not in ("builtin", "direct")
     )

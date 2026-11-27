@@ -152,8 +152,9 @@ internet addresses** in the same place.
 | **TMDB API key** (free) | Movies and TV: finding titles, years and episode lists | [themoviedb.org/settings/api](https://www.themoviedb.org/settings/api); paste it in Settings → Sources |
 | MusicBrainz | Music: artists, albums and tracks | Nothing: built in, no key needed |
 | TheTVDB key | Optional: anime released by absolute episode number (`Show - 1071`) | [thetvdb.com](https://thetvdb.com/api-information); Settings → Sources |
-| **Prowlarr** (or Jackett) | Mainstream movies, shows and music (and comics, with the plugin) | [Prowlarr](https://prowlarr.com), set up with the sites you use. In Settings → Sources → Indexers, add **Prowlarr** with the address you open it at (e.g. `http://192.168.1.10:9696`) and its API key (Prowlarr: Settings → General → Security). Every enabled Prowlarr indexer is searched, including ones added later. For Jackett or a single feed, use **Torznab feed** with that feed's URL |
-| Download client | Nothing: the built-in engine works on its own | Optional: qBittorrent, Transmission or Deluge in Settings → Sources → Download clients |
+| **Prowlarr** (or Jackett) | Mainstream movies, shows and music (and comics, with the plugin) | [Prowlarr](https://prowlarr.com), set up with the sites you use. In Settings → Sources → Indexers, add **Prowlarr** with the address you open it at (e.g. `http://192.168.1.10:9696`) and its API key (Prowlarr: Settings → General → Security). Every enabled Prowlarr indexer is searched, torrent and Usenet, including ones added later. For Jackett or a single feed, use **Torznab feed** with that feed's URL |
+| Usenet (optional) | Releases from Usenet, alongside torrents | A Usenet indexer (add it as **Newznab**, or in Prowlarr) and a news server account, set up in **SABnzbd** or **NZBGet**; add that client in Settings → Sources → Download clients. Fetchbox sends it each NZB, files the finished download, then removes it from the client |
+| Download client | Nothing: the built-in engine works on its own | Optional: qBittorrent, Transmission or Deluge (torrents), SABnzbd or NZBGet (Usenet), in Settings → Sources → Download clients |
 
 Without Prowlarr or Jackett, Fetchbox searches only:
 

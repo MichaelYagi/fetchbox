@@ -5761,7 +5761,7 @@ export interface components {
              * Code
              * @enum {string}
              */
-            code: "blocklisted" | "already_grabbed" | "wrong_title" | "wrong_year" | "wrong_media_type" | "wrong_episode" | "season_not_finished" | "season_pack_not_wanted" | "size_too_small" | "size_too_large" | "sample" | "too_few_seeders" | "quality_not_allowed" | "format_score_too_low" | "language" | "upgrades_disabled" | "cutoff_met" | "not_an_upgrade" | "rule" | "wrong_album" | "disc_image";
+            code: "blocklisted" | "already_grabbed" | "wrong_title" | "wrong_year" | "wrong_media_type" | "wrong_episode" | "season_not_finished" | "season_pack_not_wanted" | "size_too_small" | "size_too_large" | "sample" | "too_few_seeders" | "quality_not_allowed" | "format_score_too_low" | "language" | "upgrades_disabled" | "cutoff_met" | "not_an_upgrade" | "rule" | "wrong_album" | "disc_image" | "no_client";
             /** Message */
             message: string;
         };
@@ -5777,6 +5777,8 @@ export interface components {
             categories: number[];
             /** Download Url */
             download_url?: string | null;
+            /** Grabs */
+            grabs?: number | null;
             /** Guid */
             guid?: string | null;
             /**
@@ -5797,6 +5799,12 @@ export interface components {
              * @default 25
              */
             priority: number;
+            /**
+             * Protocol
+             * @default torrent
+             * @enum {string}
+             */
+            protocol: "torrent" | "usenet";
             /** Published At */
             published_at?: string | null;
             /** Seeders */

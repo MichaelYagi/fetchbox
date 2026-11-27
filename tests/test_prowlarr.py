@@ -36,6 +36,9 @@ class FakeProwlarr:
                                  infohash="a" * 40)], key=KEY),
             2: FakeTorznab([Item("Dune.2021.2160p.WEB-DL.HEVC-GRP", infohash="c" * 40)],
                            key=KEY),
+            4: FakeTorznab([Item("Dune.2021.1080p.BluRay.x264-NZBGRP", nzb=True, seeders=None,
+                                 peers=None, extra={"grabs": "120"},
+                                 link=f"http://prowlarr:9696/4/dl/nzb?apikey={KEY}")], key=KEY),
         }  # fmt: skip
         self.down: set[int] = set()
 
@@ -77,22 +80,29 @@ def test_settings_take_the_base_address() -> None:
         ProwlarrSettings(url="p:9696", api_key=KEY)
 
 
-async def test_searches_every_enabled_torrent_indexer() -> None:
+async def test_searches_every_enabled_indexer() -> None:
+    """Torrent and Usenet indexers alike; a Usenet one's results are NZBs."""
     fake = FakeProwlarr()
     p = _provider(fake)
     result = await p.test()
-    assert result.ok and result.details["indexers"] == ["Private Two", "Public One"]
+    assert result.ok and result.details["indexers"] == ["Private Two", "Public One", "Usenet"]
     found = await p.search(SearchQuery("movie", ("Dune",), year=2021))
     assert sorted(c.title for c in found) == [
-        "Dune.2021.1080p.WEB-DL.DDP5.1.Atmos.H.264-FLUX", "Dune.2021.2160p.WEB-DL.HEVC-GRP",
+        "Dune.2021.1080p.BluRay.x264-NZBGRP", "Dune.2021.1080p.WEB-DL.DDP5.1.Atmos.H.264-FLUX",
+        "Dune.2021.2160p.WEB-DL.HEVC-GRP",
     ]  # fmt: skip
+    nzb = next(c for c in found if c.title.endswith("NZBGRP"))
+    assert (nzb.protocol, nzb.info_hash, nzb.magnet_url, nzb.grabs) == ("usenet", None, None, 120)
+    assert {c.protocol for c in found if c is not nzb} == {"torrent"}
+    src = await p.resolve(nzb)  # the NZB itself, fetched through Prowlarr
+    assert src.protocol == "usenet" and src.nzb and b"<nzb" in src.nzb and src.name == nzb.title
 
     # one indexer down: the others still answer; all down: the search fails
-    fake.down = {2}
+    fake.down = {2, 4}
     assert [c.title for c in await p.search(SearchQuery("movie", ("Dune",)))] == [
         "Dune.2021.1080p.WEB-DL.DDP5.1.Atmos.H.264-FLUX"
     ]
-    fake.down = {1, 2}
+    fake.down = {1, 2, 4}
     with pytest.raises(IndexerError, match="every Prowlarr indexer failed"):
         await p.search(SearchQuery("movie", ("Dune",)))
 
@@ -100,7 +110,7 @@ async def test_searches_every_enabled_torrent_indexer() -> None:
     fake.down = set()
     fake.indexers.append({"id": 5, "name": "New", "enable": True, "protocol": "torrent"})
     fake.feeds[5] = FakeTorznab([], key=KEY)
-    assert len(await p.indexers(fresh=True)) == 3
+    assert len(await p.indexers(fresh=True)) == 4
     await p.aclose()
 
 
@@ -123,7 +133,9 @@ async def test_one_slow_indexer_doesnt_lose_the_others_results(
     p = ProwlarrProvider(ProwlarrSettings(url="http://prowlarr:9696", api_key=KEY),
                          transport=httpx.MockTransport(handle))  # fmt: skip
     found = await asyncio.wait_for(p.search(SearchQuery("movie", ("Dune",))), 2)
-    assert [c.title for c in found] == ["Dune.2021.1080p.WEB-DL.DDP5.1.Atmos.H.264-FLUX"]
+    assert sorted(c.title for c in found) == [
+        "Dune.2021.1080p.BluRay.x264-NZBGRP", "Dune.2021.1080p.WEB-DL.DDP5.1.Atmos.H.264-FLUX"
+    ]  # fmt: skip
     await p.aclose()
 
 
@@ -136,7 +148,7 @@ async def test_searches_right_after_the_machine_starts(monkeypatch: pytest.Monke
     monkeypatch.setattr(prowlarr.time, "monotonic", lambda: 5.0)  # 5 s after boot
     p = _provider(FakeProwlarr())
     found = await p.search(SearchQuery("movie", ("Dune",), year=2021))
-    assert len(found) == 2
+    assert len(found) == 3  # (two torrent indexers and the Usenet one)
     await p.aclose()
 
 
@@ -158,7 +170,7 @@ async def test_clear_errors() -> None:
     fake.indexers = []
     empty = _provider(fake)
     r = await empty.test()
-    assert not r.ok and "no enabled torrent indexers" in r.message
+    assert not r.ok and "no enabled indexers" in r.message
     await empty.aclose()
 
 
@@ -176,10 +188,14 @@ async def test_add_by_address_and_search(
     assert r.json()["settings"]["url"] == "http://prowlarr:9696"
     assert r.json()["settings"]["api_key"] == "********"
     t = (await c.post(f"/indexers/{r.json()['id']}/test")).json()
-    assert t["ok"] and "2 indexer(s)" in t["message"]
+    assert t["ok"] and "3 indexer(s)" in t["message"]
 
     movie = await _movie(c)
     res = (await c.get("/releases", params={"wanted_item_id": movie["wanted"][0]["id"]})).json()
     titles = {x["candidate"]["title"]: x for x in res["releases"]}
     assert titles["Dune.2021.1080p.WEB-DL.DDP5.1.Atmos.H.264-FLUX"]["accepted"]
     assert all(x["candidate"]["source_name"] == "Prowlarr" for x in res["releases"])
+    # the Usenet indexer's NZB: found, but there's no Usenet client to download it
+    nzb = titles["Dune.2021.1080p.BluRay.x264-NZBGRP"]
+    assert nzb["candidate"]["protocol"] == "usenet" and not nzb["accepted"]
+    assert "no_client" in [r["code"] for r in nzb["rejections"]]

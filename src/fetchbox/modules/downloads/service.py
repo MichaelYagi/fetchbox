@@ -21,6 +21,7 @@ import asyncio
 import contextlib
 import os
 import re
+import shutil
 from collections.abc import Sequence
 from datetime import timedelta
 from pathlib import Path, PurePosixPath
@@ -105,6 +106,25 @@ def _remove_leftovers(files: list[Path], save_path: str | None) -> None:
             except OSError:
                 break
             p = p.parent
+
+
+def _remove_job_folder(folder: str, name: str, keep: set[str]) -> None:
+    """A finished Usenet job's own folder, once it's in the library: NZBGet keeps it after
+    the job is removed. Only a folder named for the job, never a library folder or one
+    holding one."""
+    path = Path(folder)
+    norm = path.as_posix().rstrip("/")
+    if not path.is_dir() or len(path.parts) < 3 or not name:
+        return
+    if _norm_name(path.name) != _norm_name(name):
+        return  # not the job's own folder (a category folder, say): leave it
+    if any(k == norm or k.startswith(norm + "/") for k in keep):
+        return
+    shutil.rmtree(path, ignore_errors=True)
+
+
+def _norm_name(name: str) -> str:
+    return re.sub(r"[^a-z0-9]", "", name.lower())
 
 
 def in_library(d: Download) -> bool:
@@ -483,6 +503,27 @@ class DownloadsService:
         root = Path(d.save_path)
         return [root / f.path for f in files if not Path(f.path).is_absolute()]
 
+    async def protocols(self) -> frozenset[str]:
+        """What can be downloaded: torrents (always: the built-in engine), and Usenet when
+        an enabled SABnzbd or NZBGet is set up."""
+        async with self.db.sessionmaker() as s:
+            ids = set(
+                (
+                    await s.execute(
+                        select(DownloadClient.id).where(DownloadClient.enabled.is_(True))
+                    )
+                ).scalars()
+            )
+        usenet = any(c.protocol == "usenet" for i, c in self.clients.items() if i in ids)
+        return frozenset({"torrent", "usenet"} if usenet else {"torrent"})
+
+    async def _library_roots(self) -> list[str]:
+        """Every library folder's path (never deleted, nor what holds one)."""
+        from fetchbox.modules.storage.models import Destination
+
+        async with self.db.sessionmaker() as s:
+            return [str(p) for p in (await s.execute(select(Destination.path))).scalars()]
+
     async def _is_default_folder(self, folder: Path) -> bool:
         from fetchbox.modules.storage.models import Destination
 
@@ -540,18 +581,21 @@ class DownloadsService:
     async def _pick_client(
         self, media_kind: str, src: TorrentSource
     ) -> tuple[DownloadClient, DownloadClientProvider]:
-        """Torrents go to the best enabled torrent client; direct files to the direct one."""
-        direct = src.url is not None
+        """Each to the best enabled client for it: torrents to a torrent client, NZBs to a
+        Usenet one (SABnzbd, NZBGet), direct files to the direct one."""
+        wanted = src.protocol
         async with self.db.sessionmaker() as s:
             q = select(DownloadClient).where(DownloadClient.enabled.is_(True))
             rows = sorted((await s.execute(q)).scalars(), key=lambda r: (r.priority, r.name))
         for row in rows:
             kinds = row.media_kinds or []
-            if (row.kind == "direct") != direct:
+            client = self.clients.get(row.id)
+            if client is None or client.protocol != wanted:
                 continue
-            if (not kinds or media_kind in kinds) and row.id in self.clients:
-                return row, self.clients[row.id]
-        what = "direct download client" if direct else "torrent client"
+            if not kinds or media_kind in kinds:
+                return row, client
+        what = {"direct": "direct download client", "usenet": "Usenet client (SABnzbd or "
+                "NZBGet)"}.get(wanted, "torrent client")  # fmt: skip
         raise DownloadClientError("unavailable", f"no enabled {what} is running")
 
     async def _source(self, grab: Grab) -> TorrentSource:
@@ -834,7 +878,11 @@ class DownloadsService:
                 status="completed", completed_at=now, progress=1.0, import_status="pending"
             )
             event = "download.completed"
-        elif d.status == "downloading" and t.state in ("downloading", "metadata"):
+        elif (
+            d.status == "downloading"
+            and t.state in ("downloading", "metadata")
+            and client.protocol == "torrent"  # (Usenet has no peers; its client says if it fails)
+        ):
             policy = self.policy(row)
             idle = now - (d.last_progress_at or d.started_at or now)
             if t.seeds + t.peers == 0 and idle >= timedelta(minutes=policy.stall_minutes):
@@ -884,6 +932,9 @@ class DownloadsService:
             if action == "remove":
                 await client.remove(d.client_ref, delete_data)
                 await asyncio.to_thread(_remove_leftovers, leftovers, d.save_path)
+                if client.protocol == "usenet" and delete_data and d.save_path:
+                    keep = {p.replace("\\", "/").rstrip("/") for p in await self._library_roots()}
+                    await asyncio.to_thread(_remove_job_folder, d.save_path, d.name, keep)
             else:
                 await client.pause(d.client_ref)
         except DownloadClientError as exc:
