@@ -38,6 +38,14 @@ volume counts for its issues.
   `https://github.com/MichaelYagi/fetchbox/releases/download/v0.10.3/fetchbox_comics-0.1.0-py3-none-any.whl`
 - **Source:** [`plugins/fetchbox-comics`](../plugins/fetchbox-comics)
 
+## Copying the file instead
+
+Copy a plugin's `.whl` into the `plugins/drop` folder of Fetchbox's data folder (Settings >
+General shows where that is; in Docker, `/config/plugins/drop`). Fetchbox installs it within
+a minute and lists it in Settings > Plugins, where you turn it on. A newer version of a
+plugin you have replaces it, on or off as it was. Installed files move to `drop/installed`;
+one that can't be installed moves to `drop/failed`, and Health says why.
+
 ## In Docker
 
 `FETCHBOX_PLUGINS` installs plugins when the container starts, into `/config`, so they come

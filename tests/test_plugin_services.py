@@ -102,8 +102,13 @@ async def test_files_and_library_as_a_plugin_sees_them(
     assert not (await ctx.library.title(movie["id"])).monitored
     await ctx.library.wanted(item)
     assert (await c.get(f"/titles/{movie['id']}")).json()["wanted"][0]["monitored"] is True
-    history = (await c.get("/activity")).json()
-    assert any("subtitles plugin" in str(e) for e in history.get("items", history))
+
+    # the activity log is written in the background: wait for the entry, don't race it
+    async def logged() -> bool:
+        history = (await c.get("/activity")).json()
+        return any("subtitles plugin" in str(e) for e in history.get("items", history))
+
+    await until(logged, within=10)
 
 
 async def test_a_plugins_jobs_run_in_fetchbox(

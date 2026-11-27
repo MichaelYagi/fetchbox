@@ -2,6 +2,14 @@
 	import { ask } from '#lib/dialogs.svelte.ts';
 	import PluginSettingsForm from './PluginSettingsForm.svelte';
 	import { ApiError, del, get, patch, post, upload, type S } from './api.ts';
+	import { session } from './session.svelte.ts';
+	// where .whl files copied by hand are installed from (a NAS share, a Docker volume)
+	const dropFolder = $derived.by(() => {
+		const d = session.host?.data_dir;
+		if (!d) return null;
+		const sep = d.includes('\\') && !d.includes('/') ? '\\' : '/'; // as this system writes paths
+		return [d.replace(/[\\/]+$/, ''), 'plugins', 'drop'].join(sep);
+	});
 
 	// Plugins: what's installed, on or off, what each uses, its settings; install from a
 	// wheel file. Plugins run with Fetchbox's full access, so the install and the first time
@@ -125,6 +133,11 @@
 		<input class="grow" type="url" bind:value={url} placeholder="…or its address: https://…/fetchbox_comics-1.0.0-py3-none-any.whl" aria-label="Plugin address" />
 		<button disabled={!url.trim() || !!busy}>Install</button>
 	</form>
+	{#if dropFolder}
+		<p class="muted small">
+			…or copy the .whl into <code>{dropFolder}</code>: it's installed within a minute and listed here to be turned on. A newer version of one you have replaces it.
+		</p>
+	{/if}
 	{#if error}<p class="notice error small">{error}</p>{/if}
 	{#if plugins === null}
 		<p class="muted small">Loading…</p>

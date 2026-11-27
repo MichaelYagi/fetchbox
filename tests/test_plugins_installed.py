@@ -6,8 +6,10 @@ from __future__ import annotations
 
 import io
 import json
+import os
 import sys
 import textwrap
+import time
 import zipfile
 from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager
@@ -362,3 +364,75 @@ async def test_plugins_named_in_the_environment(settings: Settings) -> None:
         assert await mgr.install_from_env(MODULE, transport=transport) == []  # there already
         assert len(seen) == n
         assert await mgr.install_from_env("nonexistent-plugin", transport=transport) == []
+
+
+WHL = f"{MODULE}-0.1.0-py3-none-any.whl"
+
+
+async def test_a_wheel_in_the_drop_folder(settings: Settings) -> None:
+    """Copied into <data>/plugins/drop: installed, but not approved: nothing runs until it's
+    turned on. Then out of the way, into drop/installed/."""
+    async with running(settings) as server:
+        mgr = server.app.state.plugins
+        drop = settings.data_dir / "plugins" / "drop"
+        assert drop.is_dir()  # made at start, for people to find
+        (drop / WHL).write_bytes(wheel())
+        assert await mgr.scan_drop(settle=0) == ["greeter"]
+        r = mgr.records["greeter"]
+        assert (r.approved, r.enabled) == (False, False) and "greeter" not in mgr.host.loaded
+        assert not (drop / WHL).exists() and (drop / "installed" / WHL).exists()
+        assert await mgr.scan_drop(settle=0) == []  # not installed twice
+
+        # turned on, then a newer version dropped: upgraded, and still on
+        await mgr.set_enabled("greeter", True)
+        assert "greeter" in mgr.host.loaded
+        (drop / f"{MODULE}-0.2.0-py3-none-any.whl").write_bytes(wheel(version="0.2.0"))
+        assert await mgr.scan_drop(settle=0) == ["greeter"]
+        r = mgr.records["greeter"]
+        assert (r.approved, r.enabled, r.version) == (True, True, "0.2.0")
+        assert "greeter" in mgr.host.loaded
+
+
+async def test_the_drop_folder_waits_for_a_copy_to_finish(settings: Settings) -> None:
+    async with running(settings) as server:
+        mgr = server.app.state.plugins
+        f = settings.data_dir / "plugins" / "drop" / WHL
+        f.write_bytes(wheel())
+        assert await mgr.scan_drop() == []  # just arrived: maybe still copying
+        old = time.time() - 60
+        os.utime(f, (old, old))
+        assert await mgr.scan_drop() == []  # seen once like this: one more look
+        assert await mgr.scan_drop() == ["greeter"]  # unchanged since: installed
+
+
+async def test_a_bad_file_in_the_drop_folder_says_why(settings: Settings) -> None:
+    async with running(settings) as server:
+        mgr = server.app.state.plugins
+        drop = settings.data_dir / "plugins" / "drop"
+        (drop / "notaplugin.whl").write_bytes(b"not a zip")
+        assert await mgr.scan_drop(settle=0) == []
+        assert (drop / "failed" / "notaplugin.whl").exists()
+        health = await mgr.health()
+        assert health.status == "warning" and "notaplugin.whl in the drop folder" in health.message
+
+
+async def test_dropped_while_fetchbox_was_off(settings: Settings) -> None:
+    drop = settings.data_dir / "plugins" / "drop"
+    drop.mkdir(parents=True)
+    (drop / WHL).write_bytes(wheel())
+    async with running(settings) as server:
+        r = server.app.state.plugins.records["greeter"]
+        assert (r.approved, r.enabled) == (False, False)
+        assert (drop / "installed" / WHL).exists()
+
+
+async def test_an_upgrade_leaves_one_version_installed(settings: Settings) -> None:
+    """A newer wheel replaces the older one's record too, so the version is the new one on
+    every system (both records left there, either could be read)."""
+    async with running(settings) as server:
+        mgr = server.app.state.plugins
+        await mgr.install_wheel(wheel(), WHL)
+        await mgr.install_wheel(wheel(version="0.2.0"), f"{MODULE}-0.2.0-py3-none-any.whl")
+        lib = settings.data_dir / "plugins" / "lib"
+        assert sorted(p.name for p in lib.glob("*.dist-info")) == [f"{MODULE}-0.2.0.dist-info"]
+        assert mgr.records["greeter"].version == "0.2.0"

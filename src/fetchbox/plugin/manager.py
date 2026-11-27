@@ -11,11 +11,14 @@ Each plugin's settings are kept per contribution (an add-on's, a media kind's), 
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
 import importlib
 import importlib.metadata as md
 import os
 import shutil
 import sys
+import time
 import zipfile
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -43,6 +46,8 @@ GROUP = "fetchbox.plugins"
 NATIVE = (".so", ".pyd", ".dylib", ".dll")
 PANEL_SECONDS = 10
 MAX_WHEEL = 50 * 1024 * 1024
+DROP_EVERY = 30.0  # seconds between looks at the drop folder
+DROP_SETTLE = 10.0  # a wheel unchanged this long has finished copying (a NAS share is slow)
 
 
 class PluginError(Exception):
@@ -82,6 +87,13 @@ def secret_fields(model: type[BaseModel]) -> list[str]:
     return [n for n, f in model.model_fields.items() if f.annotation is Secret]
 
 
+def _move(f: Path, to: Path) -> None:
+    """Out of the drop folder (replacing an older copy there), so it isn't installed again."""
+    to.mkdir(parents=True, exist_ok=True)
+    with contextlib.suppress(OSError):
+        os.replace(f, to / f.name)
+
+
 class PluginManager:
     def __init__(
         self,
@@ -97,6 +109,11 @@ class PluginManager:
         self.box = box
         self.host = host
         self.lib = data_dir / "plugins" / "lib"  # wheels installed from Settings
+        # .whl files copied here are installed (not approved: turned on in Settings)
+        self.drop = data_dir / "plugins" / "drop"
+        self.drop_problems: dict[str, str] = {}  # file name -> why it wasn't installed
+        self._drop_seen: dict[str, tuple[int, float]] = {}
+        self._drop_task: asyncio.Task[None] | None = None
         self.enabled = enabled  # False: started with --no-plugins
         self.found: dict[str, Found] = {}
         self.records: dict[str, PluginRecord] = {}
@@ -155,8 +172,57 @@ class PluginManager:
         for pid, r in rows.items():
             if r.approved and r.enabled:
                 await self._load(pid)
+        self.drop.mkdir(parents=True, exist_ok=True)
+        await self.scan_drop(settle=0)  # what was copied there while Fetchbox was off
+        self._drop_task = asyncio.create_task(self._watch_drop(), name="plugins-drop-folder")
+
+    async def _watch_drop(self) -> None:
+        while True:
+            await asyncio.sleep(DROP_EVERY)
+            try:
+                await self.scan_drop()
+            except Exception as exc:  # never stops watching
+                log.warning("plugins.drop_scan_failed", error=str(exc))
+
+    async def scan_drop(self, *, settle: float = DROP_SETTLE) -> list[str]:
+        """Install each .whl in the drop folder whose copy has finished (unchanged for
+        `settle` seconds), then move it to drop/installed/ (or drop/failed/, saying why in
+        Health). A new plugin isn't approved: it's turned on in Settings > Plugins. A newer
+        version of an installed one replaces it and stays as it was. The ids installed."""
+        if not self.drop.is_dir():
+            return []
+        done = []
+        now = time.time()
+        for f in sorted(self.drop.glob("*.whl")):
+            try:
+                st = f.stat()
+            except OSError:
+                continue  # gone meanwhile
+            sig = (st.st_size, st.st_mtime)
+            if settle and (self._drop_seen.get(f.name) != sig or now - st.st_mtime < settle):
+                self._drop_seen[f.name] = sig  # still being copied, or just arrived
+                continue
+            self._drop_seen.pop(f.name, None)
+            try:
+                if st.st_size > MAX_WHEEL:
+                    raise PluginError("a plugin wheel is at most 50 MB")
+                pid = await self.install_wheel(f.read_bytes(), f.name, approve=False)
+            except PluginError as exc:
+                self.drop_problems[f.name] = str(exc)
+                _move(f, self.drop / "failed")
+                log.warning("plugins.drop_failed", file=f.name, error=self.drop_problems[f.name])
+                continue
+            self.drop_problems.pop(f.name, None)
+            _move(f, self.drop / "installed")
+            log.info("plugins.drop_installed", file=f.name, plugin=pid)
+            done.append(pid)
+        return done
 
     async def stop(self) -> None:
+        if self._drop_task is not None:
+            self._drop_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await self._drop_task
         for pid in list(self.host.loaded):
             await self.host.unload(pid)
 
@@ -191,6 +257,10 @@ class PluginManager:
             f"{got.plugin.name} is paused for an hour after failing repeatedly: {got.last_error}"
             for got in self.host.loaded.values() if got.paused()
         ]  # fmt: skip
+        failing += [
+            f"{name} in the drop folder couldn't be installed: {why}"
+            for name, why in self.drop_problems.items()
+        ]
         if not self.enabled:
             return HealthStatus(status="warning", message="Plugins are off (--no-plugins)")
         if failing:
@@ -329,9 +399,11 @@ class PluginManager:
 
     # ---- installing and removing ------------------------------------------------------------
 
-    async def install_wheel(self, data: bytes, filename: str) -> str:
+    async def install_wheel(self, data: bytes, filename: str, *, approve: bool = True) -> str:
         """A plugin from a wheel file: unpacked into the plugins folder, approved (it's being
-        installed on purpose) and turned on. Its id."""
+        installed on purpose) and turned on. Its id. With approve=False (the drop folder) a
+        new plugin waits to be turned on in Settings; a newer version of one already there
+        keeps its state."""
         import io
 
         if not filename.endswith(".whl"):
@@ -353,6 +425,13 @@ class PluginManager:
         top = {PurePosixPath(n).parts[0] for n in names}
         for t in top:  # an older version of it: replaced
             shutil.rmtree(self.lib / t, ignore_errors=True)
+        # and its older versions' records ("name-0.1.0.dist-info" isn't among a 0.2.0 wheel's
+        # folders): left there, either could be read as the installed version
+        dists = {_norm(t.split("-")[0]) for t in top if t.endswith(".dist-info")}
+        if self.lib.is_dir():
+            for old in self.lib.glob("*.dist-info"):
+                if old.name not in top and _norm(old.name.split("-")[0]) in dists:
+                    shutil.rmtree(old, ignore_errors=True)
         self.lib.mkdir(parents=True, exist_ok=True)
         zf.extractall(self.lib)
         for mod in [m for m in sys.modules if any(m == t or m.startswith(t + ".") for t in top)]:
@@ -369,15 +448,21 @@ class PluginManager:
             raise PluginError(f"{filename} was unpacked, but no plugin in it could be found")
         if pid in self.host.loaded:
             await self.host.unload(pid)
+        known = self.records.get(pid)
+        if approve:
+            approved, enabled = True, True
+        else:  # dropped: as it was, or waiting to be turned on
+            approved = bool(known and known.approved)
+            enabled = bool(known and known.enabled)
         await self._set(
             pid,
-            approved=True,
-            enabled=True,
+            approved=approved,
+            enabled=enabled,
             source="file",
             version=self.found[pid].version,
             error=self.found[pid].error,
         )
-        if self.enabled and self.found[pid].cls is not None:
+        if self.enabled and enabled and self.found[pid].cls is not None:
             await self._load(pid)
         return pid
 
