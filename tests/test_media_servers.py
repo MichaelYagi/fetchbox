@@ -377,3 +377,20 @@ async def test_plex_picks_between_two_equally_named_folders(
 
     await until(refreshed, within=10)
     assert servers.plex_refreshed == [("2", "/b/Movies/Heat (1995)")]
+
+
+async def test_a_deleted_file_makes_plex_rescan_its_folder(
+    c: httpx.AsyncClient, servers: FakeServers, server: Running, settings: Any
+) -> None:
+    """Deleting a file (from Fetchbox, off the disk) has Plex drop it: its folder rescans."""
+    await _add(c, {"kind": "plex", "name": "Plex", "settings": {
+        "url": "http://plex:32400", "token": PLEX_TOKEN}})  # fmt: skip
+    film = settings.downloads_dir / "Movies" / "Dune (2021)"
+    await server.app.state.fb.bus.emit("file.deleted", path="Dune (2021)/Dune.mkv",
+                                       from_disk=True, folders=[str(film)])  # fmt: skip
+
+    async def refreshed() -> bool:
+        return bool(servers.plex_refreshed)
+
+    await until(refreshed, within=10)
+    assert servers.plex_refreshed == [("1", "/data/movies/Dune (2021)")]

@@ -312,6 +312,17 @@
 		act('profile', () => patch(`/titles/${id}`, { profile_id: pid }, title!.etag));
 	const unlock = () =>
 		act('unlock', () => post(`/wanted/${wanted!.id}/unlock`), 'Unlocked: Fetchbox may grab an upgrade.');
+	// A bad copy, gone: to the library folder's recycle folder (emptied after the days in
+	// Settings), dropped from Plex; nothing is downloaded instead (Redownload does that)
+	const deleteFile = async (f: S['FileOut']) => {
+		const name = f.relative_path.split('/').pop();
+		const ok = await ask(
+			`Delete ${name}?\n\nIt goes to the library folder's recycle folder (deleted for good after the days set in Settings > Library), and Plex drops it. Nothing is downloaded instead: use Unlock or Redownload for that.`,
+			'Delete',
+			true
+		);
+		if (ok) act('delete', () => del(`/files/${f.id}`), 'Deleted.');
+	};
 	const redownload = async () => {
 		if (!(await ask('Blocklist the current release, move the file to the recycle folder, and download again?', 'Download again', true))) return;
 		act('redownload', () => post(`/wanted/${wanted!.id}/redownload`), 'Searching for a new copy.');
@@ -706,6 +717,7 @@
 						{/if}
 						<span>· {f.link_mode}</span>
 						<span>· imported {ago(f.imported_at)}</span>
+						<button class="small danger delete" onclick={() => deleteFile(f)} disabled={!!busy}>Delete</button>
 					</div>
 				</div>
 			{/each}
@@ -733,6 +745,9 @@
 </main>
 
 <style>
+	.file .delete {
+		margin-left: auto;
+	}
 	.head {
 		display: flex;
 		gap: 1.5rem;

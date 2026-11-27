@@ -708,3 +708,16 @@ async def test_stuck_items_are_repaired_at_startup(c: httpx.AsyncClient, server:
     assert await server.app.state.downloads.repair_stuck() == 1
     w = (await c.get(f"/titles/{movie['id']}")).json()["wanted"][0]
     assert w["state"] == "missing"
+
+
+async def test_deleting_a_file_says_which_folder(
+    c: httpx.AsyncClient, fakes: Fakes, server: Running, made: Made, seed: BuiltinClient,
+    settings: Any,
+) -> None:  # fmt: skip
+    movie = await _acquire(c, fakes, server, made, seed)
+    [f] = (await c.get(f"/titles/{movie['id']}/files")).json()
+    sub = server.app.state.fb.bus.subscribe("file.deleted")
+    assert (await c.delete(f"/files/{f['id']}")).status_code == 204
+    ev = await asyncio.wait_for(sub.queue.get(), 5)
+    folder = settings.downloads_dir / "Movies" / EXPECTED.split("/")[0]
+    assert ev.data["folders"] == [str(folder)] and ev.data["from_disk"] is True
