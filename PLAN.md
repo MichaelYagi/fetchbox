@@ -321,7 +321,7 @@ Progress:
 Release pipeline (pulled forward from Phase 4, same flow as roast-telemetry):
 - [x] `vX.Y.Z` tag -> `release.yml` (version check against pyproject.toml / web/package.json,
       lint, tests) publishes the wheel, sdist and a source zip with the built web UI;
-      `notify-desktop.yml` dispatches to the private `MichaelYagi/fetchbox-artifacts`
+      `notify-desktop.yml` dispatches to `MichaelYagi/fetchbox-artifacts`
       (secret `DESKTOP_DISPATCH_TOKEN`), whose `desktop-build.yml` builds Windows .exe,
       macOS Silicon + Intel .app and Linux binary (PyInstaller onefile, `packaging/`),
       smoke-tests each (scratch data dir: answers, right version, serves the UI), adds
