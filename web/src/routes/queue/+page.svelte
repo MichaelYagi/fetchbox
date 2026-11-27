@@ -163,7 +163,7 @@
 	{#if downloads === null}
 		<p class="muted">Loading…</p>
 	{:else if active.length === 0}
-		<p class="empty card">Nothing downloading. Movies you add are searched for and appear here.</p>
+		<p class="empty card">Nothing downloading. What you add is searched for and appears here.</p>
 	{:else}
 		<div class="row selectbar">
 			<label class="inline check">

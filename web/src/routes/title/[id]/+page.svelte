@@ -466,7 +466,7 @@
 					{#if editingFolder}
 						<form class="card stack small" onsubmit={saveFolder}>
 							<label class="stack">
-								<span>{series ? 'Show folder' : music ? 'Artist folder' : 'Movie folder'} (full path)</span>
+								<span>{series ? 'Show folder' : music ? 'Artist folder' : pluginTitle ? 'Folder' : 'Movie folder'} (full path)</span>
 								<input bind:value={newFolder} required spellcheck="false" aria-label="New folder" />
 							</label>
 							<label>

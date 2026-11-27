@@ -108,7 +108,7 @@
 		{/each}
 	</div>
 	{#if !loading && entries.length === 0 && !error}
-		<p class="empty">Nothing airs or comes out this month among your shows and movies.</p>
+		<p class="empty">Nothing airs or comes out this month in your library.</p>
 	{/if}
 
 	<div class="legend row small muted">

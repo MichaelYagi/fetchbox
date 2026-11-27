@@ -70,7 +70,7 @@
 				<option value="active">Downloading</option>
 				<option value="missing">Missing</option>
 			</select>
-			<a class="button primary" href="/add">Add movie or show</a>
+			<a class="button primary" href="/add">Add</a>
 		</div>
 	</div>
 
@@ -89,9 +89,9 @@
 	{:else if titles.length === 0}
 		<div class="empty card">
 			<p>Nothing here yet.</p>
-			<p><a class="button primary" href="/add">Add your first movie or show</a></p>
+			<p><a class="button primary" href="/add">Add your first title</a></p>
 			<p class="muted small">
-				Already have movies or shows on disk? <a href="/settings/library">Import them</a> from your library folders,
+				Already have movies, shows or music on disk? <a href="/settings/library">Import them</a> from your library folders,
 				or <a href="/library/migrate">move from Radarr or Sonarr</a>.
 			</p>
 		</div>
