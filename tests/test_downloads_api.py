@@ -83,14 +83,19 @@ async def test_grab_downloads_to_completion(
     engine_of(server).connect_peer(made.info_hash, "127.0.0.1", seed.listen_port or 0)
 
     await until(lambda: _has(c, "completed"), within=30)
-    d = await _download(c, "completed")
+
+    # Then either seeding in the engine, or (seeding off) stopped once imported, which a
+    # fast machine does before this reads it. Just after completing it's briefly neither:
+    # the first seeding pass hasn't run yet; wait for one or the other.
+    async def settled() -> dict[str, Any] | None:
+        d = await _download(c, "completed")
+        return d if d is not None and (d["live"] is not None or d["seeded_at"]) else None
+
+    await until(settled, within=20)
+    d = await settled()
     assert d is not None and d["progress"] == 1.0 and d["completed_at"] and d["size"] == 2 * MB + 50
-    # still in the engine it's seeding; with seeding off it's stopped (no live status) as
-    # soon as it's imported, which a fast machine does before this reads it
     if d["live"] is not None:
         assert d["live"]["state"] == "seeding"
-    else:
-        assert d["seeded_at"], d
     # straight into the movie's library folder (a hidden .incomplete folder there)
     root = settings.downloads_dir / "Movies" / ".incomplete"
     assert d["save_path"] == str(root)
