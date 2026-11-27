@@ -2,13 +2,30 @@
 
 Self-hosted media manager for movies, TV and music: the Sonarr, Radarr and Lidarr workflow
 in one app. Find a title, pick a quality, and Fetchbox searches your indexers, downloads it,
-then names and files it in your library (and tells Plex). It upgrades what it has when a
+then names and files it in your library (and tells Plex, Jellyfin or Emby). It upgrades what it has when a
 better copy turns up, and plugins add more: subtitles, comics, or a kind of media of your
 own. Works out of the box with a built-in torrent engine, so there's nothing else to set up.
 
 <img width="1212" height="955" alt="Screenshot 2026-11-26 195628" src="https://github.com/user-attachments/assets/a607e985-9091-4315-8a1e-a1a832d043f8" />
 
-Status: early development — see [PLAN.md](PLAN.md) and the engineering specification.
+What it does:
+
+- **Movies, TV and music**, one workflow: find a title (TMDB for films and shows,
+  MusicBrainz for artists and albums), choose its quality, and it's searched for, grabbed,
+  downloaded, imported, renamed and filed. New episodes and albums are picked up as they're
+  announced, and the Calendar shows what's coming.
+- **Upgrades and repairs:** a better copy replaces the one you have, up to the quality you
+  set. *Redownload* swaps a bad copy for another release, *Delete* removes a file, and the
+  daily library check reports files that went missing from disk.
+- **Your existing library:** *Import what's already here* adopts the media you have without
+  moving it, and *Move from Radarr / Sonarr* brings over your titles and their files.
+- **Around it:** the Queue and Activity show what's happening, notifications go to email,
+  Discord or a webhook, and Plex, Jellyfin or Emby rescan just the folder that changed.
+- **Plugins** add subtitles, comics, or a kind of media or service of your own; see
+  [Plugins](#writing-plugins).
+
+Status: early development, used day to day. See [PLAN.md](PLAN.md) and the engineering
+specification.
 
 ## Getting started
 
@@ -134,8 +151,10 @@ internet addresses** in the same place.
 
 | | Needed for | Where to get it |
 | --- | --- | --- |
-| **TMDB API key** (free) | Always: finding titles, years and episode lists | [themoviedb.org/settings/api](https://www.themoviedb.org/settings/api); paste it in Settings → Sources |
-| **Prowlarr** (or Jackett) | Mainstream movies and shows | [Prowlarr](https://prowlarr.com), set up with the sites you use. In Settings → Sources → Indexers, add **Prowlarr** with the address you open it at (e.g. `http://192.168.1.10:9696`) and its API key (Prowlarr: Settings → General → Security). Every enabled Prowlarr indexer is searched, including ones added later. For Jackett or a single feed, use **Torznab feed** with that feed's URL |
+| **TMDB API key** (free) | Movies and TV: finding titles, years and episode lists | [themoviedb.org/settings/api](https://www.themoviedb.org/settings/api); paste it in Settings → Sources |
+| MusicBrainz | Music: artists, albums and tracks | Nothing: built in, no key needed |
+| TheTVDB key | Optional: anime released by absolute episode number (`Show - 1071`) | [thetvdb.com](https://thetvdb.com/api-information); Settings → Sources |
+| **Prowlarr** (or Jackett) | Mainstream movies, shows and music (and comics, with the plugin) | [Prowlarr](https://prowlarr.com), set up with the sites you use. In Settings → Sources → Indexers, add **Prowlarr** with the address you open it at (e.g. `http://192.168.1.10:9696`) and its API key (Prowlarr: Settings → General → Security). Every enabled Prowlarr indexer is searched, including ones added later. For Jackett or a single feed, use **Torznab feed** with that feed's URL |
 | Download client | Nothing: the built-in engine works on its own | Optional: qBittorrent, Transmission or Deluge in Settings → Sources → Download clients |
 
 Without Prowlarr or Jackett, Fetchbox searches only:
@@ -150,13 +169,18 @@ Without Prowlarr or Jackett, Fetchbox searches only:
 
 ### Quality profiles
 
-**1080p** (the default), **2160p**, **720p** and **480p** each take only that
-resolution, preferring better sources: Blu-ray over WEB over HDTV. **Any** also takes
-releases that don't state a quality. Profiles can be edited through the API
-(`/api/v1/quality-profiles`).
+For movies and TV, **1080p** (the default), **2160p**, **720p** and **480p** each take only
+that resolution, preferring better sources: Blu-ray over WEB over HDTV. **Any** also takes
+releases that don't state a quality. For music, **Lossless** (FLAC, preferring 24-bit),
+**High-quality lossy** (MP3 320 or V0) and **Any audio**. Profiles can be edited through
+the API (`/api/v1/quality-profiles`). A plugin's kind of media (like comics) has its
+qualities chosen on each title's page instead.
 
-Files go to `~/Downloads/Fetchbox/Movies` and `.../TV` (Linux: your XDG Downloads folder).
-Set `FETCHBOX_DOWNLOADS_ROOT` to change that.
+### Where files go
+
+Until you set library folders in Settings → Library, files go to
+`~/Downloads/Fetchbox/Movies`, `.../TV` and `.../Music` (Linux: your XDG Downloads
+folder). Set `FETCHBOX_DOWNLOADS_ROOT` to change that starting point; in Docker it's `/data`.
 
 ### Troubleshooting: "database is locked" or stalls
 
