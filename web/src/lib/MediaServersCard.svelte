@@ -266,6 +266,9 @@
 			padding: 0.4rem 0;
 			border-bottom: 1px solid var(--border);
 		}
+		.coverage tr:last-child {
+			border-bottom: none;
+		}
 		.coverage td {
 			display: block;
 			padding: 0.1rem 0;

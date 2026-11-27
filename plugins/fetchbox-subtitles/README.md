@@ -4,7 +4,7 @@ Subtitles from [OpenSubtitles](https://www.opensubtitles.com) for movies and epi
 
 - When a movie or an episode is imported or upgraded, subtitles in your languages are written beside it as `<its name>.<language>.srt`. Fetchbox renames, moves and deletes them together with the file.
 - The best match is a subtitle timed to that exact file (OpenSubtitles' file hash), then one made by people rather than machine translated, then the most downloaded.
-- A language not found yet is tried again once a day; **Search subtitles** on a movie or episode tries at once.
+- A language not found yet is tried again once a day; **Find missing subtitles** tries at once: on an episode, a season, a movie or show, or (Settings > Plugins) the whole library.
 - **Find missing subtitles** gets them for files that were there before the plugin: on a movie's or show's page for that title, or on the plugin's card in Settings > Plugins for the whole library. A first batch at once, the rest daily, within OpenSubtitles' limits.
 - When the day's downloads run out, it waits until OpenSubtitles resets them.
 

@@ -290,6 +290,10 @@ td {
 	border-bottom: 1px solid var(--border);
 	vertical-align: top;
 }
+/* A line separates rows; none under the last (every table) */
+:not(thead) > tr:last-child > td {
+	border-bottom: none;
+}
 th {
 	font-size: 0.8rem;
 	color: var(--muted);

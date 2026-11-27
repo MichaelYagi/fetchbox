@@ -4,8 +4,8 @@ When a movie or an episode is imported (or upgraded), the subtitles in your lang
 fetched and written beside it as ``<its name>.<language>.srt``. Fetchbox keeps them with the
 file from then on: renamed, moved and deleted together with it.
 
-A language not found yet is tried again once a day; "Search subtitles" on a movie or episode
-tries at once.
+A language not found yet is tried again once a day; "Find missing subtitles" tries at once, for
+an episode, a season, a movie or show, or the whole library.
 """
 
 from __future__ import annotations
@@ -95,7 +95,7 @@ class Subtitles(Addon):
             got += await self.fetch(ctx, file_id)
         return {"subtitles": got}
 
-    @action("Search subtitles", on="item", needs_file=True)
+    @action("Find missing subtitles", on="item", needs_file=True)
     async def search_now(self, ctx: Any, item: str) -> dict[str, Any]:
         it = await ctx.library.item(item)
         got, files = 0, []

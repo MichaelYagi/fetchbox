@@ -458,6 +458,9 @@
 		border-bottom: 1px solid var(--border);
 		word-break: break-all;
 	}
+	.rename:last-child {
+		border-bottom: none;
+	}
 	.old {
 		color: var(--muted);
 		text-decoration: line-through;
