@@ -721,3 +721,16 @@ async def test_deleting_a_file_says_which_folder(
     ev = await asyncio.wait_for(sub.queue.get(), 5)
     folder = settings.downloads_dir / "Movies" / EXPECTED.split("/")[0]
     assert ev.data["folders"] == [str(folder)] and ev.data["from_disk"] is True
+
+
+async def test_deleting_a_file_already_gone_from_disk(
+    c: httpx.AsyncClient, fakes: Fakes, server: Running, made: Made, seed: BuiltinClient,
+    settings: Any,
+) -> None:  # fmt: skip
+    """Removed by hand on the NAS first: Delete still forgets it, and the movie stays."""
+    movie = await _acquire(c, fakes, server, made, seed)
+    [f] = (await c.get(f"/titles/{movie['id']}/files")).json()
+    (settings.downloads_dir / "Movies" / EXPECTED).unlink()
+    assert (await c.delete(f"/files/{f['id']}")).status_code == 204
+    assert (await c.get(f"/titles/{movie['id']}/files")).json() == []
+    assert (await c.get(f"/titles/{movie['id']}")).status_code == 200
