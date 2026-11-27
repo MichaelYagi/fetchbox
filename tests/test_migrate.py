@@ -158,7 +158,7 @@ async def test_move_from_lidarr(c: httpx.AsyncClient, server: Running, tmp_path:
 
     root = tmp_path / "lidarrmusic"
     dummy = "48140466-cff6-3222-bd55-63c27e43190d"
-    release = json.loads((FIX / "rels.json").read_text())["releases"][0]
+    release = json.loads((FIX / "rels.json").read_text(encoding="utf-8"))["releases"][0]
     names = [t["title"] for t in release["media"][0]["tracks"]]
     for i, name in enumerate(names, 1):  # the files Lidarr lists, where it lists them
         p = root / "Portishead" / "Dummy (1994)" / f"{i:02d} - {name}.flac"
