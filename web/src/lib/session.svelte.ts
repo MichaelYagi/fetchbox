@@ -14,12 +14,3 @@ export const session = $state<{
 	host: null,
 	version: null
 });
-
-/** How Windows sees a path when Fetchbox runs in WSL (null otherwise). */
-export function windowsPath(path: string | null | undefined): string | null {
-	const distro = session.host?.wsl_distro;
-	if (!path || !distro || !path.startsWith('/')) return null;
-	const drive = path.match(/^\/mnt\/([a-z])(\/.*)?$/i);
-	if (drive) return `${drive[1].toUpperCase()}:${(drive[2] ?? '/').replaceAll('/', '\\')}`;
-	return `\\\\wsl.localhost\\${distro}${path.replaceAll('/', '\\')}`;
-}

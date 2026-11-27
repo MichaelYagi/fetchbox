@@ -395,13 +395,10 @@
 				</div>
 				{#if title.overview}<p class="overview">{title.overview}</p>{/if}
 				{#if folder}
-					<!-- what and from where, with Change; then the path; then how Windows reaches it -->
+					<!-- the title's folder, as this system sees it; Change moves it -->
 					<div class="small where">
 						<div class="where-head muted">
-							<span>
-								{files.length || albums.some((a) => a.wanted.state === 'acquired') ? 'Files in' : 'Downloads to'}
-								· {folder.own ? `its own library folder, ${folder.library_folder_name}` : `the ${folder.library_folder_name} folder from Settings`}{#if title.kind === 'music' && folder.path === folder.library_folder_path}, one folder per album{/if}
-							</span>
+							<span>Folder{#if title.kind === 'music' && folder.path === folder.library_folder_path} (one folder per album){/if}</span>
 							{#if !(title.kind === 'music' && folder.path === folder.library_folder_path) && !editingFolder}
 								<button class="change" onclick={() => ((newFolder = folder!.path), (moveFiles = true), (editingFolder = true))}>Change</button>
 							{/if}
