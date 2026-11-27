@@ -35,7 +35,11 @@ async def test_check_and_forget(c: httpx.AsyncClient, fakes: Fakes) -> None:
     report: dict[str, Any] = (await _job(c, (await c.post("/library/check")).json()["id"]))[
         "result"
     ]
-    assert report["files"] == 2 and report["missing"] == [] and report["hashed"] == 2
+    # the daily check may have run first, at start, and hashed them already: either way,
+    # once checked every file has its hash and a check after has nothing left to hash
+    assert report["files"] == 2 and report["missing"] == [] and report["hashed"] in (0, 2)
+    again = (await _job(c, (await c.post("/library/check")).json()["id"]))["result"]
+    assert again["hashed"] == 0
     [dup] = report["duplicates"]
     assert sorted(x["title"] for x in dup) == ["Amélie", "Dune"]
     assert report["unknown_count"] == 1 and report["unknown"][0]["path"].endswith("stray.mp4")
