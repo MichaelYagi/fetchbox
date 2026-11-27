@@ -92,7 +92,7 @@
 			<p><a class="button primary" href="/add">Add your first title</a></p>
 			<p class="muted small">
 				Already have movies, shows or music on disk? <a href="/settings/library">Import them</a> from your library folders,
-				or <a href="/library/migrate">move from Radarr or Sonarr</a>.
+				or <a href="/library/migrate">move from Radarr, Sonarr or Lidarr</a>.
 			</p>
 		</div>
 	{:else if shown.length === 0}

@@ -730,7 +730,7 @@ async def forget_missing(body: ForgetIn, request: Request, p: CurrentPrincipal) 
 
 
 class MigrateConnectIn(BaseModel):
-    kind: Literal["radarr", "sonarr"]
+    kind: Literal["radarr", "sonarr", "lidarr"]
     url: str = Field(min_length=1, description="e.g. http://192.168.1.10:7878")
     api_key: str = Field(min_length=1, description="Settings > General > API Key")
 

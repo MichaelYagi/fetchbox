@@ -1,4 +1,5 @@
-"""Move from Radarr / Sonarr: their movies, shows and files, without touching them.
+"""Move from Radarr / Sonarr / Lidarr: their movies, shows, artists and files, without
+touching them.
 
 A scan (a job; read-only on both sides) reads what Radarr or Sonarr has: titles (by TMDB
 id), what's monitored, quality profiles, root folders, which files exist, and the
@@ -11,6 +12,10 @@ path translation, when Radarr sees the disk under another path), adds the titles
 without searching, copies per-episode monitoring from Sonarr, and records existing
 files in place (the same adoption as the existing-library import). Radarr and Sonarr are
 never written to, so both can run side by side while you compare.
+
+Lidarr: its artists (MusicBrainz ids, as Fetchbox uses), each album's files adopted in
+place through the existing-music import's matching (album by album), artists without files
+added too, and its monitoring copied: which albums are wanted, and whether new ones will be.
 
 The Radarr / Sonarr API key is kept in memory for the job, never in the job's stored
 payload.
@@ -26,14 +31,14 @@ from pathlib import PurePath
 from typing import Any
 
 import structlog
-from sqlalchemy import update
+from sqlalchemy import select, update
 
 from fetchbox.core.db import Database, utcnow
 from fetchbox.core.errors import ConflictError, ProblemError
 from fetchbox.core.events import Actor
 from fetchbox.core.jobs import Job, JobContext, JobRunner
 from fetchbox.modules.library.service import LibraryService
-from fetchbox.modules.media.models import Title, WantedItem
+from fetchbox.modules.media.models import Album, Title, WantedItem
 from fetchbox.modules.media.service import MediaService
 from fetchbox.modules.profiles.service import ProfilesService
 from fetchbox.modules.storage.service import StorageService, _same_folder
@@ -68,6 +73,23 @@ def guess_profile(name: str, ours: dict[str, str]) -> str | None:
         if hit and target in ours:
             return ours[target]
     return ours.get("1080p") or next(iter(ours.values()), None)
+
+
+def guess_music_profile(name: str, ours: dict[str, str]) -> str | None:
+    """A Lidarr profile name -> our music profile id: Lossless, Standard (lossy), Any."""
+    low = name.lower()
+    for words, target in (
+        (("lossless", "flac", "alac"), "Lossless"),
+        (("standard", "lossy", "mp3", "320", "high"), "High-quality lossy"),
+        (("any",), "Any audio"),
+    ):
+        if any(w in low for w in words) and target in ours:
+            return ours[target]
+    return ours.get("Lossless") or next(iter(ours.values()), None)
+
+
+# Lidarr's album types -> Fetchbox's kinds of album
+ALBUM_TYPES = {"album": "album", "ep": "ep", "single": "single", "broadcast": "other"}
 
 
 def translate(path: str, mappings: list[dict[str, str]]) -> str:
@@ -106,7 +128,9 @@ class Migrator:
         self.media = media
         self.profiles = profiles
         self.library = library
-        self.transport: Any = None  # tests: a fake Radarr / Sonarr
+        self.transport: Any = None  # tests: a fake Radarr / Sonarr / Lidarr
+        self.music: Any = None  # MusicService and ExistingMusic, for Lidarr (set by the app)
+        self.music_import: Any = None
         self._creds: dict[str, tuple[Kind, str, str]] = {}
 
     def register_jobs(self) -> None:
@@ -162,13 +186,15 @@ class Migrator:
             )  # fmt: skip
 
     async def start_scan(self, kind: Kind, url: str, key: str) -> Job:
-        self._need_tmdb()
+        if kind != "lidarr":  # music is looked up in MusicBrainz: no key needed
+            self._need_tmdb()
         return await self._enqueue(SCAN_JOB, kind, url, key, {})
 
     async def start_apply(
         self, kind: Kind, url: str, key: str, options: dict[str, Any], actor: Actor
     ) -> Job:
-        self._need_tmdb()
+        if kind != "lidarr":  # music is looked up in MusicBrainz: no key needed
+            self._need_tmdb()
         return await self._enqueue(
             APPLY_JOB,
             kind,
@@ -192,6 +218,8 @@ class Migrator:
             raise ProblemError(422, "Validation Failed", exc.message, slug="validation") from None
         finally:
             await client.aclose()
+        if kind == "lidarr":
+            return await self._scan_music(status, titles, roots, profiles, indexers, clients)
         ours = {p.name: p.id for p in await self.profiles.list_profiles() if p.media == "video"}
         known = {
             t.tmdb_id
@@ -278,6 +306,8 @@ class Migrator:
     ) -> dict[str, Any]:
         """options: {path_map: [{from, to}], profile_map: {their id: our id},
         only: [their title ids] (null: all)}"""
+        if kind == "lidarr":
+            return await self._apply_music(url, key, options, actor, progress)
         media_kind = "movie" if kind == "radarr" else "series"
         mappings = options.get("path_map") or []
         profile_map = {int(k): v for k, v in (options.get("profile_map") or {}).items()}
@@ -334,6 +364,210 @@ class Migrator:
             "skipped": skipped,
             "library_folders": [d.name for d in dests.values()],
         }
+
+    # ---- Lidarr -------------------------------------------------------------------------------
+
+    async def _music_profiles(self) -> dict[str, str]:
+        return {p.name: p.id for p in await self.profiles.list_profiles() if p.media == "music"}
+
+    async def _scan_music(
+        self,
+        status: dict[str, Any],
+        artists: list[dict[str, Any]],
+        roots: list[dict[str, Any]],
+        profiles: list[dict[str, Any]],
+        indexers: list[dict[str, Any]],
+        clients: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        ours = await self._music_profiles()
+        known = {t.mbid for t in await self.media.all_titles() if t.kind == "music" and t.mbid}
+        items = [
+            {
+                "arr_id": a["id"],
+                "tmdb_id": None,
+                "mbid": a.get("foreignArtistId") or None,
+                "tvdb_id": None,
+                "name": a.get("artistName"),
+                "year": None,
+                "monitored": bool(a.get("monitored")),
+                "profile": a.get("qualityProfileId"),
+                "path": a.get("path"),
+                "files": int((a.get("statistics") or {}).get("trackFileCount") or 0),
+                "in_fetchbox": (a.get("foreignArtistId") or None) in known,
+            }
+            for a in artists
+        ]
+        return {
+            "kind": "lidarr",
+            "app_version": status.get("version"),
+            "titles": items,
+            "root_folders": [
+                {
+                    "path": r["path"],
+                    "titles": sum(
+                        1 for a in artists if _rel(r["path"], a.get("path") or "") is not None
+                    ),
+                }
+                for r in roots
+            ],
+            "profiles": [
+                {"id": p["id"], "name": p["name"], "maps_to": guess_music_profile(p["name"], ours)}
+                for p in profiles
+            ],
+            "indexers": [
+                {"name": i.get("name"), "implementation": i.get("implementation"), "url": None}
+                for i in indexers
+            ],
+            "download_clients": [
+                {"name": c.get("name"), "implementation": c.get("implementation"), "host": None}
+                for c in clients
+            ],
+            "counts": {
+                "titles": len(items),
+                "with_files": sum(1 for i in items if i["files"]),
+                "missing_tmdb": sum(1 for i in items if not i["mbid"]),  # no MusicBrainz id
+            },
+        }
+
+    async def _apply_music(
+        self, url: str, key: str, options: dict[str, Any], actor: Actor, progress: Any
+    ) -> dict[str, Any]:
+        mappings = options.get("path_map") or []
+        profile_map = {int(k): v for k, v in (options.get("profile_map") or {}).items()}
+        only = set(options.get("only") or []) or None
+        client = ArrClient("lidarr", url, key, transport=self.transport)
+        added, files = 0, 0
+        skipped: list[dict[str, Any]] = []
+        dests: dict[str, Any] = {}
+        try:
+            artists = await client.titles()
+            roots = await client.root_folders()
+            dests = await self._destinations(
+                "lidarr", "music", [r["path"] for r in roots], mappings
+            )
+            ours = await self._music_profiles()
+            theirs = {p["id"]: p["name"] for p in await client.quality_profiles()}
+            todo = [a for a in artists if only is None or a["id"] in only]
+            for n, a in enumerate(todo, 1):
+                name = a.get("artistName") or "?"
+                mbid = a.get("foreignArtistId")
+                if not mbid:
+                    skipped.append({"name": name, "reason": "no MusicBrainz id"})
+                    continue
+                pid = a.get("qualityProfileId") or -1
+                profile = profile_map.get(pid) or guess_music_profile(theirs.get(pid, ""), ours)
+                try:
+                    new, n_files, problems = await self._artist(
+                        client, a, mbid, profile, dests, mappings, actor
+                    )
+                    added += int(new)
+                    files += n_files
+                    skipped += [{"name": f"{name}: {p}", "reason": r} for p, r in problems]
+                except ProblemError as exc:
+                    skipped.append({"name": name, "reason": exc.problem.detail or "failed"})
+                except (ArrError, ConflictError) as exc:
+                    skipped.append({"name": name, "reason": getattr(exc, "message", str(exc))})
+                if progress:
+                    await progress(n / max(len(todo), 1), f"{n} of {len(todo)}")
+        finally:
+            await client.aclose()
+        return {
+            "added": added,
+            "files": files,
+            "skipped": skipped,
+            "library_folders": [d.name for d in dests.values()],
+        }
+
+    async def _artist(
+        self,
+        client: ArrClient,
+        a: dict[str, Any],
+        mbid: str,
+        profile: str | None,
+        dests: dict[str, Any],
+        mappings: list[dict[str, str]],
+        actor: Actor,
+    ) -> tuple[bool, int, list[tuple[str, str]]]:
+        """One Lidarr artist: (newly added, files adopted, [(album, why not)])."""
+        if profile is None:
+            raise ProblemError(
+                422, "Validation Failed", "no music quality profile to use", slug="validation"
+            )
+        albums = await client.albums(int(a["id"]))
+        tracks = await client.track_files(int(a["id"]))
+        by_album: dict[int, list[str]] = {}
+        dest = None
+        for f in tracks:
+            local = translate(f.get("path") or "", mappings)
+            for root, d in sorted(dests.items(), key=lambda x: -len(x[0])):
+                if (rel := _rel(root, local)) is not None:
+                    dest = d
+                    by_album.setdefault(int(f["albumId"]), []).append(rel)
+                    break
+        before = await self._music_title(mbid)
+        problems: list[tuple[str, str]] = []
+        count = 0
+        for al in albums:
+            rels = by_album.get(int(al["id"]))
+            if not rels or dest is None:
+                continue
+            item = {
+                "folder": PurePath(rels[0]).parent.as_posix(),
+                "files": sorted(rels),
+                "artist_mbid": mbid,
+                "album_mbid": al.get("foreignAlbumId"),
+                "profile_id": profile,
+            }
+            try:
+                _title, _new, n = await self.music_import.apply_one(dest, item, actor)
+                count += n
+            except ProblemError as exc:
+                problems.append((al.get("title") or "?", exc.problem.detail or "failed"))
+        title = await self._music_title(mbid)
+        if title is None:  # no files (or none adopted): the artist, as Lidarr has it
+            kinds = sorted(
+                {ALBUM_TYPES.get(str(x.get("albumType", "")).lower(), "other") for x in albums}
+                or {"album"}
+            )
+            title = await self.music.add_artist(
+                mbid,
+                profile_id=profile,
+                monitor_mode="none",
+                album_kinds=kinds,
+                actor=actor,
+                search_after=utcnow() + FIRST_SEARCH_AFTER,
+            )
+        await self._copy_monitoring(title, a, albums)
+        return before is None, count, problems
+
+    async def _music_title(self, mbid: str) -> Title | None:
+        for t in await self.media.all_titles():
+            if t.kind == "music" and t.mbid == mbid:
+                return t
+        return None
+
+    async def _copy_monitoring(
+        self, title: Title, a: dict[str, Any], albums: list[dict[str, Any]]
+    ) -> None:
+        """Lidarr's monitoring: each album wanted as it was there; new albums wanted when
+        Lidarr would have monitored them (Fetchbox's "future")."""
+        on = bool(a.get("monitored"))
+        new = on and str(a.get("monitorNewItems", "all")).lower() in ("all", "new")
+        wanted = {x.get("foreignAlbumId"): on and bool(x.get("monitored")) for x in albums}
+        async with self.db.sessionmaker() as s:
+            row = await s.get(Title, title.id)
+            if row is not None:
+                row.monitor_mode = "future" if new else "none"
+            ours = (await s.execute(select(Album).where(Album.title_id == title.id))).scalars()
+            for album in ours:
+                if album.mbid in wanted:
+                    await s.execute(
+                        update(WantedItem)
+                        .where(WantedItem.album_id == album.id)
+                        .values(monitored=wanted[album.mbid])
+                        .execution_options(synchronize_session=False)
+                    )
+            await s.commit()
 
     async def _destinations(
         self, kind: str, media_kind: str, roots: list[str], mappings: list[dict[str, str]]

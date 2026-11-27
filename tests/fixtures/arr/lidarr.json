@@ -1,0 +1,4738 @@
+{
+ "/system/status": {
+  "appName": "Lidarr",
+  "instanceName": "Lidarr",
+  "version": "3.1.6.5079",
+  "buildTime": "2026-09-14T15:55:45Z",
+  "isDebug": false,
+  "isProduction": true,
+  "isAdmin": false,
+  "isUserInteractive": true,
+  "startupPath": "/opt/lidarr/Lidarr",
+  "appData": "/opt/lidarr/data",
+  "osName": "debian",
+  "osVersion": "13",
+  "isNetCore": true,
+  "isLinux": true,
+  "isOsx": false,
+  "isWindows": false,
+  "isDocker": false,
+  "isContainerized": false,
+  "mode": "console",
+  "branch": "master",
+  "databaseType": "sqLite",
+  "databaseVersion": "3.53.4",
+  "authentication": "external",
+  "migrationVersion": 81,
+  "urlBase": "",
+  "runtimeVersion": "8.0.27",
+  "runtimeName": "netcore",
+  "startTime": "2026-11-27T19:59:30Z",
+  "packageUpdateMechanism": "builtIn"
+ },
+ "/artist": [
+  {
+   "status": "continuing",
+   "ended": false,
+   "artistName": "Portishead",
+   "foreignArtistId": "8f6bd1e4-fbe1-4f50-aa9b-94c450ec0f11",
+   "tadbId": 0,
+   "discogsId": 0,
+   "artistType": "Group",
+   "disambiguation": "",
+   "links": [
+    {
+     "url": "http://www.portishead.co.uk/",
+     "name": "portishead"
+    },
+    {
+     "url": "http://musicmoz.org/Bands_and_Artists/P/Portishead/",
+     "name": "musicmoz"
+    },
+    {
+     "url": "https://www.discogs.com/artist/2774",
+     "name": "discogs"
+    },
+    {
+     "url": "https://www.bbc.co.uk/music/artists/8f6bd1e4-fbe1-4f50-aa9b-94c450ec0f11",
+     "name": "bbc"
+    },
+    {
+     "url": "https://www.youtube.com/channel/UCIACO5JyTM0l1HNykt91E6g",
+     "name": "youtube"
+    },
+    {
+     "url": "https://www.imdb.com/name/nm1011954/",
+     "name": "imdb"
+    },
+    {
+     "url": "https://www.allmusic.com/artist/mn0000301619",
+     "name": "allmusic"
+    },
+    {
+     "url": "https://www.facebook.com/portishead",
+     "name": "facebook"
+    },
+    {
+     "url": "https://www.last.fm/music/Portishead",
+     "name": "last"
+    },
+    {
+     "url": "https://rateyourmusic.com/artist/portishead",
+     "name": "rateyourmusic"
+    },
+    {
+     "url": "https://twitter.com/Portisheadinfo",
+     "name": "twitter"
+    },
+    {
+     "url": "http://viaf.org/viaf/122443074",
+     "name": "viaf"
+    },
+    {
+     "url": "https://www.wikidata.org/wiki/Q191352",
+     "name": "wikidata"
+    },
+    {
+     "url": "https://www.whosampled.com/Portishead/",
+     "name": "whosampled"
+    },
+    {
+     "url": "https://genius.com/artists/Portishead",
+     "name": "genius"
+    },
+    {
+     "url": "https://myspace.com/portisheadalbum3",
+     "name": "myspace"
+    },
+    {
+     "url": "https://www.worldcat.org/identities/lccn-nr97040979/",
+     "name": "worldcat"
+    },
+    {
+     "url": "https://open.spotify.com/artist/6liAMWkVf5LH7YR9yfFy1Y",
+     "name": "spotify"
+    },
+    {
+     "url": "https://www.songkick.com/artists/386616",
+     "name": "songkick"
+    },
+    {
+     "url": "https://www.setlist.fm/setlists/portishead-23d6889f.html",
+     "name": "setlist"
+    },
+    {
+     "url": "https://secondhandsongs.com/artist/5270",
+     "name": "secondhandsongs"
+    },
+    {
+     "url": "https://muzikum.eu/en/122-6105/portishead/lyrics.html",
+     "name": "muzikum"
+    },
+    {
+     "url": "https://soundcloud.com/portishead-official",
+     "name": "soundcloud"
+    },
+    {
+     "url": "https://www.junodownload.com/artists/Portishead/releases/",
+     "name": "junodownload"
+    },
+    {
+     "url": "https://imvdb.com/n/portishead",
+     "name": "imvdb"
+    },
+    {
+     "url": "https://www.bandsintown.com/a/1058",
+     "name": "bandsintown"
+    },
+    {
+     "url": "https://www.45cat.com/artist/portishead",
+     "name": "45cat"
+    },
+    {
+     "url": "https://www.youtube.com/channel/UC243a5RnwmItLvwhl0YOxbg",
+     "name": "youtube"
+    },
+    {
+     "url": "https://itunes.apple.com/us/artist/id853090",
+     "name": "apple"
+    },
+    {
+     "url": "https://d-nb.info/gnd/10305209-4",
+     "name": "d-nb"
+    },
+    {
+     "url": "http://id.loc.gov/authorities/names/nr97040979",
+     "name": "loc"
+    },
+    {
+     "url": "https://catalogue.bnf.fr/ark:/12148/cb13969455x",
+     "name": "bnf"
+    },
+    {
+     "url": "https://www.deezer.com/artist/1069",
+     "name": "deezer"
+    },
+    {
+     "url": "https://tidal.com/artist/27441",
+     "name": "tidal"
+    },
+    {
+     "url": "https://web.archive.org/web/19961105112827/http://www.godiscs.co.uk/porthead.html",
+     "name": "archive"
+    },
+    {
+     "url": "https://web.archive.org/web/19970110171922/http://www.cybercity.dk/users/ccc9697/idx.html",
+     "name": "archive"
+    },
+    {
+     "url": "https://commons.wikimedia.org/wiki/File:Portishead13b.jpg",
+     "name": "wikimedia"
+    },
+    {
+     "url": "https://www.qobuz.com/us-en/interpreter/portishead/41259",
+     "name": "qobuz"
+    },
+    {
+     "url": "https://www.qobuz.com/us-en/interpreter/portishead/41259",
+     "name": "qobuz"
+    }
+   ],
+   "nextAlbum": null,
+   "lastAlbum": {
+    "title": "Third",
+    "disambiguation": "",
+    "overview": "",
+    "artistId": 1,
+    "foreignAlbumId": "163339ab-813b-3d29-bba8-e1d5acf63cab",
+    "monitored": true,
+    "anyReleaseOk": true,
+    "profileId": 2,
+    "duration": 6189183,
+    "albumType": "Album",
+    "secondaryTypes": [],
+    "ratings": {
+     "votes": 18,
+     "value": 8.3
+    },
+    "releaseDate": "2008-04-08T00:00:00Z",
+    "releases": [
+     {
+      "id": 37,
+      "albumId": 3,
+      "foreignReleaseId": "7da5c6a7-bd8b-3f85-89a7-577283388083",
+      "title": "Third",
+      "status": "Official",
+      "duration": 2955183,
+      "trackCount": 11,
+      "mediumCount": 1,
+      "media": [
+       {
+        "mediumNumber": 1,
+        "mediumName": "",
+        "mediumFormat": "CD"
+       }
+      ],
+      "disambiguation": "",
+      "country": [
+       "United States"
+      ],
+      "label": [
+       "Mercury Records"
+      ],
+      "format": "CD",
+      "monitored": false
+     },
+     {
+      "id": 38,
+      "albumId": 3,
+      "foreignReleaseId": "0c12545e-5040-3f2e-b4c9-80f982b14254",
+      "title": "Third",
+      "status": "Official",
+      "duration": 2955183,
+      "trackCount": 11,
+      "mediumCount": 1,
+      "media": [
+       {
+        "mediumNumber": 1,
+        "mediumName": "",
+        "mediumFormat": "CD"
+       }
+      ],
+      "disambiguation": "",
+      "country": [
+       "New Zealand"
+      ],
+      "label": [
+       "Universal Island Records"
+      ],
+      "format": "CD",
+      "monitored": false
+     },
+     {
+      "id": 39,
+      "albumId": 3,
+      "foreignReleaseId": "18256dad-c3fe-4d39-beb7-ec33421c250b",
+      "title": "Third",
+      "status": "Official",
+      "duration": 6189183,
+      "trackCount": 23,
+      "mediumCount": 4,
+      "media": [
+       {
+        "mediumNumber": 1,
+        "mediumName": "",
+        "mediumFormat": "USB Flash Drive"
+       },
+       {
+        "mediumNumber": 2,
+        "mediumName": "",
+        "mediumFormat": "12\" Vinyl"
+       },
+       {
+        "mediumNumber": 3,
+        "mediumName": "",
+        "mediumFormat": "12\" Vinyl"
+       },
+       {
+        "mediumNumber": 4,
+        "mediumName": "",
+        "mediumFormat": "12\" Vinyl"
+       }
+      ],
+      "disambiguation": "",
+      "country": [
+       "Europe"
+      ],
+      "label": [
+       "Universal Island Records"
+      ],
+      "format": "USB Flash Drive, 3x12\" Vinyl",
+      "monitored": true
+     },
+     {
+      "id": 40,
+      "albumId": 3,
+      "foreignReleaseId": "7da10d5d-4021-4bc5-bd30-0436b0307aa8",
+      "title": "Third",
+      "status": "Official",
+      "duration": 3116000,
+      "trackCount": 12,
+      "mediumCount": 1,
+      "media": [
+       {
+        "mediumNumber": 1,
+        "mediumName": "",
+        "mediumFormat": "Digital Media"
+       }
+      ],
+      "disambiguation": "Bonus track version - Magic Doors",
+      "country": [
+       "United Kingdom"
+      ],
+      "label": [
+       "Universal Island Records"
+      ],
+      "format": "Digital Media",
+      "monitored": false
+     },
+     {
+      "id": 41,
+      "albumId": 3,
+      "foreignReleaseId": "e1e5386a-5616-460b-bb79-0d366537b7fb",
+      "title": "Third",
+      "status": "Official",
+      "duration": 2955183,
+      "trackCount": 11,
+      "mediumCount": 1,
+      "media": [
+       {
+        "mediumNumber": 1,
+        "mediumName": "",
+        "mediumFormat": "CD"
+       }
+      ],
+      "disambiguation": "",
+      "country": [
+       "United Kingdom"
+      ],
+      "label": [
+       "Island"
+      ],
+      "format": "CD",
+      "monitored": false
+     },
+     {
+      "id": 42,
+      "albumId": 3,
+      "foreignReleaseId": "f5bfccaf-1816-427a-b03d-b41c8ac155c5",
+      "title": "Third",
+      "status": "Official",
+      "duration": 2956000,
+      "trackCount": 11,
+      "mediumCount": 2,
+      "media": [
+       {
+        "mediumNumber": 1,
+        "mediumName": "",
+        "mediumFormat": "12\" Vinyl"
+       },
+       {
+        "mediumNumber": 2,
+        "mediumName": "",
+        "mediumFormat": "12\" Vinyl"
+       }
+      ],
+      "disambiguation": "",
+      "country": [
+       "United States"
+      ],
+      "label": [
+       "Mercury Records"
+      ],
+      "format": "2x12\" Vinyl",
+      "monitored": false
+     },
+     {
+      "id": 43,
+      "albumId": 3,
+      "foreignReleaseId": "e4f5a41f-b8b6-4d30-8baf-0db1478dc487",
+      "title": "Third",
+      "status": "Official",
+      "duration": 2955183,
+      "trackCount": 11,
+      "mediumCount": 1,
+      "media": [
+       {
+        "mediumNumber": 1,
+        "mediumName": "",
+        "mediumFormat": "CD"
+       }
+      ],
+      "disambiguation": "",
+      "country": [
+       "Hong Kong"
+      ],
+      "label": [
+       "Island"
+      ],
+      "format": "CD",
+      "monitored": false
+     },
+     {
+      "id": 44,
+      "albumId": 3,
+      "foreignReleaseId": "930345b1-a970-3495-a1dd-55147bea7741",
+      "title": "Third",
+      "status": "Official",
+      "duration": 2955183,
+      "trackCount": 11,
+      "mediumCount": 1,
+      "media": [
+       {
+        "mediumNumber": 1,
+        "mediumName": "",
+        "mediumFormat": "CD"
+       }
+      ],
+      "disambiguation": "",
+      "country": [
+       "Australia"
+      ],
+      "label": [
+       "Island"
+      ],
+      "format": "CD",
+      "monitored": false
+     },
+     {
+      "id": 45,
+      "albumId": 3,
+      "foreignReleaseId": "9f05d3c7-d1b1-4e2e-9130-f66a9df43997",
+      "title": "Third",
+      "status": "Official",
+      "duration": 3330783,
+      "trackCount": 12,
+      "mediumCount": 1,
+      "media": [
+       {
+        "mediumNumber": 1,
+        "mediumName": "",
+        "mediumFormat": "Digital Media"
+       }
+      ],
+      "disambiguation": "Bonus track version - We Carry On",
+      "country": [
+       "United Kingdom"
+      ],
+      "label": [
+       "Universal Island Records"
+      ],
+      "format": "Digital Media",
+      "monitored": false
+     },
+     {
+      "id": 46,
+      "albumId": 3,
+      "foreignReleaseId": "cae2ac10-057f-3d29-9e9d-1ba58e67ab9f",
+      "title": "Third",
+      "status": "Official",
+      "duration": 2957361,
+      "trackCount": 11,
+      "mediumCount": 1,
+      "media": [
+       {
+        "mediumNumber": 1,
+        "mediumName": "",
+        "mediumFormat": "Enhanced CD"
+       }
+      ],
+      "disambiguation": "",
+      "country": [
+       "Japan"
+      ],
+      "label": [
+       "Island"
+      ],
+      "format": "Enhanced CD",
+      "monitored": false
+     },
+     {
+      "id": 47,
+      "albumId": 3,
+      "foreignReleaseId": "5a085d49-e955-3e7f-888a-955cce6b7890",
+      "title": "Third",
+      "status": "Official",
+      "duration": 2955183,
+      "trackCount": 11,
+      "mediumCount": 1,
+      "media": [
+       {
+        "mediumNumber": 1,
+        "mediumName": "",
+        "mediumFormat": "CD"
+       }
+      ],
+      "disambiguation": "",
+      "country": [
+       "Germany"
+      ],
+      "label": [
+       "Island"
+      ],
+      "format": "CD",
+      "monitored": false
+     },
+     {
+      "id": 48,
+      "albumId": 3,
+      "foreignReleaseId": "bc18c59d-6131-4e18-aff5-4600ea7f3d7d",
+      "title": "Third",
+      "status": "Official",
+      "duration": 2932000,
+      "trackCount": 11,
+      "mediumCount": 1,
+      "media": [
+       {
+        "mediumNumber": 1,
+        "mediumName": "",
+        "mediumFormat": "Digital Media"
+       }
+      ],
+      "disambiguation": "",
+      "country": [
+       "Canada",
+       "Mexico",
+       "United States"
+      ],
+      "label": [
+       "Island"
+      ],
+      "format": "Digital Media",
+      "monitored": false
+     },
+     {
+      "id": 49,
+      "albumId": 3,
+      "foreignReleaseId": "064fa38d-810d-4a8a-a6a4-55d6fd1da34b",
+      "title": "Third",
+      "status": "Official",
+      "duration": 2955183,
+      "trackCount": 11,
+      "mediumCount": 1,
+      "media": [
+       {
+        "mediumNumber": 1,
+        "mediumName": "",
+        "mediumFormat": "CD"
+       }
+      ],
+      "disambiguation": "Made in Germany by EDC",
+      "country": [
+       "Europe"
+      ],
+      "label": [
+       "Go! Discs",
+       "Island",
+       "Island Records Group"
+      ],
+      "format": "CD",
+      "monitored": false
+     },
+     {
+      "id": 50,
+      "albumId": 3,
+      "foreignReleaseId": "daa9710c-2e71-497f-8a02-10d9b611c370",
+      "title": "Third",
+      "status": "Official",
+      "duration": 2955183,
+      "trackCount": 11,
+      "mediumCount": 1,
+      "media": [
+       {
+        "mediumNumber": 1,
+        "mediumName": "",
+        "mediumFormat": "CD"
+       }
+      ],
+      "disambiguation": "",
+      "country": [
+       "Europe"
+      ],
+      "label": [
+       "Island",
+       "Island Records Group"
+      ],
+      "format": "CD",
+      "monitored": false
+     },
+     {
+      "id": 51,
+      "albumId": 3,
+      "foreignReleaseId": "d68e178c-4c97-4a03-98df-d9faf26e2236",
+      "title": "Third",
+      "status": "Official",
+      "duration": 2955183,
+      "trackCount": 11,
+      "mediumCount": 1,
+      "media": [
+       {
+        "mediumNumber": 1,
+        "mediumName": "",
+        "mediumFormat": "CD"
+       }
+      ],
+      "disambiguation": "",
+      "country": [
+       "Canada"
+      ],
+      "label": [
+       "Mercury Records"
+      ],
+      "format": "CD",
+      "monitored": false
+     },
+     {
+      "id": 52,
+      "albumId": 3,
+      "foreignReleaseId": "5add188d-8cf4-4864-ae76-629f618eae16",
+      "title": "Third",
+      "status": "Official",
+      "duration": 2940290,
+      "trackCount": 11,
+      "mediumCount": 1,
+      "media": [
+       {
+        "mediumNumber": 1,
+        "mediumName": "",
+        "mediumFormat": "Digital Media"
+       }
+      ],
+      "disambiguation": "",
+      "country": [
+       "United States"
+      ],
+      "label": [
+       "Island"
+      ],
+      "format": "Digital Media",
+      "monitored": false
+     },
+     {
+      "id": 53,
+      "albumId": 3,
+      "foreignReleaseId": "78f3870c-dee3-4566-8bd9-ac4fe32fc393",
+      "title": "Third",
+      "status": "Official",
+      "duration": 2956000,
+      "trackCount": 11,
+      "mediumCount": 2,
+      "media": [
+       {
+        "mediumNumber": 1,
+        "mediumName": "",
+        "mediumFormat": "12\" Vinyl"
+       },
+       {
+        "mediumNumber": 2,
+        "mediumName": "",
+        "mediumFormat": "12\" Vinyl"
+       }
+      ],
+      "disambiguation": "",
+      "country": [
+       "Europe"
+      ],
+      "label": [
+       "Island"
+      ],
+      "format": "2x12\" Vinyl",
+      "monitored": false
+     }
+    ],
+    "genres": [
+     "Trip Hop",
+     "Electronic",
+     "Downtempo",
+     "Experimental Rock",
+     "Folk Rock"
+    ],
+    "mediumCount": 4,
+    "media": [
+     {
+      "mediumNumber": 1,
+      "mediumName": "",
+      "mediumFormat": "USB Flash Drive"
+     },
+     {
+      "mediumNumber": 2,
+      "mediumName": "",
+      "mediumFormat": "12\" Vinyl"
+     },
+     {
+      "mediumNumber": 3,
+      "mediumName": "",
+      "mediumFormat": "12\" Vinyl"
+     },
+     {
+      "mediumNumber": 4,
+      "mediumName": "",
+      "mediumFormat": "12\" Vinyl"
+     }
+    ],
+    "artist": {
+     "status": "continuing",
+     "ended": false,
+     "artistName": "Portishead",
+     "foreignArtistId": "8f6bd1e4-fbe1-4f50-aa9b-94c450ec0f11",
+     "tadbId": 0,
+     "discogsId": 0,
+     "artistType": "Group",
+     "disambiguation": "",
+     "links": [
+      {
+       "url": "http://www.portishead.co.uk/",
+       "name": "portishead"
+      },
+      {
+       "url": "http://musicmoz.org/Bands_and_Artists/P/Portishead/",
+       "name": "musicmoz"
+      },
+      {
+       "url": "https://www.discogs.com/artist/2774",
+       "name": "discogs"
+      },
+      {
+       "url": "https://www.bbc.co.uk/music/artists/8f6bd1e4-fbe1-4f50-aa9b-94c450ec0f11",
+       "name": "bbc"
+      },
+      {
+       "url": "https://www.youtube.com/channel/UCIACO5JyTM0l1HNykt91E6g",
+       "name": "youtube"
+      },
+      {
+       "url": "https://www.imdb.com/name/nm1011954/",
+       "name": "imdb"
+      },
+      {
+       "url": "https://www.allmusic.com/artist/mn0000301619",
+       "name": "allmusic"
+      },
+      {
+       "url": "https://www.facebook.com/portishead",
+       "name": "facebook"
+      },
+      {
+       "url": "https://www.last.fm/music/Portishead",
+       "name": "last"
+      },
+      {
+       "url": "https://rateyourmusic.com/artist/portishead",
+       "name": "rateyourmusic"
+      },
+      {
+       "url": "https://twitter.com/Portisheadinfo",
+       "name": "twitter"
+      },
+      {
+       "url": "http://viaf.org/viaf/122443074",
+       "name": "viaf"
+      },
+      {
+       "url": "https://www.wikidata.org/wiki/Q191352",
+       "name": "wikidata"
+      },
+      {
+       "url": "https://www.whosampled.com/Portishead/",
+       "name": "whosampled"
+      },
+      {
+       "url": "https://genius.com/artists/Portishead",
+       "name": "genius"
+      },
+      {
+       "url": "https://myspace.com/portisheadalbum3",
+       "name": "myspace"
+      },
+      {
+       "url": "https://www.worldcat.org/identities/lccn-nr97040979/",
+       "name": "worldcat"
+      },
+      {
+       "url": "https://open.spotify.com/artist/6liAMWkVf5LH7YR9yfFy1Y",
+       "name": "spotify"
+      },
+      {
+       "url": "https://www.songkick.com/artists/386616",
+       "name": "songkick"
+      },
+      {
+       "url": "https://www.setlist.fm/setlists/portishead-23d6889f.html",
+       "name": "setlist"
+      },
+      {
+       "url": "https://secondhandsongs.com/artist/5270",
+       "name": "secondhandsongs"
+      },
+      {
+       "url": "https://muzikum.eu/en/122-6105/portishead/lyrics.html",
+       "name": "muzikum"
+      },
+      {
+       "url": "https://soundcloud.com/portishead-official",
+       "name": "soundcloud"
+      },
+      {
+       "url": "https://www.junodownload.com/artists/Portishead/releases/",
+       "name": "junodownload"
+      },
+      {
+       "url": "https://imvdb.com/n/portishead",
+       "name": "imvdb"
+      },
+      {
+       "url": "https://www.bandsintown.com/a/1058",
+       "name": "bandsintown"
+      },
+      {
+       "url": "https://www.45cat.com/artist/portishead",
+       "name": "45cat"
+      },
+      {
+       "url": "https://www.youtube.com/channel/UC243a5RnwmItLvwhl0YOxbg",
+       "name": "youtube"
+      },
+      {
+       "url": "https://itunes.apple.com/us/artist/id853090",
+       "name": "apple"
+      },
+      {
+       "url": "https://d-nb.info/gnd/10305209-4",
+       "name": "d-nb"
+      },
+      {
+       "url": "http://id.loc.gov/authorities/names/nr97040979",
+       "name": "loc"
+      },
+      {
+       "url": "https://catalogue.bnf.fr/ark:/12148/cb13969455x",
+       "name": "bnf"
+      },
+      {
+       "url": "https://www.deezer.com/artist/1069",
+       "name": "deezer"
+      },
+      {
+       "url": "https://tidal.com/artist/27441",
+       "name": "tidal"
+      },
+      {
+       "url": "https://web.archive.org/web/19961105112827/http://www.godiscs.co.uk/porthead.html",
+       "name": "archive"
+      },
+      {
+       "url": "https://web.archive.org/web/19970110171922/http://www.cybercity.dk/users/ccc9697/idx.html",
+       "name": "archive"
+      },
+      {
+       "url": "https://commons.wikimedia.org/wiki/File:Portishead13b.jpg",
+       "name": "wikimedia"
+      },
+      {
+       "url": "https://www.qobuz.com/us-en/interpreter/portishead/41259",
+       "name": "qobuz"
+      },
+      {
+       "url": "https://www.qobuz.com/us-en/interpreter/portishead/41259",
+       "name": "qobuz"
+      }
+     ],
+     "nextAlbum": null,
+     "lastAlbum": null,
+     "images": [],
+     "path": "{ROOT}/Portishead",
+     "qualityProfileId": 2,
+     "metadataProfileId": 1,
+     "monitored": true,
+     "monitorNewItems": "all",
+     "genres": [
+      "Trip Hop",
+      "Electronic",
+      "Downtempo",
+      "Experimental Rock",
+      "Folktronica"
+     ],
+     "cleanName": "portishead",
+     "sortName": "portishead",
+     "tags": [],
+     "added": "2026-11-27T19:59:59Z",
+     "ratings": {
+      "votes": 22,
+      "value": 9.1
+     },
+     "id": 1
+    },
+    "images": [
+     {
+      "coverType": "cover",
+      "remoteUrl": "https://images.lidarr.audio/cache/https://coverartarchive.org/release/f5bfccaf-1816-427a-b03d-b41c8ac155c5/8201679314-1200.jpg",
+      "extension": ".jpg"
+     },
+     {
+      "coverType": "disc",
+      "remoteUrl": "https://images.lidarr.audio/cache/https://coverartarchive.org/release/daa9710c-2e71-497f-8a02-10d9b611c370/33072863567-1200.jpg",
+      "extension": ".jpg"
+     }
+    ],
+    "links": [
+     {
+      "url": "https://www.discogs.com/master/5496",
+      "name": "discogs"
+     },
+     {
+      "url": "https://www.bbc.co.uk/music/reviews/c8p2",
+      "name": "bbc"
+     },
+     {
+      "url": "https://www.allmusic.com/album/mw0000784007",
+      "name": "allmusic"
+     },
+     {
+      "url": "https://rateyourmusic.com/release/album/portishead/third/",
+      "name": "rateyourmusic"
+     },
+     {
+      "url": "https://www.wikidata.org/wiki/Q571394",
+      "name": "wikidata"
+     },
+     {
+      "url": "https://www.soundonsound.com/people/adrian-utley-recording-third",
+      "name": "soundonsound"
+     }
+    ],
+    "id": 3
+   },
+   "images": [
+    {
+     "coverType": "fanart",
+     "url": "/MediaCover/1/fanart.jpg?lastWrite=639314064012826224",
+     "remoteUrl": "/opt/lidarr/data/MediaCover/1/fanart.jpg",
+     "extension": ".jpg"
+    },
+    {
+     "coverType": "banner",
+     "url": "/MediaCover/1/banner.jpg?lastWrite=639314064011658495",
+     "remoteUrl": "/opt/lidarr/data/MediaCover/1/banner.jpg",
+     "extension": ".jpg"
+    },
+    {
+     "coverType": "poster",
+     "url": "/MediaCover/1/poster.jpg?lastWrite=639314064010101450",
+     "remoteUrl": "/opt/lidarr/data/MediaCover/1/poster.jpg",
+     "extension": ".jpg"
+    },
+    {
+     "coverType": "clearlogo",
+     "url": "/MediaCover/1/clearlogo.png?lastWrite=639314064008750315",
+     "remoteUrl": "/opt/lidarr/data/MediaCover/1/clearlogo.png",
+     "extension": ".png"
+    }
+   ],
+   "path": "{ROOT}/Portishead",
+   "qualityProfileId": 2,
+   "metadataProfileId": 1,
+   "monitored": true,
+   "monitorNewItems": "all",
+   "rootFolderPath": "{ROOT}",
+   "genres": [
+    "Trip Hop",
+    "Electronic",
+    "Downtempo",
+    "Experimental Rock",
+    "Folktronica"
+   ],
+   "cleanName": "portishead",
+   "sortName": "portishead",
+   "tags": [],
+   "added": "2026-11-27T19:59:59Z",
+   "ratings": {
+    "votes": 22,
+    "value": 9.1
+   },
+   "statistics": {
+    "albumCount": 3,
+    "trackFileCount": 11,
+    "trackCount": 45,
+    "totalTrackCount": 45,
+    "sizeOnDisk": 519791,
+    "percentOfTracks": 24.444444444444443
+   },
+   "id": 1
+  }
+ ],
+ "/album?artistId=1": [
+  {
+   "title": "Portishead",
+   "disambiguation": "",
+   "overview": "",
+   "artistId": 1,
+   "foreignAlbumId": "46b38f09-e90b-39eb-b04f-002da20f7f96",
+   "monitored": true,
+   "anyReleaseOk": true,
+   "profileId": 2,
+   "duration": 3032092,
+   "albumType": "Album",
+   "secondaryTypes": [],
+   "ratings": {
+    "votes": 21,
+    "value": 8.2
+   },
+   "releaseDate": "1997-09-29T00:00:00Z",
+   "releases": [
+    {
+     "id": 1,
+     "albumId": 1,
+     "foreignReleaseId": "1949ef16-3494-4e8d-8063-6dd230a46748",
+     "title": "Portishead",
+     "status": "Official",
+     "duration": 3032092,
+     "trackCount": 11,
+     "mediumCount": 2,
+     "media": [
+      {
+       "mediumNumber": 1,
+       "mediumName": "",
+       "mediumFormat": "12\" Vinyl"
+      },
+      {
+       "mediumNumber": 2,
+       "mediumName": "",
+       "mediumFormat": "12\" Vinyl"
+      }
+     ],
+     "disambiguation": "",
+     "country": [
+      "United States"
+     ],
+     "label": [
+      "Go! Beat",
+      "London Records 90"
+     ],
+     "format": "2x12\" Vinyl",
+     "monitored": true
+    },
+    {
+     "id": 2,
+     "albumId": 1,
+     "foreignReleaseId": "34914e84-635d-31e3-8638-5d585ba12640",
+     "title": "Portishead",
+     "status": "Official",
+     "duration": 3034890,
+     "trackCount": 11,
+     "mediumCount": 1,
+     "media": [
+      {
+       "mediumNumber": 1,
+       "mediumName": "",
+       "mediumFormat": "CD"
+      }
+     ],
+     "disambiguation": "",
+     "country": [
+      "Japan"
+     ],
+     "label": [
+      "Go! Beat",
+      "Polydor"
+     ],
+     "format": "CD",
+     "monitored": false
+    },
+    {
+     "id": 3,
+     "albumId": 1,
+     "foreignReleaseId": "72b07cce-965b-4d8d-91a3-4ebf30b45579",
+     "title": "Portishead",
+     "status": "Official",
+     "duration": 3034890,
+     "trackCount": 11,
+     "mediumCount": 1,
+     "media": [
+      {
+       "mediumNumber": 1,
+       "mediumName": "",
+       "mediumFormat": "Digital Media"
+      }
+     ],
+     "disambiguation": "iTunes download",
+     "country": [
+      "United States"
+     ],
+     "label": [
+      "Go! Beat"
+     ],
+     "format": "Digital Media",
+     "monitored": false
+    },
+    {
+     "id": 4,
+     "albumId": 1,
+     "foreignReleaseId": "1ef3e91c-ddf3-4354-9371-e12337c8056f",
+     "title": "Portishead",
+     "status": "Official",
+     "duration": 3034890,
+     "trackCount": 11,
+     "mediumCount": 1,
+     "media": [
+      {
+       "mediumNumber": 1,
+       "mediumName": "",
+       "mediumFormat": "Cassette"
+      }
+     ],
+     "disambiguation": "",
+     "country": [
+      "Poland"
+     ],
+     "label": [
+      "Go! Beat",
+      "PolyGram Polska"
+     ],
+     "format": "Cassette",
+     "monitored": false
+    },
+    {
+     "id": 5,
+     "albumId": 1,
+     "foreignReleaseId": "4cc4e2df-e8b7-4baf-8d7d-f4ed3f5d11d2",
+     "title": "Portishead",
+     "status": "Official",
+     "duration": 3034623,
+     "trackCount": 11,
+     "mediumCount": 1,
+     "media": [
+      {
+       "mediumNumber": 1,
+       "mediumName": "",
+       "mediumFormat": "CD"
+      }
+     ],
+     "disambiguation": "",
+     "country": [
+      "Australia"
+     ],
+     "label": [
+      "Go! Beat",
+      "Polydor"
+     ],
+     "format": "CD",
+     "monitored": false
+    },
+    {
+     "id": 6,
+     "albumId": 1,
+     "foreignReleaseId": "edaa46f5-0d34-4850-87d7-b8ead8782b54",
+     "title": "Portishead",
+     "status": "Official",
+     "duration": 3034890,
+     "trackCount": 11,
+     "mediumCount": 1,
+     "media": [
+      {
+       "mediumNumber": 1,
+       "mediumName": "",
+       "mediumFormat": "CD"
+      }
+     ],
+     "disambiguation": "",
+     "country": [
+      "Canada"
+     ],
+     "label": [
+      "Go! Beat"
+     ],
+     "format": "CD",
+     "monitored": false
+    },
+    {
+     "id": 7,
+     "albumId": 1,
+     "foreignReleaseId": "5baf976e-185e-4699-8012-c6f4cec36400",
+     "title": "Portishead",
+     "status": "Official",
+     "duration": 3034890,
+     "trackCount": 11,
+     "mediumCount": 1,
+     "media": [
+      {
+       "mediumNumber": 1,
+       "mediumName": "",
+       "mediumFormat": "CD"
+      }
+     ],
+     "disambiguation": "",
+     "country": [
+      "United States"
+     ],
+     "label": [
+      "Go! Beat",
+      "London Records"
+     ],
+     "format": "CD",
+     "monitored": false
+    },
+    {
+     "id": 8,
+     "albumId": 1,
+     "foreignReleaseId": "79b49025-b3a7-48d1-96d0-3ba17bfd23f4",
+     "title": "Portishead",
+     "status": "Official",
+     "duration": 3034890,
+     "trackCount": 11,
+     "mediumCount": 1,
+     "media": [
+      {
+       "mediumNumber": 1,
+       "mediumName": "",
+       "mediumFormat": "CD"
+      }
+     ],
+     "disambiguation": "",
+     "country": [
+      "United States"
+     ],
+     "label": [
+      "Go! Beat"
+     ],
+     "format": "CD",
+     "monitored": false
+    },
+    {
+     "id": 9,
+     "albumId": 1,
+     "foreignReleaseId": "fc954c83-6508-43af-9ab9-d1aeadbe3deb",
+     "title": "Portishead",
+     "status": "Official",
+     "duration": 3034890,
+     "trackCount": 11,
+     "mediumCount": 1,
+     "media": [
+      {
+       "mediumNumber": 1,
+       "mediumName": "",
+       "mediumFormat": "CD"
+      }
+     ],
+     "disambiguation": "",
+     "country": [
+      "Europe"
+     ],
+     "label": [
+      "Go! Beat"
+     ],
+     "format": "CD",
+     "monitored": false
+    },
+    {
+     "id": 10,
+     "albumId": 1,
+     "foreignReleaseId": "dacbfb71-cc93-45b0-95c8-43419f564909",
+     "title": "Portishead",
+     "status": "Official",
+     "duration": 3002000,
+     "trackCount": 11,
+     "mediumCount": 1,
+     "media": [
+      {
+       "mediumNumber": 1,
+       "mediumName": "",
+       "mediumFormat": "CD"
+      }
+     ],
+     "disambiguation": "",
+     "country": [
+      "Israel"
+     ],
+     "label": [
+      "Go! Beat"
+     ],
+     "format": "CD",
+     "monitored": false
+    },
+    {
+     "id": 11,
+     "albumId": 1,
+     "foreignReleaseId": "23d752fa-d27c-33bf-ab33-aff5fb47d507",
+     "title": "Portishead",
+     "status": "Official",
+     "duration": 3034623,
+     "trackCount": 11,
+     "mediumCount": 1,
+     "media": [
+      {
+       "mediumNumber": 1,
+       "mediumName": "",
+       "mediumFormat": "CD"
+      }
+     ],
+     "disambiguation": "",
+     "country": [
+      "United Kingdom"
+     ],
+     "label": [
+      "Go! Beat"
+     ],
+     "format": "CD",
+     "monitored": false
+    },
+    {
+     "id": 12,
+     "albumId": 1,
+     "foreignReleaseId": "8edfc6b6-9727-4433-b785-236a7ac854e6",
+     "title": "Portishead",
+     "status": "Official",
+     "duration": 3034890,
+     "trackCount": 11,
+     "mediumCount": 1,
+     "media": [
+      {
+       "mediumNumber": 1,
+       "mediumName": "",
+       "mediumFormat": "SHM-CD"
+      }
+     ],
+     "disambiguation": "",
+     "country": [
+      "Japan"
+     ],
+     "label": [
+      "Go! Beat"
+     ],
+     "format": "SHM-CD",
+     "monitored": false
+    },
+    {
+     "id": 13,
+     "albumId": 1,
+     "foreignReleaseId": "597828df-b34b-418e-a726-fdaaffb241ce",
+     "title": "Portishead",
+     "status": "Official",
+     "duration": 3034890,
+     "trackCount": 11,
+     "mediumCount": 1,
+     "media": [
+      {
+       "mediumNumber": 1,
+       "mediumName": "",
+       "mediumFormat": "CD"
+      }
+     ],
+     "disambiguation": "",
+     "country": [
+      "Canada"
+     ],
+     "label": [
+      "Go! Beat",
+      "London Records"
+     ],
+     "format": "CD",
+     "monitored": false
+    },
+    {
+     "id": 14,
+     "albumId": 1,
+     "foreignReleaseId": "c76404ba-b7a3-4782-9958-890f423234a5",
+     "title": "Portishead",
+     "status": "Official",
+     "duration": 3032092,
+     "trackCount": 11,
+     "mediumCount": 2,
+     "media": [
+      {
+       "mediumNumber": 1,
+       "mediumName": "",
+       "mediumFormat": "12\" Vinyl"
+      },
+      {
+       "mediumNumber": 2,
+       "mediumName": "",
+       "mediumFormat": "12\" Vinyl"
+      }
+     ],
+     "disambiguation": "",
+     "country": [
+      "United Kingdom"
+     ],
+     "label": [
+      "Simply Vinyl"
+     ],
+     "format": "2x12\" Vinyl",
+     "monitored": false
+    },
+    {
+     "id": 15,
+     "albumId": 1,
+     "foreignReleaseId": "10ac58ca-0655-4b16-a6cb-58fdc309de0a",
+     "title": "Portishead",
+     "status": "Official",
+     "duration": 3034890,
+     "trackCount": 11,
+     "mediumCount": 1,
+     "media": [
+      {
+       "mediumNumber": 1,
+       "mediumName": "",
+       "mediumFormat": "CD"
+      }
+     ],
+     "disambiguation": "",
+     "country": [
+      "Europe"
+     ],
+     "label": [
+      "Go! Beat"
+     ],
+     "format": "CD",
+     "monitored": false
+    },
+    {
+     "id": 16,
+     "albumId": 1,
+     "foreignReleaseId": "1b1f1dde-8a85-4c22-89b4-c6bf395346be",
+     "title": "Portishead",
+     "status": "Official",
+     "duration": 3003000,
+     "trackCount": 11,
+     "mediumCount": 1,
+     "media": [
+      {
+       "mediumNumber": 1,
+       "mediumName": "",
+       "mediumFormat": "Digital Media"
+      }
+     ],
+     "disambiguation": "",
+     "country": [
+      "[Worldwide]"
+     ],
+     "label": [
+      "Island Mercury"
+     ],
+     "format": "Digital Media",
+     "monitored": false
+    }
+   ],
+   "genres": [
+    "Trip Hop",
+    "Electronic",
+    "Downtempo",
+    "Acid Jazz",
+    "Rock",
+    "Alternative Rock",
+    "Dark Jazz"
+   ],
+   "mediumCount": 2,
+   "media": [
+    {
+     "mediumNumber": 1,
+     "mediumName": "",
+     "mediumFormat": "12\" Vinyl"
+    },
+    {
+     "mediumNumber": 2,
+     "mediumName": "",
+     "mediumFormat": "12\" Vinyl"
+    }
+   ],
+   "artist": {
+    "status": "continuing",
+    "ended": false,
+    "artistName": "Portishead",
+    "foreignArtistId": "8f6bd1e4-fbe1-4f50-aa9b-94c450ec0f11",
+    "tadbId": 0,
+    "discogsId": 0,
+    "artistType": "Group",
+    "disambiguation": "",
+    "links": [
+     {
+      "url": "http://www.portishead.co.uk/",
+      "name": "portishead"
+     },
+     {
+      "url": "http://musicmoz.org/Bands_and_Artists/P/Portishead/",
+      "name": "musicmoz"
+     },
+     {
+      "url": "https://www.discogs.com/artist/2774",
+      "name": "discogs"
+     },
+     {
+      "url": "https://www.bbc.co.uk/music/artists/8f6bd1e4-fbe1-4f50-aa9b-94c450ec0f11",
+      "name": "bbc"
+     },
+     {
+      "url": "https://www.youtube.com/channel/UCIACO5JyTM0l1HNykt91E6g",
+      "name": "youtube"
+     },
+     {
+      "url": "https://www.imdb.com/name/nm1011954/",
+      "name": "imdb"
+     },
+     {
+      "url": "https://www.allmusic.com/artist/mn0000301619",
+      "name": "allmusic"
+     },
+     {
+      "url": "https://www.facebook.com/portishead",
+      "name": "facebook"
+     },
+     {
+      "url": "https://www.last.fm/music/Portishead",
+      "name": "last"
+     },
+     {
+      "url": "https://rateyourmusic.com/artist/portishead",
+      "name": "rateyourmusic"
+     },
+     {
+      "url": "https://twitter.com/Portisheadinfo",
+      "name": "twitter"
+     },
+     {
+      "url": "http://viaf.org/viaf/122443074",
+      "name": "viaf"
+     },
+     {
+      "url": "https://www.wikidata.org/wiki/Q191352",
+      "name": "wikidata"
+     },
+     {
+      "url": "https://www.whosampled.com/Portishead/",
+      "name": "whosampled"
+     },
+     {
+      "url": "https://genius.com/artists/Portishead",
+      "name": "genius"
+     },
+     {
+      "url": "https://myspace.com/portisheadalbum3",
+      "name": "myspace"
+     },
+     {
+      "url": "https://www.worldcat.org/identities/lccn-nr97040979/",
+      "name": "worldcat"
+     },
+     {
+      "url": "https://open.spotify.com/artist/6liAMWkVf5LH7YR9yfFy1Y",
+      "name": "spotify"
+     },
+     {
+      "url": "https://www.songkick.com/artists/386616",
+      "name": "songkick"
+     },
+     {
+      "url": "https://www.setlist.fm/setlists/portishead-23d6889f.html",
+      "name": "setlist"
+     },
+     {
+      "url": "https://secondhandsongs.com/artist/5270",
+      "name": "secondhandsongs"
+     },
+     {
+      "url": "https://muzikum.eu/en/122-6105/portishead/lyrics.html",
+      "name": "muzikum"
+     },
+     {
+      "url": "https://soundcloud.com/portishead-official",
+      "name": "soundcloud"
+     },
+     {
+      "url": "https://www.junodownload.com/artists/Portishead/releases/",
+      "name": "junodownload"
+     },
+     {
+      "url": "https://imvdb.com/n/portishead",
+      "name": "imvdb"
+     },
+     {
+      "url": "https://www.bandsintown.com/a/1058",
+      "name": "bandsintown"
+     },
+     {
+      "url": "https://www.45cat.com/artist/portishead",
+      "name": "45cat"
+     },
+     {
+      "url": "https://www.youtube.com/channel/UC243a5RnwmItLvwhl0YOxbg",
+      "name": "youtube"
+     },
+     {
+      "url": "https://itunes.apple.com/us/artist/id853090",
+      "name": "apple"
+     },
+     {
+      "url": "https://d-nb.info/gnd/10305209-4",
+      "name": "d-nb"
+     },
+     {
+      "url": "http://id.loc.gov/authorities/names/nr97040979",
+      "name": "loc"
+     },
+     {
+      "url": "https://catalogue.bnf.fr/ark:/12148/cb13969455x",
+      "name": "bnf"
+     },
+     {
+      "url": "https://www.deezer.com/artist/1069",
+      "name": "deezer"
+     },
+     {
+      "url": "https://tidal.com/artist/27441",
+      "name": "tidal"
+     },
+     {
+      "url": "https://web.archive.org/web/19961105112827/http://www.godiscs.co.uk/porthead.html",
+      "name": "archive"
+     },
+     {
+      "url": "https://web.archive.org/web/19970110171922/http://www.cybercity.dk/users/ccc9697/idx.html",
+      "name": "archive"
+     },
+     {
+      "url": "https://commons.wikimedia.org/wiki/File:Portishead13b.jpg",
+      "name": "wikimedia"
+     },
+     {
+      "url": "https://www.qobuz.com/us-en/interpreter/portishead/41259",
+      "name": "qobuz"
+     },
+     {
+      "url": "https://www.qobuz.com/us-en/interpreter/portishead/41259",
+      "name": "qobuz"
+     }
+    ],
+    "nextAlbum": null,
+    "lastAlbum": null,
+    "images": [],
+    "path": "{ROOT}/Portishead",
+    "qualityProfileId": 2,
+    "metadataProfileId": 1,
+    "monitored": true,
+    "monitorNewItems": "all",
+    "genres": [
+     "Trip Hop",
+     "Electronic",
+     "Downtempo",
+     "Experimental Rock",
+     "Folktronica"
+    ],
+    "cleanName": "portishead",
+    "sortName": "portishead",
+    "tags": [],
+    "added": "2026-11-27T19:59:59Z",
+    "ratings": {
+     "votes": 22,
+     "value": 9.1
+    },
+    "id": 1
+   },
+   "images": [
+    {
+     "coverType": "cover",
+     "url": "/MediaCover/Albums/1/cover.jpg?lastWrite=639314064002042434",
+     "remoteUrl": "https://images.lidarr.audio/cache/https://coverartarchive.org/release/23d752fa-d27c-33bf-ab33-aff5fb47d507/6505314487-1200.jpg",
+     "extension": ".jpg"
+    },
+    {
+     "coverType": "disc",
+     "url": "/MediaCover/Albums/1/disc.jpg",
+     "remoteUrl": "https://images.lidarr.audio/cache/https://coverartarchive.org/release/597828df-b34b-418e-a726-fdaaffb241ce/33758111379-1200.jpg",
+     "extension": ".jpg"
+    }
+   ],
+   "links": [
+    {
+     "url": "https://www.discogs.com/master/5603",
+     "name": "discogs"
+    },
+    {
+     "url": "https://www.allmusic.com/album/mw0000028163",
+     "name": "allmusic"
+    },
+    {
+     "url": "https://www.wikidata.org/wiki/Q1093701",
+     "name": "wikidata"
+    },
+    {
+     "url": "https://rateyourmusic.com/release/album/portishead/portishead/",
+     "name": "rateyourmusic"
+    },
+    {
+     "url": "https://genius.com/albums/Portishead/Portishead",
+     "name": "genius"
+    },
+    {
+     "url": "https://musicmoz.org/Bands_and_Artists/P/Portishead/Discography/Portishead/",
+     "name": "musicmoz"
+    }
+   ],
+   "statistics": {
+    "trackFileCount": 0,
+    "trackCount": 11,
+    "totalTrackCount": 11,
+    "sizeOnDisk": 0,
+    "percentOfTracks": 0
+   },
+   "id": 1
+  },
+  {
+   "title": "Dummy",
+   "disambiguation": "",
+   "overview": "",
+   "artistId": 1,
+   "foreignAlbumId": "48140466-cff6-3222-bd55-63c27e43190d",
+   "monitored": false,
+   "anyReleaseOk": true,
+   "profileId": 2,
+   "duration": 2955238,
+   "albumType": "Album",
+   "secondaryTypes": [],
+   "ratings": {
+    "votes": 33,
+    "value": 8.8
+   },
+   "releaseDate": "1994-08-22T00:00:00Z",
+   "releases": [
+    {
+     "id": 17,
+     "albumId": 2,
+     "foreignReleaseId": "76df3287-6cda-33eb-8e9a-044b5e15ffdd",
+     "title": "Dummy",
+     "status": "Official",
+     "duration": 2955238,
+     "trackCount": 11,
+     "mediumCount": 1,
+     "media": [
+      {
+       "mediumNumber": 1,
+       "mediumName": "",
+       "mediumFormat": "CD"
+      }
+     ],
+     "disambiguation": "",
+     "country": [
+      "Europe"
+     ],
+     "label": [
+      "Go! Beat"
+     ],
+     "format": "CD",
+     "monitored": false
+    },
+    {
+     "id": 18,
+     "albumId": 2,
+     "foreignReleaseId": "f88d6d9b-9664-4c54-887c-2bd83248bc2c",
+     "title": "Dummy",
+     "status": "Promotion",
+     "duration": 3264000,
+     "trackCount": 12,
+     "mediumCount": 1,
+     "media": [
+      {
+       "mediumNumber": 1,
+       "mediumName": "",
+       "mediumFormat": "CD"
+      }
+     ],
+     "disambiguation": "",
+     "country": [
+      "United States"
+     ],
+     "label": [
+      "Go! Discs"
+     ],
+     "format": "CD",
+     "monitored": false
+    },
+    {
+     "id": 19,
+     "albumId": 2,
+     "foreignReleaseId": "f4cc1eae-7916-4661-b4ff-f3b555fafdc6",
+     "title": "Dummy",
+     "status": "Official",
+     "duration": 2955238,
+     "trackCount": 11,
+     "mediumCount": 1,
+     "media": [
+      {
+       "mediumNumber": 1,
+       "mediumName": "",
+       "mediumFormat": "CD"
+      }
+     ],
+     "disambiguation": "",
+     "country": [
+      "Europe"
+     ],
+     "label": [
+      "Go! Beat"
+     ],
+     "format": "CD",
+     "monitored": false
+    },
+    {
+     "id": 20,
+     "albumId": 2,
+     "foreignReleaseId": "00163fb1-5ab7-4fec-b0dd-a915e2722340",
+     "title": "Dummy",
+     "status": "Official",
+     "duration": 2964396,
+     "trackCount": 11,
+     "mediumCount": 1,
+     "media": [
+      {
+       "mediumNumber": 1,
+       "mediumName": "",
+       "mediumFormat": "CD"
+      }
+     ],
+     "disambiguation": "",
+     "country": [
+      "Australia"
+     ],
+     "label": [
+      "Go! Beat",
+      "Polydor"
+     ],
+     "format": "CD",
+     "monitored": false
+    },
+    {
+     "id": 21,
+     "albumId": 2,
+     "foreignReleaseId": "e9a123bd-711f-4e19-a06f-5aff5330daa8",
+     "title": "Dummy",
+     "status": "Official",
+     "duration": 2961264,
+     "trackCount": 11,
+     "mediumCount": 1,
+     "media": [
+      {
+       "mediumNumber": 1,
+       "mediumName": "",
+       "mediumFormat": "CD"
+      }
+     ],
+     "disambiguation": "",
+     "country": [
+      "Japan"
+     ],
+     "label": [
+      "Go! Beat"
+     ],
+     "format": "CD",
+     "monitored": false
+    },
+    {
+     "id": 22,
+     "albumId": 2,
+     "foreignReleaseId": "cac64a87-42f9-4c1c-a5ef-1e6824e20678",
+     "title": "Dummy",
+     "status": "Official",
+     "duration": 3467663,
+     "trackCount": 12,
+     "mediumCount": 1,
+     "media": [
+      {
+       "mediumNumber": 1,
+       "mediumName": "",
+       "mediumFormat": "CD"
+      }
+     ],
+     "disambiguation": "",
+     "country": [
+      "United Kingdom"
+     ],
+     "label": [
+      "Go! Beat"
+     ],
+     "format": "CD",
+     "monitored": false
+    },
+    {
+     "id": 23,
+     "albumId": 2,
+     "foreignReleaseId": "c969636e-b2e6-41a7-8abd-1263ae9bc916",
+     "title": "Dummy",
+     "status": "Official",
+     "duration": 2955238,
+     "trackCount": 11,
+     "mediumCount": 1,
+     "media": [
+      {
+       "mediumNumber": 1,
+       "mediumName": "",
+       "mediumFormat": "Cassette"
+      }
+     ],
+     "disambiguation": "",
+     "country": [
+      "Poland"
+     ],
+     "label": [
+      "Go! Beat",
+      "PolyGram Polska"
+     ],
+     "format": "Cassette",
+     "monitored": false
+    },
+    {
+     "id": 24,
+     "albumId": 2,
+     "foreignReleaseId": "1d6b086a-aca2-4511-8dfc-789b560ae3fb",
+     "title": "Dummy",
+     "status": "Official",
+     "duration": 2955238,
+     "trackCount": 11,
+     "mediumCount": 1,
+     "media": [
+      {
+       "mediumNumber": 1,
+       "mediumName": "",
+       "mediumFormat": "CD"
+      }
+     ],
+     "disambiguation": "Columbia House",
+     "country": [
+      "Canada"
+     ],
+     "label": [
+      "Go! Discs"
+     ],
+     "format": "CD",
+     "monitored": false
+    },
+    {
+     "id": 25,
+     "albumId": 2,
+     "foreignReleaseId": "eca6d001-35bb-4a1a-9bcb-8efd15814cc0",
+     "title": "Dummy",
+     "status": "Official",
+     "duration": 2939200,
+     "trackCount": 11,
+     "mediumCount": 1,
+     "media": [
+      {
+       "mediumNumber": 1,
+       "mediumName": "",
+       "mediumFormat": "Digital Media"
+      }
+     ],
+     "disambiguation": "",
+     "country": [
+      "[Worldwide]"
+     ],
+     "label": [
+      "Island"
+     ],
+     "format": "Digital Media",
+     "monitored": false
+    },
+    {
+     "id": 26,
+     "albumId": 2,
+     "foreignReleaseId": "87888070-1b25-4830-aebc-dee490058b74",
+     "title": "Dummy",
+     "status": "Official",
+     "duration": 2734437,
+     "trackCount": 10,
+     "mediumCount": 1,
+     "media": [
+      {
+       "mediumNumber": 1,
+       "mediumName": "",
+       "mediumFormat": "CD"
+      }
+     ],
+     "disambiguation": "",
+     "country": [
+      "United Kingdom"
+     ],
+     "label": [
+      "Go! Beat"
+     ],
+     "format": "CD",
+     "monitored": false
+    },
+    {
+     "id": 27,
+     "albumId": 2,
+     "foreignReleaseId": "8f468f36-8c7e-4fc1-9166-50664d267127",
+     "title": "Dummy",
+     "status": "Official",
+     "duration": 2955238,
+     "trackCount": 11,
+     "mediumCount": 1,
+     "media": [
+      {
+       "mediumNumber": 1,
+       "mediumName": "",
+       "mediumFormat": "CD"
+      }
+     ],
+     "disambiguation": "",
+     "country": [
+      "United States"
+     ],
+     "label": [
+      "Go! Beat",
+      "Go! Discs",
+      "London Records"
+     ],
+     "format": "CD",
+     "monitored": true
+    },
+    {
+     "id": 28,
+     "albumId": 2,
+     "foreignReleaseId": "dd0756cd-d7c9-4720-bb60-c904146ce885",
+     "title": "Dummy",
+     "status": "Official",
+     "duration": 2961000,
+     "trackCount": 11,
+     "mediumCount": 1,
+     "media": [
+      {
+       "mediumNumber": 1,
+       "mediumName": "",
+       "mediumFormat": "SHM-CD"
+      }
+     ],
+     "disambiguation": "",
+     "country": [
+      "Japan"
+     ],
+     "label": [
+      "Go! Beat",
+      "Polydor"
+     ],
+     "format": "SHM-CD",
+     "monitored": false
+    },
+    {
+     "id": 29,
+     "albumId": 2,
+     "foreignReleaseId": "f006c24d-4336-4e18-b753-e2a561f1c774",
+     "title": "Dummy",
+     "status": "Official",
+     "duration": 2955238,
+     "trackCount": 11,
+     "mediumCount": 1,
+     "media": [
+      {
+       "mediumNumber": 1,
+       "mediumName": "",
+       "mediumFormat": "CD"
+      }
+     ],
+     "disambiguation": "",
+     "country": [
+      "Europe"
+     ],
+     "label": [
+      "Go! Discs"
+     ],
+     "format": "CD",
+     "monitored": false
+    },
+    {
+     "id": 30,
+     "albumId": 2,
+     "foreignReleaseId": "7570ec55-15fd-4cb8-9f54-91f15a787b49",
+     "title": "Dummy",
+     "status": "Official",
+     "duration": 2964396,
+     "trackCount": 11,
+     "mediumCount": 1,
+     "media": [
+      {
+       "mediumNumber": 1,
+       "mediumName": "",
+       "mediumFormat": "CD"
+      }
+     ],
+     "disambiguation": "",
+     "country": [
+      "Canada"
+     ],
+     "label": [
+      "Go! Discs"
+     ],
+     "format": "CD",
+     "monitored": false
+    },
+    {
+     "id": 31,
+     "albumId": 2,
+     "foreignReleaseId": "2fc65e09-61ce-4609-8d74-22e073849240",
+     "title": "Dummy",
+     "status": "Official",
+     "duration": 2964396,
+     "trackCount": 11,
+     "mediumCount": 1,
+     "media": [
+      {
+       "mediumNumber": 1,
+       "mediumName": "",
+       "mediumFormat": "CD"
+      }
+     ],
+     "disambiguation": "Reissue MADE IN GERMANY BY EDC",
+     "country": [
+      "Europe"
+     ],
+     "label": [
+      "Go! Beat"
+     ],
+     "format": "CD",
+     "monitored": false
+    },
+    {
+     "id": 32,
+     "albumId": 2,
+     "foreignReleaseId": "4891dfe3-14d5-43d1-8401-2fbcf9163dbf",
+     "title": "Dummy",
+     "status": "Official",
+     "duration": 2734423,
+     "trackCount": 10,
+     "mediumCount": 1,
+     "media": [
+      {
+       "mediumNumber": 1,
+       "mediumName": "",
+       "mediumFormat": "CD"
+      }
+     ],
+     "disambiguation": "",
+     "country": [
+      "Europe"
+     ],
+     "label": [
+      "Go! Beat"
+     ],
+     "format": "CD",
+     "monitored": false
+    },
+    {
+     "id": 33,
+     "albumId": 2,
+     "foreignReleaseId": "f3f1fbda-df20-4ee3-af8b-b64ebf9605cf",
+     "title": "Dummy",
+     "status": "Official",
+     "duration": 2598000,
+     "trackCount": 10,
+     "mediumCount": 1,
+     "media": [
+      {
+       "mediumNumber": 1,
+       "mediumName": "",
+       "mediumFormat": "12\" Vinyl"
+      }
+     ],
+     "disambiguation": "",
+     "country": [
+      "United Kingdom",
+      "Europe"
+     ],
+     "label": [
+      "Go! Beat"
+     ],
+     "format": "12\" Vinyl",
+     "monitored": false
+    },
+    {
+     "id": 34,
+     "albumId": 2,
+     "foreignReleaseId": "29a14c78-74ad-44d0-9d51-1613701248cb",
+     "title": "Dummy",
+     "status": "Official",
+     "duration": 2598000,
+     "trackCount": 10,
+     "mediumCount": 1,
+     "media": [
+      {
+       "mediumNumber": 1,
+       "mediumName": "",
+       "mediumFormat": "12\" Vinyl"
+      }
+     ],
+     "disambiguation": "",
+     "country": [
+      "United Kingdom",
+      "Europe"
+     ],
+     "label": [
+      "Go! Beat"
+     ],
+     "format": "12\" Vinyl",
+     "monitored": false
+    },
+    {
+     "id": 35,
+     "albumId": 2,
+     "foreignReleaseId": "f5804905-6e8d-45dc-bae9-b36c64ccc99b",
+     "title": "Dummy",
+     "status": "Official",
+     "duration": 2598000,
+     "trackCount": 10,
+     "mediumCount": 1,
+     "media": [
+      {
+       "mediumNumber": 1,
+       "mediumName": "",
+       "mediumFormat": "12\" Vinyl"
+      }
+     ],
+     "disambiguation": "20th Anniversary Reissue 180gram",
+     "country": [
+      "United Kingdom"
+     ],
+     "label": [
+      "Go! Beat"
+     ],
+     "format": "12\" Vinyl",
+     "monitored": false
+    },
+    {
+     "id": 36,
+     "albumId": 2,
+     "foreignReleaseId": "84ee55c7-a600-47d2-a90c-0c18797b8640",
+     "title": "Dummy",
+     "status": "Official",
+     "duration": 2598000,
+     "trackCount": 10,
+     "mediumCount": 1,
+     "media": [
+      {
+       "mediumNumber": 1,
+       "mediumName": "",
+       "mediumFormat": "12\" Vinyl"
+      }
+     ],
+     "disambiguation": "",
+     "country": [
+      "Europe"
+     ],
+     "label": [
+      "Go! Beat",
+      "Go! Beat"
+     ],
+     "format": "12\" Vinyl",
+     "monitored": false
+    }
+   ],
+   "genres": [
+    "Trip Hop",
+    "Electronic",
+    "Acid Jazz",
+    "Downtempo"
+   ],
+   "mediumCount": 1,
+   "media": [
+    {
+     "mediumNumber": 1,
+     "mediumName": "",
+     "mediumFormat": "CD"
+    }
+   ],
+   "artist": {
+    "status": "continuing",
+    "ended": false,
+    "artistName": "Portishead",
+    "foreignArtistId": "8f6bd1e4-fbe1-4f50-aa9b-94c450ec0f11",
+    "tadbId": 0,
+    "discogsId": 0,
+    "artistType": "Group",
+    "disambiguation": "",
+    "links": [
+     {
+      "url": "http://www.portishead.co.uk/",
+      "name": "portishead"
+     },
+     {
+      "url": "http://musicmoz.org/Bands_and_Artists/P/Portishead/",
+      "name": "musicmoz"
+     },
+     {
+      "url": "https://www.discogs.com/artist/2774",
+      "name": "discogs"
+     },
+     {
+      "url": "https://www.bbc.co.uk/music/artists/8f6bd1e4-fbe1-4f50-aa9b-94c450ec0f11",
+      "name": "bbc"
+     },
+     {
+      "url": "https://www.youtube.com/channel/UCIACO5JyTM0l1HNykt91E6g",
+      "name": "youtube"
+     },
+     {
+      "url": "https://www.imdb.com/name/nm1011954/",
+      "name": "imdb"
+     },
+     {
+      "url": "https://www.allmusic.com/artist/mn0000301619",
+      "name": "allmusic"
+     },
+     {
+      "url": "https://www.facebook.com/portishead",
+      "name": "facebook"
+     },
+     {
+      "url": "https://www.last.fm/music/Portishead",
+      "name": "last"
+     },
+     {
+      "url": "https://rateyourmusic.com/artist/portishead",
+      "name": "rateyourmusic"
+     },
+     {
+      "url": "https://twitter.com/Portisheadinfo",
+      "name": "twitter"
+     },
+     {
+      "url": "http://viaf.org/viaf/122443074",
+      "name": "viaf"
+     },
+     {
+      "url": "https://www.wikidata.org/wiki/Q191352",
+      "name": "wikidata"
+     },
+     {
+      "url": "https://www.whosampled.com/Portishead/",
+      "name": "whosampled"
+     },
+     {
+      "url": "https://genius.com/artists/Portishead",
+      "name": "genius"
+     },
+     {
+      "url": "https://myspace.com/portisheadalbum3",
+      "name": "myspace"
+     },
+     {
+      "url": "https://www.worldcat.org/identities/lccn-nr97040979/",
+      "name": "worldcat"
+     },
+     {
+      "url": "https://open.spotify.com/artist/6liAMWkVf5LH7YR9yfFy1Y",
+      "name": "spotify"
+     },
+     {
+      "url": "https://www.songkick.com/artists/386616",
+      "name": "songkick"
+     },
+     {
+      "url": "https://www.setlist.fm/setlists/portishead-23d6889f.html",
+      "name": "setlist"
+     },
+     {
+      "url": "https://secondhandsongs.com/artist/5270",
+      "name": "secondhandsongs"
+     },
+     {
+      "url": "https://muzikum.eu/en/122-6105/portishead/lyrics.html",
+      "name": "muzikum"
+     },
+     {
+      "url": "https://soundcloud.com/portishead-official",
+      "name": "soundcloud"
+     },
+     {
+      "url": "https://www.junodownload.com/artists/Portishead/releases/",
+      "name": "junodownload"
+     },
+     {
+      "url": "https://imvdb.com/n/portishead",
+      "name": "imvdb"
+     },
+     {
+      "url": "https://www.bandsintown.com/a/1058",
+      "name": "bandsintown"
+     },
+     {
+      "url": "https://www.45cat.com/artist/portishead",
+      "name": "45cat"
+     },
+     {
+      "url": "https://www.youtube.com/channel/UC243a5RnwmItLvwhl0YOxbg",
+      "name": "youtube"
+     },
+     {
+      "url": "https://itunes.apple.com/us/artist/id853090",
+      "name": "apple"
+     },
+     {
+      "url": "https://d-nb.info/gnd/10305209-4",
+      "name": "d-nb"
+     },
+     {
+      "url": "http://id.loc.gov/authorities/names/nr97040979",
+      "name": "loc"
+     },
+     {
+      "url": "https://catalogue.bnf.fr/ark:/12148/cb13969455x",
+      "name": "bnf"
+     },
+     {
+      "url": "https://www.deezer.com/artist/1069",
+      "name": "deezer"
+     },
+     {
+      "url": "https://tidal.com/artist/27441",
+      "name": "tidal"
+     },
+     {
+      "url": "https://web.archive.org/web/19961105112827/http://www.godiscs.co.uk/porthead.html",
+      "name": "archive"
+     },
+     {
+      "url": "https://web.archive.org/web/19970110171922/http://www.cybercity.dk/users/ccc9697/idx.html",
+      "name": "archive"
+     },
+     {
+      "url": "https://commons.wikimedia.org/wiki/File:Portishead13b.jpg",
+      "name": "wikimedia"
+     },
+     {
+      "url": "https://www.qobuz.com/us-en/interpreter/portishead/41259",
+      "name": "qobuz"
+     },
+     {
+      "url": "https://www.qobuz.com/us-en/interpreter/portishead/41259",
+      "name": "qobuz"
+     }
+    ],
+    "nextAlbum": null,
+    "lastAlbum": null,
+    "images": [],
+    "path": "{ROOT}/Portishead",
+    "qualityProfileId": 2,
+    "metadataProfileId": 1,
+    "monitored": true,
+    "monitorNewItems": "all",
+    "genres": [
+     "Trip Hop",
+     "Electronic",
+     "Downtempo",
+     "Experimental Rock",
+     "Folktronica"
+    ],
+    "cleanName": "portishead",
+    "sortName": "portishead",
+    "tags": [],
+    "added": "2026-11-27T19:59:59Z",
+    "ratings": {
+     "votes": 22,
+     "value": 9.1
+    },
+    "id": 1
+   },
+   "images": [
+    {
+     "coverType": "cover",
+     "url": "/MediaCover/Albums/2/cover.jpg?lastWrite=639314064004766104",
+     "remoteUrl": "https://images.lidarr.audio/cache/https://coverartarchive.org/release/76df3287-6cda-33eb-8e9a-044b5e15ffdd/829521842-1200.jpg",
+     "extension": ".jpg"
+    },
+    {
+     "coverType": "disc",
+     "url": "/MediaCover/Albums/2/disc.jpg",
+     "remoteUrl": "https://images.lidarr.audio/cache/https://coverartarchive.org/release/87888070-1b25-4830-aebc-dee490058b74/24258465158-1200.jpg",
+     "extension": ".jpg"
+    }
+   ],
+   "links": [
+    {
+     "url": "https://www.discogs.com/master/5542",
+     "name": "discogs"
+    },
+    {
+     "url": "https://www.bbc.co.uk/music/reviews/j6vh",
+     "name": "bbc"
+    },
+    {
+     "url": "https://www.allmusic.com/album/mw0000626613",
+     "name": "allmusic"
+    },
+    {
+     "url": "https://www.wikidata.org/wiki/Q911143",
+     "name": "wikidata"
+    },
+    {
+     "url": "https://rateyourmusic.com/release/album/portishead/dummy/",
+     "name": "rateyourmusic"
+    },
+    {
+     "url": "https://genius.com/albums/Portishead/Dummy",
+     "name": "genius"
+    },
+    {
+     "url": "https://musicmoz.org/Bands_and_Artists/P/Portishead/Discography/Dummy/",
+     "name": "musicmoz"
+    },
+    {
+     "url": "https://web.archive.org/web/20160414185744/http://ssmt-reviews.com/artist/portishead.html",
+     "name": "archive"
+    },
+    {
+     "url": "https://en.wikipedia.org/wiki/Dummy_(album)",
+     "name": "wikipedia"
+    }
+   ],
+   "statistics": {
+    "trackFileCount": 11,
+    "trackCount": 11,
+    "totalTrackCount": 11,
+    "sizeOnDisk": 519791,
+    "percentOfTracks": 100
+   },
+   "id": 2
+  },
+  {
+   "title": "Third",
+   "disambiguation": "",
+   "overview": "",
+   "artistId": 1,
+   "foreignAlbumId": "163339ab-813b-3d29-bba8-e1d5acf63cab",
+   "monitored": true,
+   "anyReleaseOk": true,
+   "profileId": 2,
+   "duration": 6189183,
+   "albumType": "Album",
+   "secondaryTypes": [],
+   "ratings": {
+    "votes": 18,
+    "value": 8.3
+   },
+   "releaseDate": "2008-04-08T00:00:00Z",
+   "releases": [
+    {
+     "id": 37,
+     "albumId": 3,
+     "foreignReleaseId": "7da5c6a7-bd8b-3f85-89a7-577283388083",
+     "title": "Third",
+     "status": "Official",
+     "duration": 2955183,
+     "trackCount": 11,
+     "mediumCount": 1,
+     "media": [
+      {
+       "mediumNumber": 1,
+       "mediumName": "",
+       "mediumFormat": "CD"
+      }
+     ],
+     "disambiguation": "",
+     "country": [
+      "United States"
+     ],
+     "label": [
+      "Mercury Records"
+     ],
+     "format": "CD",
+     "monitored": false
+    },
+    {
+     "id": 38,
+     "albumId": 3,
+     "foreignReleaseId": "0c12545e-5040-3f2e-b4c9-80f982b14254",
+     "title": "Third",
+     "status": "Official",
+     "duration": 2955183,
+     "trackCount": 11,
+     "mediumCount": 1,
+     "media": [
+      {
+       "mediumNumber": 1,
+       "mediumName": "",
+       "mediumFormat": "CD"
+      }
+     ],
+     "disambiguation": "",
+     "country": [
+      "New Zealand"
+     ],
+     "label": [
+      "Universal Island Records"
+     ],
+     "format": "CD",
+     "monitored": false
+    },
+    {
+     "id": 39,
+     "albumId": 3,
+     "foreignReleaseId": "18256dad-c3fe-4d39-beb7-ec33421c250b",
+     "title": "Third",
+     "status": "Official",
+     "duration": 6189183,
+     "trackCount": 23,
+     "mediumCount": 4,
+     "media": [
+      {
+       "mediumNumber": 1,
+       "mediumName": "",
+       "mediumFormat": "USB Flash Drive"
+      },
+      {
+       "mediumNumber": 2,
+       "mediumName": "",
+       "mediumFormat": "12\" Vinyl"
+      },
+      {
+       "mediumNumber": 3,
+       "mediumName": "",
+       "mediumFormat": "12\" Vinyl"
+      },
+      {
+       "mediumNumber": 4,
+       "mediumName": "",
+       "mediumFormat": "12\" Vinyl"
+      }
+     ],
+     "disambiguation": "",
+     "country": [
+      "Europe"
+     ],
+     "label": [
+      "Universal Island Records"
+     ],
+     "format": "USB Flash Drive, 3x12\" Vinyl",
+     "monitored": true
+    },
+    {
+     "id": 40,
+     "albumId": 3,
+     "foreignReleaseId": "7da10d5d-4021-4bc5-bd30-0436b0307aa8",
+     "title": "Third",
+     "status": "Official",
+     "duration": 3116000,
+     "trackCount": 12,
+     "mediumCount": 1,
+     "media": [
+      {
+       "mediumNumber": 1,
+       "mediumName": "",
+       "mediumFormat": "Digital Media"
+      }
+     ],
+     "disambiguation": "Bonus track version - Magic Doors",
+     "country": [
+      "United Kingdom"
+     ],
+     "label": [
+      "Universal Island Records"
+     ],
+     "format": "Digital Media",
+     "monitored": false
+    },
+    {
+     "id": 41,
+     "albumId": 3,
+     "foreignReleaseId": "e1e5386a-5616-460b-bb79-0d366537b7fb",
+     "title": "Third",
+     "status": "Official",
+     "duration": 2955183,
+     "trackCount": 11,
+     "mediumCount": 1,
+     "media": [
+      {
+       "mediumNumber": 1,
+       "mediumName": "",
+       "mediumFormat": "CD"
+      }
+     ],
+     "disambiguation": "",
+     "country": [
+      "United Kingdom"
+     ],
+     "label": [
+      "Island"
+     ],
+     "format": "CD",
+     "monitored": false
+    },
+    {
+     "id": 42,
+     "albumId": 3,
+     "foreignReleaseId": "f5bfccaf-1816-427a-b03d-b41c8ac155c5",
+     "title": "Third",
+     "status": "Official",
+     "duration": 2956000,
+     "trackCount": 11,
+     "mediumCount": 2,
+     "media": [
+      {
+       "mediumNumber": 1,
+       "mediumName": "",
+       "mediumFormat": "12\" Vinyl"
+      },
+      {
+       "mediumNumber": 2,
+       "mediumName": "",
+       "mediumFormat": "12\" Vinyl"
+      }
+     ],
+     "disambiguation": "",
+     "country": [
+      "United States"
+     ],
+     "label": [
+      "Mercury Records"
+     ],
+     "format": "2x12\" Vinyl",
+     "monitored": false
+    },
+    {
+     "id": 43,
+     "albumId": 3,
+     "foreignReleaseId": "e4f5a41f-b8b6-4d30-8baf-0db1478dc487",
+     "title": "Third",
+     "status": "Official",
+     "duration": 2955183,
+     "trackCount": 11,
+     "mediumCount": 1,
+     "media": [
+      {
+       "mediumNumber": 1,
+       "mediumName": "",
+       "mediumFormat": "CD"
+      }
+     ],
+     "disambiguation": "",
+     "country": [
+      "Hong Kong"
+     ],
+     "label": [
+      "Island"
+     ],
+     "format": "CD",
+     "monitored": false
+    },
+    {
+     "id": 44,
+     "albumId": 3,
+     "foreignReleaseId": "930345b1-a970-3495-a1dd-55147bea7741",
+     "title": "Third",
+     "status": "Official",
+     "duration": 2955183,
+     "trackCount": 11,
+     "mediumCount": 1,
+     "media": [
+      {
+       "mediumNumber": 1,
+       "mediumName": "",
+       "mediumFormat": "CD"
+      }
+     ],
+     "disambiguation": "",
+     "country": [
+      "Australia"
+     ],
+     "label": [
+      "Island"
+     ],
+     "format": "CD",
+     "monitored": false
+    },
+    {
+     "id": 45,
+     "albumId": 3,
+     "foreignReleaseId": "9f05d3c7-d1b1-4e2e-9130-f66a9df43997",
+     "title": "Third",
+     "status": "Official",
+     "duration": 3330783,
+     "trackCount": 12,
+     "mediumCount": 1,
+     "media": [
+      {
+       "mediumNumber": 1,
+       "mediumName": "",
+       "mediumFormat": "Digital Media"
+      }
+     ],
+     "disambiguation": "Bonus track version - We Carry On",
+     "country": [
+      "United Kingdom"
+     ],
+     "label": [
+      "Universal Island Records"
+     ],
+     "format": "Digital Media",
+     "monitored": false
+    },
+    {
+     "id": 46,
+     "albumId": 3,
+     "foreignReleaseId": "cae2ac10-057f-3d29-9e9d-1ba58e67ab9f",
+     "title": "Third",
+     "status": "Official",
+     "duration": 2957361,
+     "trackCount": 11,
+     "mediumCount": 1,
+     "media": [
+      {
+       "mediumNumber": 1,
+       "mediumName": "",
+       "mediumFormat": "Enhanced CD"
+      }
+     ],
+     "disambiguation": "",
+     "country": [
+      "Japan"
+     ],
+     "label": [
+      "Island"
+     ],
+     "format": "Enhanced CD",
+     "monitored": false
+    },
+    {
+     "id": 47,
+     "albumId": 3,
+     "foreignReleaseId": "5a085d49-e955-3e7f-888a-955cce6b7890",
+     "title": "Third",
+     "status": "Official",
+     "duration": 2955183,
+     "trackCount": 11,
+     "mediumCount": 1,
+     "media": [
+      {
+       "mediumNumber": 1,
+       "mediumName": "",
+       "mediumFormat": "CD"
+      }
+     ],
+     "disambiguation": "",
+     "country": [
+      "Germany"
+     ],
+     "label": [
+      "Island"
+     ],
+     "format": "CD",
+     "monitored": false
+    },
+    {
+     "id": 48,
+     "albumId": 3,
+     "foreignReleaseId": "bc18c59d-6131-4e18-aff5-4600ea7f3d7d",
+     "title": "Third",
+     "status": "Official",
+     "duration": 2932000,
+     "trackCount": 11,
+     "mediumCount": 1,
+     "media": [
+      {
+       "mediumNumber": 1,
+       "mediumName": "",
+       "mediumFormat": "Digital Media"
+      }
+     ],
+     "disambiguation": "",
+     "country": [
+      "Canada",
+      "Mexico",
+      "United States"
+     ],
+     "label": [
+      "Island"
+     ],
+     "format": "Digital Media",
+     "monitored": false
+    },
+    {
+     "id": 49,
+     "albumId": 3,
+     "foreignReleaseId": "064fa38d-810d-4a8a-a6a4-55d6fd1da34b",
+     "title": "Third",
+     "status": "Official",
+     "duration": 2955183,
+     "trackCount": 11,
+     "mediumCount": 1,
+     "media": [
+      {
+       "mediumNumber": 1,
+       "mediumName": "",
+       "mediumFormat": "CD"
+      }
+     ],
+     "disambiguation": "Made in Germany by EDC",
+     "country": [
+      "Europe"
+     ],
+     "label": [
+      "Go! Discs",
+      "Island",
+      "Island Records Group"
+     ],
+     "format": "CD",
+     "monitored": false
+    },
+    {
+     "id": 50,
+     "albumId": 3,
+     "foreignReleaseId": "daa9710c-2e71-497f-8a02-10d9b611c370",
+     "title": "Third",
+     "status": "Official",
+     "duration": 2955183,
+     "trackCount": 11,
+     "mediumCount": 1,
+     "media": [
+      {
+       "mediumNumber": 1,
+       "mediumName": "",
+       "mediumFormat": "CD"
+      }
+     ],
+     "disambiguation": "",
+     "country": [
+      "Europe"
+     ],
+     "label": [
+      "Island",
+      "Island Records Group"
+     ],
+     "format": "CD",
+     "monitored": false
+    },
+    {
+     "id": 51,
+     "albumId": 3,
+     "foreignReleaseId": "d68e178c-4c97-4a03-98df-d9faf26e2236",
+     "title": "Third",
+     "status": "Official",
+     "duration": 2955183,
+     "trackCount": 11,
+     "mediumCount": 1,
+     "media": [
+      {
+       "mediumNumber": 1,
+       "mediumName": "",
+       "mediumFormat": "CD"
+      }
+     ],
+     "disambiguation": "",
+     "country": [
+      "Canada"
+     ],
+     "label": [
+      "Mercury Records"
+     ],
+     "format": "CD",
+     "monitored": false
+    },
+    {
+     "id": 52,
+     "albumId": 3,
+     "foreignReleaseId": "5add188d-8cf4-4864-ae76-629f618eae16",
+     "title": "Third",
+     "status": "Official",
+     "duration": 2940290,
+     "trackCount": 11,
+     "mediumCount": 1,
+     "media": [
+      {
+       "mediumNumber": 1,
+       "mediumName": "",
+       "mediumFormat": "Digital Media"
+      }
+     ],
+     "disambiguation": "",
+     "country": [
+      "United States"
+     ],
+     "label": [
+      "Island"
+     ],
+     "format": "Digital Media",
+     "monitored": false
+    },
+    {
+     "id": 53,
+     "albumId": 3,
+     "foreignReleaseId": "78f3870c-dee3-4566-8bd9-ac4fe32fc393",
+     "title": "Third",
+     "status": "Official",
+     "duration": 2956000,
+     "trackCount": 11,
+     "mediumCount": 2,
+     "media": [
+      {
+       "mediumNumber": 1,
+       "mediumName": "",
+       "mediumFormat": "12\" Vinyl"
+      },
+      {
+       "mediumNumber": 2,
+       "mediumName": "",
+       "mediumFormat": "12\" Vinyl"
+      }
+     ],
+     "disambiguation": "",
+     "country": [
+      "Europe"
+     ],
+     "label": [
+      "Island"
+     ],
+     "format": "2x12\" Vinyl",
+     "monitored": false
+    }
+   ],
+   "genres": [
+    "Trip Hop",
+    "Electronic",
+    "Downtempo",
+    "Experimental Rock",
+    "Folk Rock"
+   ],
+   "mediumCount": 4,
+   "media": [
+    {
+     "mediumNumber": 1,
+     "mediumName": "",
+     "mediumFormat": "USB Flash Drive"
+    },
+    {
+     "mediumNumber": 2,
+     "mediumName": "",
+     "mediumFormat": "12\" Vinyl"
+    },
+    {
+     "mediumNumber": 3,
+     "mediumName": "",
+     "mediumFormat": "12\" Vinyl"
+    },
+    {
+     "mediumNumber": 4,
+     "mediumName": "",
+     "mediumFormat": "12\" Vinyl"
+    }
+   ],
+   "artist": {
+    "status": "continuing",
+    "ended": false,
+    "artistName": "Portishead",
+    "foreignArtistId": "8f6bd1e4-fbe1-4f50-aa9b-94c450ec0f11",
+    "tadbId": 0,
+    "discogsId": 0,
+    "artistType": "Group",
+    "disambiguation": "",
+    "links": [
+     {
+      "url": "http://www.portishead.co.uk/",
+      "name": "portishead"
+     },
+     {
+      "url": "http://musicmoz.org/Bands_and_Artists/P/Portishead/",
+      "name": "musicmoz"
+     },
+     {
+      "url": "https://www.discogs.com/artist/2774",
+      "name": "discogs"
+     },
+     {
+      "url": "https://www.bbc.co.uk/music/artists/8f6bd1e4-fbe1-4f50-aa9b-94c450ec0f11",
+      "name": "bbc"
+     },
+     {
+      "url": "https://www.youtube.com/channel/UCIACO5JyTM0l1HNykt91E6g",
+      "name": "youtube"
+     },
+     {
+      "url": "https://www.imdb.com/name/nm1011954/",
+      "name": "imdb"
+     },
+     {
+      "url": "https://www.allmusic.com/artist/mn0000301619",
+      "name": "allmusic"
+     },
+     {
+      "url": "https://www.facebook.com/portishead",
+      "name": "facebook"
+     },
+     {
+      "url": "https://www.last.fm/music/Portishead",
+      "name": "last"
+     },
+     {
+      "url": "https://rateyourmusic.com/artist/portishead",
+      "name": "rateyourmusic"
+     },
+     {
+      "url": "https://twitter.com/Portisheadinfo",
+      "name": "twitter"
+     },
+     {
+      "url": "http://viaf.org/viaf/122443074",
+      "name": "viaf"
+     },
+     {
+      "url": "https://www.wikidata.org/wiki/Q191352",
+      "name": "wikidata"
+     },
+     {
+      "url": "https://www.whosampled.com/Portishead/",
+      "name": "whosampled"
+     },
+     {
+      "url": "https://genius.com/artists/Portishead",
+      "name": "genius"
+     },
+     {
+      "url": "https://myspace.com/portisheadalbum3",
+      "name": "myspace"
+     },
+     {
+      "url": "https://www.worldcat.org/identities/lccn-nr97040979/",
+      "name": "worldcat"
+     },
+     {
+      "url": "https://open.spotify.com/artist/6liAMWkVf5LH7YR9yfFy1Y",
+      "name": "spotify"
+     },
+     {
+      "url": "https://www.songkick.com/artists/386616",
+      "name": "songkick"
+     },
+     {
+      "url": "https://www.setlist.fm/setlists/portishead-23d6889f.html",
+      "name": "setlist"
+     },
+     {
+      "url": "https://secondhandsongs.com/artist/5270",
+      "name": "secondhandsongs"
+     },
+     {
+      "url": "https://muzikum.eu/en/122-6105/portishead/lyrics.html",
+      "name": "muzikum"
+     },
+     {
+      "url": "https://soundcloud.com/portishead-official",
+      "name": "soundcloud"
+     },
+     {
+      "url": "https://www.junodownload.com/artists/Portishead/releases/",
+      "name": "junodownload"
+     },
+     {
+      "url": "https://imvdb.com/n/portishead",
+      "name": "imvdb"
+     },
+     {
+      "url": "https://www.bandsintown.com/a/1058",
+      "name": "bandsintown"
+     },
+     {
+      "url": "https://www.45cat.com/artist/portishead",
+      "name": "45cat"
+     },
+     {
+      "url": "https://www.youtube.com/channel/UC243a5RnwmItLvwhl0YOxbg",
+      "name": "youtube"
+     },
+     {
+      "url": "https://itunes.apple.com/us/artist/id853090",
+      "name": "apple"
+     },
+     {
+      "url": "https://d-nb.info/gnd/10305209-4",
+      "name": "d-nb"
+     },
+     {
+      "url": "http://id.loc.gov/authorities/names/nr97040979",
+      "name": "loc"
+     },
+     {
+      "url": "https://catalogue.bnf.fr/ark:/12148/cb13969455x",
+      "name": "bnf"
+     },
+     {
+      "url": "https://www.deezer.com/artist/1069",
+      "name": "deezer"
+     },
+     {
+      "url": "https://tidal.com/artist/27441",
+      "name": "tidal"
+     },
+     {
+      "url": "https://web.archive.org/web/19961105112827/http://www.godiscs.co.uk/porthead.html",
+      "name": "archive"
+     },
+     {
+      "url": "https://web.archive.org/web/19970110171922/http://www.cybercity.dk/users/ccc9697/idx.html",
+      "name": "archive"
+     },
+     {
+      "url": "https://commons.wikimedia.org/wiki/File:Portishead13b.jpg",
+      "name": "wikimedia"
+     },
+     {
+      "url": "https://www.qobuz.com/us-en/interpreter/portishead/41259",
+      "name": "qobuz"
+     },
+     {
+      "url": "https://www.qobuz.com/us-en/interpreter/portishead/41259",
+      "name": "qobuz"
+     }
+    ],
+    "nextAlbum": null,
+    "lastAlbum": null,
+    "images": [],
+    "path": "{ROOT}/Portishead",
+    "qualityProfileId": 2,
+    "metadataProfileId": 1,
+    "monitored": true,
+    "monitorNewItems": "all",
+    "genres": [
+     "Trip Hop",
+     "Electronic",
+     "Downtempo",
+     "Experimental Rock",
+     "Folktronica"
+    ],
+    "cleanName": "portishead",
+    "sortName": "portishead",
+    "tags": [],
+    "added": "2026-11-27T19:59:59Z",
+    "ratings": {
+     "votes": 22,
+     "value": 9.1
+    },
+    "id": 1
+   },
+   "images": [
+    {
+     "coverType": "cover",
+     "url": "/MediaCover/Albums/3/cover.jpg?lastWrite=639314064006902313",
+     "remoteUrl": "https://images.lidarr.audio/cache/https://coverartarchive.org/release/f5bfccaf-1816-427a-b03d-b41c8ac155c5/8201679314-1200.jpg",
+     "extension": ".jpg"
+    },
+    {
+     "coverType": "disc",
+     "url": "/MediaCover/Albums/3/disc.jpg",
+     "remoteUrl": "https://images.lidarr.audio/cache/https://coverartarchive.org/release/daa9710c-2e71-497f-8a02-10d9b611c370/33072863567-1200.jpg",
+     "extension": ".jpg"
+    }
+   ],
+   "links": [
+    {
+     "url": "https://www.discogs.com/master/5496",
+     "name": "discogs"
+    },
+    {
+     "url": "https://www.bbc.co.uk/music/reviews/c8p2",
+     "name": "bbc"
+    },
+    {
+     "url": "https://www.allmusic.com/album/mw0000784007",
+     "name": "allmusic"
+    },
+    {
+     "url": "https://rateyourmusic.com/release/album/portishead/third/",
+     "name": "rateyourmusic"
+    },
+    {
+     "url": "https://www.wikidata.org/wiki/Q571394",
+     "name": "wikidata"
+    },
+    {
+     "url": "https://www.soundonsound.com/people/adrian-utley-recording-third",
+     "name": "soundonsound"
+    }
+   ],
+   "statistics": {
+    "trackFileCount": 0,
+    "trackCount": 23,
+    "totalTrackCount": 23,
+    "sizeOnDisk": 0,
+    "percentOfTracks": 0
+   },
+   "id": 3
+  }
+ ],
+ "/trackfile?artistId=1": [
+  {
+   "artistId": 1,
+   "albumId": 2,
+   "path": "{ROOT}/Portishead/Dummy (1994)/01 - Mysterons.flac",
+   "size": 52976,
+   "dateAdded": "2026-11-27T20:02:32Z",
+   "quality": {
+    "quality": {
+     "id": 6,
+     "name": "FLAC"
+    },
+    "revision": {
+     "version": 1,
+     "real": 0,
+     "isRepack": false
+    }
+   },
+   "qualityWeight": 23,
+   "customFormats": [],
+   "customFormatScore": 0,
+   "indexerFlags": 0,
+   "mediaInfo": {
+    "audioChannels": 2,
+    "audioBitRate": "1 kbps",
+    "audioCodec": "FLAC",
+    "audioBits": "16bit",
+    "audioSampleRate": "44.1kHz"
+   },
+   "qualityCutoffNotMet": false,
+   "id": 23
+  },
+  {
+   "artistId": 1,
+   "albumId": 2,
+   "path": "{ROOT}/Portishead/Dummy (1994)/02 - Sour Times.flac",
+   "size": 45008,
+   "dateAdded": "2026-11-27T20:02:32Z",
+   "quality": {
+    "quality": {
+     "id": 6,
+     "name": "FLAC"
+    },
+    "revision": {
+     "version": 1,
+     "real": 0,
+     "isRepack": false
+    }
+   },
+   "qualityWeight": 23,
+   "customFormats": [],
+   "customFormatScore": 0,
+   "indexerFlags": 0,
+   "mediaInfo": {
+    "audioChannels": 2,
+    "audioBitRate": "1 kbps",
+    "audioCodec": "FLAC",
+    "audioBits": "16bit",
+    "audioSampleRate": "44.1kHz"
+   },
+   "qualityCutoffNotMet": false,
+   "id": 24
+  },
+  {
+   "artistId": 1,
+   "albumId": 2,
+   "path": "{ROOT}/Portishead/Dummy (1994)/03 - Strangers.flac",
+   "size": 42560,
+   "dateAdded": "2026-11-27T20:02:32Z",
+   "quality": {
+    "quality": {
+     "id": 6,
+     "name": "FLAC"
+    },
+    "revision": {
+     "version": 1,
+     "real": 0,
+     "isRepack": false
+    }
+   },
+   "qualityWeight": 23,
+   "customFormats": [],
+   "customFormatScore": 0,
+   "indexerFlags": 0,
+   "mediaInfo": {
+    "audioChannels": 2,
+    "audioBitRate": "1 kbps",
+    "audioCodec": "FLAC",
+    "audioBits": "16bit",
+    "audioSampleRate": "44.1kHz"
+   },
+   "qualityCutoffNotMet": false,
+   "id": 25
+  },
+  {
+   "artistId": 1,
+   "albumId": 2,
+   "path": "{ROOT}/Portishead/Dummy (1994)/04 - It Could Be Sweet.flac",
+   "size": 45936,
+   "dateAdded": "2026-11-27T20:02:32Z",
+   "quality": {
+    "quality": {
+     "id": 6,
+     "name": "FLAC"
+    },
+    "revision": {
+     "version": 1,
+     "real": 0,
+     "isRepack": false
+    }
+   },
+   "qualityWeight": 23,
+   "customFormats": [],
+   "customFormatScore": 0,
+   "indexerFlags": 0,
+   "mediaInfo": {
+    "audioChannels": 2,
+    "audioBitRate": "1 kbps",
+    "audioCodec": "FLAC",
+    "audioBits": "16bit",
+    "audioSampleRate": "44.1kHz"
+   },
+   "qualityCutoffNotMet": false,
+   "id": 26
+  },
+  {
+   "artistId": 1,
+   "albumId": 2,
+   "path": "{ROOT}/Portishead/Dummy (1994)/05 - Wandering Star.flac",
+   "size": 51136,
+   "dateAdded": "2026-11-27T20:02:32Z",
+   "quality": {
+    "quality": {
+     "id": 6,
+     "name": "FLAC"
+    },
+    "revision": {
+     "version": 1,
+     "real": 0,
+     "isRepack": false
+    }
+   },
+   "qualityWeight": 23,
+   "customFormats": [],
+   "customFormatScore": 0,
+   "indexerFlags": 0,
+   "mediaInfo": {
+    "audioChannels": 2,
+    "audioBitRate": "1 kbps",
+    "audioCodec": "FLAC",
+    "audioBits": "16bit",
+    "audioSampleRate": "44.1kHz"
+   },
+   "qualityCutoffNotMet": false,
+   "id": 27
+  },
+  {
+   "artistId": 1,
+   "albumId": 2,
+   "path": "{ROOT}/Portishead/Dummy (1994)/06 - It’s a Fire.flac",
+   "size": 41184,
+   "dateAdded": "2026-11-27T20:02:32Z",
+   "quality": {
+    "quality": {
+     "id": 6,
+     "name": "FLAC"
+    },
+    "revision": {
+     "version": 1,
+     "real": 0,
+     "isRepack": false
+    }
+   },
+   "qualityWeight": 23,
+   "customFormats": [],
+   "customFormatScore": 0,
+   "indexerFlags": 0,
+   "mediaInfo": {
+    "audioChannels": 2,
+    "audioBitRate": "1 kbps",
+    "audioCodec": "FLAC",
+    "audioBits": "16bit",
+    "audioSampleRate": "44.1kHz"
+   },
+   "qualityCutoffNotMet": false,
+   "id": 28
+  },
+  {
+   "artistId": 1,
+   "albumId": 2,
+   "path": "{ROOT}/Portishead/Dummy (1994)/07 - Numb.flac",
+   "size": 42560,
+   "dateAdded": "2026-11-27T20:02:32Z",
+   "quality": {
+    "quality": {
+     "id": 6,
+     "name": "FLAC"
+    },
+    "revision": {
+     "version": 1,
+     "real": 0,
+     "isRepack": false
+    }
+   },
+   "qualityWeight": 23,
+   "customFormats": [],
+   "customFormatScore": 0,
+   "indexerFlags": 0,
+   "mediaInfo": {
+    "audioChannels": 2,
+    "audioBitRate": "1 kbps",
+    "audioCodec": "FLAC",
+    "audioBits": "16bit",
+    "audioSampleRate": "44.1kHz"
+   },
+   "qualityCutoffNotMet": false,
+   "id": 29
+  },
+  {
+   "artistId": 1,
+   "albumId": 2,
+   "path": "{ROOT}/Portishead/Dummy (1994)/08 - Roads.flac",
+   "size": 52816,
+   "dateAdded": "2026-11-27T20:02:32Z",
+   "quality": {
+    "quality": {
+     "id": 6,
+     "name": "FLAC"
+    },
+    "revision": {
+     "version": 1,
+     "real": 0,
+     "isRepack": false
+    }
+   },
+   "qualityWeight": 23,
+   "customFormats": [],
+   "customFormatScore": 0,
+   "indexerFlags": 0,
+   "mediaInfo": {
+    "audioChannels": 2,
+    "audioBitRate": "1 kbps",
+    "audioCodec": "FLAC",
+    "audioBits": "16bit",
+    "audioSampleRate": "44.1kHz"
+   },
+   "qualityCutoffNotMet": false,
+   "id": 30
+  },
+  {
+   "artistId": 1,
+   "albumId": 2,
+   "path": "{ROOT}/Portishead/Dummy (1994)/09 - Pedestal.flac",
+   "size": 39967,
+   "dateAdded": "2026-11-27T20:02:32Z",
+   "quality": {
+    "quality": {
+     "id": 6,
+     "name": "FLAC"
+    },
+    "revision": {
+     "version": 1,
+     "real": 0,
+     "isRepack": false
+    }
+   },
+   "qualityWeight": 23,
+   "customFormats": [],
+   "customFormatScore": 0,
+   "indexerFlags": 0,
+   "mediaInfo": {
+    "audioChannels": 2,
+    "audioBitRate": "1 kbps",
+    "audioCodec": "FLAC",
+    "audioBits": "16bit",
+    "audioSampleRate": "44.1kHz"
+   },
+   "qualityCutoffNotMet": false,
+   "id": 31
+  },
+  {
+   "artistId": 1,
+   "albumId": 2,
+   "path": "{ROOT}/Portishead/Dummy (1994)/10 - Biscuit.flac",
+   "size": 52672,
+   "dateAdded": "2026-11-27T20:02:32Z",
+   "quality": {
+    "quality": {
+     "id": 6,
+     "name": "FLAC"
+    },
+    "revision": {
+     "version": 1,
+     "real": 0,
+     "isRepack": false
+    }
+   },
+   "qualityWeight": 23,
+   "customFormats": [],
+   "customFormatScore": 0,
+   "indexerFlags": 0,
+   "mediaInfo": {
+    "audioChannels": 2,
+    "audioBitRate": "1 kbps",
+    "audioCodec": "FLAC",
+    "audioBits": "16bit",
+    "audioSampleRate": "44.1kHz"
+   },
+   "qualityCutoffNotMet": false,
+   "id": 32
+  },
+  {
+   "artistId": 1,
+   "albumId": 2,
+   "path": "{ROOT}/Portishead/Dummy (1994)/11 - Glory Box.flac",
+   "size": 52976,
+   "dateAdded": "2026-11-27T20:02:32Z",
+   "quality": {
+    "quality": {
+     "id": 6,
+     "name": "FLAC"
+    },
+    "revision": {
+     "version": 1,
+     "real": 0,
+     "isRepack": false
+    }
+   },
+   "qualityWeight": 23,
+   "customFormats": [],
+   "customFormatScore": 0,
+   "indexerFlags": 0,
+   "mediaInfo": {
+    "audioChannels": 2,
+    "audioBitRate": "1 kbps",
+    "audioCodec": "FLAC",
+    "audioBits": "16bit",
+    "audioSampleRate": "44.1kHz"
+   },
+   "qualityCutoffNotMet": false,
+   "id": 33
+  }
+ ],
+ "/rootfolder": [
+  {
+   "name": "Music",
+   "path": "{ROOT}",
+   "defaultMetadataProfileId": 1,
+   "defaultQualityProfileId": 2,
+   "defaultMonitorOption": "all",
+   "defaultNewItemMonitorOption": "all",
+   "defaultTags": [],
+   "accessible": true,
+   "freeSpace": 3752783872,
+   "totalSpace": 8385261568,
+   "id": 1
+  }
+ ],
+ "/qualityprofile": [
+  {
+   "name": "Any",
+   "upgradeAllowed": false,
+   "cutoff": 0,
+   "items": [
+    {
+     "quality": {
+      "id": 0,
+      "name": "Unknown"
+     },
+     "items": [],
+     "allowed": true
+    },
+    {
+     "name": "Trash Quality Lossy",
+     "items": [
+      {
+       "quality": {
+        "id": 32,
+        "name": "MP3-8"
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 31,
+        "name": "MP3-16"
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 30,
+        "name": "MP3-24"
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 29,
+        "name": "MP3-32"
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 28,
+        "name": "MP3-40"
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 27,
+        "name": "MP3-48"
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 26,
+        "name": "MP3-56"
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 25,
+        "name": "MP3-64"
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 24,
+        "name": "MP3-80"
+       },
+       "items": [],
+       "allowed": true
+      }
+     ],
+     "allowed": true,
+     "id": 1000
+    },
+    {
+     "name": "Poor Quality Lossy",
+     "items": [
+      {
+       "quality": {
+        "id": 23,
+        "name": "MP3-96"
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 33,
+        "name": "MP3-112"
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 22,
+        "name": "MP3-128"
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 19,
+        "name": "OGG Vorbis Q5"
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 5,
+        "name": "MP3-160"
+       },
+       "items": [],
+       "allowed": true
+      }
+     ],
+     "allowed": true,
+     "id": 1001
+    },
+    {
+     "name": "Low Quality Lossy",
+     "items": [
+      {
+       "quality": {
+        "id": 1,
+        "name": "MP3-192"
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 18,
+        "name": "OGG Vorbis Q6"
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 9,
+        "name": "AAC-192"
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 20,
+        "name": "WMA"
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 34,
+        "name": "MP3-224"
+       },
+       "items": [],
+       "allowed": true
+      }
+     ],
+     "allowed": true,
+     "id": 1002
+    },
+    {
+     "name": "Mid Quality Lossy",
+     "items": [
+      {
+       "quality": {
+        "id": 17,
+        "name": "OGG Vorbis Q7"
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 8,
+        "name": "MP3-VBR-V2"
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 3,
+        "name": "MP3-256"
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 16,
+        "name": "OGG Vorbis Q8"
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 10,
+        "name": "AAC-256"
+       },
+       "items": [],
+       "allowed": true
+      }
+     ],
+     "allowed": true,
+     "id": 1003
+    },
+    {
+     "name": "High Quality Lossy",
+     "items": [
+      {
+       "quality": {
+        "id": 2,
+        "name": "MP3-VBR-V0"
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 12,
+        "name": "AAC-VBR"
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 4,
+        "name": "MP3-320"
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 15,
+        "name": "OGG Vorbis Q9"
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 11,
+        "name": "AAC-320"
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 14,
+        "name": "OGG Vorbis Q10"
+       },
+       "items": [],
+       "allowed": true
+      }
+     ],
+     "allowed": true,
+     "id": 1004
+    },
+    {
+     "name": "Lossless",
+     "items": [
+      {
+       "quality": {
+        "id": 6,
+        "name": "FLAC"
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 7,
+        "name": "ALAC"
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 35,
+        "name": "APE"
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 36,
+        "name": "WavPack"
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 21,
+        "name": "FLAC 24bit"
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 37,
+        "name": "ALAC 24bit"
+       },
+       "items": [],
+       "allowed": true
+      }
+     ],
+     "allowed": true,
+     "id": 1005
+    },
+    {
+     "quality": {
+      "id": 13,
+      "name": "WAV"
+     },
+     "items": [],
+     "allowed": false
+    }
+   ],
+   "minFormatScore": 0,
+   "cutoffFormatScore": 0,
+   "formatItems": [],
+   "id": 1
+  },
+  {
+   "name": "Lossless",
+   "upgradeAllowed": false,
+   "cutoff": 1005,
+   "items": [
+    {
+     "quality": {
+      "id": 0,
+      "name": "Unknown"
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "name": "Trash Quality Lossy",
+     "items": [
+      {
+       "quality": {
+        "id": 32,
+        "name": "MP3-8"
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 31,
+        "name": "MP3-16"
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 30,
+        "name": "MP3-24"
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 29,
+        "name": "MP3-32"
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 28,
+        "name": "MP3-40"
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 27,
+        "name": "MP3-48"
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 26,
+        "name": "MP3-56"
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 25,
+        "name": "MP3-64"
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 24,
+        "name": "MP3-80"
+       },
+       "items": [],
+       "allowed": false
+      }
+     ],
+     "allowed": false,
+     "id": 1000
+    },
+    {
+     "name": "Poor Quality Lossy",
+     "items": [
+      {
+       "quality": {
+        "id": 23,
+        "name": "MP3-96"
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 33,
+        "name": "MP3-112"
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 22,
+        "name": "MP3-128"
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 19,
+        "name": "OGG Vorbis Q5"
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 5,
+        "name": "MP3-160"
+       },
+       "items": [],
+       "allowed": false
+      }
+     ],
+     "allowed": false,
+     "id": 1001
+    },
+    {
+     "name": "Low Quality Lossy",
+     "items": [
+      {
+       "quality": {
+        "id": 1,
+        "name": "MP3-192"
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 18,
+        "name": "OGG Vorbis Q6"
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 9,
+        "name": "AAC-192"
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 20,
+        "name": "WMA"
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 34,
+        "name": "MP3-224"
+       },
+       "items": [],
+       "allowed": false
+      }
+     ],
+     "allowed": false,
+     "id": 1002
+    },
+    {
+     "name": "Mid Quality Lossy",
+     "items": [
+      {
+       "quality": {
+        "id": 17,
+        "name": "OGG Vorbis Q7"
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 8,
+        "name": "MP3-VBR-V2"
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 3,
+        "name": "MP3-256"
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 16,
+        "name": "OGG Vorbis Q8"
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 10,
+        "name": "AAC-256"
+       },
+       "items": [],
+       "allowed": false
+      }
+     ],
+     "allowed": false,
+     "id": 1003
+    },
+    {
+     "name": "High Quality Lossy",
+     "items": [
+      {
+       "quality": {
+        "id": 2,
+        "name": "MP3-VBR-V0"
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 12,
+        "name": "AAC-VBR"
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 4,
+        "name": "MP3-320"
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 15,
+        "name": "OGG Vorbis Q9"
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 11,
+        "name": "AAC-320"
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 14,
+        "name": "OGG Vorbis Q10"
+       },
+       "items": [],
+       "allowed": false
+      }
+     ],
+     "allowed": false,
+     "id": 1004
+    },
+    {
+     "name": "Lossless",
+     "items": [
+      {
+       "quality": {
+        "id": 6,
+        "name": "FLAC"
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 7,
+        "name": "ALAC"
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 35,
+        "name": "APE"
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 36,
+        "name": "WavPack"
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 21,
+        "name": "FLAC 24bit"
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 37,
+        "name": "ALAC 24bit"
+       },
+       "items": [],
+       "allowed": true
+      }
+     ],
+     "allowed": true,
+     "id": 1005
+    },
+    {
+     "quality": {
+      "id": 13,
+      "name": "WAV"
+     },
+     "items": [],
+     "allowed": false
+    }
+   ],
+   "minFormatScore": 0,
+   "cutoffFormatScore": 0,
+   "formatItems": [],
+   "id": 2
+  },
+  {
+   "name": "Standard",
+   "upgradeAllowed": false,
+   "cutoff": 1002,
+   "items": [
+    {
+     "quality": {
+      "id": 0,
+      "name": "Unknown"
+     },
+     "items": [],
+     "allowed": false
+    },
+    {
+     "name": "Trash Quality Lossy",
+     "items": [
+      {
+       "quality": {
+        "id": 32,
+        "name": "MP3-8"
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 31,
+        "name": "MP3-16"
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 30,
+        "name": "MP3-24"
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 29,
+        "name": "MP3-32"
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 28,
+        "name": "MP3-40"
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 27,
+        "name": "MP3-48"
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 26,
+        "name": "MP3-56"
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 25,
+        "name": "MP3-64"
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 24,
+        "name": "MP3-80"
+       },
+       "items": [],
+       "allowed": false
+      }
+     ],
+     "allowed": false,
+     "id": 1000
+    },
+    {
+     "name": "Poor Quality Lossy",
+     "items": [
+      {
+       "quality": {
+        "id": 23,
+        "name": "MP3-96"
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 33,
+        "name": "MP3-112"
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 22,
+        "name": "MP3-128"
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 19,
+        "name": "OGG Vorbis Q5"
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 5,
+        "name": "MP3-160"
+       },
+       "items": [],
+       "allowed": false
+      }
+     ],
+     "allowed": false,
+     "id": 1001
+    },
+    {
+     "name": "Low Quality Lossy",
+     "items": [
+      {
+       "quality": {
+        "id": 1,
+        "name": "MP3-192"
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 18,
+        "name": "OGG Vorbis Q6"
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 9,
+        "name": "AAC-192"
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 20,
+        "name": "WMA"
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 34,
+        "name": "MP3-224"
+       },
+       "items": [],
+       "allowed": true
+      }
+     ],
+     "allowed": true,
+     "id": 1002
+    },
+    {
+     "name": "Mid Quality Lossy",
+     "items": [
+      {
+       "quality": {
+        "id": 17,
+        "name": "OGG Vorbis Q7"
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 8,
+        "name": "MP3-VBR-V2"
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 3,
+        "name": "MP3-256"
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 16,
+        "name": "OGG Vorbis Q8"
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 10,
+        "name": "AAC-256"
+       },
+       "items": [],
+       "allowed": true
+      }
+     ],
+     "allowed": true,
+     "id": 1003
+    },
+    {
+     "name": "High Quality Lossy",
+     "items": [
+      {
+       "quality": {
+        "id": 2,
+        "name": "MP3-VBR-V0"
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 12,
+        "name": "AAC-VBR"
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 4,
+        "name": "MP3-320"
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 15,
+        "name": "OGG Vorbis Q9"
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 11,
+        "name": "AAC-320"
+       },
+       "items": [],
+       "allowed": true
+      },
+      {
+       "quality": {
+        "id": 14,
+        "name": "OGG Vorbis Q10"
+       },
+       "items": [],
+       "allowed": true
+      }
+     ],
+     "allowed": true,
+     "id": 1004
+    },
+    {
+     "name": "Lossless",
+     "items": [
+      {
+       "quality": {
+        "id": 6,
+        "name": "FLAC"
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 7,
+        "name": "ALAC"
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 35,
+        "name": "APE"
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 36,
+        "name": "WavPack"
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 21,
+        "name": "FLAC 24bit"
+       },
+       "items": [],
+       "allowed": false
+      },
+      {
+       "quality": {
+        "id": 37,
+        "name": "ALAC 24bit"
+       },
+       "items": [],
+       "allowed": false
+      }
+     ],
+     "allowed": false,
+     "id": 1005
+    },
+    {
+     "quality": {
+      "id": 13,
+      "name": "WAV"
+     },
+     "items": [],
+     "allowed": false
+    }
+   ],
+   "minFormatScore": 0,
+   "cutoffFormatScore": 0,
+   "formatItems": [],
+   "id": 3
+  }
+ ],
+ "/indexer": [],
+ "/downloadclient": []
+}

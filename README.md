@@ -17,7 +17,7 @@ What it does:
   set. *Redownload* swaps a bad copy for another release, *Delete* removes a file, and the
   daily library check reports files that went missing from disk.
 - **Your existing library:** *Import what's already here* adopts the media you have without
-  moving it, and *Move from Radarr / Sonarr* brings over your titles and their files.
+  moving it, and *Move from Radarr / Sonarr / Lidarr* brings over your titles and their files.
 - **Around it:** the Queue and Activity show what's happening, notifications go to email,
   Discord or a webhook, and Plex, Jellyfin or Emby rescan just the folder that changed.
 - **Plugins** add subtitles, comics, or a kind of media or service of your own; see
