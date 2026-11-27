@@ -1,6 +1,6 @@
 [project]
 name = "fetchbox-subtitles"
-version = "0.1.0"
+version = "0.1.1"
 description = "Subtitles from OpenSubtitles for movies and episodes, filed beside them."
 readme = "README.md"
 requires-python = ">=3.12"
