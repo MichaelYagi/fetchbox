@@ -256,7 +256,10 @@ def create_app(
         existing.music = ExistingMusic(db, music=music, profiles=profiles)
         existing.register_jobs()
         library_check = LibraryCheck(db, bus, jobs, storage)
-        library_check.register_jobs()
+        library_check.register_jobs(state.scheduler)
+        state.health.register(
+            "library_files", library_check.health, fix_url="/settings/library#check"
+        )
         app.state.library_check = library_check
         DeferredTags(db, bus, jobs).register_jobs()
         migrator = Migrator(
