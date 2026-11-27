@@ -64,6 +64,13 @@
 	$effect(() => {
 		pluginActions().then((a) => (itemActions = a.filter((x) => x.on === 'item')));
 	});
+	// only the ones for this kind of title (Subtitles: movies and shows, not comics)
+	const itemActionsHere = $derived(itemActions.filter((a) => !a.kinds || (!!title && a.kinds.includes(title.kind))));
+	// the last column grows to hold them, rather than pushing the table past the screen
+	// (each button: its label at the small size, plus its padding and the gap)
+	const actWidth = $derived(
+		itemActionsHere.length ? `${5.5 + itemActionsHere.reduce((w, a) => w + a.label.length * 0.5 + 1.75, 0)}rem` : null
+	);
 	async function runItem(a: Act, item: string) {
 		try {
 			await post(`/plugins/${a.plugin}/actions/${a.addon}/${a.method}`, { item });
@@ -137,11 +144,22 @@
 		const qualities = pq.available.filter((x) => set.includes(x));
 		pq = { ...pq, qualities, cutoff: qualities.includes(pq.cutoff) ? pq.cutoff : (qualities[0] ?? pq.cutoff) };
 	};
-	const searchPlugin = () => act('search', async () => {
-		const r = await post<S['PluginSearchOut']>(`/plugins/titles/${id}/search`);
-		message = r.grabbed ? `Grabbed ${r.grabbed} release${r.grabbed === 1 ? '' : 's'}` : r.results ? 'Nothing fitting found' : 'Nothing found';
-		pluginItems = await get<S['PluginItemOut'][]>(`/plugins/titles/${id}/items`);
-	});
+	// Search all missing, or the items given: what happened, said beside the button
+	let searchNote = $state('');
+	const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
+	const searchPlugin = (itemIds: string[] | null = null) =>
+		act('search', async () => {
+			searchNote = '';
+			const r = await post<S['PluginSearchOut']>(`/plugins/titles/${id}/search`, itemIds ? { item_ids: itemIds } : {});
+			searchNote = !r.searched
+				? `Nothing to search: no released ${itemWord} is wanted and missing`
+				: r.grabbed
+					? `Searched ${plural(r.searched, itemWord)}: grabbed ${plural(r.grabbed, 'release')} (see Queue)`
+					: r.results
+						? `Searched ${plural(r.searched, itemWord)}: ${plural(r.results, 'release')} found, none fitting (the quality or the ${itemWord}s)`
+						: `Searched ${plural(r.searched, itemWord)}: nothing found on your indexers`;
+			pluginItems = await get<S['PluginItemOut'][]>(`/plugins/titles/${id}/items`);
+		});
 	const monitorItem = (i: S['PluginItemOut'], on: boolean) =>
 		act('monitor', async () => {
 			await patch(`/wanted/${i.id}`, { monitored: on });
@@ -558,10 +576,11 @@
 						</div>
 					{/if}
 					<div class="row">
-						<button class="primary" onclick={searchPlugin} disabled={!!busy} title="Every wanted, released item still to get">Search all missing</button>
+						<button class="primary" onclick={() => searchPlugin()} disabled={!!busy} title="Every wanted, released item still to get">{busy === 'search' ? 'Searching…' : 'Search all missing'}</button>
 		<button onclick={refreshPlugin} disabled={!!busy} title="Ask the plugin again for its items">Refresh</button>
 						<button class="danger" onclick={remove} disabled={!!busy}>Remove</button>
 					</div>
+					{#if busy === 'search'}<p class="muted small">Searching your indexers for each {itemWord}: this can take a minute.</p>{:else if searchNote}<p class="small">{searchNote}</p>{/if}
 				{/if}
 			</div>
 		</div>
@@ -631,7 +650,7 @@
 			<div class="table-wrap">
 				<table class="episodes">
 					<colgroup>
-						<col class="c-num" /><col /><col class="c-date" /><col class="c-state" /><col class="c-mon" /><col class="c-act" />
+						<col class="c-num" /><col /><col class="c-date" /><col class="c-state" /><col class="c-mon" /><col class="c-act" style:width={actWidth} />
 					</colgroup>
 					<tbody>
 						{#each pluginItems as i (i.id)}
@@ -641,7 +660,10 @@
 								<td class="muted small date">{i.released ?? ''}</td>
 								<td><Badge state={i.state} />{#if i.quality}<span class="muted small"> {i.quality}</span>{/if}</td>
 								<td><input type="checkbox" title="Wanted" aria-label="Wanted" checked={i.monitored} onchange={(ev) => monitorItem(i, ev.currentTarget.checked)} disabled={!!busy} /></td>
-								<td class="act">{#each itemActions as a (`${a.plugin}/${a.addon}/${a.method}`)}<button class="small" onclick={() => runItem(a, i.id)}>{a.label}</button>{/each}</td>
+								<td class="act">
+									<button class="small" onclick={() => searchPlugin([i.id])} disabled={!!busy} title="Search for this {itemWord} and grab the best release">Search</button>
+									{#each itemActionsHere as a (`${a.plugin}/${a.addon}/${a.method}`)}<button class="small" onclick={() => runItem(a, i.id)}>{a.label}</button>{/each}
+								</td>
 							</tr>
 						{/each}
 					</tbody>
@@ -657,7 +679,7 @@
 					<div class="table-wrap">
 						<table class="episodes">
 							<colgroup>
-								<col class="c-num" /><col /><col class="c-date" /><col class="c-state" /><col class="c-mon" /><col class="c-act" />
+								<col class="c-num" /><col /><col class="c-date" /><col class="c-state" /><col class="c-mon" /><col class="c-act" style:width={actWidth} />
 							</colgroup>
 							<thead>
 								<tr class="season-head">
@@ -696,7 +718,7 @@
 											</td>
 											<td class="act">
 												<button class="small" onclick={() => chooseEpisode(x.number, e)} disabled={!!busy || !aired(e)} title="Search and choose a release">Search</button>
-												{#each itemActions as a (`${a.plugin}/${a.addon}/${a.method}`)}<button class="small" onclick={() => runItem(a, e.wanted.id)}>{a.label}</button>{/each}
+												{#each itemActionsHere as a (`${a.plugin}/${a.addon}/${a.method}`)}<button class="small" onclick={() => runItem(a, e.wanted.id)}>{a.label}</button>{/each}
 											</td>
 										</tr>
 									{/each}
@@ -717,7 +739,7 @@
 			<ReleasesTable result={releases} busy={!!busy} onGrab={grab} />
 		{/if}
 
-		<PluginBits titleId={title.id} itemId={title.kind === 'movie' ? (title.wanted[0]?.id ?? null) : null} />
+		<PluginBits titleId={title.id} kind={title.kind} itemId={title.kind === 'movie' ? (title.wanted[0]?.id ?? null) : null} />
 
 		<h2>Files</h2>
 		{#if files.length === 0}
@@ -962,6 +984,10 @@
 	}
 	.episodes td.act {
 		text-align: right;
+		white-space: nowrap; /* its buttons side by side, never stacked */
+	}
+	.episodes td.act button + button {
+		margin-left: 0.35rem;
 	}
 	/* No line under the last row: a collapsed season's own line, or its last episode */
 	.episodes thead:last-child tr td,

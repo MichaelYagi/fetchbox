@@ -18,7 +18,7 @@
 
 	// Plugins on a title page: their panels (drawn by Fetchbox: a status line, a table,
 	// buttons) and their actions. Nothing shows when no plugin has anything for it.
-	let { titleId, itemId = null }: { titleId: string; itemId?: string | null } = $props();
+	let { titleId, kind, itemId = null }: { titleId: string; kind: string; itemId?: string | null } = $props();
 
 	type Panel = S['PanelOut'];
 	let actions = $state<Act[]>([]);
@@ -28,7 +28,8 @@
 
 	$effect(() => {
 		const t = titleId;
-		pluginActions().then((a) => (actions = a.filter((x) => x.on === 'title' || (x.on === 'item' && itemId))));
+		const k = kind;
+		pluginActions().then((a) => (actions = a.filter((x) => (x.on === 'title' || (x.on === 'item' && itemId)) && (!x.kinds || x.kinds.includes(k)))));
 		get<Panel[]>('/plugins/panels', { on: 'title', id: t })
 			.then((p) => (panels = p))
 			.catch(() => (panels = []));

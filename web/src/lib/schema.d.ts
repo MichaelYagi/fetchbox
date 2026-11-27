@@ -2081,7 +2081,8 @@ export interface paths {
         put?: never;
         /**
          * Search Title
-         * @description Search now for a plugin kind's title's missing items, and grab the best releases.
+         * @description Search now for a plugin kind's title's missing items (or the ones given), and grab
+         *     the best releases.
          */
         post: operations["search_title_api_v1_plugins_titles__title_id__search_post"];
         delete?: never;
@@ -2944,6 +2945,11 @@ export interface components {
         ActionOut: {
             /** Addon */
             addon: string;
+            /**
+             * Kinds
+             * @description The media kinds its titles must be (the add-on's applies_to); null: any
+             */
+            kinds?: string[] | null;
             /** Label */
             label: string;
             /** Method */
@@ -5320,6 +5326,14 @@ export interface components {
              * @description On (approves it) or off
              */
             enabled: boolean;
+        };
+        /** PluginSearchIn */
+        PluginSearchIn: {
+            /**
+             * Item Ids
+             * @description Wanted items to search for (missing or not); none: every missing one
+             */
+            item_ids?: string[] | null;
         };
         /** PluginSearchOut */
         PluginSearchOut: {
@@ -12603,7 +12617,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PluginSearchIn"] | null;
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {

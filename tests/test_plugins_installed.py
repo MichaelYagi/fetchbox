@@ -139,7 +139,7 @@ async def test_install_configure_and_run(settings: Settings) -> None:
             {"id": "notify", "words": "Sends messages through your notification targets"}
         ]
         assert p["actions"] == [
-            {"addon": "greeter", "method": "greet", "label": "Greet", "on": "title"}
+            {"addon": "greeter", "method": "greet", "label": "Greet", "on": "title", "kinds": None}
         ]
         [s] = p["settings"]
         assert s["schema"]["properties"]["token"]["writeOnly"] is True and s["has_test"]
@@ -280,6 +280,9 @@ async def test_a_real_plugin_wheel(settings: Settings, tmp_path: Path) -> None:
         assert p["settings"][0]["missing"] == ["api_key"]
         r = await c.put("/plugins/subtitles/settings/subtitles", json={"values": {"api_key": "k"}})
         assert r.json()["running"] is True
+        # its buttons say which titles they're for: movies and shows (not comics)
+        acts = r.json()["actions"]
+        assert acts and {a["kinds"] == ["movie", "series"] for a in acts} == {True}
         await c.delete("/plugins/subtitles")
     for m in [m for m in sys.modules if m.startswith("fetchbox_subtitles")]:
         del sys.modules[m]

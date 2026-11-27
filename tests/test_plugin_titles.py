@@ -185,3 +185,13 @@ async def test_titles_are_read_again_daily(
         assert items[-1]["monitored"] is True  # wanted, as the title's monitor setting says
     finally:
         ISSUES.pop()
+
+
+async def test_searching_one_item(zines: Any, c: httpx.AsyncClient) -> None:
+    """The item's own Search: only that one is searched for (released or not)."""
+    tid = (await c.post("/plugins/kinds/zines/titles", json={"ref": "saga"})).json()["id"]
+    items = (await c.get(f"/plugins/titles/{tid}/items")).json()
+    r = await c.post(f"/plugins/titles/{tid}/search", json={"item_ids": [items[0]["id"]]})
+    assert r.status_code == 200 and r.json()["searched"] == 1
+    every = (await c.post(f"/plugins/titles/{tid}/search")).json()  # no body: all missing
+    assert every["searched"] == 2

@@ -25,6 +25,21 @@
       "title": "Addon",
       "type": "string"
      },
+     "kinds": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "The media kinds its titles must be (the add-on's applies_to); null: any",
+      "title": "Kinds"
+     },
      "label": {
       "title": "Label",
       "type": "string"
@@ -6303,6 +6318,27 @@
      "enabled"
     ],
     "title": "PluginPatch",
+    "type": "object"
+   },
+   "PluginSearchIn": {
+    "properties": {
+     "item_ids": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Wanted items to search for (missing or not); none: every missing one",
+      "title": "Item Ids"
+     }
+    },
+    "title": "PluginSearchIn",
     "type": "object"
    },
    "PluginSearchOut": {
@@ -19678,7 +19714,7 @@
   },
   "/api/v1/plugins/titles/{title_id}/search": {
    "post": {
-    "description": "Search now for a plugin kind's title's missing items, and grab the best releases.",
+    "description": "Search now for a plugin kind's title's missing items (or the ones given), and grab\nthe best releases.",
     "operationId": "search_title_api_v1_plugins_titles__title_id__search_post",
     "parameters": [
      {
@@ -19691,6 +19727,23 @@
       }
      }
     ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "anyOf": [
+         {
+          "$ref": "#/components/schemas/PluginSearchIn"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "title": "Body"
+       }
+      }
+     }
+    },
     "responses": {
      "200": {
       "content": {
