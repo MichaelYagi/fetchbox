@@ -14,7 +14,7 @@ from fetchbox.providers.download_clients.builtin import BuiltinClient
 from tests.conftest import Running
 from tests.pipeline import Fakes
 from tests.test_library_api import EXPECTED, _acquire, fast, made, seed  # noqa: F401
-from tests.torrents import Made
+from tests.torrents import Made, until
 
 SRT = b"1\n00:00:01,000 --> 00:00:02,000\nHello\n"
 
@@ -124,5 +124,14 @@ async def test_removing_a_sidecar_and_refusing_bad_ones(
     rows = history.get("items", history)
     kinds = [(h["type"], h["data"].get("plugin")) for h in rows if h["type"].startswith("sidecar")]
     assert ("sidecar_added", "kodi") in kinds and ("sidecar_removed", "kodi") in kinds
+
+    # and in Activity, automatic ones included (written in the background: wait for them)
+    async def logged() -> bool:
+        page = (await c.get("/activity", params={"filter[category]": "file"})).json()
+        said = [e["message"] for e in page["items"]]
+        name = sidecar_rel(EXPECTED, "nfo").rsplit("/", 1)[-1]
+        return f"kodi added {name}" in said and f"kodi removed {name}" in said
+
+    await until(logged, within=10)
     assert not await library.remove_sidecar(f["id"], "nfo")
     assert (settings.downloads_dir / "Movies" / EXPECTED).exists()  # the movie is untouched
