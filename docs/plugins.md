@@ -14,9 +14,9 @@ version's file names), with pytest for the test kit:
 
 ```sh
 python -m venv .venv && . .venv/bin/activate
-R=https://github.com/MichaelYagi/fetchbox/releases/download/v0.10.3
+R=https://github.com/MichaelYagi/fetchbox/releases/download/v0.10.4
 pip install "$R/fetchbox_plugin_api-1.0.0-py3-none-any.whl" \
-            "$R/fetchbox-0.10.3-py3-none-any.whl" "pytest>=8" "pytest-asyncio>=0.24"
+            "$R/fetchbox-0.10.4-py3-none-any.whl" "pytest>=8" "pytest-asyncio>=0.24"
 
 fetchbox plugin new hello             # fetchbox-hello/: an add-on that already works
 cd fetchbox-hello
