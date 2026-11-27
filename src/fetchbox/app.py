@@ -224,6 +224,7 @@ def create_app(
         )
         downloads.register_jobs()
         app.state.downloads = downloads
+        releases.protocols = downloads.protocols
         storage = StorageService(
             db,
             bus,

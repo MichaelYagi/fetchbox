@@ -1,0 +1,122 @@
+{
+ "history": {
+  "total_size": "303 K",
+  "month_size": "303 K",
+  "week_size": "303 K",
+  "day_size": "303 K",
+  "slots": [
+   {
+    "completed": 1795817695,
+    "name": "Gone.Movie.2024.720p.WEB-DL-GRP",
+    "nzb_name": "gone.nzb",
+    "category": "movies",
+    "pp": "D",
+    "script": "None",
+    "report": "",
+    "url": null,
+    "status": "Failed",
+    "nzo_id": "de6a7c31-f368-4890-8363-312400d18c5a",
+    "storage": "{ROOT}/incomplete/Gone.Movie.2024.720p.WEB-DL-GRP",
+    "path": "{ROOT}/incomplete/Gone.Movie.2024.720p.WEB-DL-GRP",
+    "script_line": "",
+    "download_time": 0,
+    "postproc_time": 0,
+    "stage_log": [
+     {
+      "name": "Source",
+      "actions": [
+       "gone.nzb"
+      ]
+     },
+     {
+      "name": "Download",
+      "actions": [
+       "1 articles were missing",
+       "Download failed - Not on your server(s) - https://sabnzbd.org/not-complete"
+      ]
+     }
+    ],
+    "downloaded": 0,
+    "completeness": null,
+    "fail_message": "Download failed - Not on your server(s) - https://sabnzbd.org/not-complete",
+    "url_info": "",
+    "bytes": 0,
+    "meta": null,
+    "series": null,
+    "md5sum": "b17bd256f8b4f109228c910036f0105e",
+    "password": null,
+    "duplicate_key": "gone movie",
+    "archive": false,
+    "time_added": 1795817695,
+    "size": "0 B",
+    "action_line": "",
+    "loaded": false,
+    "retry": true
+   },
+   {
+    "completed": 1795817612,
+    "name": "Some.Movie.2026.1080p.WEB-DL-GRP",
+    "nzb_name": "x.nzb",
+    "category": "movies",
+    "pp": "D",
+    "script": "None",
+    "report": "",
+    "url": null,
+    "status": "Completed",
+    "nzo_id": "0466e5bb-9923-428a-ac13-8fbc06e3c357",
+    "storage": "{ROOT}/complete/Some.Movie.2026.1080p.WEB-DL-GRP/Some.Movie.2026.1080p.WEB-DL-GRP.mkv",
+    "path": "{ROOT}/incomplete/Some.Movie.2026.1080p.WEB-DL-GRP",
+    "script_line": "",
+    "download_time": 1,
+    "postproc_time": 0,
+    "stage_log": [
+     {
+      "name": "Source",
+      "actions": [
+       "x.nzb"
+      ]
+     },
+     {
+      "name": "Download",
+      "actions": [
+       "Downloaded in 1 sec at an average of 264 KB/s<br/>Age: 9d"
+      ]
+     },
+     {
+      "name": "Servers",
+      "actions": [
+       "local=302 KB"
+      ]
+     },
+     {
+      "name": "Repair",
+      "actions": [
+       "Trying RAR renamer",
+       "[Some.Movie.2026.1080p.WEB-DL-GRP] No par2 sets"
+      ]
+     }
+    ],
+    "downloaded": 310000,
+    "completeness": null,
+    "fail_message": "",
+    "url_info": "",
+    "bytes": 310000,
+    "meta": null,
+    "series": null,
+    "md5sum": "b13afcfa8c79dd5266bac4831029e255",
+    "password": null,
+    "duplicate_key": "some movie",
+    "archive": false,
+    "time_added": 1795817567,
+    "size": "303 KB",
+    "action_line": "",
+    "loaded": false,
+    "retry": false
+   }
+  ],
+  "ppslots": 0,
+  "noofslots": 2,
+  "last_history_update": 10,
+  "version": "5.1.3"
+ }
+}

@@ -69,6 +69,8 @@ class ClientFile(BaseModel):
 
 class DownloadClientProvider(Provider):
     category: ClassVar[ProviderCategory] = "download_client"
+    # What it downloads: torrents, Usenet NZBs (SABnzbd, NZBGet), or direct files
+    protocol: ClassVar[Literal["torrent", "usenet", "direct"]] = "torrent"
 
     async def start(self) -> None:
         """Called once before use (the built-in engine opens its session here)."""

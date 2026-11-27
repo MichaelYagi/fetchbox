@@ -14,7 +14,7 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from datetime import datetime
 from email.utils import parsedate_to_datetime
-from typing import Any, ClassVar
+from typing import Any, ClassVar, Literal
 from urllib.parse import urljoin, urlsplit
 
 import httpx
@@ -31,11 +31,14 @@ from fetchbox.providers.indexers import (
 )
 
 TORZNAB_NS = "{http://torznab.com/schemas/2015/feed}"
+# Usenet indexers (and Prowlarr's Usenet feeds) tag the same attributes as newznab:attr
+NEWZNAB_NS = "{http://www.newznab.com/DTD/2010/feeds/attributes/}"
 # No wildcard, so an app's own JSON API isn't mistaken for a feed.
 ACCEPT = "application/rss+xml, application/xml, text/xml"
 TIMEOUT = httpx.Timeout(30.0, connect=10.0)
 MAX_BODY = 20 * 1024 * 1024
 MAX_TORRENT = 10 * 1024 * 1024
+MAX_NZB = 64 * 1024 * 1024  # a long season pack's NZB runs to tens of MB
 CAPS_TTL = 3600.0
 _HASH = re.compile(r"^[0-9a-fA-F]{40}$")
 _BTIH = re.compile(r"urn:btih:([0-9a-zA-Z]{32,40})", re.I)
@@ -147,12 +150,16 @@ def info_hash_from_magnet(magnet: str | None) -> str | None:
     return h.lower()
 
 
-def parse_item(item: ET.Element) -> ReleaseCandidate | None:
+def parse_item(
+    item: ET.Element, protocol: Literal["torrent", "usenet"] = "torrent"
+) -> ReleaseCandidate | None:
+    """One feed item. ``protocol`` is the feed's (a Newznab feed lists NZBs); an item whose
+    enclosure is an NZB is Usenet whatever the feed says."""
     title = (item.findtext("title") or "").strip()
     if not title:
         return None
     attrs: dict[str, list[str]] = {}
-    for a in item.iter(f"{TORZNAB_NS}attr"):
+    for a in [*item.iter(f"{TORZNAB_NS}attr"), *item.iter(f"{NEWZNAB_NS}attr")]:
         if (name := a.get("name")) is not None:
             attrs.setdefault(name.lower(), []).append(a.get("value", ""))
 
@@ -161,6 +168,8 @@ def parse_item(item: ET.Element) -> ReleaseCandidate | None:
         return vals[0] if vals else None
 
     enclosure = item.find("enclosure")
+    if enclosure is not None and "nzb" in (enclosure.get("type") or "").lower():
+        protocol = "usenet"
     link = (item.findtext("link") or "").strip() or None
     enc_url = enclosure.get("url") if enclosure is not None else None
     download = enc_url or link
@@ -197,12 +206,13 @@ def parse_item(item: ET.Element) -> ReleaseCandidate | None:
     if not cats:
         cats = [c for c in (_int(el.text) for el in item.iter("category")) if c is not None]
 
+    usenet = protocol == "usenet"
     return ReleaseCandidate(
         title=title,
         guid=(item.findtext("guid") or "").strip() or None,
-        info_hash=info_hash.lower() if info_hash else None,
+        info_hash=info_hash.lower() if info_hash and not usenet else None,
         download_url=download,
-        magnet_url=magnet,
+        magnet_url=None if usenet else magnet,
         info_url=(item.findtext("comments") or "").strip() or None,
         size=size if size and size > 0 else None,
         seeders=seeders,
@@ -210,6 +220,8 @@ def parse_item(item: ET.Element) -> ReleaseCandidate | None:
         published_at=_date(item.findtext("pubDate")),
         categories=tuple(dict.fromkeys(cats)),
         indexer_flags=frozenset(flags),
+        protocol=protocol,
+        grabs=_int(attr("grabs")),
     )
 
 
@@ -260,6 +272,7 @@ class _Response:
 class TorznabProvider(IndexerProvider):
     kind: ClassVar[str] = "torznab"
     Settings: ClassVar[type[BaseModel]] = TorznabSettings
+    protocol: ClassVar[Literal["torrent", "usenet"]] = "torrent"  # what its feed lists
     capabilities: ClassVar[frozenset[str]] = frozenset(
         {"search.imdb", "search.tmdb", "search.tvdb", "search.season", "rss"}
     )
@@ -347,7 +360,7 @@ class TorznabProvider(IndexerProvider):
         root = await self._api(extended=1, **params)
         channel = root.find("channel")
         items = channel.iter("item") if channel is not None else root.iter("item")
-        return [c for c in (parse_item(i) for i in items) if c is not None]
+        return [c for c in (parse_item(i, self.protocol) for i in items) if c is not None]
 
     def _limit(self, caps: Caps) -> int:
         return min(self.cfg.limit, caps.max_limit or self.cfg.limit)
@@ -364,7 +377,9 @@ class TorznabProvider(IndexerProvider):
         tv = sorted(caps.tv or ())
         return TestResult(
             ok=True,
-            message="Torznab endpoint works",
+            message="Newznab endpoint works"
+            if self.protocol == "usenet"
+            else "Torznab endpoint works",
             details={"movie_search": movie, "tv_search": tv, "categories": len(caps.categories)},
         )
 
@@ -442,6 +457,8 @@ class TorznabProvider(IndexerProvider):
         return await self._items(t="search", cat=",".join(map(str, cats)), limit=self._limit(caps))
 
     async def resolve(self, c: ReleaseCandidate) -> TorrentSource:
+        if c.protocol == "usenet":
+            return await self._nzb(c)
         if c.magnet_url:
             return TorrentSource(magnet=c.magnet_url)
         url = c.download_url
@@ -462,5 +479,33 @@ class TorznabProvider(IndexerProvider):
             return TorrentSource(torrent=r.body)
         raise IndexerError("invalid_response", "release has no usable download link")
 
+    async def _nzb(self, c: ReleaseCandidate) -> TorrentSource:
+        """A Usenet release: its NZB, fetched here (the indexer's link carries the API key,
+        which the Usenet client then never sees)."""
+        if not c.download_url:
+            raise IndexerError("invalid_response", "release has no NZB link")
+        r = await self._fetch(c.download_url, None, MAX_NZB, follow=True)
+        if r.status >= 400:
+            raise IndexerError("unavailable", f"NZB download failed (HTTP {r.status})")
+        if b"<nzb" not in r.body[:4096]:
+            raise IndexerError("invalid_response", "download is not an NZB file")
+        return TorrentSource(nzb=r.body, name=c.title)
+
+
+class NewznabSettings(TorznabSettings):
+    url: str = Field(
+        description="The indexer's address, e.g. https://api.nzbgeek.info or "
+        "http://localhost:9696/2 (a Prowlarr Usenet indexer)"
+    )
+
+
+class NewznabProvider(TorznabProvider):
+    """A Usenet indexer: the same API as Torznab, listing NZBs for SABnzbd or NZBGet."""
+
+    kind: ClassVar[str] = "newznab"
+    Settings: ClassVar[type[BaseModel]] = NewznabSettings
+    protocol: ClassVar[Literal["torrent", "usenet"]] = "usenet"
+
 
 registry.register(TorznabProvider)
+registry.register(NewznabProvider)

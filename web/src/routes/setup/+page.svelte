@@ -101,13 +101,19 @@
 
 	// 4. downloads: the built-in engine, or a client of your own
 	let own = $state(false);
-	let client = $state({ kind: 'qbittorrent', url: '', username: '', password: '' });
+	let client = $state({ kind: 'qbittorrent', url: '', username: '', password: '', api_key: '' });
+	const CLIENT_NAMES: Record<string, string> = {
+		qbittorrent: 'qBittorrent', transmission: 'Transmission', deluge: 'Deluge', sabnzbd: 'SABnzbd', nzbget: 'NZBGet'
+	};
 	const addClient = () =>
 		run(async () => {
 			const settings: Record<string, string> = { url: client.url.trim() };
-			if (client.username && client.kind !== 'deluge') settings.username = client.username;
-			if (client.password) settings.password = client.password;
-			const name = { qbittorrent: 'qBittorrent', transmission: 'Transmission', deluge: 'Deluge' }[client.kind] ?? client.kind;
+			if (client.kind === 'sabnzbd') settings.api_key = client.api_key.trim();
+			else {
+				if (client.username && client.kind !== 'deluge') settings.username = client.username;
+				if (client.password) settings.password = client.password;
+			}
+			const name = CLIENT_NAMES[client.kind] ?? client.kind;
 			const c = await post<S['ClientOut']>('/download-clients', { kind: client.kind, name, settings });
 			const t = await post<S['TestResult']>(`/download-clients/${c.id}/test`);
 			note = t.ok ? `${name} added: ${t.message}` : '';
@@ -175,7 +181,7 @@
 			<h2>Indexer</h2>
 			<p class="muted">
 				Fetchbox searches indexers for releases. With <a href="https://prowlarr.com" target="_blank" rel="noreferrer">Prowlarr</a>
-				it uses every indexer Prowlarr has, including ones added later. Without one, it finds only public-domain films (Internet Archive).
+				it uses every indexer Prowlarr has, torrent and Usenet, including ones added later. Without one, it finds only public-domain films (Internet Archive).
 			</p>
 			{#if status?.indexers}<p class="ok small">✓ {status.indexers} indexer{status.indexers === 1 ? '' : 's'} set up.</p>{/if}
 			<label class="field"><span>Prowlarr address</span><input bind:value={prowlarr.url} placeholder="http://192.168.1.10:9696" spellcheck="false" /></label>
@@ -193,18 +199,30 @@
 		{:else if step === 4}
 			<h2>Downloads</h2>
 			<p class="muted">Fetchbox has its own torrent engine: nothing to set up. Downloads go straight into the library folder and are filed in place.</p>
-			<label class="check"><input type="checkbox" bind:checked={own} /> I'd rather use my own client (qBittorrent, Transmission or Deluge)</label>
+			<label class="check"><input type="checkbox" bind:checked={own} /> Add a client of my own: qBittorrent, Transmission or Deluge, or SABnzbd or NZBGet for Usenet</label>
 			{#if own}
 				{#if status?.download_clients}<p class="ok small">✓ {status.download_clients} client{status.download_clients === 1 ? '' : 's'} set up.</p>{/if}
 				<label class="field"
 					><span>Client</span>
 					<select bind:value={client.kind}>
-						<option value="qbittorrent">qBittorrent</option><option value="transmission">Transmission</option><option value="deluge">Deluge</option>
+						<optgroup label="Torrents">
+							<option value="qbittorrent">qBittorrent</option><option value="transmission">Transmission</option><option value="deluge">Deluge</option>
+						</optgroup>
+						<optgroup label="Usenet">
+							<option value="sabnzbd">SABnzbd</option><option value="nzbget">NZBGet</option>
+						</optgroup>
 					</select></label
 				>
-				<label class="field"><span>Address</span><input bind:value={client.url} placeholder="http://192.168.1.10:8080" spellcheck="false" /></label>
-				{#if client.kind !== 'deluge'}<label class="field"><span>Username</span><input bind:value={client.username} autocomplete="off" /></label>{/if}
-				<label class="field"><span>Password</span><input type="password" bind:value={client.password} autocomplete="off" /></label>
+				<label class="field"><span>Address</span><input bind:value={client.url} placeholder={`http://192.168.1.10:${client.kind === 'nzbget' ? 6789 : 8080}`} spellcheck="false" /></label>
+				{#if client.kind === 'sabnzbd'}
+					<label class="field"><span>API key</span><input type="password" bind:value={client.api_key} autocomplete="off" placeholder="Config → General → Security" /></label>
+				{:else}
+					{#if client.kind !== 'deluge'}<label class="field"><span>Username</span><input bind:value={client.username} autocomplete="off" /></label>{/if}
+					<label class="field"><span>Password</span><input type="password" bind:value={client.password} autocomplete="off" /></label>
+				{/if}
+				{#if client.kind === 'sabnzbd' || client.kind === 'nzbget'}
+					<p class="muted small">Usenet releases go to it; torrents still use the built-in engine. Your news server account is set up in {CLIENT_NAMES[client.kind]} itself.</p>
+				{/if}
 				<div class="row">
 					<button class="primary" onclick={addClient} disabled={busy || !client.url.trim()}>{busy ? 'Testing…' : 'Add and test'}</button>
 					<button onclick={() => go(step + 1)}>Continue</button>

@@ -62,17 +62,26 @@ class ReleaseCandidate(BaseModel):
     published_at: datetime | None = None
     categories: tuple[int, ...] = ()
     indexer_flags: frozenset[str] = frozenset()
+    # torrent (magnet / .torrent) or usenet (an NZB, for SABnzbd or NZBGet)
+    protocol: Literal["torrent", "usenet"] = "torrent"
+    grabs: int | None = None  # usenet: how often it was downloaded (its "seeders")
 
 
 @dataclass(frozen=True)
 class TorrentSource:
-    """What a download client is given: a magnet link or .torrent bytes, or a direct
-    HTTP(S) file (``url``, fetched by the built-in ``direct`` client into ``name``/)."""
+    """What a download client is given: a magnet link or .torrent bytes, a direct HTTP(S)
+    file (``url``, fetched by the built-in ``direct`` client into ``name``/), or an NZB
+    (``nzb``, for a Usenet client)."""
+
+    @property
+    def protocol(self) -> Literal["torrent", "usenet", "direct"]:
+        return "usenet" if self.nzb is not None else "direct" if self.url else "torrent"
 
     magnet: str | None = None
     torrent: bytes | None = None
     url: str | None = None
-    name: str | None = None  # direct downloads: folder name
+    nzb: bytes | None = None  # usenet: the NZB file, for a Usenet client
+    name: str | None = None  # direct downloads: folder name; usenet: the job's name
     size: int | None = None  # direct downloads: expected bytes, if known
 
 
