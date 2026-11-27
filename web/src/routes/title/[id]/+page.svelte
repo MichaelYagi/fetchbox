@@ -74,6 +74,12 @@
 	}
 	// Change: another folder for it (full path), moving what's there or not
 	let editingFolder = $state(false);
+	// The poster's height follows the header's text, but not the folder form: opening it
+	// (Change) would otherwise make the poster grow
+	let posterHeight = $state(0);
+	$effect(() => {
+		if (!editingFolder) posterHeight = infoHeight;
+	});
 	let newFolder = $state('');
 	let moveFiles = $state(true);
 
@@ -382,7 +388,7 @@
 		{#if !error}<p class="muted">Loading…</p>{/if}
 	{:else}
 		<div class="head" class:backdrop={!!backdrop} style:--backdrop={backdrop ? `url("${backdrop}")` : null}>
-			{#if title.poster_url}<img class="poster" src={title.poster_url} alt="" style:--info-height={infoHeight ? `${infoHeight}px` : null} />{/if}
+			{#if title.poster_url}<img class="poster" src={title.poster_url} alt="" style:--info-height={posterHeight ? `${posterHeight}px` : null} />{/if}
 			<div class="stack info" bind:clientHeight={infoHeight}>
 				<div>
 					<h1>{title.name} <span class="muted">{title.year ?? ''}</span></h1>
