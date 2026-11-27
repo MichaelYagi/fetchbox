@@ -14,6 +14,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
+import httpx
 import pytest
 
 from fetchbox.config import Settings
@@ -311,3 +312,50 @@ async def test_panels_messages_and_health(server: Any, c: Any) -> None:
     assert "plugin.message" not in {
         e["event"] for e in (await c.get("/notifications/events")).json()
     }
+
+
+def _fake_web(data: bytes) -> tuple[httpx.MockTransport, list[str]]:
+    seen: list[str] = []
+
+    def handle(req: httpx.Request) -> httpx.Response:
+        seen.append(str(req.url))
+        if req.url.host == "pypi.org" and req.url.path == f"/pypi/{MODULE}/json":
+            whl = f"https://files.example/{MODULE}-0.1.0-py3-none-any.whl"
+            return httpx.Response(200, json={"urls": [
+                {"packagetype": "sdist", "filename": f"{MODULE}-0.1.0.tar.gz", "url": "x"},
+                {"packagetype": "bdist_wheel", "filename": f"{MODULE}-0.1.0-py3-none-any.whl", "url": whl},  # noqa: E501
+            ]})  # fmt: skip
+        if req.url.path.endswith(".whl"):
+            return httpx.Response(200, content=data)
+        return httpx.Response(404)
+
+    return httpx.MockTransport(handle), seen
+
+
+async def test_install_from_an_address(settings: Settings) -> None:
+    async with running(settings) as server:
+        mgr = server.app.state.plugins
+        transport, _seen = _fake_web(wheel())
+        pid = await mgr.install_url(
+            f"https://files.example/{MODULE}-0.1.0-py3-none-any.whl", transport=transport
+        )
+        assert pid == "greeter" and "greeter" in mgr.host.loaded
+        from fetchbox.plugin.manager import PluginError
+
+        with pytest.raises(PluginError, match="starts with https"):
+            await mgr.install_url("ftp://x/y.whl")
+        with pytest.raises(PluginError, match="answered 404"):
+            await mgr.install_url("https://files.example/missing", transport=transport)
+
+
+async def test_plugins_named_in_the_environment(settings: Settings) -> None:
+    """FETCHBOX_PLUGINS (Docker): installed from PyPI once, then kept."""
+    transport, seen = _fake_web(wheel())
+    async with running(settings) as server:
+        mgr = server.app.state.plugins
+        assert await mgr.install_from_env(MODULE, transport=transport) == ["greeter"]
+        assert mgr.records["greeter"].approved and "greeter" in mgr.host.loaded
+        n = len(seen)
+        assert await mgr.install_from_env(MODULE, transport=transport) == []  # there already
+        assert len(seen) == n
+        assert await mgr.install_from_env("nonexistent-plugin", transport=transport) == []

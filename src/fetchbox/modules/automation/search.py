@@ -91,6 +91,8 @@ class AutoSearch:
         self.sources = sources
         self.config = config
         self.sweep_interval = SWEEP_INTERVAL
+        # Plugins' media kinds: their titles are offered the RSS releases too (set by the app)
+        self.plugin_rss: Any = None
         self._wake = asyncio.Event()
         self._tasks: list[asyncio.Task[None]] = []
 

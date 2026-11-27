@@ -107,6 +107,7 @@ select = ["E", "F", "W", "I", "UP", "B", "SIM", "ASYNC", "RUF"]
 "tests/**" = ["ASYNC240"]
 # uses the kit's fixture by importing it (plugins use pytest_plugins in conftest instead)
 "tests/test_plugin_testkit.py" = ["F811"]
+"tests/test_plugin_pause.py" = ["F811"]
 
 [tool.mypy]
 python_version = "3.12"

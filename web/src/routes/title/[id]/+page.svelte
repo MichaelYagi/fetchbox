@@ -110,6 +110,21 @@
 		await post(`/plugins/titles/${id}/refresh`);
 		pluginItems = await get<S['PluginItemOut'][]>(`/plugins/titles/${id}/items`);
 	});
+	// Which of the kind's qualities this title takes, and when it's good enough
+	let pq = $state<S['TitleQualities'] | null>(null);
+	$effect(() => {
+		if (pluginTitle && title) get<S['TitleQualities']>(`/plugins/titles/${title.id}/qualities`).then((q) => (pq = q)).catch(() => {});
+	});
+	const savePq = () => act('qualities', async () => {
+		if (pq) pq = await put<S['TitleQualities']>(`/plugins/titles/${id}/qualities`, { qualities: pq.qualities, cutoff: pq.cutoff });
+		message = 'Saved';
+	});
+	const togglePq = (q: string, on: boolean) => {
+		if (!pq) return;
+		const set = on ? [...pq.qualities, q] : pq.qualities.filter((x) => x !== q);
+		const qualities = pq.available.filter((x) => set.includes(x));
+		pq = { ...pq, qualities, cutoff: qualities.includes(pq.cutoff) ? pq.cutoff : (qualities[0] ?? pq.cutoff) };
+	};
 	const searchPlugin = () => act('search', async () => {
 		const r = await post<S['PluginSearchOut']>(`/plugins/titles/${id}/search`);
 		message = r.grabbed ? `Grabbed ${r.grabbed} release${r.grabbed === 1 ? '' : 's'}` : r.results ? 'Nothing fitting found' : 'Nothing found';
@@ -508,6 +523,18 @@
 							<span class="muted">{pluginItems.filter((i) => i.monitored).length} of {pluginItems.length} wanted</span>
 						</div>
 					{/if}
+					{#if pq}
+						<div class="row small">
+							<span class="muted">Quality:</span>
+							{#each pq.available as q (q)}
+								<label class="inline"><input type="checkbox" checked={pq.qualities.includes(q)} onchange={(e) => togglePq(q, e.currentTarget.checked)} disabled={!!busy || (pq.qualities.length === 1 && pq.qualities.includes(q))} /> {q}</label>
+							{/each}
+							<label class="inline">good enough at
+								<select bind:value={pq.cutoff} disabled={!!busy}>{#each pq.qualities as q (q)}<option value={q}>{q}</option>{/each}</select>
+							</label>
+							<button class="small" onclick={savePq} disabled={!!busy}>Save</button>
+						</div>
+					{/if}
 					<div class="row">
 						<button class="primary" onclick={searchPlugin} disabled={!!busy} title="Every wanted, released item still to get">Search all missing</button>
 		<button onclick={refreshPlugin} disabled={!!busy} title="Ask the plugin again for its items">Refresh</button>
@@ -587,7 +614,7 @@
 								<td class="num muted">{i.number ?? ''}</td>
 								<td>{i.name ?? `#${i.number ?? ''}`}</td>
 								<td class="muted small date">{i.released ?? ''}</td>
-								<td><Badge state={i.state} /></td>
+								<td><Badge state={i.state} />{#if i.quality}<span class="muted small"> {i.quality}</span>{/if}</td>
 								<td><input type="checkbox" title="Wanted" aria-label="Wanted" checked={i.monitored} onchange={(ev) => monitorItem(i, ev.currentTarget.checked)} disabled={!!busy} /></td>
 								<td>{#each itemActions as a (`${a.plugin}/${a.addon}/${a.method}`)}<button class="small" onclick={() => runItem(a, i.id)}>{a.label}</button>{/each}</td>
 							</tr>

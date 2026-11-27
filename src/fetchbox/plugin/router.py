@@ -3,7 +3,7 @@ installing and removing."""
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, File, Query, Request, UploadFile
@@ -68,6 +68,10 @@ class PluginOut(BaseModel):
     approved: bool
     enabled: bool
     running: bool
+    paused_until: datetime | None = Field(
+        None, description="Failing repeatedly: its jobs wait until then"
+    )
+    last_error: str | None = Field(None, description="Its last failed job's error")
     error: str | None
     settings: list[SettingsOut]
     actions: list[ActionOut]
@@ -154,6 +158,18 @@ class PluginItemOut(BaseModel):
     released: date | None
     state: str
     monitored: bool
+    quality: str | None = Field(None, description="Its file's quality, when it has one")
+
+
+class TitleQualities(BaseModel):
+    available: list[str] = Field(description="The kind's qualities, best first")
+    qualities: list[str] = Field(description="The ones this title accepts, best first")
+    cutoff: str = Field(description="Good enough: no upgrade is looked for past it")
+
+
+class TitleQualitiesIn(BaseModel):
+    qualities: list[str] = Field(min_length=1)
+    cutoff: str
 
 
 def _titles(request: Request) -> PluginTitles:
@@ -234,6 +250,60 @@ async def search_title(title_id: str, request: Request, who: CurrentPrincipal) -
     """Search now for a plugin kind's title's missing items, and grab the best releases."""
     pipeline = request.app.state.plugin_pipeline
     return PluginSearchOut.model_validate(await pipeline.search(title_id, actor=who.actor()))
+
+
+async def _title_kind(request: Request, title_id: str) -> tuple[Any, Any]:
+    title = await request.app.state.plugin_titles.media.get_title(title_id)
+    kind, _got = _titles(request).kind(title.kind)
+    return title, kind
+
+
+@router.get(
+    "/titles/{title_id}/qualities",
+    response_model=TitleQualities,
+    dependencies=[Depends(require("media:read"))],
+    responses=pr(404),
+)
+async def title_qualities(title_id: str, request: Request) -> TitleQualities:
+    title, kind = await _title_kind(request, title_id)
+    chosen, cutoff = request.app.state.plugin_pipeline.qualities(title, kind)
+    return TitleQualities(available=list(kind.qualities.names), qualities=chosen, cutoff=cutoff)
+
+
+@router.put(
+    "/titles/{title_id}/qualities",
+    response_model=TitleQualities,
+    dependencies=[Depends(require("media:write"))],
+    responses=pr(404, 422),
+)
+async def set_title_qualities(
+    title_id: str, body: TitleQualitiesIn, request: Request
+) -> TitleQualities:
+    """Which of the kind's qualities this title accepts (best first) and when it's good
+    enough. A file below the cutoff is upgraded when a better release turns up."""
+    title, kind = await _title_kind(request, title_id)
+    names = list(kind.qualities.names)
+    bad = [q for q in body.qualities if q not in names]
+    if bad or body.cutoff not in body.qualities:
+        raise ProblemError(
+            422,
+            "Validation Failed",
+            slug="validation",
+            errors=[
+                FieldError(
+                    field="body",
+                    message=f"qualities are among {', '.join(names)}; the cutoff is one of them",
+                )
+            ],
+        )
+    ordered = [q for q in names if q in body.qualities]  # the kind's order: best first
+    from fetchbox.modules.media.models import Title
+
+    async with request.app.state.plugin_titles.db.sessionmaker() as s:
+        row = await s.get(Title, title.id)
+        row.meta = {**(row.meta or {}), "qualities": ordered, "cutoff": body.cutoff}
+        await s.commit()
+    return TitleQualities(available=names, qualities=ordered, cutoff=body.cutoff)
 
 
 @router.get("/panels", response_model=list[PanelOut], dependencies=_read)
@@ -345,6 +415,24 @@ async def install(request: Request, file: UploadFile = File(...)) -> PluginOut: 
     m = _mgr(request)
     try:
         pid = await m.install_wheel(data, file.filename or "plugin.whl")
+    except PluginError as exc:
+        raise _problem(exc) from None
+    return _out(m, pid)
+
+
+class InstallUrlIn(BaseModel):
+    url: str = Field(description="The plugin's wheel (.whl) address")
+
+
+@router.post(
+    "/install-url", response_model=PluginOut, status_code=201, dependencies=_write,
+    responses=pr(409),
+)  # fmt: skip
+async def install_url(body: InstallUrlIn, request: Request) -> PluginOut:
+    """Install a plugin from its wheel's address (a release page's .whl link)."""
+    m = _mgr(request)
+    try:
+        pid = await m.install_url(body.url)
     except PluginError as exc:
         raise _problem(exc) from None
     return _out(m, pid)

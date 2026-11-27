@@ -306,6 +306,13 @@ async def diagnostics(request: Request, state: State) -> Response:
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
         z.writestr("versions.json", json.dumps(versions, indent=2))
         z.writestr("health.json", report.model_dump_json(indent=2))
+        # plugins: what each is and how it's doing, never its settings
+        if (plugins := getattr(app.state, "plugins", None)) is not None:
+            keep = ("id", "name", "version", "api", "api_supported", "source", "approved",
+                    "enabled", "running", "paused_until", "last_error", "error", "contributes",
+                    "permissions")  # fmt: skip
+            listed = [{k: p.get(k) for k in keep} for p in plugins.all()]
+            z.writestr("plugins.json", json.dumps(listed, indent=2, default=str))
         z.writestr("config.json", json.dumps(_config(request).view(), indent=2, default=str))
         z.writestr("setup.json", json.dumps(
             {"indexers": indexers, "download_clients": clients, "library_folders": folders},

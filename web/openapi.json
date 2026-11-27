@@ -4060,6 +4060,20 @@
     "title": "InstallOut",
     "type": "object"
    },
+   "InstallUrlIn": {
+    "properties": {
+     "url": {
+      "description": "The plugin's wheel (.whl) address",
+      "title": "Url",
+      "type": "string"
+     }
+    },
+    "required": [
+     "url"
+    ],
+    "title": "InstallUrlIn",
+    "type": "object"
+   },
    "InteractiveOut": {
     "properties": {
      "failures": {
@@ -4127,6 +4141,35 @@
      "failures"
     ],
     "title": "InteractiveOut",
+    "type": "object"
+   },
+   "ItemStats": {
+    "properties": {
+     "acquired": {
+      "title": "Acquired",
+      "type": "integer"
+     },
+     "items": {
+      "title": "Items",
+      "type": "integer"
+     },
+     "missing": {
+      "description": "Wanted, released, no file yet",
+      "title": "Missing",
+      "type": "integer"
+     },
+     "monitored": {
+      "title": "Monitored",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "items",
+     "monitored",
+     "acquired",
+     "missing"
+    ],
+    "title": "ItemStats",
     "type": "object"
    },
    "JobOut": {
@@ -5972,6 +6015,18 @@
       ],
       "title": "Number"
      },
+     "quality": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Its file's quality, when it has one",
+      "title": "Quality"
+     },
      "ref": {
       "title": "Ref",
       "type": "string"
@@ -6094,9 +6149,34 @@
       "title": "Id",
       "type": "string"
      },
+     "last_error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Its last failed job's error",
+      "title": "Last Error"
+     },
      "name": {
       "title": "Name",
       "type": "string"
+     },
+     "paused_until": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Failing repeatedly: its jobs wait until then",
+      "title": "Paused Until"
      },
      "permissions": {
       "items": {
@@ -8777,6 +8857,17 @@
       ],
       "title": "Imdb Id"
      },
+     "items": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ItemStats"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "A plugin media kind's title: counts (see /plugins/titles/{id}/items)"
+     },
      "kind": {
       "title": "Kind",
       "type": "string"
@@ -9045,6 +9136,60 @@
      }
     },
     "title": "TitlePatch",
+    "type": "object"
+   },
+   "TitleQualities": {
+    "properties": {
+     "available": {
+      "description": "The kind's qualities, best first",
+      "items": {
+       "type": "string"
+      },
+      "title": "Available",
+      "type": "array"
+     },
+     "cutoff": {
+      "description": "Good enough: no upgrade is looked for past it",
+      "title": "Cutoff",
+      "type": "string"
+     },
+     "qualities": {
+      "description": "The ones this title accepts, best first",
+      "items": {
+       "type": "string"
+      },
+      "title": "Qualities",
+      "type": "array"
+     }
+    },
+    "required": [
+     "available",
+     "qualities",
+     "cutoff"
+    ],
+    "title": "TitleQualities",
+    "type": "object"
+   },
+   "TitleQualitiesIn": {
+    "properties": {
+     "cutoff": {
+      "title": "Cutoff",
+      "type": "string"
+     },
+     "qualities": {
+      "items": {
+       "type": "string"
+      },
+      "minItems": 1,
+      "title": "Qualities",
+      "type": "array"
+     }
+    },
+    "required": [
+     "qualities",
+     "cutoff"
+    ],
+    "title": "TitleQualitiesIn",
     "type": "object"
    },
    "TitleSummary": {
@@ -18757,6 +18902,70 @@
     ]
    }
   },
+  "/api/v1/plugins/install-url": {
+   "post": {
+    "description": "Install a plugin from its wheel's address (a release page's .whl link).",
+    "operationId": "install_url_api_v1_plugins_install_url_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/InstallUrlIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PluginOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Conflict"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Install Url",
+    "tags": [
+     "plugins"
+    ]
+   }
+  },
   "/api/v1/plugins/kinds": {
    "get": {
     "description": "The media kinds running plugins add (none without one): Add page buttons, Library tabs.",
@@ -19128,6 +19337,144 @@
      }
     ],
     "summary": "Title Items",
+    "tags": [
+     "plugins"
+    ]
+   }
+  },
+  "/api/v1/plugins/titles/{title_id}/qualities": {
+   "get": {
+    "operationId": "title_qualities_api_v1_plugins_titles__title_id__qualities_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "title_id",
+      "required": true,
+      "schema": {
+       "title": "Title Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TitleQualities"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Title Qualities",
+    "tags": [
+     "plugins"
+    ]
+   },
+   "put": {
+    "description": "Which of the kind's qualities this title accepts (best first) and when it's good\nenough. A file below the cutoff is upgraded when a better release turns up.",
+    "operationId": "set_title_qualities_api_v1_plugins_titles__title_id__qualities_put",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "title_id",
+      "required": true,
+      "schema": {
+       "title": "Title Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/TitleQualitiesIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TitleQualities"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Unprocessable Content"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Set Title Qualities",
     "tags": [
      "plugins"
     ]

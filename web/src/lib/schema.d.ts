@@ -1899,6 +1899,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/plugins/install-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Install Url
+         * @description Install a plugin from its wheel's address (a release page's .whl link).
+         */
+        post: operations["install_url_api_v1_plugins_install_url_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/plugins/kinds": {
         parameters: {
             query?: never;
@@ -1983,6 +2003,28 @@ export interface paths {
         /** Title Items */
         get: operations["title_items_api_v1_plugins_titles__title_id__items_get"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/plugins/titles/{title_id}/qualities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Title Qualities */
+        get: operations["title_qualities_api_v1_plugins_titles__title_id__qualities_get"];
+        /**
+         * Set Title Qualities
+         * @description Which of the kind's qualities this title accepts (best first) and when it's good
+         *     enough. A file below the cutoff is upgraded when a better release turns up.
+         */
+        put: operations["set_title_qualities_api_v1_plugins_titles__title_id__qualities_put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -4342,6 +4384,14 @@ export interface components {
              */
             version: string;
         };
+        /** InstallUrlIn */
+        InstallUrlIn: {
+            /**
+             * Url
+             * @description The plugin's wheel (.whl) address
+             */
+            url: string;
+        };
         /** InteractiveOut */
         InteractiveOut: {
             /** Failures */
@@ -4373,6 +4423,20 @@ export interface components {
              * @description The movie or episode searched
              */
             wanted_item_id: string | null;
+        };
+        /** ItemStats */
+        ItemStats: {
+            /** Acquired */
+            acquired: number;
+            /** Items */
+            items: number;
+            /**
+             * Missing
+             * @description Wanted, released, no file yet
+             */
+            missing: number;
+            /** Monitored */
+            monitored: number;
         };
         /** JobOut */
         JobOut: {
@@ -5143,6 +5207,11 @@ export interface components {
             name: string | null;
             /** Number */
             number: number | null;
+            /**
+             * Quality
+             * @description Its file's quality, when it has one
+             */
+            quality?: string | null;
             /** Ref */
             ref: string;
             /** Released */
@@ -5177,8 +5246,18 @@ export interface components {
             homepage: string | null;
             /** Id */
             id: string;
+            /**
+             * Last Error
+             * @description Its last failed job's error
+             */
+            last_error?: string | null;
             /** Name */
             name: string;
+            /**
+             * Paused Until
+             * @description Failing repeatedly: its jobs wait until then
+             */
+            paused_until?: string | null;
             /** Permissions */
             permissions: components["schemas"]["PermissionOut"][];
             /** Running */
@@ -6333,6 +6412,8 @@ export interface components {
             id: string;
             /** Imdb Id */
             imdb_id: string | null;
+            /** @description A plugin media kind's title: counts (see /plugins/titles/{id}/items) */
+            items?: components["schemas"]["ItemStats"] | null;
             /** Kind */
             kind: string;
             /**
@@ -6399,6 +6480,31 @@ export interface components {
             monitor_mode?: string | null;
             /** Profile Id */
             profile_id?: string | null;
+        };
+        /** TitleQualities */
+        TitleQualities: {
+            /**
+             * Available
+             * @description The kind's qualities, best first
+             */
+            available: string[];
+            /**
+             * Cutoff
+             * @description Good enough: no upgrade is looked for past it
+             */
+            cutoff: string;
+            /**
+             * Qualities
+             * @description The ones this title accepts, best first
+             */
+            qualities: string[];
+        };
+        /** TitleQualitiesIn */
+        TitleQualitiesIn: {
+            /** Cutoff */
+            cutoff: string;
+            /** Qualities */
+            qualities: string[];
         };
         /** TitleSummary */
         TitleSummary: {
@@ -12001,6 +12107,49 @@ export interface operations {
             };
         };
     };
+    install_url_api_v1_plugins_install_url_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InstallUrlIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     media_kinds_api_v1_plugins_kinds_get: {
         parameters: {
             query?: never;
@@ -12219,6 +12368,93 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    title_qualities_api_v1_plugins_titles__title_id__qualities_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                title_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TitleQualities"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_title_qualities_api_v1_plugins_titles__title_id__qualities_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                title_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TitleQualitiesIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TitleQualities"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
                 };
             };
         };

@@ -251,6 +251,9 @@ def mask_settings(model: type[BaseModel], stored: dict[str, Any]) -> dict[str, A
     out = dict(stored)
     for name in _secret_fields(model):
         out[name] = MASK if out.get(name) else None
+    for name, value in out.items():  # whatever is kept encrypted is never shown
+        if is_encrypted(value):
+            out[name] = MASK
     return out
 
 

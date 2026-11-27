@@ -34,6 +34,7 @@ async def test_diagnostics_zip_has_no_secrets(c: httpx.AsyncClient, fakes: Fakes
             "health.json",
             "config.json",
             "setup.json",
+            "plugins.json",  # what each plugin is and how it's doing, never its settings
             "fetchbox.log",
         }
         everything = b"".join(z.read(n) for n in names).decode()
