@@ -54,6 +54,7 @@ LOCAL_FILES = 20000
 PRODUCTS = {"plex": "Plex", "jellyfin": "Jellyfin", "emby": "Emby"}
 EVENTS = (
     "import.completed",
+    "file.deleted",  # (from disk: its folder, so Plex drops it)
     "library.renamed",
     "library.imported_existing",
     "library.folder_changed",

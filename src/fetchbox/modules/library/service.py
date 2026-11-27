@@ -1637,6 +1637,10 @@ class LibraryService:
                         )
                     )
             await s.commit()
+        where = None
+        if delete_from_disk and f.destination_id:  # for media servers to rescan the folder
+            dest = await self.storage.destination(f.destination_id)
+            where = str((Path(dest.path) / f.relative_path).parent)
         await self.bus.emit(
             "file.deleted",
             subject=Subject(type="media_file", id=file_id),
@@ -1644,6 +1648,7 @@ class LibraryService:
             path=f.relative_path,
             title_id=title_id,
             from_disk=delete_from_disk,
+            **({"folders": [where]} if where else {}),
         )
 
     # ---- naming templates ---------------------------------------------------------------------
