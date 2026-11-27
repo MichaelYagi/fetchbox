@@ -239,6 +239,45 @@ async def title_items(title_id: str, request: Request) -> list[PluginItemOut]:
     return [PluginItemOut.model_validate(i) for i in await _titles(request).items(title_id)]
 
 
+class MonitoredIn(BaseModel):
+    monitored: bool = Field(description="Every item of the title wanted, or none")
+
+
+class MonitoredOut(BaseModel):
+    changed: int = Field(description="Items whose wanted flag changed")
+
+
+@router.put(
+    "/titles/{title_id}/monitored", response_model=MonitoredOut,
+    dependencies=[Depends(require("media:write"))], responses=pr(404),
+)  # fmt: skip
+async def set_title_monitored(
+    title_id: str, body: MonitoredIn, request: Request, who: CurrentPrincipal
+) -> MonitoredOut:
+    """All of a plugin kind's title's items wanted, or none (its issues' checkboxes at once),
+    by the same rules as one item's."""
+    from sqlalchemy import select
+
+    from fetchbox.modules.media.models import WantedItem
+
+    titles = request.app.state.plugin_titles
+    await titles.media.get_title(title_id)  # 404 when there's no such title
+    async with titles.db.sessionmaker() as s:
+        rows = (
+            await s.execute(
+                select(WantedItem.id).where(
+                    WantedItem.title_id == title_id, WantedItem.monitored.is_not(body.monitored)
+                )
+            )
+        ).scalars()
+        ids = list(rows)
+    for wid in ids:
+        await titles.media.update_wanted(
+            wid, monitored=body.monitored, if_match=None, actor=who.actor()
+        )
+    return MonitoredOut(changed=len(ids))
+
+
 class PluginSearchIn(BaseModel):
     item_ids: list[str] | None = Field(
         None, description="Wanted items to search for (missing or not); none: every missing one"

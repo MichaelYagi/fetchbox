@@ -5066,6 +5066,34 @@
     "title": "MigrateConnectIn",
     "type": "object"
    },
+   "MonitoredIn": {
+    "properties": {
+     "monitored": {
+      "description": "Every item of the title wanted, or none",
+      "title": "Monitored",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "monitored"
+    ],
+    "title": "MonitoredIn",
+    "type": "object"
+   },
+   "MonitoredOut": {
+    "properties": {
+     "changed": {
+      "description": "Items whose wanted flag changed",
+      "title": "Changed",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "changed"
+    ],
+    "title": "MonitoredOut",
+    "type": "object"
+   },
    "MountOut": {
     "properties": {
      "device": {
@@ -19472,6 +19500,81 @@
      }
     ],
     "summary": "Title Items",
+    "tags": [
+     "plugins"
+    ]
+   }
+  },
+  "/api/v1/plugins/titles/{title_id}/monitored": {
+   "put": {
+    "description": "All of a plugin kind's title's items wanted, or none (its issues' checkboxes at once),\nby the same rules as one item's.",
+    "operationId": "set_title_monitored_api_v1_plugins_titles__title_id__monitored_put",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "title_id",
+      "required": true,
+      "schema": {
+       "title": "Title Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/MonitoredIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/MonitoredOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Set Title Monitored",
     "tags": [
      "plugins"
     ]

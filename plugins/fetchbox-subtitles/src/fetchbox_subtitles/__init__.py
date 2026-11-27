@@ -107,6 +107,18 @@ class Subtitles(Addon):
         """Every file of a movie or show without subtitles in one of your languages."""
         return await self._find(ctx, [title])
 
+    @action("Find missing subtitles", on="group")
+    async def find_for_season(self, ctx: Any, group: str) -> dict[str, Any]:
+        """One season of a show ("<title id>:<season>")."""
+        title_id, _, season = group.rpartition(":")
+        want = int(season) if season.isdigit() else None
+        files = []
+        for f in await ctx.library.files(title_id):
+            seasons = {(await ctx.library.item(i)).season for i in f.item_ids}
+            if want in seasons:
+                files.append(f)
+        return await self._check(ctx, files)
+
     @action("Find missing subtitles", on="library")
     async def find_everywhere(self, ctx: Any) -> dict[str, Any]:
         """The same for the whole library: the movies and shows already there."""
@@ -114,18 +126,21 @@ class Subtitles(Addon):
         return await self._find(ctx, titles)
 
     async def _find(self, ctx: Any, title_ids: list[str]) -> dict[str, Any]:
-        """These titles' files lacking a language: noted (the daily retry works through
-        them), a first batch fetched now, and a message saying how it went. Only these
-        titles' files are fetched now; others already waiting keep waiting their turn."""
+        files = [f for tid in title_ids for f in await ctx.library.files(tid)]
+        return await self._check(ctx, files)
+
+    async def _check(self, ctx: Any, files_in: list[Any]) -> dict[str, Any]:
+        """These files, those lacking a language: noted (the daily retry works through
+        them), a first batch fetched now, and a message saying how it went. Only these files
+        are fetched now; others already waiting keep waiting their turn."""
         missing: dict[str, list[str]] = await ctx.store.get(MISSING, {})
         files, lacking = 0, []
-        for tid in title_ids:
-            for f in await ctx.library.files(tid):
-                files += 1
-                have = {s.suffix for s in await ctx.files.sidecars(f.id)}
-                if lack := [x for x in self.settings.languages if f"{x}.srt" not in have]:
-                    missing[f.id] = sorted(set(missing.get(f.id, [])) | set(lack))
-                    lacking.append(f.id)
+        for f in files_in:
+            files += 1
+            have = {s.suffix for s in await ctx.files.sidecars(f.id)}
+            if lack := [x for x in self.settings.languages if f"{x}.srt" not in have]:
+                missing[f.id] = sorted(set(missing.get(f.id, [])) | set(lack))
+                lacking.append(f.id)
         await ctx.store.set(MISSING, missing)
         got = 0
         for file_id in lacking[:RETRY_PER_DAY]:

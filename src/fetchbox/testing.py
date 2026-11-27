@@ -187,16 +187,25 @@ class App:
             profile = await s.scalar(
                 select(QualityProfile.id).where(QualityProfile.media == media).limit(1)
             )
-            title = Title(kind=kind, name=name, sort_name=name.lower(), year=year,
-                          profile_id=profile, destination_id=dest.id,
-                          tmdb_id=tmdb_id, imdb_id=imdb_id)  # fmt: skip
-            s.add(title)
-            await s.flush()
+            # a show's other episodes go under the same show (and season)
+            title = await s.scalar(
+                select(Title).where(Title.kind == kind, Title.name == name, Title.year == year)
+            ) if kind == "series" else None  # fmt: skip
+            if title is None:
+                title = Title(kind=kind, name=name, sort_name=name.lower(), year=year,
+                              profile_id=profile, destination_id=dest.id,
+                              tmdb_id=tmdb_id, imdb_id=imdb_id)  # fmt: skip
+                s.add(title)
+                await s.flush()
             ep_id = None
             if kind == "series" and season is not None and episode is not None:
-                row = Season(title_id=title.id, number=season)
-                s.add(row)
-                await s.flush()
+                row = await s.scalar(
+                    select(Season).where(Season.title_id == title.id, Season.number == season)
+                )
+                if row is None:
+                    row = Season(title_id=title.id, number=season)
+                    s.add(row)
+                    await s.flush()
                 ep = Episode(season_id=row.id, number=episode, name=f"Episode {episode}")
                 s.add(ep)
                 await s.flush()
