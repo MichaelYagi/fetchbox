@@ -7,6 +7,7 @@ import json
 from typing import Any
 
 import httpx
+import pytest
 from fetchbox_subtitles import SubtitlesPlugin, pick
 from fetchbox_subtitles.moviehash import moviehash
 from fetchbox_subtitles.opensubtitles import Found
@@ -35,8 +36,15 @@ class FakeOpenSubtitles:
     def __call__(self, req: httpx.Request) -> httpx.Response:
         if req.url.host == "dl.opensubtitles.example":
             return httpx.Response(200, content=SRT)
+        if "fetch" in req.headers["user-agent"].lower():  # as the real gateway does
+            return httpx.Response(403, json={"error": "Blocked (kong-user-agent-block)"})
         assert req.headers["api-key"] == "k3y"
         path = req.url.path.removeprefix("/api/v1")
+        if path == "/login":
+            body = json.loads(req.content)
+            if body["password"] != "right":
+                return httpx.Response(401, json={"message": "Error, invalid username/password"})
+            return httpx.Response(200, json={"token": "t0ken"})
         if path == "/infos/languages":
             return httpx.Response(200, json={"data": []})
         if path == "/subtitles":
@@ -75,7 +83,7 @@ async def test_a_movie_gets_its_subtitles(fetchbox_app: Any) -> None:
     searches = [r for r in seen if r.url.path.endswith("/subtitles")]
     assert {r.url.params["languages"] for r in searches} == {"en", "fr"}
     assert all(r.url.params["tmdb_id"] == "438631" for r in searches)
-    assert "fetchbox" in searches[0].headers["user-agent"].lower()
+    assert searches[0].headers["user-agent"].startswith("FBox Subtitles v")
     # French wasn't found: remembered, and found by the daily retry once it's there
     assert await app.ctx("subtitles").store.get("missing") == {f.id: ["fr"]}
     fake.subtitles["fr"] = [fake.hit(202, "fr")]
@@ -145,3 +153,19 @@ def test_moviehash(tmp_path: Any) -> None:
     big.write_bytes(bytes(range(256)) * 1024)  # 256 KB
     h = moviehash(big)
     assert h is not None and len(h) == 16 and h == moviehash(big)
+
+
+async def test_signing_in(fetchbox_app: Any) -> None:
+    """The Test button with an account: OpenSubtitles' own words when it says no."""
+    from fetchbox_subtitles import SubtitleSettings
+    from fetchbox_subtitles.opensubtitles import OpenSubtitlesError
+
+    fake = FakeOpenSubtitles()
+    app, seen = await _app(fetchbox_app, fake)
+    ctx = app.ctx("subtitles")
+    good = SubtitleSettings(api_key="k3y", username="me", password="right")
+    assert await good.test(ctx) == "The API key and the account work"
+    bad = SubtitleSettings(api_key="k3y", username="you", password="wrong")
+    with pytest.raises(OpenSubtitlesError, match="invalid username/password; check the"):
+        await bad.test(ctx)
+    assert all("fetch" not in r.headers["user-agent"].lower() for r in seen)

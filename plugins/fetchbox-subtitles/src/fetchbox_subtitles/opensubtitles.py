@@ -8,6 +8,9 @@ from typing import Any
 API = "https://api.opensubtitles.com/api/v1"
 HOST = "api.opensubtitles.com"
 TOKEN_SECONDS = 23 * 3600  # a login token lasts a day
+# OpenSubtitles wants "AppName vVersion", and its gateway refuses any name with "fetch" in it
+# (so Fetchbox's own User-Agent is blocked: "kong-user-agent-block")
+USER_AGENT = "FBox Subtitles v0.1.1"
 
 
 class OpenSubtitlesError(Exception):
@@ -33,6 +36,15 @@ class Found:
     machine_made: bool
 
 
+def _said(r: Any) -> str:
+    """What OpenSubtitles said about a refusal, if anything."""
+    try:
+        body = r.json()
+    except ValueError:
+        return ""
+    return str(body.get("message") or body.get("error") or "") if isinstance(body, dict) else ""
+
+
 class OpenSubtitles:
     def __init__(self, ctx: Any, api_key: str, username: str = "", password: str = "") -> None:
         self.ctx = ctx
@@ -42,7 +54,7 @@ class OpenSubtitles:
         ctx.http.limit(HOST, per_second=1)  # what OpenSubtitles asks of apps
 
     def _headers(self, token: str | None = None) -> dict[str, str]:
-        h = {"Api-Key": self.api_key, "Accept": "application/json"}
+        h = {"Api-Key": self.api_key, "Accept": "application/json", "User-Agent": USER_AGENT}
         if token:
             h["Authorization"] = f"Bearer {token}"
         return h
@@ -59,8 +71,11 @@ class OpenSubtitles:
                 json={"username": self.username, "password": self.password},
             )
             if r.status_code != 200:
+                said = _said(r)
+                hint = "check the username and password" if r.status_code == 401 else ""
                 raise OpenSubtitlesError(
-                    f"signing in failed ({r.status_code}): check the username and password"
+                    f"signing in failed ({r.status_code}): "
+                    + "; ".join(x for x in (said, hint) if x)
                 )
             return str(r.json().get("token") or "") or None
 
