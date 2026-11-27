@@ -934,7 +934,7 @@
 		min-width: 18rem;
 		align-content: start;
 	}
-	/* Phones: the poster above the title, 180px wide */
+	/* Phones: the poster above the title, the full width (whole, never cropped) */
 	@media (max-width: 760px) {
 		.head {
 			flex-direction: column;
@@ -943,7 +943,7 @@
 		.poster,
 		.poster.square {
 			height: auto;
-			width: 180px;
+			width: 100%;
 		}
 		.info {
 			min-width: 0;
