@@ -728,7 +728,7 @@
 							{#if m.audio_codecs?.length}<span>· {m.audio_codecs.join(', ')} {m.audio_channels ?? ''}</span>{/if}
 							{#if m.duration_seconds}<span>· {duration(m.duration_seconds)}</span>{/if}
 						{/if}
-						<span>· {f.link_mode}</span>
+						{#if f.link_mode}<span>· {f.link_mode}</span>{/if}
 						<span>· imported {ago(f.imported_at)}</span>
 						<button class="small danger delete" onclick={() => deleteFile(f)} disabled={!!busy}>Delete</button>
 					</div>
@@ -942,6 +942,11 @@
 	}
 	.episodes td.act {
 		text-align: right;
+	}
+	/* No line under the last row: a collapsed season's own line, or its last episode */
+	.episodes thead:last-child tr td,
+	.episodes tbody tr:last-child td {
+		border-bottom: none;
 	}
 	.episodes td {
 		vertical-align: middle;
