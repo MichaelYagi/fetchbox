@@ -7,6 +7,9 @@ from typing import Any
 
 import httpx
 
+from fetchbox.modules.library.models import MediaFile, MediaFileItem
+from fetchbox.modules.storage.models import Destination
+from tests.conftest import Running
 from tests.pipeline import Fakes, standard_hd
 from tests.test_existing_library import _dest, _job
 
@@ -131,3 +134,42 @@ async def test_removing_a_title_forgets_its_files(c: httpx.AsyncClient, fakes: F
     assert report["files"] == 0 and report["missing"] == []
     assert report["unknown_count"] == 1 and report["unknown"][0]["path"].endswith(".mkv")
     assert (root / rel).exists()  # on disk, untouched
+
+
+async def test_search_again_leaves_a_title_another_file_still_covers(
+    c: httpx.AsyncClient, fakes: Fakes, server: Running
+) -> None:
+    """Forgetting a missing file wants the movie again only when no other file covers it: a
+    movie with two copies, one gone, keeps the other and isn't searched."""
+    dest = await _dest(c, "movie")
+    root = Path(dest["path"])
+    folder = "Dune (2021) {tmdb-438631}"
+    rels = [f"{folder}/Dune (2021) WEBRip-1080p.mkv", f"{folder}/Dune (2021) WEBDL-1080p.mkv"]
+    for i, rel in enumerate(rels):
+        (root / rel).parent.mkdir(parents=True, exist_ok=True)
+        (root / rel).write_bytes(bytes([i + 1]) * 300_000)
+    items = [{"folder": folder, "tmdb_id": 438631, "profile_id": await standard_hd(c),
+              "files": rels[:1]}]  # fmt: skip
+    res = (await _job(c, (await c.post("/library/import", json={
+        "destination_id": dest["id"], "items": items})).json()["id"]))["result"]  # fmt: skip
+    title_id = res["added"][0]["title_id"]
+    wanted = (await c.get(f"/titles/{title_id}")).json()["wanted"][0]["id"]
+    async with server.app.state.fb.db.sessionmaker() as s:  # a second copy, also its file
+        node = (await s.get(Destination, dest["id"])).node_id  # type: ignore[union-attr]
+        mf = MediaFile(storage_node_id=node, destination_id=dest["id"], relative_path=rels[1],
+                       size=300_000, quality={"name": "WEBDL-1080p"})  # fmt: skip
+        s.add(mf)
+        await s.flush()
+        s.add(MediaFileItem(media_file_id=mf.id, wanted_item_id=wanted))
+        await s.commit()
+    assert len((await c.get(f"/titles/{title_id}/files")).json()) == 2
+
+    (root / rels[0]).unlink()  # one copy goes
+    report = (await _job(c, (await c.post("/library/check")).json()["id"]))["result"]
+    [gone] = report["missing"]
+    r = await c.post("/library/check/forget", json={"file_ids": [gone["file_id"]]})
+    assert r.json() == {"forgotten": 1}
+    movie = (await c.get(f"/titles/{title_id}")).json()
+    assert movie["wanted"][0]["state"] == "acquired"  # the other copy still covers it
+    [left] = (await c.get(f"/titles/{title_id}/files")).json()
+    assert left["relative_path"] == rels[1]
