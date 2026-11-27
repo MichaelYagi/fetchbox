@@ -4,17 +4,29 @@ A plugin adds to Fetchbox without changing it: subtitles for your movies, a new 
 
 This is the plugin API, **version 1**. Within API 1 it only grows: nothing you use is removed, renamed or changes meaning.
 
-> **Installing.** In Fetchbox: Settings > Plugins, *Install from a file* with your plugin's wheel (`uv build`), or its address (a release's `.whl` link). It asks for its settings when it needs any. On a server, `pip install fetchbox-<name>` into Fetchbox's environment works too (then turn it on in Settings > Plugins). In Docker, `FETCHBOX_PLUGINS=fetchbox-comics,fetchbox-subtitles` installs them from PyPI at start (wheel addresses work too) into `/config`, so they survive image updates. `fetchbox serve --no-plugins` starts with every plugin off. A plugin that fails five times within an hour pauses for an hour; Health and Settings > Plugins say why.
+> **Installing.** In Fetchbox: Settings > Plugins, *Install from a file* with a plugin's wheel (`.whl`), or paste its address (a release's `.whl` link) and click Install. It asks for its settings when it needs any. In Docker, `FETCHBOX_PLUGINS` takes wheel addresses, comma-separated, and installs them at start into `/config`, so they survive image updates. `fetchbox serve --no-plugins` starts with every plugin off. A plugin that fails five times within an hour pauses for an hour; Health and Settings > Plugins say why. The plugins there are, and their addresses: [Plugins](plugin-list.md). Every class and function of the API: [the API reference](plugin-api.md).
 
 ## Quick start
 
+Fetchbox and the plugin API aren't on PyPI: install both from a Fetchbox release's files
+(the [releases page](https://github.com/MichaelYagi/fetchbox/releases); use the newest
+version's file names), with pytest for the test kit:
+
 ```sh
-pip install fetchbox                  # or use the desktop app's bundled fetchbox command
+python -m venv .venv && . .venv/bin/activate
+R=https://github.com/MichaelYagi/fetchbox/releases/download/v0.10.2
+pip install "$R/fetchbox_plugin_api-1.0.0.dev0-py3-none-any.whl" \
+            "$R/fetchbox-0.10.2-py3-none-any.whl" "pytest>=8" "pytest-asyncio>=0.24"
+
 fetchbox plugin new hello             # fetchbox-hello/: an add-on that already works
 cd fetchbox-hello
 fetchbox plugin test .                # its tests: a real Fetchbox, offline, in seconds
 fetchbox plugin dev .                 # Fetchbox in your browser with the plugin loaded
+uv build --wheel -o dist .            # dist/fetchbox_hello-0.1.0-py3-none-any.whl: install it
 ```
+
+The new project's `uv sync` and its CI workflow fetch Fetchbox from PyPI, so they don't
+work yet; run its commands from the environment above instead.
 
 `fetchbox plugin new hello` makes an add-on that writes `hello.txt` beside every imported movie or episode. With `plugin dev` running, change the text it writes and save: the plugin is loaded again at once, with no restart.
 
@@ -30,7 +42,7 @@ A plugin is an ordinary Python package. It has one entry point and one `Plugin` 
 | **Media kind** | People collect a new kind of thing | Metadata lookup, release name parsing, file rules, naming | An Add page button, title pages, the Calendar, and the download pipeline: search, grab, download, import |
 | **Provider** | You connect one more service (an indexer, a notifier) | A client class with `test()` | Settings form, Test button, Health |
 
-A provider is a class with Fetchbox's provider contract (`fetchbox.core.providers`: `category`, `kind`, a `Settings` model, `test()`), listed in `contributes` like the rest: offered in Settings beside the built-in ones while the plugin runs. Being Fetchbox's own contract, it needs `fetchbox` as a dependency. The older `fetchbox.providers` entry point keeps working.
+A provider is a class with Fetchbox's provider contract, listed in `contributes` like the rest: offered in Settings beside the built-in ones while the plugin runs (see [Providers](#providers)).
 
 ### The package
 
@@ -273,6 +285,78 @@ def test_parse(name, want):
 ```
 
 An empty field isn't checked; `-` on its own means `parse` should give `None`. A line starting with `#` is a comment. The table can also be a file.
+
+## Providers
+
+A provider connects Fetchbox to one more service of a kind it already has: a notifier, an
+indexer, a download client, a media server. It's Fetchbox's own provider class, not part of
+the plugin API, so a provider plugin depends on `fetchbox` and may need changes when
+Fetchbox changes; within API 1 everything else here doesn't. A notifier, complete:
+
+```python
+from typing import Any, ClassVar
+
+import httpx
+from pydantic import BaseModel
+
+from fetchbox.core.providers import TestResult
+from fetchbox.providers.notifiers import Notification, NotifierProvider
+from fetchbox_plugin import Plugin
+
+
+class Webhook(NotifierProvider):
+    kind = "my-webhook"               # unique among notifiers
+
+    class Settings(BaseModel):        # the form in Settings > Notifications
+        url: str
+
+    async def send(self, n: Notification) -> None:
+        async with httpx.AsyncClient(timeout=15) as http:
+            r = await http.post(self.settings.url, json={"title": n.title, "body": n.body})
+            r.raise_for_status()
+
+    async def test(self) -> TestResult:  # the Test button
+        return TestResult(ok=self.settings.url.startswith("https://"), message="checked")
+
+
+class WebhookPlugin(Plugin):
+    id = "my-webhook"
+    name = "My webhook"
+    contributes: ClassVar[list[type[Any]]] = [Webhook]
+```
+
+With the plugin running, *My webhook* is offered in Settings > Notifications. When it's
+turned off, targets set up with it stay listed and say their plugin is off; they're not
+used, and not offered for new ones. Indexers (`fetchbox.providers.indexers.IndexerProvider`)
+and download clients (`fetchbox.providers.download_clients.DownloadClientProvider`) work the
+same way; the built-in ones in `src/fetchbox/providers` are the examples.
+
+## Troubleshooting
+
+| What you see | What it means |
+|---|---|
+| *… is written for plugin API 2; this Fetchbox supports API 1* | The plugin was written for an API this Fetchbox doesn't have. Update Fetchbox, or use a version of the plugin for API 1 |
+| The plugin is listed but not running | It isn't approved or turned on yet (Settings > Plugins), or it failed to start: its error is shown there and in Health |
+| *paused for an hour after failing repeatedly* | Five failures within an hour. Its last error says why; it starts again on its own, or when turned off and on |
+| Fetchbox won't start after installing a plugin | Start it with every plugin off: `fetchbox serve --no-plugins` (the desktop app's program takes the same arguments, e.g. `/Applications/Fetchbox.app/Contents/MacOS/Fetchbox serve --no-plugins`), then remove the plugin in Settings > Plugins |
+| A media kind finds nothing | Your indexers may not carry it. A kind searches its `categories` (Comics: 7030) on the indexers in Settings > Sources; add one that has them |
+| `plugin test` says *No module named pytest* | Install `pytest` and `pytest-asyncio` into the environment Fetchbox is in |
+| `uv sync` can't find `fetchbox-plugin-api` | It isn't on PyPI: install it and Fetchbox from a release's files (see [Quick start](#quick-start)) |
+
+Learned the hard way:
+
+- **Some services refuse Fetchbox's User-Agent.** `ctx.http` names your plugin
+  (`Fetchbox/<version> (plugin <id>)`), and OpenSubtitles' gateway blocks any User-Agent
+  with "fetch" in it, answering 403 for everything. Services that ask for a particular form
+  (OpenSubtitles: `AppName vVersion`) may need your own: pass `headers={"User-Agent": ...}`
+  with the request, as the Subtitles plugin does.
+- **Show the service's own words.** When a request is refused, put what the service said
+  in your error (its JSON `message`), not a guess: a 403 isn't always a wrong password.
+- **Keep to rate limits** with `ctx.http.limit(host, per_second=...)` once, rather than
+  sleeping between requests.
+- **Saving settings reloads the plugin.** Anything kept only in memory is gone after;
+  keep what must last in `ctx.store` (or `ctx.cache` for answers that may be fetched
+  again).
 
 ## Reference plugins
 

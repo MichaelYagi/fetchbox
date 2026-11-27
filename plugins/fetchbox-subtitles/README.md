@@ -7,6 +7,8 @@ Subtitles from [OpenSubtitles](https://www.opensubtitles.com) for movies and epi
 - A language not found yet is tried again once a day; **Search subtitles** on a movie or episode tries at once.
 - When the day's downloads run out, it waits until OpenSubtitles resets them.
 
+**Install:** in Fetchbox, Settings > Plugins, with its address from a Fetchbox release; see [Plugins](../../docs/plugin-list.md#subtitles).
+
 ## Settings
 
 | Setting | |

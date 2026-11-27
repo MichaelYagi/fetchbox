@@ -26,3 +26,4 @@ Fetchbox includes this package, so a plugin needs only `fetchbox-plugin-api` as 
 
 The guide, with everything the API offers and the test kit:
 [Writing Fetchbox plugins](https://github.com/MichaelYagi/fetchbox/blob/main/docs/plugins.md).
+Every class and function: [the API reference](https://github.com/MichaelYagi/fetchbox/blob/main/docs/plugin-api.md).

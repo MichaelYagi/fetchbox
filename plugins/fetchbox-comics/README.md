@@ -7,7 +7,7 @@ Comics for Fetchbox: comic series and their issues, with metadata from [ComicVin
 - Files are named `Saga (2012)/Saga #061 (2023).cbz` by default; the tokens are `series`, `start_year`, `issue`, `year`, `title` and `publisher`.
 - Indexers are asked for "Saga 061" in Books > Comics (7030).
 
-Comics in the library, on the Add page and through the download pipeline come with installing plugins in Fetchbox; until then the kind is complete and tested on its own.
+**Install:** in Fetchbox, Settings > Plugins, with its address from a Fetchbox release; see [Plugins](../../docs/plugin-list.md#comics). Then the Add page has a **Comics** button, and the Library a Comics tab.
 
 ## Settings
 
