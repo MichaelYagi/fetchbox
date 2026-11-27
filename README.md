@@ -37,8 +37,8 @@ file each, no copies. Set `PUID`/`PGID` to the owner of your media folder. The
 password is only used on first start; change it in the web UI. A compose file is in
 `docker/compose.yaml`.
 
-Plugins: `-e FETCHBOX_PLUGINS=fetchbox-comics,fetchbox-subtitles` installs them at start
-into `/config`, so they come back after an image update (see [Writing plugins](docs/plugins.md)).
+Plugins: `-e FETCHBOX_PLUGINS=<wheel address>,…` installs them at start into `/config`, so
+they come back after an image update. The plugins and their addresses: [Plugins](docs/plugin-list.md).
 
 ### Desktop apps
 
@@ -160,11 +160,14 @@ to record what holds the database: write transactions held over a second, a task
 its own write, and any moment the server's event loop is blocked for over half a second,
 each with the code responsible. Attach that file to a bug report.
 
-## Writing plugins
+## Plugins
 
 Plugins add to Fetchbox without changing it: subtitles, a new kind of thing to collect,
-one more service. Start with `fetchbox plugin new hello`, then read the guide:
-[docs/plugins.md](docs/plugins.md).
+one more service. Install them in Settings > Plugins.
+
+- [Plugins](docs/plugin-list.md): what there is, and each one's address to install from.
+- [Writing Fetchbox plugins](docs/plugins.md): the guide. Start with `fetchbox plugin new hello`.
+- [Plugin API reference](docs/plugin-api.md): every class and function plugins can use.
 
 ## Development
 
