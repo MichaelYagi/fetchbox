@@ -86,9 +86,15 @@ def Field(
     help: str | None = None,
     ge: float | None = None,
     le: float | None = None,
+    choices: dict[str, str] | None = None,
     **kwargs: Any,
 ) -> Any:
-    """A setting: ``title`` is its label, ``help`` the hint under it, ``ge``/``le`` limits."""
+    """A setting: ``title`` is its label, ``help`` the hint under it, ``ge``/``le`` limits.
+    ``choices`` ({value: name}) shows names to pick from instead of a text box; on a list
+    setting, several in order (Fetchbox 0.10.4 or later)."""
+    if choices is not None:
+        extra = dict(kwargs.pop("json_schema_extra", None) or {})
+        kwargs["json_schema_extra"] = {**extra, "x-fetchbox-choices": dict(choices)}
     return pydantic.Field(default, title=title, description=help, ge=ge, le=le, **kwargs)
 
 

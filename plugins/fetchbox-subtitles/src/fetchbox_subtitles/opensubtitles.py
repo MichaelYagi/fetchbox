@@ -10,7 +10,7 @@ HOST = "api.opensubtitles.com"
 TOKEN_SECONDS = 23 * 3600  # a login token lasts a day
 # OpenSubtitles wants "AppName vVersion", and its gateway refuses any name with "fetch" in it
 # (so Fetchbox's own User-Agent is blocked: "kong-user-agent-block")
-USER_AGENT = "FBox Subtitles v0.1.1"
+USER_AGENT = "FBox Subtitles v0.2.0"
 
 
 class OpenSubtitlesError(Exception):

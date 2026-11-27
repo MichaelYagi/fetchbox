@@ -70,6 +70,11 @@ class Watcher(Addon):
     async def hello(self, ctx: Any, item: Any) -> None:
         SEEN.append(("hello", item))
 
+    @action("Hello, everyone", on="library")
+    async def everyone(self, ctx: Any) -> dict[str, Any]:  # the whole library: no item
+        SEEN.append(("everyone", None))
+        return {"message": "said hello"}
+
 
 class ShowsOnly(Addon):
     id = "shows"
@@ -190,6 +195,11 @@ async def test_a_schedule_and_an_action(c: httpx.AsyncClient, host: PluginHost) 
 
     job_id = await host.run_action("hello", "watcher", "hello", "title-1")
     assert job_id and await _seen("hello") == ["title-1"]
+    # one for the whole library: run without an item
+    levels = {n: spec.level for n, spec in Watcher.handlers()["action"]}
+    assert levels == {"hello": "title", "everyone": "library"}
+    assert await host.run_action("hello", "watcher", "everyone", None)
+    assert await _seen("everyone") == [None]
     with pytest.raises(LookupError):
         await host.run_action("hello", "watcher", "nope", "x")
 
@@ -238,6 +248,11 @@ async def test_what_cant_be_loaded(server: Running, settings: Any, host: PluginH
         id = "Bad Id"
         name = "Bad"
 
+    class Newer(Plugin):
+        id = "newer"
+        name = "Newer"
+        min_fetchbox = "99.0.0"
+
     class Twin(Plugin):  # a second plugin with the same media kind
         id = "twin"
         name = "Twin"
@@ -247,6 +262,8 @@ async def test_what_cant_be_loaded(server: Running, settings: Any, host: PluginH
         await host.load(Future)
     with pytest.raises(PluginLoadError, match="plugin id"):
         await host.load(BadId)
+    with pytest.raises(PluginLoadError, match=r"needs Fetchbox 99\.0\.0 or later; this is "):
+        await host.load(Newer)
     with pytest.raises(PluginLoadError, match="already loaded"):
         await host.load(Hello)
     with pytest.raises(PluginLoadError, match="already a kind"):

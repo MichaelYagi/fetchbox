@@ -29,6 +29,7 @@ from fetchbox_plugin import (
     every,
     on,
 )
+from fetchbox_subtitles.languages import LANGUAGES
 from fetchbox_subtitles.moviehash import moviehash
 from fetchbox_subtitles.opensubtitles import Found, OpenSubtitles, OpenSubtitlesError, QuotaReached
 
@@ -42,7 +43,12 @@ class SubtitleSettings(Settings):
         title="OpenSubtitles API key",
         help="Free: sign up at opensubtitles.com, then API Consumers in your profile",
     )
-    languages: list[str] = Field(["en"], title="Languages", help="Two-letter codes, like en or fr")
+    languages: list[str] = Field(
+        ["en"],
+        title="Languages",
+        help="Each one gets its own subtitle file; the first comes first",
+        choices=LANGUAGES,
+    )
     username: str = Field("", title="OpenSubtitles username", help="Optional: more downloads a day")
     password: Secret = Field("", title="OpenSubtitles password")
     hearing_impaired: bool = Field(False, title="Prefer hearing impaired subtitles")
@@ -95,6 +101,53 @@ class Subtitles(Addon):
             if item in f.item_ids:
                 got += await self.fetch(ctx, f.id)
         return {"subtitles": got}
+
+    @action("Find missing subtitles", on="title")
+    async def find_for_title(self, ctx: Any, title: str) -> dict[str, Any]:
+        """Every file of a movie or show without subtitles in one of your languages."""
+        return await self._find(ctx, [title])
+
+    @action("Find missing subtitles", on="library")
+    async def find_everywhere(self, ctx: Any) -> dict[str, Any]:
+        """The same for the whole library: the movies and shows already there."""
+        titles = [t.id for k in ("movie", "series") for t in await ctx.library.titles(kind=k)]
+        return await self._find(ctx, titles)
+
+    async def _find(self, ctx: Any, title_ids: list[str]) -> dict[str, Any]:
+        """These titles' files lacking a language: noted (the daily retry works through
+        them), a first batch fetched now, and a message saying how it went. Only these
+        titles' files are fetched now; others already waiting keep waiting their turn."""
+        missing: dict[str, list[str]] = await ctx.store.get(MISSING, {})
+        files, lacking = 0, []
+        for tid in title_ids:
+            for f in await ctx.library.files(tid):
+                files += 1
+                have = {s.suffix for s in await ctx.files.sidecars(f.id)}
+                if lack := [x for x in self.settings.languages if f"{x}.srt" not in have]:
+                    missing[f.id] = sorted(set(missing.get(f.id, [])) | set(lack))
+                    lacking.append(f.id)
+        await ctx.store.set(MISSING, missing)
+        got = 0
+        for file_id in lacking[:RETRY_PER_DAY]:
+            got += await self.fetch(ctx, file_id)
+        waiting = await ctx.store.get(MISSING, {})
+        left = sum(1 for f in lacking if f in waiting)
+        if not lacking:
+            said = (f"{files} file(s) checked: all have subtitles in your languages." if files
+                    else "No movie or episode files to check yet.")  # fmt: skip
+            return {"message": said,
+                    "checked": files, "queued": 0, "added": 0, "left": 0}  # fmt: skip
+        if left and await self._paused(ctx):
+            later = f"OpenSubtitles' downloads for today are used up; {left} continue tomorrow"
+        elif left:
+            later = f"{left} still to find, tried again daily ({RETRY_PER_DAY} files a day)"
+        else:
+            later = "nothing left to find"
+        message = (
+            f"{files} file(s) checked, {len(lacking)} missing subtitles; {got} added now; {later}."
+        )
+        return {"message": message, "checked": files, "queued": len(lacking), "added": got,
+                "left": left}  # fmt: skip
 
     @every(hours=24)
     async def retry_missing(self, ctx: Any) -> dict[str, Any]:
@@ -215,6 +268,7 @@ class SubtitlesPlugin(Plugin):
     name = "Subtitles"
     description = "Subtitles from OpenSubtitles for movies and episodes, filed beside them."
     fetchbox_api = 1
+    min_fetchbox = "0.10.4"  # the library-wide action and the language choices
     homepage = "https://github.com/MichaelYagi/fetchbox/tree/main/plugins/fetchbox-subtitles"
     permissions: ClassVar[set[Permission]] = {Permission.NETWORK, Permission.LIBRARY_FILES}
     contributes: ClassVar[list[type[Any]]] = [Subtitles]

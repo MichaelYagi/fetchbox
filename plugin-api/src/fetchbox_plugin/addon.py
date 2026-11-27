@@ -30,8 +30,9 @@ from fetchbox_plugin.events import PUBLIC_EVENTS
 from fetchbox_plugin.settings import Settings
 
 F = TypeVar("F", bound=Callable[..., Any])
-Level = Literal["title", "group", "item"]  # a movie or show; a season or album; an episode...
-LEVELS: tuple[Level, ...] = ("title", "group", "item")
+# a movie or show; a season or album; an episode...; the whole library (on the plugin's card)
+Level = Literal["title", "group", "item", "library"]
+LEVELS: tuple[Level, ...] = ("title", "group", "item", "library")
 MIN_EVERY = timedelta(minutes=5)
 
 
@@ -73,8 +74,10 @@ def on(*events: str) -> Callable[[F], F]:
 
 
 def action(label: str, *, on: Level = "item") -> Callable[[F], F]:
-    """A button on each title, group or item: ``async def m(self, ctx, item)``. Runs as a job
-    and shows its progress and result."""
+    """A button on each title, group or item: ``async def m(self, ctx, item)``; or, with
+    ``on="library"``, one button for the whole library on the plugin's card in Settings >
+    Plugins: ``async def m(self, ctx)`` (Fetchbox 0.10.4 or later). Runs as a job and shows
+    its progress and result."""
     if on not in LEVELS:
         raise ValueError(f"on= is one of {', '.join(LEVELS)}")
     if not label.strip():

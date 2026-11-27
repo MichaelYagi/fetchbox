@@ -2950,7 +2950,7 @@ export interface components {
             method: string;
             /**
              * On
-             * @description title, group or item
+             * @description title, group, item, or library (the plugin's card)
              */
             on: string;
         };
