@@ -655,13 +655,15 @@
 							</colgroup>
 							<thead>
 								<tr class="season-head">
-									<td colspan="3">
-										<button class="link" onclick={() => (open = { ...open, [x.number]: !open[x.number] })} aria-expanded={!!open[x.number]}>
-											{open[x.number] ? '▾' : '▸'} <strong>{seasonName(x.number)}</strong>
-											<span class="muted small">{seasonCount(x)} downloaded</span>
-										</button>
+									<td colspan="4">
+										<div class="season-name">
+											<button class="link" onclick={() => (open = { ...open, [x.number]: !open[x.number] })} aria-expanded={!!open[x.number]}>
+												{open[x.number] ? '▾' : '▸'} <strong>{seasonName(x.number)}</strong>
+												<span class="muted small">{seasonCount(x)} downloaded</span>
+											</button>
+											<button class="small" onclick={() => chooseSeason(x.number)} disabled={!!busy}><span class="long">Choose a release</span><span class="short">Choose</span></button>
+										</div>
 									</td>
-									<td><button class="small" onclick={() => chooseSeason(x.number)} disabled={!!busy}><span class="long">Choose a release</span><span class="short">Choose</span></button></td>
 									<td>
 										<input type="checkbox" title="Monitor the whole season" aria-label="Season monitored" checked={x.monitored} onchange={(e) => monitorSeason(x.number, e.currentTarget.checked)} disabled={!!busy} />
 									</td>
@@ -905,6 +907,12 @@
 	.season {
 		padding: 0.5rem 0.75rem;
 		margin-bottom: 0.5rem;
+	}
+	.season-name {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.4rem 1rem;
 	}
 	.season-head td {
 		padding-top: 0.15rem;
