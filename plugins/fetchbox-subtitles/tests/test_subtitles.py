@@ -90,7 +90,7 @@ async def test_a_movie_gets_its_subtitles(fetchbox_app: Any) -> None:
     ran = await app.run("subtitles", "retry_missing")
     assert ran.result == {"subtitles": 1, "still_missing": 0}
     assert f.path.with_suffix(".fr.srt").read_bytes() == SRT
-    # and "Search subtitles" on the movie: nothing left to get
+    # and Find missing subtitles on the movie: nothing left to get
     item = f.item_ids[0]
     assert (await app.run("subtitles", "search_now", item)).result == {
         "subtitles": 0, "message": "It has subtitles in all your languages"}  # fmt: skip
@@ -223,7 +223,7 @@ async def test_finding_for_one_season(fetchbox_app: Any) -> None:
 
 
 async def test_search_subtitles_says_what_it_did(fetchbox_app: Any) -> None:
-    """Search subtitles on one movie: only its file, and a message saying what happened."""
+    """Find missing subtitles on one item: only its file, and a message saying what happened."""
     app, _seen = await _app(fetchbox_app, FakeOpenSubtitles())
     f = await app.add_file("Dune", 2021, tmdb_id=438631, imported=False)
     other = await app.add_file("Arrival", 2016, tmdb_id=329865, imported=False)
