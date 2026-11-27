@@ -240,7 +240,8 @@ async def test_a_usenet_release_from_search_to_library(
     assert (settings.downloads_dir / "Movies" / f["relative_path"]).read_bytes() == VIDEO
 
     async def cleaned_up() -> bool:  # nothing to seed: removed once filed, files and all
-        return not store.jobs and not folder.exists()
+        [d] = (await c.get("/downloads")).json()  # (recorded just after the removal)
+        return not store.jobs and not folder.exists() and bool(d["seeded_at"])
 
     await until(cleaned_up, within=15)
     [d] = (await c.get("/downloads")).json()

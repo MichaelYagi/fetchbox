@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import base64
 import re
-from pathlib import PurePath
+from pathlib import PurePath, PurePosixPath, PureWindowsPath
 from typing import Any, ClassVar, Literal
 
 from pydantic import BaseModel, Field, SecretStr, field_validator
@@ -54,8 +54,9 @@ def _job_name(src: TorrentSource) -> str:
 
 def _job_folder(storage: str, name: str) -> str:
     """A finished job's folder from where the client says it put it. SABnzbd names the
-    job's folder, or for a single file sometimes that file; either way, its folder."""
-    p = PurePath(storage.replace("\\", "/"))
+    job's folder, or for a single file sometimes that file; either way, its folder. The
+    path is the client's, in its own style (a Linux NAS's, whatever Fetchbox runs on)."""
+    p: PurePath = PurePosixPath(storage) if "/" in storage else PureWindowsPath(storage)
     if p.name == name or not p.suffix or len(p.suffix) > 6:
         return storage
     return str(p.parent)
