@@ -1,8 +1,10 @@
-"""Read-only client for Radarr and Sonarr (their v3 API), for migrating to Fetchbox.
+"""Read-only client for Radarr, Sonarr (their v3 API) and Lidarr (its v1), for migrating
+to Fetchbox.
 
-Only reads: titles, files, root folders, quality profiles, indexers and download
-clients. Checked against Radarr (2026) and Sonarr 4.0.20: stored secrets (indexer API
-keys, client passwords) come back masked as ``********``, so they can't be migrated.
+Only reads: titles (Lidarr: artists, with their albums and track files), files, root
+folders, quality profiles, indexers and download clients. Checked against Radarr (2026),
+Sonarr 4.0.20 and Lidarr 3.1.6: stored secrets (indexer API keys, client passwords) come
+back masked as ``********``, so they can't be migrated.
 """
 
 from __future__ import annotations
@@ -11,7 +13,8 @@ from typing import Any, Literal
 
 import httpx
 
-Kind = Literal["radarr", "sonarr"]
+Kind = Literal["radarr", "sonarr", "lidarr"]
+API = {"radarr": "/api/v3", "sonarr": "/api/v3", "lidarr": "/api/v1"}
 TIMEOUT = httpx.Timeout(60.0, connect=10.0)
 
 
@@ -39,7 +42,7 @@ class ArrClient:
 
     async def _get(self, path: str, **params: Any) -> Any:
         try:
-            r = await self._http.get(f"/api/v3{path}", params=params or None)
+            r = await self._http.get(f"{API[self.kind]}{path}", params=params or None)
         except httpx.HTTPError as exc:
             raise ArrError(
                 f"{self.kind.title()} unreachable at {self.url}: {type(exc).__name__}"
@@ -60,9 +63,18 @@ class ArrClient:
         return s
 
     async def titles(self) -> list[dict[str, Any]]:
-        out: list[dict[str, Any]] = await self._get(
-            "/movie" if self.kind == "radarr" else "/series"
-        )
+        path = {"radarr": "/movie", "sonarr": "/series", "lidarr": "/artist"}[self.kind]
+        out: list[dict[str, Any]] = await self._get(path)
+        return out
+
+    async def albums(self, artist_id: int) -> list[dict[str, Any]]:
+        """Lidarr: an artist's albums (MusicBrainz release groups: foreignAlbumId)."""
+        out: list[dict[str, Any]] = await self._get("/album", artistId=artist_id)
+        return out
+
+    async def track_files(self, artist_id: int) -> list[dict[str, Any]]:
+        """Lidarr: an artist's track files (absolute paths, with their albumId)."""
+        out: list[dict[str, Any]] = await self._get("/trackfile", artistId=artist_id)
         return out
 
     async def episodes(self, series_id: int) -> list[dict[str, Any]]:

@@ -1,18 +1,25 @@
 <script lang="ts">
 	import { ApiError, get, post, type S } from '#lib/api.ts';
 
-	// Move from Radarr / Sonarr: connect, look at what's there, import. Neither is changed.
+	// Move from Radarr / Sonarr / Lidarr: connect, look at what's there, import. None is changed.
 	type Scan = {
-		kind: 'radarr' | 'sonarr';
+		kind: Kind;
 		app_version: string;
-		titles: { arr_id: number; name: string; year: number | null; files: number; monitored: boolean; in_fetchbox: boolean; tmdb_id: number | null }[];
+		titles: { arr_id: number; name: string; year: number | null; files: number; monitored: boolean; in_fetchbox: boolean; tmdb_id: number | null; mbid?: string | null }[];
 		root_folders: { path: string; titles: number }[];
 		profiles: { id: number; name: string; maps_to: string | null }[];
 		indexers: { name: string; implementation: string; url: string | null }[];
 		download_clients: { name: string; implementation: string; host: string | null }[];
 		counts: { titles: number; with_files: number; missing_tmdb: number };
 	};
-	let kind = $state<'radarr' | 'sonarr'>('radarr');
+	type Kind = 'radarr' | 'sonarr' | 'lidarr';
+	let kind = $state<Kind>('radarr');
+	// what each one has, in words; and the next one to move after it
+	const APP: Record<Kind, { label: string; port: string; things: string; id: string; next: Kind }> = {
+		radarr: { label: 'Radarr', port: '7878', things: 'movies', id: 'TMDB', next: 'sonarr' },
+		sonarr: { label: 'Sonarr', port: '8989', things: 'shows', id: 'TMDB', next: 'lidarr' },
+		lidarr: { label: 'Lidarr', port: '8686', things: 'artists', id: 'MusicBrainz', next: 'radarr' }
+	};
 	let url = $state('');
 	let key = $state('');
 	let scan = $state<Scan | null>(null);
@@ -24,8 +31,8 @@
 	let busy = $state('');
 	let error = $state('');
 
-	const label = $derived(kind === 'radarr' ? 'Radarr' : 'Sonarr');
-	const port = $derived(kind === 'radarr' ? '7878' : '8989');
+	const label = $derived(APP[kind].label);
+	const port = $derived(APP[kind].port);
 	$effect(() => {
 		get<S['ProfileOut'][]>('/quality-profiles', { media: 'video' }).then((p) => (profiles = p));
 	});
@@ -77,22 +84,22 @@
 			});
 			result = (await waitFor(j.id)) as unknown as typeof result;
 		});
-	const fresh = $derived(scan ? scan.titles.filter((t) => !t.in_fetchbox && t.tmdb_id).length : 0);
+	const fresh = $derived(scan ? scan.titles.filter((t) => !t.in_fetchbox && (t.tmdb_id || t.mbid)).length : 0);
 </script>
 
 <main>
 	<p><a href="/settings/library">← Library settings</a></p>
-	<h1>Move from Radarr or Sonarr</h1>
+	<h1>Move from Radarr, Sonarr or Lidarr</h1>
 	<p class="muted small">
-		Fetchbox reads your movies or shows, what's monitored, your quality profiles and which files you have, and adds them
-		here with the files where they are. Radarr and Sonarr aren't changed, so you can run both side by side; turn their
+		Fetchbox reads your movies, shows or artists, what's monitored, your quality profiles and which files you have, and adds them
+		here with the files where they are. {label} isn't changed, so you can run both side by side; turn its
 		monitoring off once you've switched, or both will download.
 	</p>
 	{#if error}<p class="notice error">{error}</p>{/if}
 
 	<form class="card stack" onsubmit={connect}>
 		<div class="row seg" role="radiogroup" aria-label="App">
-			{#each [['radarr', 'Radarr (movies)'], ['sonarr', 'Sonarr (TV)']] as [k, l] (k)}
+			{#each [['radarr', 'Radarr (movies)'], ['sonarr', 'Sonarr (TV)'], ['lidarr', 'Lidarr (music)']] as [k, l] (k)}
 				<button type="button" role="radio" aria-checked={kind === k} class:on={kind === k}
 					onclick={() => ((kind = k as typeof kind), (scan = null), (result = null))}>{l}</button>
 			{/each}
@@ -108,8 +115,8 @@
 		<div class="card stack">
 			<h2>{label} {scan.app_version}</h2>
 			<p>
-				<strong>{scan.counts.titles}</strong> {kind === 'radarr' ? 'movies' : 'shows'}, {scan.counts.with_files} with files.
-				{fresh} new to Fetchbox{scan.counts.missing_tmdb ? `; ${scan.counts.missing_tmdb} without a TMDB id are skipped` : ''}.
+				<strong>{scan.counts.titles}</strong> {APP[kind].things}, {scan.counts.with_files} with files.
+				{fresh} new to Fetchbox{scan.counts.missing_tmdb ? `; ${scan.counts.missing_tmdb} without a ${APP[kind].id} id are skipped` : ''}.
 			</p>
 
 			<h3>Folders</h3>
@@ -141,7 +148,7 @@
 
 			<div>
 				<button class="primary" onclick={importAll} disabled={!!busy || fresh === 0 && scan.counts.with_files === 0}>
-					{busy === 'apply' ? `Importing… ${progress != null ? Math.round(progress * 100) + '%' : ''}` : `Import ${scan.counts.titles} ${kind === 'radarr' ? 'movies' : 'shows'}`}
+					{busy === 'apply' ? `Importing… ${progress != null ? Math.round(progress * 100) + '%' : ''}` : `Import ${scan.counts.titles} ${APP[kind].things}`}
 				</button>
 			</div>
 		</div>
@@ -154,7 +161,7 @@
 			{#if result.skipped.length}<p class="notice warn small">Skipped: {result.skipped.map((s) => `${s.name} (${s.reason})`).join('; ')}</p>{/if}
 			<p class="muted small">Fetchbox starts searching for what's missing within the hour.</p>
 			<div class="row"><a class="button primary" href="/">Go to the library</a>
-				<button onclick={() => ((scan = null), (result = null), (kind = kind === 'radarr' ? 'sonarr' : 'radarr'))}>Now {kind === 'radarr' ? 'Sonarr' : 'Radarr'}</button></div>
+				<button onclick={() => ((scan = null), (result = null), (kind = APP[kind].next))}>Now {APP[APP[kind].next].label}</button></div>
 		</div>
 	{/if}
 </main>

@@ -746,7 +746,7 @@
 		<h2>Library</h2>
 		<p class="muted small">
 			Where finished downloads go and how they're named. Most people only pick a folder and a style.
-			Coming from Radarr or Sonarr? <a href="/library/migrate">Move your library over</a>.
+			Coming from Radarr, Sonarr or Lidarr? <a href="/library/migrate">Move your library over</a>.
 		</p>
 		{#if namingOptions}
 			<div class="libs">

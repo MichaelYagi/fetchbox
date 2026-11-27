@@ -4997,7 +4997,8 @@
      "kind": {
       "enum": [
        "radarr",
-       "sonarr"
+       "sonarr",
+       "lidarr"
       ],
       "title": "Kind",
       "type": "string"
@@ -5060,7 +5061,8 @@
      "kind": {
       "enum": [
        "radarr",
-       "sonarr"
+       "sonarr",
+       "lidarr"
       ],
       "title": "Kind",
       "type": "string"

@@ -265,6 +265,7 @@ def create_app(
         migrator = Migrator(
             db, jobs, storage=storage, media=media, profiles=profiles, library=library
         )
+        migrator.music, migrator.music_import = music, existing.music
         migrator.register_jobs()
         app.state.migrator = migrator
         app.state.existing = existing

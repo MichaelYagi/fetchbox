@@ -4799,7 +4799,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "radarr" | "sonarr";
+            kind: "radarr" | "sonarr" | "lidarr";
             /**
              * Only
              * @description Their title ids; null: all
@@ -4835,7 +4835,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "radarr" | "sonarr";
+            kind: "radarr" | "sonarr" | "lidarr";
             /**
              * Url
              * @description e.g. http://192.168.1.10:7878

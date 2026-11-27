@@ -120,3 +120,90 @@ async def test_move_from_radarr_and_sonarr(
         "result"
     ]
     assert res["added"] == 0 and res["files"] == 0
+
+
+def fake_lidarr(root: Path) -> Any:
+    """Responses recorded from a real Lidarr 3.1.6: Portishead, Dummy's 11 files (the
+    other albums without), Dummy unmonitored, its root folder {ROOT}."""
+    data = json.loads(
+        (FIXTURES / "lidarr.json").read_text(encoding="utf-8").replace("{ROOT}", root.as_posix())
+    )
+
+    def handle(req: httpx.Request) -> httpx.Response:
+        if req.headers.get("x-api-key") != KEY:
+            return httpx.Response(401)
+        path = req.url.path.removeprefix("/api/v1")
+        if req.url.query:
+            path += "?" + req.url.query.decode()
+        body = data.get(path)
+        return httpx.Response(200, json=body) if body is not None else httpx.Response(404)
+
+    return httpx.MockTransport(handle)
+
+
+def test_music_profiles_map_by_name() -> None:
+    from fetchbox.modules.library.migrate import guess_music_profile
+
+    ours = {"Lossless": "l", "High-quality lossy": "h", "Any audio": "a"}
+    got = [guess_music_profile(n, ours) for n in ("Lossless", "Standard", "Any", "Weird")]
+    assert got == ["l", "h", "a", "l"]
+
+
+async def test_move_from_lidarr(c: httpx.AsyncClient, server: Running, tmp_path: Path) -> None:
+    """No TMDB key needed (MusicBrainz). The artist and Dummy's files, adopted in place;
+    Lidarr's monitoring copied (Dummy unmonitored there, the others wanted)."""
+    from fetchbox.modules.library.music_files import TagValues, write_tags
+    from tests.test_music import AUDIO
+    from tests.test_musicbrainz import ARTIST, FIX, fake_mb
+
+    root = tmp_path / "lidarrmusic"
+    dummy = "48140466-cff6-3222-bd55-63c27e43190d"
+    release = json.loads((FIX / "rels.json").read_text())["releases"][0]
+    names = [t["title"] for t in release["media"][0]["tracks"]]
+    for i, name in enumerate(names, 1):  # the files Lidarr lists, where it lists them
+        p = root / "Portishead" / "Dummy (1994)" / f"{i:02d} - {name}.flac"
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_bytes((AUDIO / "flac16_1s.flac").read_bytes())
+        write_tags(p, TagValues(artist="Portishead", album="Dummy", year=1994, title=name,
+                                track=i, tracks=len(names), disc=1, discs=1,
+                                artist_mbid=ARTIST, album_mbid=dummy))  # fmt: skip
+    server.app.state.migrator.transport = fake_lidarr(root)
+    music = server.app.state.music
+    music.transport, music.interval = fake_mb(), 0
+    await c.patch("/system/config", json={"tmdb": {"api_key": None}})  # not needed for music
+
+    lidarr = {"kind": "lidarr", "url": "http://lidarr:8686", "api_key": KEY}
+    r = await c.post("/library/migrate/scan", json={**lidarr, "kind": "radarr"})
+    assert r.status_code == 409  # Radarr would need TMDB; and it's Lidarr there anyway
+    scan = (await _job(c, (await c.post("/library/migrate/scan", json=lidarr)).json()["id"]))[
+        "result"
+    ]
+    assert scan["counts"] == {"titles": 1, "with_files": 1, "missing_tmdb": 0}
+    [artist] = scan["titles"]
+    assert (artist["name"], artist["mbid"], artist["files"]) == ("Portishead", ARTIST, 11)
+    profiles = {p["name"]: p["maps_to"] for p in scan["profiles"]}
+    ours = {p["id"]: p["name"] for p in (await c.get("/quality-profiles")).json()}
+    assert (
+        ours[profiles["Lossless"]] == "Lossless"
+        and ours[profiles["Standard"]] == "High-quality lossy"
+    )
+    assert KEY not in json.dumps(scan)
+
+    res = (await _job(c, (await c.post("/library/migrate/apply", json=lidarr)).json()["id"]))[
+        "result"
+    ]
+    assert res["added"] == 1 and res["files"] == 11 and res["skipped"] == [], res
+    [title] = (await c.get("/titles", params={"filter[kind]": "music"})).json()["items"]
+    albums = {a["name"]: a["wanted"] for a in (await c.get(f"/titles/{title['id']}/albums")).json()}
+    assert albums["Dummy"]["state"] == "acquired" and not albums["Dummy"]["monitored"]
+    assert albums["Third"]["monitored"] and albums["Third"]["state"] == "missing"
+    assert (await c.get(f"/titles/{title['id']}")).json()["monitor_mode"] == "future"
+    files = (await c.get(f"/titles/{title['id']}/files")).json()
+    assert len(files) == 11 and {f["link_mode"] for f in files} == {"existing"}
+    folders = {d["name"]: d for d in (await c.get("/destinations")).json()}
+    assert folders["Lidarr lidarrmusic"]["media_kind"] == "music"
+
+    again = (await _job(c, (await c.post("/library/migrate/apply", json=lidarr)).json()["id"]))[
+        "result"
+    ]
+    assert again["added"] == 0 and again["files"] == 0  # nothing twice

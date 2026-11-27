@@ -275,6 +275,7 @@ class ExistingMusic:
         profile = to_spec(await self.profiles.get_profile(title.profile_id))
         tier = profile.tier_index(quality)
         complete = not m.missing
+        recorded = 0  # files recorded now (not those recorded before)
         async with self.db.sessionmaker() as s:
             for track_id, af in m.pairs.items():
                 if (
@@ -301,6 +302,7 @@ class ExistingMusic:
                 s.add(row)
                 await s.flush()
                 s.add(MediaFileItem(media_file_id=row.id, wanted_item_id=w.id))
+                recorded += 1
             row_w = await s.get(WantedItem, w.id)
             assert row_w is not None
             row_w.monitored = True
@@ -309,4 +311,4 @@ class ExistingMusic:
                 row_w.cutoff_met = tier is not None and tier >= profile.cutoff_index
             row_w.version += 1
             await s.commit()
-        return title, new, len(m.pairs)
+        return title, new, recorded
