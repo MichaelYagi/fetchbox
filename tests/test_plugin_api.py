@@ -164,3 +164,19 @@ def test_a_secret_with_a_default_is_a_secret() -> None:
 
     s = Account()
     assert isinstance(s.password, Secret) and s.password.value == "" and not s.password
+
+
+def test_a_setting_can_offer_named_choices() -> None:
+    """``choices``: names to pick from, kept as their values; on a list, several in order."""
+
+    class Picks(Settings):
+        langs: list[str] = Field(
+            ["en"], title="Languages", choices={"en": "English", "fr": "French"}
+        )
+        one: str = Field("en", choices={"en": "English"}, json_schema_extra={"x-note": "kept"})
+
+    props = Picks.model_json_schema()["properties"]
+    assert props["langs"]["x-fetchbox-choices"] == {"en": "English", "fr": "French"}
+    assert props["one"]["x-fetchbox-choices"] == {"en": "English"}
+    assert props["one"]["x-note"] == "kept"
+    assert Picks(langs=["fr", "en"]).langs == ["fr", "en"]  # the order is the preference

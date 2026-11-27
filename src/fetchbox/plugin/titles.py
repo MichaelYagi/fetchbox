@@ -11,6 +11,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
+import structlog
 from sqlalchemy import select
 
 from fetchbox.core import kinds
@@ -21,6 +22,9 @@ from fetchbox.modules.profiles.models import QualityProfile
 from fetchbox.modules.storage.models import Destination, StorageNode
 from fetchbox.plugin.host import Loaded, PluginHost
 from fetchbox_plugin import Hit, MediaKind, TitleDetails
+
+log = structlog.get_logger(__name__)
+REFRESH_ALL = "plugins.refresh_titles"  # the daily schedule (and job): new issues appear
 
 
 def _groups(details: TitleDetails) -> list[dict[str, Any]]:
@@ -40,6 +44,24 @@ class PluginTitles:
         self.db = self.media.db
 
     # ---- the kinds plugins add -------------------------------------------------------------
+
+    async def refresh_all(self, *, actor: Actor) -> dict[str, Any]:
+        """Daily: every running plugin kind's titles read again from their source, so new
+        items (a newly announced issue) appear and are wanted as each title's monitor
+        setting says. One that fails is logged and left for the next day."""
+        running = {kid for kid, _k, _g in self.running()}
+        if not running:
+            return {"titles": 0, "refreshed": 0}
+        async with self.db.sessionmaker() as s:
+            ids = list((await s.execute(select(Title.id).where(Title.kind.in_(running)))).scalars())
+        done = 0
+        for tid in ids:
+            try:
+                await self.refresh(tid, actor=actor)
+                done += 1
+            except Exception as exc:
+                log.warning("plugin.refresh_failed", title=tid, error=str(exc))
+        return {"titles": len(ids), "refreshed": done}
 
     def running(self) -> list[tuple[str, MediaKind, Loaded]]:
         return [(kid, k, got) for got in self.host.loaded.values() for kid, k in got.kinds.items()]

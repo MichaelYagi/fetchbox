@@ -86,8 +86,10 @@ Run the method for each of these public events: ``async def m(self, ctx, event)`
 action(label: str, *, on: Level = item) -> Callable[[F], F]
 ```
 
-A button on each title, group or item: ``async def m(self, ctx, item)``. Runs as a job
-and shows its progress and result.
+A button on each title, group or item: ``async def m(self, ctx, item)``; or, with
+``on="library"``, one button for the whole library on the plugin's card in Settings >
+Plugins: ``async def m(self, ctx)`` (Fetchbox 0.10.4 or later). Runs as a job and shows
+its progress and result.
 
 ### `every`
 
@@ -320,10 +322,12 @@ model_config = ConfigDict(extra="forbid", validate_assignment=True, validate_def
 ### `Field`
 
 ```python
-Field(default: Any = Ellipsis, *, title: str | None = None, help: str | None = None, ge: float | None = None, le: float | None = None, **kwargs: Any) -> Any
+Field(default: Any = Ellipsis, *, title: str | None = None, help: str | None = None, ge: float | None = None, le: float | None = None, choices: dict[str, str] | None = None, **kwargs: Any) -> Any
 ```
 
 A setting: ``title`` is its label, ``help`` the hint under it, ``ge``/``le`` limits.
+``choices`` ({value: name}) shows names to pick from instead of a text box; on a list
+setting, several in order (Fetchbox 0.10.4 or later).
 
 ### `Secret`
 

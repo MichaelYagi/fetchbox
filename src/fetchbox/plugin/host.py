@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import re
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -25,6 +26,7 @@ from typing import Any
 import structlog
 from pydantic import ValidationError
 
+from fetchbox import __version__
 from fetchbox.core import kinds
 from fetchbox.core.db import Database
 from fetchbox.core.events import Event, EventBus
@@ -45,6 +47,11 @@ PAUSE_WINDOW = 3600.0
 PAUSE_FOR = 3600
 MAX_JOB_TYPE = 100  # the job table's type column
 MAX_SCHEDULE_NAME = 64
+
+
+def _release(version: str) -> tuple[int, ...]:
+    """ "0.10.4" -> (0, 10, 4); a dev build counts as its release ("0.10.4.dev2")."""
+    return tuple(int(x) for x in re.findall(r"\d+", version)[:3])
 
 
 class PluginLoadError(Exception):
@@ -160,6 +167,8 @@ class PluginHost:
                 f"{pid} is written for plugin API {plugin.fetchbox_api}; this Fetchbox "
                 f"supports API {', '.join(map(str, sorted(SUPPORTED_APIS)))}"
             )
+        if (need := plugin.min_fetchbox) and _release(need) > _release(__version__):
+            raise PluginLoadError(f"{pid} needs Fetchbox {need} or later; this is {__version__}")
         if pid in self.loaded:
             raise PluginLoadError(f"{pid} is already loaded")
         return pid
@@ -207,8 +216,9 @@ class PluginHost:
                 )
             )
             got.schedules.append(sched)
-        for name, _spec in found["action"]:
-            job = self._job(got, f"plugin.{pid}.{part.id}.{name}", addon, name, "action")
+        for name, spec in found["action"]:
+            how = "library" if spec.level == "library" else "action"  # no item: fn(ctx)
+            job = self._job(got, f"plugin.{pid}.{part.id}.{name}", addon, name, how)
             got.actions[(part.id, name)] = job
 
     def _add_provider(self, got: Loaded, part: type) -> None:

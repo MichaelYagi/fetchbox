@@ -20,12 +20,23 @@
 		default?: unknown;
 		anyOf?: Prop[];
 		'x-fetchbox'?: string;
+		'x-fetchbox-choices'?: Record<string, string>; // value -> name: pick by name
 		$ref?: string;
 	};
 	const schema = $derived((part.schema ?? {}) as { properties?: Record<string, Prop>; required?: string[]; $defs?: Record<string, Prop> });
 	const fields = $derived(Object.entries(schema.properties ?? {}));
 	// enums arrive as a $ref to $defs
 	const resolve = (p: Prop): Prop => (p.$ref ? { ...p, ...(schema.$defs?.[p.$ref.split('/').pop() ?? ''] ?? {}) } : p);
+	const choicesOf = (p: Prop) => p['x-fetchbox-choices'];
+	// a list with choices: picked by name, in order (the first comes first)
+	const picked = (k: string) => (values[k] as string[] | undefined) ?? [];
+	const add = (k: string, v: string) => v && !picked(k).includes(v) && (values[k] = [...picked(k), v]);
+	const drop = (k: string, v: string) => (values[k] = picked(k).filter((x) => x !== v));
+	const earlier = (k: string, i: number) => {
+		const xs = [...picked(k)];
+		[xs[i - 1], xs[i]] = [xs[i], xs[i - 1]];
+		values[k] = xs;
+	};
 
 	let values = $state<Record<string, unknown>>({});
 	let error = $state('');
@@ -36,7 +47,8 @@
 		for (const [k, p] of Object.entries(schema.properties ?? {})) {
 			const stored = part.values?.[k];
 			v[k] = stored ?? (resolve(p).writeOnly ? '' : (resolve(p).default ?? ''));
-			if (resolve(p).type === 'array' && Array.isArray(v[k])) v[k] = (v[k] as unknown[]).join('\n');
+			if (resolve(p).type === 'array' && choicesOf(resolve(p))) v[k] = Array.isArray(v[k]) ? [...(v[k] as string[])] : [];
+			else if (resolve(p).type === 'array' && Array.isArray(v[k])) v[k] = (v[k] as unknown[]).join('\n');
 		}
 		values = v;
 	});
@@ -46,7 +58,8 @@
 		for (const [k, raw] of fields) {
 			const p = resolve(raw);
 			let v = values[k];
-			if (p.type === 'array') v = String(v ?? '').split('\n').map((x) => x.trim()).filter(Boolean);
+			if (p.type === 'array' && choicesOf(p)) v = [...picked(k)];
+			else if (p.type === 'array') v = String(v ?? '').split('\n').map((x) => x.trim()).filter(Boolean);
 			else if (p.type === 'integer' || p.type === 'number') v = v === '' || v === null ? null : Number(v);
 			else if (p.writeOnly && v === '') continue; // not typed: unchanged
 			out[k] = v;
@@ -88,12 +101,37 @@
 		{@const p = resolve(raw)}
 		{@const label = p.title ?? key}
 		{@const needed = part.missing.includes(key)}
+		{@const choices = choicesOf(p)}
 		{#if p.type === 'boolean'}
 			<label class="check"><input type="checkbox" bind:checked={values[key] as boolean} /> {label}</label>
+		{:else if p.type === 'array' && choices}
+			<div class="field">
+				<span>{label}{#if needed}<span class="needed"> · needed</span>{/if}</span>
+				<div class="chosen">
+					{#each picked(key) as v, i (v)}
+						<span class="chip">
+							{choices[v] ?? v}
+							{#if i > 0}<button type="button" class="x" title="Move earlier" aria-label="Move {choices[v] ?? v} earlier" onclick={() => earlier(key, i)}>↑</button>{/if}
+							<button type="button" class="x" title="Remove" aria-label="Remove {choices[v] ?? v}" onclick={() => drop(key, v)}>×</button>
+						</span>
+					{:else}
+						<span class="muted small">None yet</span>
+					{/each}
+				</div>
+				<select aria-label="Add to {label}" onchange={(e) => (add(key, e.currentTarget.value), (e.currentTarget.value = ''))}>
+					<option value="">Add…</option>
+					{#each Object.entries(choices).filter(([v]) => !picked(key).includes(v)).sort((a, b) => a[1].localeCompare(b[1])) as [v, name] (v)}<option value={v}>{name}</option>{/each}
+				</select>
+				{#if p.description}<span class="muted small">{p.description}</span>{/if}
+			</div>
 		{:else}
 			<label class="field">
 				<span>{label}{#if needed}<span class="needed"> · needed</span>{/if}</span>
-				{#if p.enum}
+				{#if choices}
+					<select bind:value={values[key]}>
+						{#each Object.entries(choices) as [v, name] (v)}<option value={v}>{name}</option>{/each}
+					</select>
+				{:else if p.enum}
 					<select bind:value={values[key]}>
 						{#each p.enum as opt (String(opt))}<option value={opt}>{String(opt)}</option>{/each}
 					</select>
@@ -122,6 +160,31 @@
 	.field {
 		display: grid;
 		gap: 0.3rem;
+	}
+	.chosen {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.35rem;
+	}
+	.chip {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.2rem;
+		padding: 0.15rem 0.3rem 0.15rem 0.6rem;
+		border: 1px solid var(--border);
+		border-radius: 999px;
+		background: var(--surface-2);
+		font-size: 0.9rem;
+	}
+	.chip .x {
+		background: none;
+		border: 0;
+		padding: 0 0.25rem;
+		color: var(--muted);
+		cursor: pointer;
+	}
+	.chip .x:hover {
+		color: var(--text);
 	}
 	.needed {
 		color: var(--warn, #d9a441);

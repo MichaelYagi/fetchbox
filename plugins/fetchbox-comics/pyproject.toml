@@ -4,8 +4,11 @@ version = "0.1.0"
 description = "Comics: series and issues from ComicVine, filed as CBZ or CBR."
 readme = "README.md"
 requires-python = ">=3.12"
+# Only the plugin API: Fetchbox includes it, so installing the wheel adds nothing else
 dependencies = ["fetchbox-plugin-api>=1,<2"]
 
+# How Fetchbox finds the plugin in an installed wheel: the "fetchbox.plugins" entry point,
+# naming the Plugin class
 [project.entry-points."fetchbox.plugins"]
 comics = "fetchbox_comics:ComicsPlugin"
 

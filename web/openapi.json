@@ -34,7 +34,7 @@
       "type": "string"
      },
      "on": {
-      "description": "title, group or item",
+      "description": "title, group, item, or library (the plugin's card)",
       "title": "On",
       "type": "string"
      }
@@ -10130,7 +10130,7 @@
  },
  "info": {
   "title": "Fetchbox",
-  "version": "0.10.3"
+  "version": "0.10.4.dev0"
  },
  "openapi": "3.1.0",
  "paths": {

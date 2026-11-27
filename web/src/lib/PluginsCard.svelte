@@ -55,6 +55,39 @@
 		}
 	}
 
+	// A plugin's actions for the whole library: run as a job; its result shown when done
+	let running = $state<Record<string, boolean>>({});
+	let results = $state<Record<string, string>>({});
+	async function runLibrary(p: P, a: P['actions'][number]) {
+		const key = `${p.id}/${a.addon}/${a.method}`;
+		running[key] = true;
+		results[key] = 'Working…';
+		try {
+			const r = await post<S['PluginJobOut']>(`/plugins/${p.id}/actions/${a.addon}/${a.method}`, {});
+			if (!r.job_id) {
+				results[key] = 'Already running';
+				return;
+			}
+			for (;;) {
+				await new Promise((ok) => setTimeout(ok, 1500));
+				const j = await get<S['JobOut']>(`/jobs/${r.job_id}`);
+				if (j.status === 'succeeded') {
+					const res = (j.result ?? {}) as Record<string, unknown>;
+					results[key] = typeof res.message === 'string' ? res.message : typeof res.skipped === 'string' ? res.skipped : 'Done';
+					break;
+				}
+				if (j.status === 'failed' || j.status === 'cancelled') {
+					results[key] = j.error ?? 'It failed';
+					break;
+				}
+			}
+		} catch (e) {
+			results[key] = e instanceof ApiError ? e.message : String(e);
+		} finally {
+			running[key] = false;
+		}
+	}
+
 	async function toggle(p: P) {
 		if (!p.enabled && !p.approved) {
 			const ok = await ask(`Turn on ${p.name}?\n\nIt uses: ${uses(p)}.\n\n${TRUST}`, 'Turn on');
@@ -130,6 +163,15 @@
 					Uses: {uses(p)}{#if p.contributes.length} · Adds: {p.contributes.map((c) => c.name).join(', ')}{/if}
 					{#if p.homepage} · <a href={p.homepage} target="_blank" rel="noreferrer">Homepage</a>{/if}
 				</p>
+				{#if p.running}
+					{#each p.actions.filter((a) => a.on === 'library') as a (`${a.addon}/${a.method}`)}
+						{@const key = `${p.id}/${a.addon}/${a.method}`}
+						<div class="row small">
+							<button class="small" onclick={() => runLibrary(p, a)} disabled={!!running[key]}>{a.label}</button>
+							{#if results[key]}<span class="muted">{results[key]}</span>{/if}
+						</div>
+					{/each}
+				{/if}
 				{#if !p.api_supported}
 					<p class="notice warn small">Written for plugin API {p.api}; this Fetchbox supports API 1. A newer Fetchbox may run it.</p>
 				{:else if p.error && p.enabled}
