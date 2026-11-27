@@ -424,3 +424,15 @@ async def test_dropped_while_fetchbox_was_off(settings: Settings) -> None:
         r = server.app.state.plugins.records["greeter"]
         assert (r.approved, r.enabled) == (False, False)
         assert (drop / "installed" / WHL).exists()
+
+
+async def test_an_upgrade_leaves_one_version_installed(settings: Settings) -> None:
+    """A newer wheel replaces the older one's record too, so the version is the new one on
+    every system (both records left there, either could be read)."""
+    async with running(settings) as server:
+        mgr = server.app.state.plugins
+        await mgr.install_wheel(wheel(), WHL)
+        await mgr.install_wheel(wheel(version="0.2.0"), f"{MODULE}-0.2.0-py3-none-any.whl")
+        lib = settings.data_dir / "plugins" / "lib"
+        assert sorted(p.name for p in lib.glob("*.dist-info")) == [f"{MODULE}-0.2.0.dist-info"]
+        assert mgr.records["greeter"].version == "0.2.0"

@@ -425,6 +425,13 @@ class PluginManager:
         top = {PurePosixPath(n).parts[0] for n in names}
         for t in top:  # an older version of it: replaced
             shutil.rmtree(self.lib / t, ignore_errors=True)
+        # and its older versions' records ("name-0.1.0.dist-info" isn't among a 0.2.0 wheel's
+        # folders): left there, either could be read as the installed version
+        dists = {_norm(t.split("-")[0]) for t in top if t.endswith(".dist-info")}
+        if self.lib.is_dir():
+            for old in self.lib.glob("*.dist-info"):
+                if old.name not in top and _norm(old.name.split("-")[0]) in dists:
+                    shutil.rmtree(old, ignore_errors=True)
         self.lib.mkdir(parents=True, exist_ok=True)
         zf.extractall(self.lib)
         for mod in [m for m in sys.modules if any(m == t or m.startswith(t + ".") for t in top)]:
