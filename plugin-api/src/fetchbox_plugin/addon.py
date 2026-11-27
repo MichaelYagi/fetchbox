@@ -125,6 +125,10 @@ class Panel:
 
 
 class Addon:
+    """Something that reacts to Fetchbox: methods decorated with ``@on`` (events),
+    ``@action`` (buttons), ``@every`` (schedules) and ``@panel`` (title page panels). List it
+    in your Plugin's ``contributes``; ``settings = MySettings`` gives it settings."""
+
     id: ClassVar[str]
     name: ClassVar[str]
     applies_to: ClassVar[frozenset[str] | set[str] | None] = None  # media kinds; None: all

@@ -157,6 +157,11 @@ class Naming:
 
 
 class MediaKind:
+    """A new kind of media (comics, audiobooks, ...), handled like movies: added on the Add
+    page, searched for on your indexers, downloaded, imported, named and upgraded. Fill in
+    the class attributes and the methods search, title, parse and name_tokens (queries and
+    pick have defaults); Fetchbox does the rest."""
+
     id: ClassVar[str]
     name: ClassVar[str]  # the Add page button and the Library tab: "Comics"
     levels: ClassVar[tuple[str, ...]]  # the words the UI uses, title first: ("series", "issue")

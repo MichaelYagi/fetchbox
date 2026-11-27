@@ -53,3 +53,57 @@ async def test_check_and_forget(c: httpx.AsyncClient, fakes: Fakes) -> None:
         amelie["wanted"][0]["state"] == "missing" and amelie["wanted"][0]["next_search_at"] is None
     )
     assert (await c.get(f"/titles/{gone['title_id']}/files")).json() == []
+
+
+async def _files_check(c: httpx.AsyncClient) -> dict[str, Any]:
+    health = (await c.get("/system/health")).json()
+    return next(x for x in health["checks"] if x["name"] == "library_files")
+
+
+async def test_the_last_check_and_health(c: httpx.AsyncClient, fakes: Fakes) -> None:
+    """Two files gone: Health says so; dealt with one at a time, each leaves the list."""
+    assert (await c.get("/library/check/latest")).json() is None
+    assert (await _files_check(c))["status"] == "ok"
+    dest = await _dest(c, "movie")
+    root = Path(dest["path"])
+    rels = ["Dune (2021) {tmdb-438631}/Dune (2021) Bluray-1080p.mkv",
+            "Amélie (2001)/Amelie.2001.720p.BluRay.x264-GRP.mkv"]  # fmt: skip
+    for n, rel in enumerate(rels):
+        (root / rel).parent.mkdir(parents=True, exist_ok=True)
+        (root / rel).write_bytes(bytes([n + 1]) * 1000)
+    profile = await standard_hd(c)
+    items = [
+        {"folder": "Dune (2021) {tmdb-438631}", "tmdb_id": 438631, "profile_id": profile,
+         "files": [rels[0]]},
+        {"folder": "Amélie (2001)", "tmdb_id": 194, "profile_id": profile, "files": [rels[1]]},
+    ]  # fmt: skip
+    await _job(c, (await c.post("/library/import", json={
+        "destination_id": dest["id"], "items": items})).json()["id"])  # fmt: skip
+    for rel in rels:
+        (root / rel).unlink()  # deleted by hand on the NAS
+    await _job(c, (await c.post("/library/check")).json()["id"])
+
+    latest = (await c.get("/library/check/latest")).json()
+    assert sorted(m["title"] for m in latest["missing"]) == ["Amélie", "Dune"]
+    assert latest["checked_at"]
+    health = await _files_check(c)
+    assert health["status"] == "warning" and health["message"].startswith("2 files missing")
+    assert health["fix_url"] == "/settings/library#check"
+
+    dune, amelie = sorted(latest["missing"], key=lambda m: m["title"] != "Dune")
+    # Dune: searched for again; Amélie: removed from the library
+    assert (await c.post("/library/check/forget", json={"file_ids": [dune["file_id"]]})).json() == {
+        "forgotten": 1}  # fmt: skip
+    latest = (await c.get("/library/check/latest")).json()
+    assert [m["title"] for m in latest["missing"]] == ["Amélie"]
+    assert (await _files_check(c))["message"].startswith("1 file missing")
+    await c.post("/library/check/forget", json={"file_ids": [amelie["file_id"]]})
+    assert (await c.delete(f"/titles/{amelie['title_id']}")).status_code == 204
+    assert (await c.get("/library/check/latest")).json()["missing"] == []
+    assert (await _files_check(c))["status"] == "ok"
+    assert (await c.get(f"/titles/{dune['title_id']}")).json()["wanted"][0]["state"] == "missing"
+
+
+async def test_the_check_runs_daily(server: Any) -> None:
+    scheduled = server.app.state.fb.scheduler.definitions
+    assert scheduled["library_check"].job_type == "library.check"

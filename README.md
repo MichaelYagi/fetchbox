@@ -2,11 +2,10 @@
 
 Self-hosted media manager for movies, TV and music: the Sonarr, Radarr and Lidarr workflow
 in one app. Find a title, pick a quality, and Fetchbox searches your indexers, downloads it,
-then names and files it in your library (and tells Plex, Jellyfin or Emby). It upgrades what it has when a
-better copy turns up, and plugins add more: subtitles, comics, or a kind of media of your
-own. Works out of the box with a built-in torrent engine, so there's nothing else to set up.
-
-<img width="1212" height="955" alt="Screenshot 2026-11-26 195628" src="https://github.com/user-attachments/assets/a607e985-9091-4315-8a1e-a1a832d043f8" />
+then names and files it in your library (and tells Plex, Jellyfin or Emby). It upgrades
+what it has when a better copy turns up, and plugins add more: subtitles, comics, or a kind
+of media of your own. Works out of the box with a built-in torrent engine, so there's
+nothing else to set up.
 
 What it does:
 
@@ -22,10 +21,9 @@ What it does:
 - **Around it:** the Queue and Activity show what's happening, notifications go to email,
   Discord or a webhook, and Plex, Jellyfin or Emby rescan just the folder that changed.
 - **Plugins** add subtitles, comics, or a kind of media or service of your own; see
-  [Plugins](#writing-plugins).
+  [Plugins](#plugins).
 
-Status: early development, used day to day. See [PLAN.md](PLAN.md) and the engineering
-specification.
+Status: early development — see [PLAN.md](PLAN.md) and the engineering specification.
 
 ## Getting started
 
@@ -59,8 +57,8 @@ file each, no copies. Set `PUID`/`PGID` to the owner of your media folder. The
 password is only used on first start; change it in the web UI. A compose file is in
 `docker/compose.yaml`.
 
-Plugins: `-e FETCHBOX_PLUGINS=fetchbox-comics,fetchbox-subtitles` installs them at start
-into `/config`, so they come back after an image update (see [Writing plugins](docs/plugins.md)).
+Plugins: `-e FETCHBOX_PLUGINS=<wheel address>,…` installs them at start into `/config`, so
+they come back after an image update. The plugins and their addresses: [Plugins](docs/plugin-list.md).
 
 ### Desktop apps
 
@@ -189,11 +187,14 @@ to record what holds the database: write transactions held over a second, a task
 its own write, and any moment the server's event loop is blocked for over half a second,
 each with the code responsible. Attach that file to a bug report.
 
-## Writing plugins
+## Plugins
 
 Plugins add to Fetchbox without changing it: subtitles, a new kind of thing to collect,
-one more service. Start with `fetchbox plugin new hello`, then read the guide:
-[docs/plugins.md](docs/plugins.md).
+one more service. Install them in Settings > Plugins.
+
+- [Plugins](docs/plugin-list.md): what there is, and each one's address to install from.
+- [Writing Fetchbox plugins](docs/plugins.md): the guide. Start with `fetchbox plugin new hello`.
+- [Plugin API reference](docs/plugin-api.md): every class and function plugins can use.
 
 ## Development
 

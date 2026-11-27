@@ -1402,6 +1402,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/library/check/latest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Latest Check
+         * @description The last check's report (it runs daily and when asked), less the missing files
+         *     dealt with since; null before the first.
+         */
+        get: operations["latest_check_api_v1_library_check_latest_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/library/folder-choices": {
         parameters: {
             query?: never;
@@ -3299,6 +3320,29 @@ export interface components {
             state: string;
             /** Title Id */
             title_id: string;
+        };
+        /** CheckReportOut */
+        CheckReportOut: {
+            /** Checked At */
+            checked_at: string;
+            /** Duplicates */
+            duplicates: {
+                [key: string]: unknown;
+            }[][];
+            /** Files */
+            files: number;
+            /** Missing */
+            missing: {
+                [key: string]: unknown;
+            }[];
+            /** Not Checked */
+            not_checked: number;
+            /** Unknown */
+            unknown: {
+                [key: string]: unknown;
+            }[];
+            /** Unknown Count */
+            unknown_count: number;
         };
         /** CheckResult */
         CheckResult: {
@@ -10825,6 +10869,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    latest_check_api_v1_library_check_latest_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckReportOut"] | null;
                 };
             };
         };

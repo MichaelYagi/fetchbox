@@ -1159,6 +1159,64 @@
     "title": "CalendarEntry",
     "type": "object"
    },
+   "CheckReportOut": {
+    "properties": {
+     "checked_at": {
+      "title": "Checked At",
+      "type": "string"
+     },
+     "duplicates": {
+      "items": {
+       "items": {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       "type": "array"
+      },
+      "title": "Duplicates",
+      "type": "array"
+     },
+     "files": {
+      "title": "Files",
+      "type": "integer"
+     },
+     "missing": {
+      "items": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "title": "Missing",
+      "type": "array"
+     },
+     "not_checked": {
+      "title": "Not Checked",
+      "type": "integer"
+     },
+     "unknown": {
+      "items": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "title": "Unknown",
+      "type": "array"
+     },
+     "unknown_count": {
+      "title": "Unknown Count",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "checked_at",
+     "files",
+     "not_checked",
+     "missing",
+     "duplicates",
+     "unknown",
+     "unknown_count"
+    ],
+    "title": "CheckReportOut",
+    "type": "object"
+   },
    "CheckResult": {
     "properties": {
      "fix_url": {
@@ -16769,6 +16827,47 @@
      }
     ],
     "summary": "Forget Missing",
+    "tags": [
+     "library"
+    ]
+   }
+  },
+  "/api/v1/library/check/latest": {
+   "get": {
+    "description": "The last check's report (it runs daily and when asked), less the missing files\ndealt with since; null before the first.",
+    "operationId": "latest_check_api_v1_library_check_latest_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "anyOf": [
+          {
+           "$ref": "#/components/schemas/CheckReportOut"
+          },
+          {
+           "type": "null"
+          }
+         ],
+         "title": "Response Latest Check Api V1 Library Check Latest Get"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Latest Check",
     "tags": [
      "library"
     ]

@@ -1,10 +1,11 @@
 <script lang="ts">
 	import { ask } from '#lib/dialogs.svelte.ts';
-	import { ApiError, bytes, get, post, type S } from './api.ts';
+	import { ApiError, bytes, del, get, post, type S } from './api.ts';
 
 	// Check every library folder: files gone from disk, duplicates, files Fetchbox
 	// doesn't know about. Only reads; "Search again" forgets missing files.
 	type Report = {
+		checked_at?: string;
 		files: number;
 		not_checked: number;
 		missing: { file_id: string; path: string; title: string | null; title_id: string | null }[];
@@ -17,6 +18,52 @@
 	let busy = $state(false);
 	let error = $state('');
 	let message = $state('');
+	let acting = $state<string | null>(null);
+
+	// The last check (it runs daily too): shown on opening, so Health's link lands on it
+	$effect(() => {
+		get<Report | null>('/library/check/latest')
+			.then((r) => {
+				if (r && !report) report = r;
+			})
+			.catch(() => {});
+	});
+	const drop = (fid: string) => {
+		if (report) report = { ...report, missing: report.missing.filter((x) => x.file_id !== fid) };
+	};
+	type Missing = Report['missing'][number];
+
+	// One at a time: search for it again, or take the movie out of the library
+	async function searchAgain(m: Missing) {
+		acting = m.file_id;
+		error = message = '';
+		try {
+			await post('/library/check/forget', { file_ids: [m.file_id] });
+			drop(m.file_id);
+			message = `${m.title ?? m.path}: it'll be searched for again.`;
+		} catch (e) {
+			error = e instanceof ApiError ? e.message : String(e);
+		} finally {
+			acting = null;
+		}
+	}
+	async function removeTitle(m: Missing) {
+		if (!m.title_id) return;
+		const ok = await ask(`Remove ${m.title} from the library? Its file is already gone; nothing is downloaded.`, 'Remove', true);
+		if (!ok) return;
+		acting = m.file_id;
+		error = message = '';
+		try {
+			await post('/library/check/forget', { file_ids: [m.file_id] });
+			await del(`/titles/${m.title_id}`);
+			drop(m.file_id);
+			message = `${m.title}: removed from the library.`;
+		} catch (e) {
+			error = e instanceof ApiError ? e.message : String(e);
+		} finally {
+			acting = null;
+		}
+	}
 
 	async function run() {
 		busy = true;
@@ -53,7 +100,7 @@
 	}
 </script>
 
-<div class="card stack check">
+<div class="card stack check" id="check">
 	<div class="spread">
 		<div>
 			<h3>Check library</h3>
@@ -65,14 +112,21 @@
 	{#if message}<p class="notice">{message}</p>{/if}
 	{#if report}
 		<p class="small">
+			{#if report.checked_at}<span class="muted">Last check {new Date(report.checked_at).toLocaleString()}:</span>{/if}
 			{report.files} file{report.files === 1 ? '' : 's'} checked{report.not_checked ? `, ${report.not_checked} in offline folders not checked` : ''}.
 			{#if !report.missing.length && !report.duplicates.length && !report.unknown_count}<strong>All good.</strong>{/if}
 		</p>
 		{#if report.missing.length}
 			<div class="block">
 				<div class="spread"><strong>Missing from disk ({report.missing.length})</strong>
-					<button class="small" onclick={forget}>Search for them again</button></div>
-				{#each report.missing as m (m.file_id)}<div class="small line">{#if m.title_id}<a href="/title/{m.title_id}">{m.title}</a>: {/if}<span class="mono">{m.path}</span></div>{/each}
+					{#if report.missing.length > 1}<button class="small" onclick={forget} disabled={!!acting}>Search for all again</button>{/if}</div>
+				{#each report.missing as m (m.file_id)}
+					<div class="small line row-item">
+						<span class="grow">{#if m.title_id}<a href="/title/{m.title_id}">{m.title}</a>: {/if}<span class="mono">{m.path}</span></span>
+						<button class="small" onclick={() => searchAgain(m)} disabled={!!acting}>Search again</button>
+						{#if m.title_id}<button class="small danger" onclick={() => removeTitle(m)} disabled={!!acting}>Remove from library</button>{/if}
+					</div>
+				{/each}
 			</div>
 		{/if}
 		{#if report.duplicates.length}
@@ -114,6 +168,15 @@
 	}
 	.line {
 		overflow-wrap: anywhere;
+	}
+	.row-item {
+		display: flex;
+		gap: 0.5rem;
+		align-items: center;
+		flex-wrap: wrap;
+	}
+	.grow {
+		flex: 1 1 16rem;
 	}
 	.mono {
 		font-family: var(--mono, ui-monospace, monospace);
