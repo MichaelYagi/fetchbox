@@ -271,7 +271,10 @@ async def test_a_real_plugin_wheel(settings: Settings, tmp_path: Path) -> None:
         r = await _install(c, whl.read_bytes(), whl.name)
         assert r.status_code == 201, r.text
         p = r.json()
-        assert (p["id"], p["version"], p["running"]) == ("subtitles", "0.1.0", False)
+        import tomllib
+
+        version = tomllib.loads((project / "pyproject.toml").read_text())["project"]["version"]
+        assert (p["id"], p["version"], p["running"]) == ("subtitles", version, False)
         assert p["settings"][0]["missing"] == ["api_key"]
         r = await c.put("/plugins/subtitles/settings/subtitles", json={"values": {"api_key": "k"}})
         assert r.json()["running"] is True
