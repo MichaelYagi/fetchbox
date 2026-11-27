@@ -238,7 +238,7 @@ class Comics(MediaKind):
 | 5 | `pick` | Which file of a download is which item: `{file path: item ref}` | one item: the largest file of your types; several: numbers in file names (`061` is 61) |
 | 6 | `name_tokens` | The values your naming's tokens stand for | required |
 
-Each title of the kind has its own accepted qualities and cutoff, on its page: an item whose file is below the cutoff is upgraded when a better release turns up. A release your `parse` reads as a whole group (a group number, no item numbers) covers that group's wanted items. Titles are searched every 6 hours and offered the RSS releases too.
+Each title of the kind has its own accepted qualities and cutoff, on its page: an item whose file is below the cutoff is upgraded when a better release turns up. A release your `parse` reads as a whole group (a group number, no item numbers) covers that group's wanted items. Titles are read again from your source once a day (`title()`, so new items appear, wanted as each title's monitor setting says), searched every 6 hours, and offered the RSS releases too.
 
 `movie`, `series` and `music` are built in and can't be taken. A kind is checked when it's declared, and every problem comes back in one message. A naming pattern can't use a token it doesn't declare.
 

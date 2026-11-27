@@ -1,4 +1,9 @@
-"""ComicVine's API (comicvine.gamespot.com/api): series ("volumes") and their issues."""
+"""ComicVine's API (comicvine.gamespot.com/api): series ("volumes") and their issues.
+
+Plain plugin code, except for one piece of Fetchbox: `ctx.http`, the HTTP client every
+plugin is given (Fetchbox's timeouts, retries for GETs, a User-Agent naming the plugin,
+and per-host rate limits), passed in from Comics' methods.
+"""
 
 from __future__ import annotations
 
@@ -33,9 +38,14 @@ class ComicVine:
     def __init__(self, ctx: Any, api_key: str) -> None:
         self.ctx = ctx
         self.api_key = api_key
-        ctx.http.limit(HOST, per_second=1)  # ComicVine's limit for each app
+        # Fetchbox: declared once, kept by every ctx.http request to the host: no sleeping
+        # between requests here. ComicVine allows each app about one request a second.
+        ctx.http.limit(HOST, per_second=1)
 
     async def _get(self, path: str, **params: Any) -> Any:
+        """One request; ComicVine's own error codes become messages people can act on
+        (Fetchbox shows them in the Test button's result and in Health)."""
+        # Fetchbox: ctx.http.get retries a failed connection or a 429/5xx answer by itself
         r = await self.ctx.http.get(
             f"{API}{path}", params={"api_key": self.api_key, "format": "json", **params}
         )
@@ -53,10 +63,12 @@ class ComicVine:
         return body
 
     async def check(self) -> str:
+        """For the settings' Test button: the cheapest request that needs the key."""
         await self._get("/types/")
         return "The ComicVine key works"
 
     async def search(self, text: str) -> list[dict[str, Any]]:
+        """Series ("volumes") by name, only the fields the Add page shows."""
         body = await self._get(
             "/search/", query=text, resources="volume", limit=20,
             field_list="id,name,start_year,image,deck,count_of_issues,publisher",
@@ -64,12 +76,15 @@ class ComicVine:
         return [r for r in body.get("results") or [] if isinstance(r.get("id"), int)]
 
     async def volume(self, ref: str) -> dict[str, Any]:
+        """One series by its ref ("4050-49901")."""
         body = await self._get(
             f"/volume/{ref}/", field_list="id,name,start_year,deck,image,publisher"
         )
         return dict(body.get("results") or {})
 
     async def issues(self, volume_id: int) -> list[dict[str, Any]]:
+        """Every issue of a series, a page (100) at a time; a long run is several requests,
+        kept to the rate limit by ctx.http."""
         out: list[dict[str, Any]] = []
         while True:
             body = await self._get(
