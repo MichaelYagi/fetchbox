@@ -118,7 +118,8 @@ class Subtitles(Addon):
 ```
 
 - **`@on(*events)`** runs for each of these events, for titles of the kinds in `applies_to`. Each run is a background job, after the event's own work is done, so a slow or failing add-on never delays an import. A failure is retried like any job and never stops another add-on.
-- **`@action(label, on="title" | "group" | "item")`** is a job run on request, given the title, group or item it was asked for.
+- **`@action(label, on="title" | "group" | "item")`** is a job run on request, given the title, group or item it was asked for. **`on="library"`** (Fetchbox 0.10.4 or later) is one button on your plugin's card in Settings > Plugins, for the whole library: `async def m(self, ctx)`. Return `{"message": "..."}` and the card shows it when the job ends.
+- **`min_fetchbox = "0.10.4"`** on your `Plugin` says which Fetchbox it needs at least; an older one refuses it and says so.
 - **`@every(days=, hours=, minutes=)`** is a schedule, run at most every 5 minutes. It's listed with your plugin's name; people can change its interval or run it now.
 - Each job has a 10 minute time limit. A job may return a dict: it's kept as the job's result.
 - `self.settings` is your add-on's validated settings.
@@ -189,7 +190,8 @@ class SubtitleSettings(Settings):
 |---|---|
 | `str`, `int`, `float`, `bool` | Text, number, checkbox; `Field(title, help, ge, le)` sets label, hint and limits |
 | `Literal[...]`, enums | A dropdown |
-| `list[str]` | A list people can reorder |
+| `list[str]` | A box, one per line |
+| `Field(..., choices={"en": "English", ...})` | Names to pick from, kept as their values: on a `str` a dropdown; on a `list[str]`, several, in order (move one earlier with ↑). Fetchbox 0.10.4 or later |
 | `Secret` | A password field, never sent back to the browser; read it with `.value`. It never shows in logs or f-strings |
 | `Folder` | Fetchbox's library folder picker |
 | `Url` | An address field with a reachability test |

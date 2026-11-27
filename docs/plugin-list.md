@@ -15,7 +15,9 @@ under *Assets*, copy the `fetchbox_subtitles-…whl` or `fetchbox_comics-…whl`
 Subtitles from [OpenSubtitles](https://www.opensubtitles.com) for your movies and episodes,
 in the languages you choose, saved next to each file (`Movie.en.srt`) so Plex and other
 players find them. New files get theirs when they're imported; files still missing one are
-tried again daily; *Search subtitles* on a title page gets them at once.
+tried again daily; *Search subtitles* on a title page gets them at once, and *Find missing
+subtitles* (on a title, or for the whole library on its card in Settings > Plugins) gets them for
+files that were there before the plugin. Version 0.2.0 needs Fetchbox 0.10.4 or later.
 
 - **Needs:** a free OpenSubtitles account's API key (Profile > API consumers > New
   consumer). Your username and password are optional: they raise the daily download limit.

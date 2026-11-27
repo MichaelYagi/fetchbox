@@ -51,7 +51,7 @@ class ActionOut(BaseModel):
     addon: str
     method: str
     label: str
-    on: str = Field(description="title, group or item")
+    on: str = Field(description="title, group, item, or library (the plugin's card)")
 
 
 class PluginOut(BaseModel):

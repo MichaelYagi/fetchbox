@@ -169,3 +169,41 @@ async def test_signing_in(fetchbox_app: Any) -> None:
     with pytest.raises(OpenSubtitlesError, match="invalid username/password; check the"):
         await bad.test(ctx)
     assert all("fetch" not in r.headers["user-agent"].lower() for r in seen)
+
+
+async def test_finding_what_the_library_already_has(fetchbox_app: Any) -> None:
+    """Files there before the plugin: Find missing subtitles, for the library or a title."""
+    fake = FakeOpenSubtitles()  # English found, French not (yet)
+    app, _seen = await _app(fetchbox_app, fake)
+    dune = await app.add_file("Dune", 2021, tmdb_id=438631, imported=False)
+    ep = await app.add_file("Severance", 2022, kind="series", season=1, episode=1,
+                            tmdb_id=95396, imported=False)  # fmt: skip
+    assert not dune.path.with_suffix(".en.srt").exists()  # not imported: nothing happened
+
+    ran = await app.run("subtitles", "find_everywhere")
+    assert ran.result is not None
+    assert {k: ran.result[k] for k in ("checked", "queued", "added", "left")} == {
+        "checked": 2, "queued": 2, "added": 2, "left": 2}  # fmt: skip
+    assert ran.result["message"].startswith("2 file(s) checked, 2 missing subtitles; 2 added now")
+    assert dune.path.with_suffix(".en.srt").is_file() and ep.path.with_suffix(".en.srt").is_file()
+
+    # French turns up; the movie's own button gets it
+    fake.subtitles["fr"] = [fake.hit(202, "fr")]
+    ran = await app.run("subtitles", "find_for_title", dune.title_id)
+    assert ran.result is not None and ran.result["added"] == 1
+    assert (
+        dune.path.with_suffix(".fr.srt").is_file() and not ep.path.with_suffix(".fr.srt").exists()
+    )
+    # everything there: said so
+    await app.run("subtitles", "find_for_title", ep.title_id)
+    ran = await app.run("subtitles", "find_for_title", dune.title_id)
+    assert ran.result is not None
+    assert ran.result["message"] == "1 file(s) checked: all have subtitles in your languages."
+
+
+def test_languages_are_picked_by_name() -> None:
+    from fetchbox_subtitles import SubtitleSettings
+
+    schema = SubtitleSettings.model_json_schema()["properties"]["languages"]
+    choices = schema["x-fetchbox-choices"]
+    assert choices["en"] == "English" and choices["pt-br"] == "Portuguese (Brazil)"
