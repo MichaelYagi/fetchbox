@@ -789,8 +789,13 @@
 			width: 64px;
 		}
 	}
+	/* Its own 2:3 shape, the whole poster: not stretched to the header's height (which
+	   cropped its sides when the overview or the buttons made the header tall) */
 	.poster {
 		width: 180px;
+		height: auto;
+		flex: none;
+		align-self: flex-start;
 		aspect-ratio: 2 / 3;
 		object-fit: cover;
 		border-radius: var(--radius);
