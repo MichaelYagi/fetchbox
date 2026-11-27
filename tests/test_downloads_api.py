@@ -87,13 +87,21 @@ async def test_grab_downloads_to_completion(
     # Then either seeding in the engine, or (seeding off) stopped once imported, which a
     # fast machine does before this reads it. Just after completing it's briefly neither:
     # the first seeding pass hasn't run yet; wait for one or the other.
-    # (once stopped it can also be "removed": any status, as long as it finished)
+    # (once stopped it can also be "removed", which is stopped too)
+    seen: list[dict[str, Any] | None] = []
+
     async def settled() -> dict[str, Any] | None:
         d = await _download(c)
-        done = d is not None and d["status"] in ("completed", "removed") and d["completed_at"]
-        return d if done and d is not None and (d["live"] is not None or d["seeded_at"]) else None
+        seen.append(d)
+        if d is None or d["status"] not in ("completed", "removed") or not d["completed_at"]:
+            return None
+        stopped = bool(d["seeded_at"]) or d["status"] == "removed"
+        return d if d["live"] is not None or stopped else None
 
-    await until(settled, within=20)
+    try:
+        await until(settled, within=20)
+    except TimeoutError:
+        raise AssertionError(f"neither seeding nor stopped; last seen: {seen[-1]}") from None
     d = await settled()
     assert d is not None and d["progress"] == 1.0 and d["completed_at"] and d["size"] == 2 * MB + 50
     if d["live"] is not None:
