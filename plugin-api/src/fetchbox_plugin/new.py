@@ -65,6 +65,30 @@ def create(name: str, where: str | Path = ".", *, kind: Kind = "addon") -> Path:
     return root
 
 
+RELEASES = "https://github.com/MichaelYagi/fetchbox/releases/download"
+
+
+def _sources() -> str:
+    """Fetchbox and the plugin API aren't on PyPI: point uv at the release of the Fetchbox
+    this runs with (its wheel and the API's), so `uv sync` and the CI workflow work. Nothing
+    when Fetchbox isn't installed, or for a build that isn't a release."""
+    import importlib.metadata as md
+
+    try:
+        fb, api = md.version("fetchbox"), md.version("fetchbox-plugin-api")
+    except md.PackageNotFoundError:
+        return ""
+    if not re.fullmatch(r"\d+\.\d+\.\d+", fb) or not re.fullmatch(r"\d+\.\d+\.\d+", api):
+        return ""
+    base = f"{RELEASES}/v{fb}"
+    return (
+        "\n# Fetchbox and the plugin API come from Fetchbox's GitHub release, not PyPI\n"
+        "[tool.uv.sources]\n"
+        f'fetchbox = {{ url = "{base}/fetchbox-{fb}-py3-none-any.whl" }}\n'
+        f'fetchbox-plugin-api = {{ url = "{base}/fetchbox_plugin_api-{api}-py3-none-any.whl" }}\n'
+    )
+
+
 def _files(n: dict[str, str], kind: Kind) -> dict[str, str]:
     mod = n["module"]
     code, test, what = (
@@ -74,7 +98,7 @@ def _files(n: dict[str, str], kind: Kind) -> dict[str, str]:
     )
     fill = {**n, "what": what.format(**n)}
     return {
-        "pyproject.toml": _PYPROJECT.format(**fill),
+        "pyproject.toml": _PYPROJECT.format(**fill) + _sources(),
         f"src/{mod}/__init__.py": code.format(**fill),
         "tests/conftest.py": _CONFTEST,
         f"tests/test_{mod.removeprefix('fetchbox_')}.py": test.format(**fill),

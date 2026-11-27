@@ -7,7 +7,7 @@ from collections.abc import Awaitable, Callable
 from datetime import date, datetime, timedelta
 from typing import Any, Literal
 
-from sqlalchemy import Select, or_, select, update
+from sqlalchemy import Select, delete, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -705,9 +705,31 @@ class MediaService:
         return row
 
     async def delete_title(self, title_id: str, *, if_match: str | None, actor: Actor) -> None:
+        """Remove the title, its wanted items and the records of its files (files on disk are
+        untouched: a library check then lists them as not in Fetchbox). A file record shared
+        with another title's items is kept."""
+        from fetchbox.modules.library.models import MediaFile, MediaFileItem
+
         async with self.db.sessionmaker() as s:
             row = await self._title(s, title_id)
             check_if_match(row, if_match)
+            mine = select(WantedItem.id).where(WantedItem.title_id == title_id)
+            files = set(
+                (await s.execute(
+                    select(MediaFileItem.media_file_id).where(MediaFileItem.wanted_item_id.in_(mine))
+                )).scalars()
+            )  # fmt: skip
+            if files:
+                shared = set(
+                    (await s.execute(
+                        select(MediaFileItem.media_file_id).where(
+                            MediaFileItem.media_file_id.in_(files),
+                            MediaFileItem.wanted_item_id.not_in(mine),
+                        )
+                    )).scalars()
+                )  # fmt: skip
+                if gone := files - shared:
+                    await s.execute(delete(MediaFile).where(MediaFile.id.in_(gone)))
             await s.delete(row)  # wanted items cascade in the database
             await s.commit()
         await self._emit("title.removed", row, actor)

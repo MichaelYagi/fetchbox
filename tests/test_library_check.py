@@ -107,3 +107,23 @@ async def test_the_last_check_and_health(c: httpx.AsyncClient, fakes: Fakes) -> 
 async def test_the_check_runs_daily(server: Any) -> None:
     scheduled = server.app.state.fb.scheduler.definitions
     assert scheduled["library_check"].job_type == "library.check"
+
+
+async def test_removing_a_title_forgets_its_files(c: httpx.AsyncClient, fakes: Fakes) -> None:
+    """Remove: the title and the records of its files go; the files stay on disk, and the
+    check then lists them as not in Fetchbox (they used to linger as records of nothing)."""
+    dest = await _dest(c, "movie")
+    root = Path(dest["path"])
+    rel = "Dune (2021) {tmdb-438631}/Dune (2021) Bluray-1080p.mkv"
+    (root / rel).parent.mkdir(parents=True, exist_ok=True)
+    (root / rel).write_bytes(b"\1" * 1000)
+    profile = await standard_hd(c)
+    await _job(c, (await c.post("/library/import", json={"destination_id": dest["id"], "items": [
+        {"folder": "Dune (2021) {tmdb-438631}", "tmdb_id": 438631, "profile_id": profile,
+         "files": [rel]}]})).json()["id"])  # fmt: skip
+    [dune] = (await c.get("/titles")).json()["items"]
+    assert (await c.delete(f"/titles/{dune['id']}")).status_code == 204
+    report = (await _job(c, (await c.post("/library/check")).json()["id"]))["result"]
+    assert report["files"] == 0 and report["missing"] == []
+    assert report["unknown_count"] == 1 and report["unknown"][0]["path"].endswith(".mkv")
+    assert (root / rel).exists()  # on disk, untouched

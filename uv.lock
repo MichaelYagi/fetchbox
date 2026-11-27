@@ -468,7 +468,7 @@ dev = [
 
 [[package]]
 name = "fetchbox-plugin-api"
-version = "1.0.0.dev0"
+version = "1.0.0"
 source = { editable = "plugin-api" }
 dependencies = [
     { name = "httpx" },
