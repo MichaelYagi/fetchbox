@@ -58,7 +58,7 @@ password is only used on first start; change it in the web UI. A compose file is
 `docker/compose.yaml`.
 
 Plugins: `-e FETCHBOX_PLUGINS=<wheel address>,…` installs them at start into `/config`, so
-they come back after an image update. The plugins and their addresses: [Plugins](docs/plugin-list.md).
+they come back after an image update; or copy a `.whl` into `/config/plugins/drop`. The plugins and their addresses: [Plugins](docs/plugin-list.md).
 
 ### Desktop apps
 
