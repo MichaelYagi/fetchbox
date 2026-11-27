@@ -54,3 +54,29 @@ def test_the_commands(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> Non
     r = subprocess.run([sys.executable, "-m", "fetchbox_plugin", "new", "via-module"],
                        cwd=tmp_path, capture_output=True, text=True)  # fmt: skip
     assert r.returncode == 0 and (tmp_path / "fetchbox-via-module").is_dir(), r.stderr
+
+
+def test_a_new_plugin_gets_fetchbox_from_its_release(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Fetchbox and the API aren't on PyPI: uv is pointed at the running Fetchbox's release
+    files, so `uv sync` works; nothing for a version that isn't a release."""
+    import importlib.metadata as md
+    import tomllib
+
+    from fetchbox_plugin import new
+
+    versions = {"fetchbox": "0.10.3", "fetchbox-plugin-api": "1.0.0"}
+    monkeypatch.setattr(md, "version", lambda name: versions[name])
+    root = new.create("hello", tmp_path)
+    sources = tomllib.loads((root / "pyproject.toml").read_text())["tool"]["uv"]["sources"]
+    base = "https://github.com/MichaelYagi/fetchbox/releases/download/v0.10.3"
+    assert sources == {
+        "fetchbox": {"url": f"{base}/fetchbox-0.10.3-py3-none-any.whl"},
+        "fetchbox-plugin-api": {"url": f"{base}/fetchbox_plugin_api-1.0.0-py3-none-any.whl"},
+    }
+    versions["fetchbox"] = "0.10.4.dev3"  # a build from source: no release to point at
+    root = new.create("other", tmp_path)
+    assert "sources" not in tomllib.loads((root / "pyproject.toml").read_text()).get(
+        "tool", {}
+    ).get("uv", {})

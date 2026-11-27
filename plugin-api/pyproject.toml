@@ -3,7 +3,7 @@
 # so there's one copy of the API in any environment.
 [project]
 name = "fetchbox-plugin-api"
-version = "1.0.0.dev0"  # API 1 (the major number is the API version)
+version = "1.0.0"  # API 1 (the major number is the API version)
 description = "The Fetchbox plugin API: base classes, types and the test kit"
 readme = "README.md"
 license = "MIT"

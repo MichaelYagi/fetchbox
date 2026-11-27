@@ -14,9 +14,9 @@ version's file names), with pytest for the test kit:
 
 ```sh
 python -m venv .venv && . .venv/bin/activate
-R=https://github.com/MichaelYagi/fetchbox/releases/download/v0.10.2
-pip install "$R/fetchbox_plugin_api-1.0.0.dev0-py3-none-any.whl" \
-            "$R/fetchbox-0.10.2-py3-none-any.whl" "pytest>=8" "pytest-asyncio>=0.24"
+R=https://github.com/MichaelYagi/fetchbox/releases/download/v0.10.3
+pip install "$R/fetchbox_plugin_api-1.0.0-py3-none-any.whl" \
+            "$R/fetchbox-0.10.3-py3-none-any.whl" "pytest>=8" "pytest-asyncio>=0.24"
 
 fetchbox plugin new hello             # fetchbox-hello/: an add-on that already works
 cd fetchbox-hello
@@ -25,8 +25,9 @@ fetchbox plugin dev .                 # Fetchbox in your browser with the plugin
 uv build --wheel -o dist .            # dist/fetchbox_hello-0.1.0-py3-none-any.whl: install it
 ```
 
-The new project's `uv sync` and its CI workflow fetch Fetchbox from PyPI, so they don't
-work yet; run its commands from the environment above instead.
+The new project's `pyproject.toml` points uv at the same release's files (under
+`[tool.uv.sources]`), so in the project `uv sync` also works, and so does its CI workflow.
+To move to a newer Fetchbox, change the version in those two addresses.
 
 `fetchbox plugin new hello` makes an add-on that writes `hello.txt` beside every imported movie or episode. With `plugin dev` running, change the text it writes and save: the plugin is loaded again at once, with no restart.
 
@@ -341,7 +342,7 @@ same way; the built-in ones in `src/fetchbox/providers` are the examples.
 | Fetchbox won't start after installing a plugin | Start it with every plugin off: `fetchbox serve --no-plugins` (the desktop app's program takes the same arguments, e.g. `/Applications/Fetchbox.app/Contents/MacOS/Fetchbox serve --no-plugins`), then remove the plugin in Settings > Plugins |
 | A media kind finds nothing | Your indexers may not carry it. A kind searches its `categories` (Comics: 7030) on the indexers in Settings > Sources; add one that has them |
 | `plugin test` says *No module named pytest* | Install `pytest` and `pytest-asyncio` into the environment Fetchbox is in |
-| `uv sync` can't find `fetchbox-plugin-api` | It isn't on PyPI: install it and Fetchbox from a release's files (see [Quick start](#quick-start)) |
+| `uv sync` can't find `fetchbox-plugin-api` | It isn't on PyPI. A project made by `plugin new` (Fetchbox 0.10.3 or later) points uv at a release's files under `[tool.uv.sources]`; add those two lines to an older one, or install from a release's files (see [Quick start](#quick-start)) |
 
 Learned the hard way:
 
