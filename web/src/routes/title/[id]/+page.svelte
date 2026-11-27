@@ -388,7 +388,7 @@
 		{#if !error}<p class="muted">Loading…</p>{/if}
 	{:else}
 		<div class="head" class:backdrop={!!backdrop} style:--backdrop={backdrop ? `url("${backdrop}")` : null}>
-			{#if title.poster_url}<img class="poster" src={title.poster_url} alt="" style:--info-height={posterHeight ? `${posterHeight}px` : null} />{/if}
+			{#if title.poster_url}<img class="poster" class:square={title.kind === 'music'} src={title.poster_url} alt="" style:--info-height={posterHeight ? `${posterHeight}px` : null} />{/if}
 			<div class="stack info" bind:clientHeight={infoHeight}>
 				<div>
 					<h1>{title.name} <span class="muted">{title.year ?? ''}</span></h1>
@@ -817,6 +817,11 @@
 		border-radius: var(--radius);
 		background: var(--surface-2);
 	}
+	/* An artist's picture is an album cover: square, and capped lower so it isn't huge */
+	.poster.square {
+		aspect-ratio: 1;
+		height: clamp(200px, var(--info-height, 200px), 360px);
+	}
 	.info {
 		flex: 1;
 		min-width: 18rem;
@@ -828,7 +833,8 @@
 			flex-direction: column;
 			gap: 1rem;
 		}
-		.poster {
+		.poster,
+		.poster.square {
 			height: auto;
 			width: 180px;
 		}
