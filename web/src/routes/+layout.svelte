@@ -120,9 +120,9 @@
 {#if session.me && !open.includes(page.url.pathname)}
 	<header>
 		<div class="bar">
-			<a class="brand" href="/">
+			<a class="brand" href="/" aria-label="Fetchbox">
 				<img src="/favicon.svg" alt="" width="24" height="24" />
-				Fetchbox
+				<span class="brand-name">Fetchbox</span>
 			</a>
 			<nav>
 				{#each nav as n (n.href)}
@@ -137,7 +137,8 @@
 					title={inFlight.map((d) => `${d.name}: ${Math.floor(d.progress * 100)}%`).join('\n') || 'Nothing downloading'}
 				>
 					<span class="arrow" aria-hidden="true">↓</span>
-					<span>{summary}</span>
+					<span class="label">{summary}</span>
+					{#if inFlight.length}<span class="count">{inFlight.length}</span>{/if}
 					{#if inFlight.length}
 						<span class="dlbar" aria-label="Overall progress"><span style="width: {Math.round(overall * 100)}%"></span></span>
 						<span class="muted">{Math.floor(overall * 100)}%{speed ? ` · ${rate(speed)}` : ''}</span>
@@ -276,5 +277,45 @@
 	}
 	.right {
 		margin-left: auto;
+	}
+	.dl .count {
+		display: none;
+	}
+	/* Phones: the status beside "Fetchbox" on the first line, the menu under them; the
+	   downloads link is just its arrow (and how many, while any are going) */
+	@media (max-width: 640px) {
+		.bar {
+			gap: 0.5rem 1rem;
+		}
+		.brand {
+			order: 0;
+		}
+		.right {
+			order: 1;
+			gap: 0.4rem;
+		}
+		nav {
+			order: 2;
+			flex-basis: 100%;
+		}
+		.dl .label {
+			display: none;
+		}
+		.dl .count {
+			display: inline;
+		}
+	}
+	/* Narrow phones: the icon without the name, and a tighter menu, so each is one line */
+	@media (max-width: 400px) {
+		.brand-name {
+			display: none;
+		}
+		nav {
+			gap: 0;
+		}
+		nav a {
+			padding: 0.35rem 0.4rem;
+			font-size: 0.95rem;
+		}
 	}
 </style>

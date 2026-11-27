@@ -11,6 +11,12 @@
 
 	const id = $derived(page.params.id ?? '');
 	let title = $state<Title | null>(null);
+	// The header's text, measured: the poster beside it is as tall (see .poster)
+	let infoHeight = $state(0);
+	// Under the name: runtime and genres, a dot only between what's there
+	const details = $derived(
+		title ? [title.runtime ? `${title.runtime} min` : null, title.genres.join(', ') || null].filter(Boolean) : []
+	);
 	let files = $state<S['FileOut'][]>([]);
 	// where its files go (or went): its library folder and its own folder in there
 	let folder = $state<S['TitleFolderOut'] | null>(null);
@@ -68,6 +74,12 @@
 	}
 	// Change: another folder for it (full path), moving what's there or not
 	let editingFolder = $state(false);
+	// The poster's height follows the header's text, but not the folder form: opening it
+	// (Change) would otherwise make the poster grow
+	let posterHeight = $state(0);
+	$effect(() => {
+		if (!editingFolder) posterHeight = infoHeight;
+	});
 	let newFolder = $state('');
 	let moveFiles = $state(true);
 
@@ -376,29 +388,28 @@
 		{#if !error}<p class="muted">Loading…</p>{/if}
 	{:else}
 		<div class="head" class:backdrop={!!backdrop} style:--backdrop={backdrop ? `url("${backdrop}")` : null}>
-			{#if title.poster_url}<img class="poster" src={title.poster_url} alt="" />{/if}
-			<div class="stack info">
+			{#if title.poster_url}<img class="poster" class:square={title.kind === 'music'} src={title.poster_url} alt="" style:--info-height={posterHeight ? `${posterHeight}px` : null} />{/if}
+			<div class="stack info" bind:clientHeight={infoHeight}>
 				<div>
 					<h1>{title.name} <span class="muted">{title.year ?? ''}</span></h1>
 					<div class="row muted small">
-						{#if title.runtime}<span>{title.runtime} min</span>{/if}
-						{#if title.genres.length}<span>· {title.genres.join(', ')}</span>{/if}
+						{#each details as d, i (i)}<span>{i ? '· ' : ''}{d}</span>{/each}
 						{#if title.tmdb_id}
-							<span>· <a href="https://www.themoviedb.org/{series ? 'tv' : 'movie'}/{title.tmdb_id}" target="_blank" rel="noreferrer">TMDB</a></span>
+							<span>{details.length ? '· ' : ''}<a href="https://www.themoviedb.org/{series ? 'tv' : 'movie'}/{title.tmdb_id}" target="_blank" rel="noreferrer">TMDB</a></span>
 						{/if}
 					</div>
 				</div>
 				{#if title.overview}<p class="overview">{title.overview}</p>{/if}
 				{#if folder}
+					<!-- the title's folder, as this system sees it; Change moves it -->
 					<div class="small where">
-						<span class="muted">{files.length || albums.some((a) => a.wanted.state === 'acquired') ? 'Files in' : 'Downloads to'}</span>
-						<Path path={folder.path} />
-						<span class="muted">
-							· {folder.own ? `its own library folder, ${folder.library_folder_name}` : `the ${folder.library_folder_name} folder from Settings`}{#if title.kind === 'music' && folder.path === folder.library_folder_path}, one folder per album{/if}
-						</span>
-						{#if !(title.kind === 'music' && folder.path === folder.library_folder_path) && !editingFolder}
-							<button class="small" onclick={() => ((newFolder = folder!.path), (moveFiles = true), (editingFolder = true))}>Change</button>
-						{/if}
+						<div class="where-head muted">
+							<span>Folder{#if title.kind === 'music' && folder.path === folder.library_folder_path} (one folder per album){/if}</span>
+							{#if !(title.kind === 'music' && folder.path === folder.library_folder_path) && !editingFolder}
+								<button class="change" onclick={() => ((newFolder = folder!.path), (moveFiles = true), (editingFolder = true))}>Change</button>
+							{/if}
+						</div>
+						<div><Path path={folder.path} /></div>
 					</div>
 					{#if editingFolder}
 						<form class="card stack small" onsubmit={saveFolder}>
@@ -619,6 +630,9 @@
 			<h2>{pluginItems.length} {itemWord}{pluginItems.length === 1 ? '' : 's'}</h2>
 			<div class="table-wrap">
 				<table class="episodes">
+					<colgroup>
+						<col class="c-num" /><col /><col class="c-date" /><col class="c-state" /><col class="c-mon" /><col class="c-act" />
+					</colgroup>
 					<tbody>
 						{#each pluginItems as i (i.id)}
 							<tr class:unmonitored={!i.monitored}>
@@ -627,7 +641,7 @@
 								<td class="muted small date">{i.released ?? ''}</td>
 								<td><Badge state={i.state} />{#if i.quality}<span class="muted small"> {i.quality}</span>{/if}</td>
 								<td><input type="checkbox" title="Wanted" aria-label="Wanted" checked={i.monitored} onchange={(ev) => monitorItem(i, ev.currentTarget.checked)} disabled={!!busy} /></td>
-								<td>{#each itemActions as a (`${a.plugin}/${a.addon}/${a.method}`)}<button class="small" onclick={() => runItem(a, i.id)}>{a.label}</button>{/each}</td>
+								<td class="act">{#each itemActions as a (`${a.plugin}/${a.addon}/${a.method}`)}<button class="small" onclick={() => runItem(a, i.id)}>{a.label}</button>{/each}</td>
 							</tr>
 						{/each}
 					</tbody>
@@ -639,23 +653,30 @@
 			<h2>Seasons</h2>
 			{#each [...seasons].sort((a, b) => (a.number === 0 ? 1 : b.number === 0 ? -1 : b.number - a.number)) as x (x.number)}
 				<div class="card season">
-					<div class="spread season-head">
-						<button class="link" onclick={() => (open = { ...open, [x.number]: !open[x.number] })} aria-expanded={!!open[x.number]}>
-							{open[x.number] ? '▾' : '▸'} <strong>{seasonName(x.number)}</strong>
-							<span class="muted small">{seasonCount(x)} downloaded</span>
-						</button>
-						<div class="row">
-							<label class="inline small">
-								<input type="checkbox" checked={x.monitored} onchange={(e) => monitorSeason(x.number, e.currentTarget.checked)} disabled={!!busy} />
-								Monitored
-							</label>
-							<button onclick={() => searchSeason(x.number)} disabled={!!busy}>Search</button>
-							<button onclick={() => chooseSeason(x.number)} disabled={!!busy}>Choose a release</button>
-						</div>
-					</div>
-					{#if open[x.number]}
-						<div class="table-wrap">
-							<table class="episodes">
+					<!-- the season's line shares the episodes' columns: its checkbox above theirs, its Search above theirs -->
+					<div class="table-wrap">
+						<table class="episodes">
+							<colgroup>
+								<col class="c-num" /><col /><col class="c-date" /><col class="c-state" /><col class="c-mon" /><col class="c-act" />
+							</colgroup>
+							<thead>
+								<tr class="season-head">
+									<td colspan="4">
+										<div class="season-name">
+											<button class="link" onclick={() => (open = { ...open, [x.number]: !open[x.number] })} aria-expanded={!!open[x.number]}>
+												{open[x.number] ? '▾' : '▸'} <strong>{seasonName(x.number)}</strong>
+												<span class="muted small">{seasonCount(x)} downloaded</span>
+											</button>
+											<button class="small" onclick={() => chooseSeason(x.number)} disabled={!!busy}><span class="long">Choose a release</span><span class="short">Choose</span></button>
+										</div>
+									</td>
+									<td>
+										<input type="checkbox" title="Monitor the whole season" aria-label="Season monitored" checked={x.monitored} onchange={(e) => monitorSeason(x.number, e.currentTarget.checked)} disabled={!!busy} />
+									</td>
+									<td class="act"><button class="small" onclick={() => searchSeason(x.number)} disabled={!!busy} title="Search for the season's missing episodes">Search</button></td>
+								</tr>
+							</thead>
+							{#if open[x.number]}
 								<tbody>
 									{#each x.episodes as e (e.id)}
 										<tr class:unmonitored={!e.wanted.monitored}>
@@ -673,16 +694,16 @@
 											<td>
 												<input type="checkbox" title="Monitored" aria-label="Monitored" checked={e.wanted.monitored} onchange={(ev) => monitorEpisode(e.wanted, ev.currentTarget.checked)} disabled={!!busy} />
 											</td>
-											<td>
+											<td class="act">
 												<button class="small" onclick={() => chooseEpisode(x.number, e)} disabled={!!busy || !aired(e)} title="Search and choose a release">Search</button>
 												{#each itemActions as a (`${a.plugin}/${a.addon}/${a.method}`)}<button class="small" onclick={() => runItem(a, e.wanted.id)}>{a.label}</button>{/each}
 											</td>
 										</tr>
 									{/each}
 								</tbody>
-							</table>
-						</div>
-					{/if}
+							{/if}
+						</table>
+					</div>
 				</div>
 			{/each}
 		{/if}
@@ -715,7 +736,7 @@
 							{#if m.audio_codecs?.length}<span>· {m.audio_codecs.join(', ')} {m.audio_channels ?? ''}</span>{/if}
 							{#if m.duration_seconds}<span>· {duration(m.duration_seconds)}</span>{/if}
 						{/if}
-						<span>· {f.link_mode}</span>
+						{#if f.link_mode}<span>· {f.link_mode}</span>{/if}
 						<span>· imported {ago(f.imported_at)}</span>
 						<button class="small danger delete" onclick={() => deleteFile(f)} disabled={!!busy}>Delete</button>
 					</div>
@@ -751,25 +772,21 @@
 	.head {
 		display: flex;
 		gap: 1.5rem;
-		flex-wrap: wrap;
+		align-items: flex-start;
 	}
-	/* A scene from the title behind the header, faded into the page so text stays readable
-	   in every theme */
+	/* A scene from the title behind the whole header, evenly toned down so the text on it
+	   stays readable in every theme; the poster sits on top of it */
 	.head.backdrop {
 		padding: 1.25rem;
 		border-radius: var(--radius);
 		background-image:
-			linear-gradient(90deg, var(--bg) 30%, color-mix(in srgb, var(--bg) 72%, transparent)),
+			linear-gradient(
+				color-mix(in srgb, var(--bg) 72%, transparent),
+				color-mix(in srgb, var(--bg) 72%, transparent)
+			),
 			var(--backdrop);
 		background-size: cover;
 		background-position: center 25%;
-	}
-	@media (max-width: 760px) {
-		.head.backdrop {
-			background-image:
-				linear-gradient(0deg, var(--bg) 40%, color-mix(in srgb, var(--bg) 72%, transparent)),
-				var(--backdrop);
-		}
 	}
 	.ep-name {
 		display: flex;
@@ -789,17 +806,63 @@
 			width: 64px;
 		}
 	}
+	/* Beside the text and as tall as it, as wide as that makes a 2:3 poster: the whole
+	   poster, never cropped; between 270px and 540px tall */
 	.poster {
-		width: 180px;
+		flex: none;
+		height: clamp(270px, var(--info-height, 270px), 540px);
+		width: auto;
 		aspect-ratio: 2 / 3;
 		object-fit: cover;
 		border-radius: var(--radius);
 		background: var(--surface-2);
 	}
+	/* An artist's picture is an album cover: square, and capped lower so it isn't huge */
+	.poster.square {
+		aspect-ratio: 1;
+		height: clamp(200px, var(--info-height, 200px), 360px);
+	}
 	.info {
 		flex: 1;
 		min-width: 18rem;
 		align-content: start;
+	}
+	/* Phones: the poster above the title, 180px wide */
+	@media (max-width: 760px) {
+		.head {
+			flex-direction: column;
+			gap: 1rem;
+		}
+		.poster,
+		.poster.square {
+			height: auto;
+			width: 180px;
+		}
+		.info {
+			min-width: 0;
+			align-self: stretch;
+		}
+	}
+	.where {
+		display: grid;
+		gap: 0.2rem;
+	}
+	.where-head {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: 0.6rem;
+	}
+	button.change {
+		background: none;
+		border: 0;
+		padding: 0;
+		font: inherit;
+		color: var(--accent);
+		cursor: pointer;
+	}
+	button.change:hover {
+		text-decoration: underline;
 	}
 	h1 {
 		margin: 0 0 0.25rem;
@@ -857,9 +920,15 @@
 		padding: 0.5rem 0.75rem;
 		margin-bottom: 0.5rem;
 	}
-	.season-head {
+	.season-name {
+		display: flex;
 		flex-wrap: wrap;
-		gap: 0.5rem;
+		align-items: center;
+		gap: 0.4rem 1rem;
+	}
+	.season-head td {
+		padding-top: 0.15rem;
+		padding-bottom: 0.15rem;
 	}
 	button.link {
 		background: none;
@@ -875,18 +944,58 @@
 		table-layout: fixed;
 		width: 100%;
 	}
-	.episodes td:nth-child(3) {
+	/* The columns, for the season's line and its episodes alike */
+	.episodes .c-num {
+		width: 3.5rem;
+	}
+	.episodes .c-date {
 		width: 7rem;
 	}
-	.episodes td:nth-child(4) {
-		width: 7.5rem;
+	.episodes .c-state {
+		width: 10rem;
 	}
-	.episodes td:nth-child(5) {
+	.episodes .c-mon {
 		width: 2.5rem;
 	}
-	.episodes td:nth-child(6) {
+	.episodes .c-act {
 		width: 5.5rem;
+	}
+	.episodes td.act {
 		text-align: right;
+	}
+	/* No line under the last row: a collapsed season's own line, or its last episode */
+	.episodes thead:last-child tr td,
+	.episodes tbody tr:last-child td {
+		border-bottom: none;
+	}
+	.episodes td {
+		vertical-align: middle;
+	}
+	.episodes .short {
+		display: none;
+	}
+	/* Phones: no date column, a narrower number, "Choose": the names get the room */
+	@media (max-width: 640px) {
+		.episodes .c-num {
+			width: 2rem;
+		}
+		.episodes .c-date {
+			width: 0;
+		}
+		.episodes td.date {
+			padding: 0;
+			overflow: hidden;
+			font-size: 0;
+		}
+		.episodes .c-state {
+			width: 6rem;
+		}
+		.episodes .long {
+			display: none;
+		}
+		.episodes .short {
+			display: inline;
+		}
 	}
 	.episodes td {
 		padding: 0.3rem 0.5rem;

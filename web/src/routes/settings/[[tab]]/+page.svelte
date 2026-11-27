@@ -380,9 +380,7 @@
 									? `· Linux (${session.host.wsl_distro}) in WSL on Windows`
 									: `· ${session.host.os}`}
 								<div class="muted small">
-									Every folder in these settings is a folder on this machine{session.host.wsl_distro
-										? '; under each one is where Windows finds it'
-										: ''}.
+									Every folder in these settings is a folder on this machine.
 								</div>
 							</td>
 						</tr>
