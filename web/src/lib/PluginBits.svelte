@@ -3,7 +3,7 @@
 
 	// The running plugins' actions, fetched once per page load and shared by every place
 	// on the title page that shows them (none when no plugin is running).
-	export type Act = S['ActionOut'] & { plugin: string };
+	export type Act = S['ActionOut'] & { plugin: string; pluginName: string };
 	let cache: Promise<Act[]> | null = null;
 	// Run a plugin's button and wait for its job: what it said (its message, or what it
 	// returned), for showing where it was pressed. Also in Activity.
@@ -26,7 +26,7 @@
 
 	export function pluginActions(): Promise<Act[]> {
 		cache ??= get<S['PluginOut'][]>('/plugins')
-			.then((ps) => ps.filter((p) => p.running).flatMap((p) => p.actions.map((a) => ({ ...a, plugin: p.id }))))
+			.then((ps) => ps.filter((p) => p.running).flatMap((p) => p.actions.map((a) => ({ ...a, plugin: p.id, pluginName: p.name }))))
 			.catch(() => []);
 		return cache;
 	}
@@ -53,8 +53,28 @@
 	type Panel = S['PanelOut'];
 	let actions = $state<Act[]>([]);
 	let panels = $state<Panel[]>([]);
-	let note = $state('');
+	let notes = $state<Record<string, string>>({}); // plugin id -> its last button's result
 	let busy = $state('');
+
+	// One card per plugin: its panel's title and status, its buttons, its table, and what
+	// its last button did. A plugin with a button for the whole title doesn't repeat its
+	// per-item one here (on a movie they'd do the same).
+	type Card = { plugin: string; name: string; panels: Panel[]; acts: Act[] };
+	const cards = $derived.by(() => {
+		const out = new Map<string, Card>();
+		const card = (plugin: string, name: string) => {
+			if (!out.has(plugin)) out.set(plugin, { plugin, name, panels: [], acts: [] });
+			return out.get(plugin)!;
+		};
+		for (const p of panels) card(p.plugin, p.title).panels.push(p);
+		for (const a of actions) {
+			const c = card(a.plugin, a.pluginName);
+			const whole = actions.some((x) => x.plugin === a.plugin && x.on === 'title');
+			if (a.on === 'item' && whole) continue;
+			if (!c.acts.some((x) => x.label === a.label)) c.acts.push(a);
+		}
+		return [...out.values()];
+	});
 
 	$effect(() => {
 		const t = titleId;
@@ -67,54 +87,66 @@
 
 	async function run(a: Act) {
 		busy = `${a.plugin}/${a.method}`;
-		note = '';
-		note = `${a.label}: working…`;
+		notes[a.plugin] = 'Working…';
 		try {
-			note = await runAction(a, a.on === 'title' ? titleId : itemId);
+			notes[a.plugin] = await runAction(a, a.on === 'title' ? titleId : itemId);
 			await loadPanels(); // its status, as it is now
 			onchanged();
 		} catch (e) {
-			note = e instanceof ApiError ? e.message : String(e);
+			notes[a.plugin] = e instanceof ApiError ? e.message : String(e);
 		} finally {
 			busy = '';
 		}
 	}
-	const byLabel = (p: Panel, label: string) => actions.find((a) => a.plugin === p.plugin && a.label === label);
+	const off = (a: Act) => a.needs_file && !hasFile;
 </script>
 
-{#if actions.length || panels.length}
+{#if cards.length}
 	<h2>Plugins</h2>
-	{#if actions.length}
-		<div class="row">
-			{#each actions as a (`${a.plugin}/${a.addon}/${a.method}`)}
-				<button onclick={() => run(a)} disabled={!!busy || (a.needs_file && !hasFile)} title={a.needs_file && !hasFile ? NO_FILE : undefined}>{a.label}</button>
+	{#each cards as c (c.plugin)}
+		<div class="card stack plugin">
+			{#each c.panels.length ? c.panels : [null] as p, i (i)}
+				<div class="spread head">
+					<strong>{p?.title ?? c.name}</strong>
+					{#if p?.status}<span class="muted small">{p.status}</span>{/if}
+				</div>
+				{#if p?.error}<p class="notice warn small">{p.error}</p>{/if}
+			{/each}
+			{#if c.acts.length}
+				<div class="row">
+					{#each c.acts as a (`${a.addon}/${a.method}`)}
+						<button class="small" onclick={() => run(a)} disabled={!!busy || off(a)} title={off(a) ? NO_FILE : undefined}>{a.label}</button>
+					{/each}
+					{#if notes[c.plugin]}<span class="muted small">{notes[c.plugin]}</span>{/if}
+				</div>
+			{:else if notes[c.plugin]}
+				<p class="muted small">{notes[c.plugin]}</p>
+			{/if}
+			{#each c.panels as p (`${p.addon}/${p.method}`)}
+				{#if p.table.length}
+					{@const cols = Object.keys(p.table[0])}
+					<div class="table-wrap">
+						<table>
+							<thead><tr>{#each cols as col (col)}<th>{col}</th>{/each}</tr></thead>
+							<tbody>
+								{#each p.table as row, r (r)}<tr>{#each cols as col (col)}<td>{row[col] ?? ''}</td>{/each}</tr>{/each}
+							</tbody>
+						</table>
+					</div>
+				{/if}
 			{/each}
 		</div>
-	{/if}
-	{#each panels as p (`${p.plugin}/${p.addon}/${p.method}`)}
-		<div class="card stack">
-			<div class="spread"><strong>{p.title}</strong>{#if p.status}<span class="muted small">{p.status}</span>{/if}</div>
-			{#if p.error}<p class="notice warn small">{p.error}</p>{/if}
-			{#if p.table.length}
-				{@const cols = Object.keys(p.table[0])}
-				<div class="table-wrap">
-					<table>
-						<thead><tr>{#each cols as c (c)}<th>{c}</th>{/each}</tr></thead>
-						<tbody>
-							{#each p.table as row, i (i)}<tr>{#each cols as c (c)}<td>{row[c] ?? ''}</td>{/each}</tr>{/each}
-						</tbody>
-					</table>
-				</div>
-			{/if}
-			{#if p.actions.length}
-				<div class="row">
-					{#each p.actions as label (label)}
-						{@const a = byLabel(p, label)}
-						{#if a}<button class="small" onclick={() => run(a)} disabled={!!busy}>{label}</button>{/if}
-					{/each}
-				</div>
-			{/if}
-		</div>
 	{/each}
-	{#if note}<p class="muted small">{note}</p>{/if}
 {/if}
+
+<style>
+	.plugin {
+		margin-bottom: 0.75rem;
+		gap: 0.75rem;
+	}
+	.plugin .head {
+		align-items: baseline;
+		gap: 0.5rem 1rem;
+		flex-wrap: wrap;
+	}
+</style>
