@@ -1504,7 +1504,7 @@ class LibraryService:
         """Write ``data`` beside the file as ``<its name>.<suffix>`` and record it as the
         file's: from then on it's renamed, moved, recycled and deleted with the file."""
         check_suffix(suffix)
-        f, _ = await self.file(file_id)
+        f, items = await self.file(file_id)
         if not f.destination_id:
             raise ConflictError(f"file {file_id} isn't in a library folder")
         dest = await self.storage.destination(f.destination_id)
@@ -1520,9 +1520,37 @@ class LibraryService:
                 row = MediaFileSidecar(media_file_id=file_id, suffix=suffix, plugin=plugin)
                 s.add(row)
             row.plugin, row.meta = plugin, dict(meta or {})
+            await self._sidecar_history(
+                s, items, "sidecar_added", plugin, suffix, sidecar_rel(f.relative_path, suffix)
+            )
             await s.commit()
             await s.refresh(row)
             return row
+
+    async def sidecars_of(self, file_ids: list[str]) -> dict[str, list[MediaFileSidecar]]:
+        """Each file's sidecars, for listing files."""
+        out: dict[str, list[MediaFileSidecar]] = {}
+        if not file_ids:
+            return out
+        async with self.db.sessionmaker() as s:
+            rows = await s.execute(
+                select(MediaFileSidecar)
+                .where(MediaFileSidecar.media_file_id.in_(file_ids))
+                .order_by(MediaFileSidecar.suffix)
+            )
+            for r in rows.scalars():
+                out.setdefault(r.media_file_id, []).append(r)
+        return out
+
+    async def _sidecar_history(
+        self, s: Any, items: list[str], type_: str, plugin: str, suffix: str, rel: str
+    ) -> None:
+        """A plugin's file beside a title's, in the title's history (added or removed)."""
+        for wid in items:
+            w = await s.get(WantedItem, wid)
+            if w is not None:
+                data = {"plugin": plugin, "suffix": suffix, "path": rel}
+                s.add(HistoryEvent(wanted_item_id=wid, title_id=w.title_id, type=type_, data=data))
 
     async def sidecars(self, file_id: str) -> list[MediaFileSidecar]:
         async with self.db.sessionmaker() as s:
@@ -1535,7 +1563,7 @@ class LibraryService:
 
     async def remove_sidecar(self, file_id: str, suffix: str) -> bool:
         """Forget a sidecar and recycle its file (as the owner's folder recycles)."""
-        f, _ = await self.file(file_id)
+        f, items = await self.file(file_id)
         async with self.db.sessionmaker() as s:
             row = await s.scalar(
                 select(MediaFileSidecar).where(
@@ -1544,6 +1572,14 @@ class LibraryService:
             )
             if row is None:
                 return False
+            await self._sidecar_history(
+                s,
+                items,
+                "sidecar_removed",
+                row.plugin,
+                suffix,
+                sidecar_rel(f.relative_path, suffix),
+            )
             await s.delete(row)
             await s.commit()
         if f.destination_id:

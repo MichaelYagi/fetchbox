@@ -1,10 +1,29 @@
 <script lang="ts" module>
-	import { get, type S } from './api.ts';
+	import { get, post, type S } from './api.ts';
 
 	// The running plugins' actions, fetched once per page load and shared by every place
 	// on the title page that shows them (none when no plugin is running).
 	export type Act = S['ActionOut'] & { plugin: string };
 	let cache: Promise<Act[]> | null = null;
+	// Run a plugin's button and wait for its job: what it said (its message, or what it
+	// returned), for showing where it was pressed. Also in Activity.
+	export async function runAction(a: Act, item: string | null): Promise<string> {
+		const r = await post<S['PluginJobOut']>(`/plugins/${a.plugin}/actions/${a.addon}/${a.method}`, { item });
+		if (!r.job_id) return `${a.label}: already running`;
+		for (let i = 0; i < 400; i++) {
+			await new Promise((ok) => setTimeout(ok, 1000));
+			const j = await get<S['JobOut']>(`/jobs/${r.job_id}`);
+			if (j.status === 'succeeded') {
+				const res = (j.result ?? {}) as Record<string, unknown>;
+				const said = typeof res.message === 'string' ? res.message : typeof res.skipped === 'string' ? res.skipped : 'done';
+				return `${a.label}: ${said}`;
+			}
+			if (j.status === 'failed' || j.status === 'cancelled') return `${a.label} failed: ${j.error ?? 'see Activity'}`;
+		}
+		return `${a.label}: still working (see Activity)`;
+	}
+	export const NO_FILE = "No file yet: this works once it's downloaded";
+
 	export function pluginActions(): Promise<Act[]> {
 		cache ??= get<S['PluginOut'][]>('/plugins')
 			.then((ps) => ps.filter((p) => p.running).flatMap((p) => p.actions.map((a) => ({ ...a, plugin: p.id }))))
@@ -14,11 +33,22 @@
 </script>
 
 <script lang="ts">
-	import { ApiError, post } from './api.ts';
+	import { ApiError } from './api.ts';
 
 	// Plugins on a title page: their panels (drawn by Fetchbox: a status line, a table,
 	// buttons) and their actions. Nothing shows when no plugin has anything for it.
-	let { titleId, kind, itemId = null }: { titleId: string; kind: string; itemId?: string | null } = $props();
+	// hasFile: the title has a downloaded file (an item: its own); buttons that need one are off without
+	// onchanged: after a button's job, so the page shows what it did (files, history)
+	let {
+		titleId,
+		kind,
+		itemId = null,
+		hasFile = true,
+		onchanged = () => {}
+	}: { titleId: string; kind: string; itemId?: string | null; hasFile?: boolean; onchanged?: () => unknown } = $props();
+	async function loadPanels() {
+		panels = await get<Panel[]>('/plugins/panels', { on: 'title', id: titleId }).catch(() => []);
+	}
 
 	type Panel = S['PanelOut'];
 	let actions = $state<Act[]>([]);
@@ -38,9 +68,11 @@
 	async function run(a: Act) {
 		busy = `${a.plugin}/${a.method}`;
 		note = '';
+		note = `${a.label}: working…`;
 		try {
-			await post(`/plugins/${a.plugin}/actions/${a.addon}/${a.method}`, { item: a.on === 'title' ? titleId : itemId });
-			note = `${a.label}: started (see Activity)`;
+			note = await runAction(a, a.on === 'title' ? titleId : itemId);
+			await loadPanels(); // its status, as it is now
+			onchanged();
 		} catch (e) {
 			note = e instanceof ApiError ? e.message : String(e);
 		} finally {
@@ -55,7 +87,7 @@
 	{#if actions.length}
 		<div class="row">
 			{#each actions as a (`${a.plugin}/${a.addon}/${a.method}`)}
-				<button onclick={() => run(a)} disabled={!!busy}>{a.label}</button>
+				<button onclick={() => run(a)} disabled={!!busy || (a.needs_file && !hasFile)} title={a.needs_file && !hasFile ? NO_FILE : undefined}>{a.label}</button>
 			{/each}
 		</div>
 	{/if}

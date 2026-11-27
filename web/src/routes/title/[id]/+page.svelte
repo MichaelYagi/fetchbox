@@ -6,7 +6,7 @@
 	import Path from '#lib/Path.svelte';
 	import { profileMedia } from '#lib/kinds.ts';
 	import ReleasesTable from '#lib/ReleasesTable.svelte';
-	import PluginBits, { pluginActions, type Act } from '#lib/PluginBits.svelte';
+	import PluginBits, { NO_FILE, pluginActions, runAction, type Act } from '#lib/PluginBits.svelte';
 	import { ago, ApiError, bytes, del, duration, get, patch, post, put, type S, type Title } from '#lib/api.ts';
 
 	const id = $derived(page.params.id ?? '');
@@ -78,13 +78,20 @@
 	const actWidth = $derived(
 		itemActionsHere.length ? `${5.5 + itemActionsHere.reduce((w, a) => w + a.label.length * 0.5 + 1.75, 0)}rem` : null
 	);
+	// A plugin's button on a row: its result in a notice at the bottom of the screen, seen
+	// wherever on the page it was pressed
+	let toast = $state('');
+	let toastTimer: ReturnType<typeof setTimeout> | undefined;
 	async function runItem(a: Act, item: string) {
+		clearTimeout(toastTimer);
+		toast = `${a.label}: working…`;
 		try {
-			await post(`/plugins/${a.plugin}/actions/${a.addon}/${a.method}`, { item });
-			message = `${a.label}: started (see Activity)`;
+			toast = await runAction(a, item);
+			await load(); // its files and history, as the plugin left them
 		} catch (e) {
-			error = e instanceof ApiError ? e.message : String(e);
+			toast = e instanceof ApiError ? e.message : String(e);
 		}
+		toastTimer = setTimeout(() => (toast = ''), 10000);
 	}
 	// Change: another folder for it (full path), moving what's there or not
 	let editingFolder = $state(false);
@@ -377,11 +384,21 @@
 		});
 	};
 
-	function fullPath(f: S['FileOut']): string {
+	// "en.srt" -> "English" (a subtitle's language, from its two-letter code); null otherwise
+	function sidecarLanguage(suffix: string): string | null {
+		const code = suffix.split('.')[0];
+		if (!/^[a-z]{2}(-[a-z]{2})?$/i.test(code)) return null;
+		try {
+			return new Intl.DisplayNames(['en'], { type: 'language' }).of(code) ?? null;
+		} catch {
+			return null;
+		}
+	}
+	function fullPath(f: S['FileOut'], rel: string = f.relative_path): string {
 		const dest = destinations.find((d) => d.id === f.destination_id);
-		if (!dest) return f.relative_path;
+		if (!dest) return rel;
 		const sep = dest.path.includes('\\') && !dest.path.includes('/') ? '\\' : '/';
-		return dest.path.replace(/[\\/]+$/, '') + sep + f.relative_path;
+		return dest.path.replace(/[\\/]+$/, '') + sep + rel;
 	}
 
 	const EVENTS: Record<string, string> = {
@@ -390,7 +407,10 @@
 		upgraded: 'Upgraded',
 		failed: 'Download failed',
 		deleted: 'File deleted',
-		unlocked: 'Unlocked'
+		unlocked: 'Unlocked',
+		sidecar_added: 'Added',
+		sidecar_removed: 'Removed',
+		plugin_action: 'Plugin'
 	};
 	// One row per event; a grab or import of several episodes at once shows once, counted.
 	const grouped = $derived.by(() => {
@@ -406,6 +426,8 @@
 	});
 	function describe(h: S['HistoryOut']): string {
 		const d = h.data as Record<string, unknown>;
+		if (h.type === 'plugin_action') return `${d.plugin}: ${d.label}: ${d.message}`;
+		if (h.type === 'sidecar_added' || h.type === 'sidecar_removed') return `${d.path} · by ${d.plugin}`;
 		return [d.release_title, d.quality, d.reason, d.path].filter(Boolean).join(' · ');
 	}
 </script>
@@ -685,7 +707,7 @@
 								<td><input type="checkbox" title="Wanted" aria-label="Wanted" checked={i.monitored} onchange={(ev) => monitorItem(i, ev.currentTarget.checked)} disabled={!!busy} /></td>
 								<td class="act">
 									<button class="small" onclick={() => searchPlugin([i.id])} disabled={!!busy} title="Search for this {itemWord} and grab the best release">Search</button>
-									{#each itemActionsHere as a (`${a.plugin}/${a.addon}/${a.method}`)}<button class="small plugin-act" onclick={() => runItem(a, i.id)}>{a.label}</button>{/each}
+									{#each itemActionsHere as a (`${a.plugin}/${a.addon}/${a.method}`)}<button class="small plugin-act" onclick={() => runItem(a, i.id)} disabled={a.needs_file && i.state !== 'acquired'} title={a.needs_file && i.state !== 'acquired' ? NO_FILE : undefined}>{a.label}</button>{/each}
 								</td>
 								<td class="rest"></td>
 							</tr>
@@ -714,7 +736,10 @@
 												<span class="muted small">{seasonCount(x)} downloaded</span>
 											</button>
 											<button class="small" onclick={() => chooseSeason(x.number)} disabled={!!busy}><span class="long">Choose a release</span><span class="short">Choose</span></button>
-											{#each groupActionsHere as a (`${a.plugin}/${a.addon}/${a.method}`)}<button class="small" onclick={() => runItem(a, `${title!.id}:${x.number}`)} disabled={!!busy}>{a.label}</button>{/each}
+											{#each groupActionsHere as a (`${a.plugin}/${a.addon}/${a.method}`)}
+												{@const noFile = a.needs_file && !x.episodes.some((e) => e.wanted.state === 'acquired')}
+												<button class="small" onclick={() => runItem(a, `${title!.id}:${x.number}`)} disabled={!!busy || noFile} title={noFile ? NO_FILE : undefined}>{a.label}</button>
+											{/each}
 										</div>
 									</td>
 									<td>
@@ -744,7 +769,7 @@
 											</td>
 											<td class="act">
 												<button class="small" onclick={() => chooseEpisode(x.number, e)} disabled={!!busy || !aired(e)} title="Search and choose a release">Search</button>
-												{#each itemActionsHere as a (`${a.plugin}/${a.addon}/${a.method}`)}<button class="small plugin-act" onclick={() => runItem(a, e.wanted.id)}>{a.label}</button>{/each}
+												{#each itemActionsHere as a (`${a.plugin}/${a.addon}/${a.method}`)}<button class="small plugin-act" onclick={() => runItem(a, e.wanted.id)} disabled={a.needs_file && e.wanted.state !== 'acquired'} title={a.needs_file && e.wanted.state !== 'acquired' ? NO_FILE : undefined}>{a.label}</button>{/each}
 											</td>
 											<td class="rest"></td>
 										</tr>
@@ -766,7 +791,7 @@
 			<ReleasesTable result={releases} busy={!!busy} onGrab={grab} />
 		{/if}
 
-		<PluginBits titleId={title.id} kind={title.kind} itemId={title.kind === 'movie' ? (title.wanted[0]?.id ?? null) : null} />
+		<PluginBits onchanged={load} titleId={title.id} kind={title.kind} itemId={title.kind === 'movie' ? (title.wanted[0]?.id ?? null) : null} hasFile={files.length > 0} />
 
 		<h2>Files</h2>
 		{#if files.length === 0}
@@ -789,6 +814,15 @@
 						<span>· imported {ago(f.imported_at)}</span>
 						<button class="small danger delete" onclick={() => deleteFile(f)} disabled={!!busy}>Delete</button>
 					</div>
+					<!-- what plugins put beside it: subtitles, say; moved, renamed and deleted with it -->
+					{#each f.sidecars ?? [] as sc (sc.suffix)}
+						{@const lang = sidecarLanguage(sc.suffix)}
+						<div class="sidecar small" title={fullPath(f, sc.relative_path)}>
+							<span class="badge">{sc.suffix.split('.').pop()?.toUpperCase()}</span>
+							<code>{sc.relative_path.split('/').pop()}</code>
+							<span class="muted">{[lang, `by ${sc.plugin}`, ago(sc.created_at)].filter(Boolean).map((x) => `· ${x}`).join(' ')}</span>
+						</div>
+					{/each}
 				</div>
 			{/each}
 		{/if}
@@ -814,7 +848,25 @@
 	{/if}
 </main>
 
+{#if toast}<p class="notice toast" role="status">{toast}</p>{/if}
+
 <style>
+	.sidecar {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: 0.4rem;
+		padding-left: 1rem;
+	}
+	.toast {
+		position: fixed;
+		left: 50%;
+		bottom: 1rem;
+		transform: translateX(-50%);
+		z-index: 20;
+		max-width: min(36rem, calc(100vw - 2rem));
+		box-shadow: 0 4px 16px rgb(0 0 0 / 0.35);
+	}
 	.file .delete {
 		margin-left: auto;
 	}

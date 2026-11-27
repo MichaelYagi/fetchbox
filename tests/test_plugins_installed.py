@@ -139,7 +139,14 @@ async def test_install_configure_and_run(settings: Settings) -> None:
             {"id": "notify", "words": "Sends messages through your notification targets"}
         ]
         assert p["actions"] == [
-            {"addon": "greeter", "method": "greet", "label": "Greet", "on": "title", "kinds": None}
+            {
+                "addon": "greeter",
+                "method": "greet",
+                "label": "Greet",
+                "on": "title",
+                "kinds": None,
+                "needs_file": False,
+            }
         ]
         [s] = p["settings"]
         assert s["schema"]["properties"]["token"]["writeOnly"] is True and s["has_test"]

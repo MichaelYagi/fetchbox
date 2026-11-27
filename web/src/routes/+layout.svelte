@@ -14,6 +14,7 @@
 		{ href: '/add', label: 'Add' },
 		{ href: '/calendar', label: 'Calendar' },
 		{ href: '/queue', label: 'Queue' },
+		{ href: '/activity', label: 'Activity' },
 		{ href: '/settings', label: 'Settings' }
 	];
 	const open = ['/login'];
@@ -297,6 +298,15 @@
 		nav {
 			order: 2;
 			flex-basis: 100%;
+			flex-wrap: nowrap; /* one line, scrolled sideways if it doesn't fit */
+			overflow-x: auto;
+			scrollbar-width: none;
+			gap: 0;
+		}
+		nav a {
+			padding: 0.35rem 0.45rem;
+			font-size: 0.95rem;
+			white-space: nowrap;
 		}
 		.dl .label {
 			display: none;

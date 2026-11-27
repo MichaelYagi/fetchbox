@@ -20,6 +20,7 @@ from fetchbox_plugin import (
     FileInfo,
     ItemInfo,
     NotFound,
+    Panel,
     Permission,
     Plugin,
     PublicEvent,
@@ -28,6 +29,7 @@ from fetchbox_plugin import (
     action,
     every,
     on,
+    panel,
 )
 from fetchbox_subtitles.languages import LANGUAGES
 from fetchbox_subtitles.moviehash import moviehash
@@ -93,21 +95,31 @@ class Subtitles(Addon):
             got += await self.fetch(ctx, file_id)
         return {"subtitles": got}
 
-    @action("Search subtitles", on="item")
+    @action("Search subtitles", on="item", needs_file=True)
     async def search_now(self, ctx: Any, item: str) -> dict[str, Any]:
         it = await ctx.library.item(item)
-        got = 0
+        got, files = 0, []
         for f in await ctx.library.files(it.title_id):
             if item in f.item_ids:
+                files.append(f.id)
                 got += await self.fetch(ctx, f.id)
-        return {"subtitles": got}
+        waiting = await ctx.store.get(MISSING, {})
+        if not files:
+            message = "No file yet: subtitles come once it's downloaded"
+        elif got:
+            message = f"{got} subtitle(s) added"
+        elif any(f in waiting for f in files):
+            message = "None found yet; tried again daily"
+        else:
+            message = "It has subtitles in all your languages"
+        return {"subtitles": got, "message": message}
 
-    @action("Find missing subtitles", on="title")
+    @action("Find missing subtitles", on="title", needs_file=True)
     async def find_for_title(self, ctx: Any, title: str) -> dict[str, Any]:
         """Every file of a movie or show without subtitles in one of your languages."""
         return await self._find(ctx, [title])
 
-    @action("Find missing subtitles", on="group")
+    @action("Find missing subtitles", on="group", needs_file=True)
     async def find_for_season(self, ctx: Any, group: str) -> dict[str, Any]:
         """One season of a show ("<title id>:<season>")."""
         title_id, _, season = group.rpartition(":")
@@ -163,6 +175,42 @@ class Subtitles(Addon):
         )
         return {"message": message, "checked": files, "queued": len(lacking), "added": got,
                 "left": left}  # fmt: skip
+
+    @panel(on="title", title="Subtitles")
+    async def status(self, ctx: Any, title: str) -> Panel:
+        """On a movie's or show's page: each file, and each of your languages: added,
+        waiting (tried again daily), or not tried yet."""
+        files = await ctx.library.files(title)
+        langs = list(self.settings.languages)
+        if not files:
+            return Panel(status="No file yet: subtitles come once it's downloaded")
+        waiting: dict[str, list[str]] = await ctx.store.get(MISSING, {})
+        rows, have_count = [], dict.fromkeys(langs, 0)
+        for f in files:
+            have = {s.suffix for s in await ctx.files.sidecars(f.id)}
+            item = await ctx.library.item(f.item_ids[0]) if f.item_ids else None
+            name = (
+                f"S{item.season:02}E{int(item.number or 0):02}"
+                if item is not None and item.level == "episode" and item.season is not None
+                else f.path.name
+            )
+            row: dict[str, Any] = {"File": name}
+            for lang in langs:
+                if f"{lang}.srt" in have:
+                    row[LANGUAGES.get(lang, lang)] = "✓"
+                    have_count[lang] += 1
+                elif lang in waiting.get(f.id, []):
+                    row[LANGUAGES.get(lang, lang)] = "waiting (tried daily)"
+                else:
+                    row[LANGUAGES.get(lang, lang)] = "—"
+            rows.append(row)
+        n = len(files)
+        status = " · ".join(f"{LANGUAGES.get(x, x)}: {have_count[x]} of {n}" for x in langs)
+        if any(f.id in waiting for f in files):
+            status += " · the rest tried again daily"
+        if await self._paused(ctx):
+            status += " · OpenSubtitles' downloads for today are used up"
+        return Panel(status=status, table=rows if n > 1 or len(langs) > 1 else [])
 
     @every(hours=24)
     async def retry_missing(self, ctx: Any) -> dict[str, Any]:

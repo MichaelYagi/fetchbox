@@ -55,6 +55,9 @@ class ActionOut(BaseModel):
     kinds: list[str] | None = Field(
         None, description="The media kinds its titles must be (the add-on's applies_to); null: any"
     )
+    needs_file: bool = Field(
+        False, description="Only where there's a downloaded file (disabled elsewhere)"
+    )
 
 
 class PluginOut(BaseModel):

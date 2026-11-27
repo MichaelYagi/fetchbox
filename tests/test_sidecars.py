@@ -110,6 +110,19 @@ async def test_removing_a_sidecar_and_refusing_bad_ones(
     await library.add_sidecar(f["id"], "nfo", b"<movie/>", plugin="kodi")
     nfo = settings.downloads_dir / "Movies" / sidecar_rel(EXPECTED, "nfo")
     assert nfo.exists()
+    # listed with its file, and in the title's history
+    [listed] = (await c.get(f"/titles/{movie['id']}/files")).json()
+    [sc] = listed["sidecars"]
+    assert (sc["suffix"], sc["plugin"], sc["relative_path"]) == (
+        "nfo",
+        "kodi",
+        sidecar_rel(EXPECTED, "nfo"),
+    )
     assert await library.remove_sidecar(f["id"], "nfo") and not nfo.exists()
+    assert (await c.get(f"/titles/{movie['id']}/files")).json()[0]["sidecars"] == []
+    history = (await c.get(f"/titles/{movie['id']}/history", params={"limit": 50})).json()
+    rows = history.get("items", history)
+    kinds = [(h["type"], h["data"].get("plugin")) for h in rows if h["type"].startswith("sidecar")]
+    assert ("sidecar_added", "kodi") in kinds and ("sidecar_removed", "kodi") in kinds
     assert not await library.remove_sidecar(f["id"], "nfo")
     assert (settings.downloads_dir / "Movies" / EXPECTED).exists()  # the movie is untouched

@@ -49,7 +49,7 @@ Releases follow the same flow as roast-telemetry:
    `git tag vX.Y.Z && git push origin vX.Y.Z`.
 2. `release.yml` here runs the tests and checks the tag matches the version. It then
    publishes a GitHub Release with the wheel, the sdist and a source zip.
-3. `notify-desktop.yml` asks the private `MichaelYagi/fetchbox-artifacts` repo to build
+3. `notify-desktop.yml` asks the `MichaelYagi/fetchbox-artifacts` repo (public: free Actions minutes) to build
    the desktop apps for that tag. This needs a `DESKTOP_DISPATCH_TOKEN` secret here: a
    fine-grained token with "Contents: Read and write" on fetchbox and
    fetchbox-artifacts. Without the secret it skips itself with a warning.

@@ -200,6 +200,13 @@ async def test_a_schedule_and_an_action(c: httpx.AsyncClient, host: PluginHost) 
     assert levels == {"hello": "title", "everyone": "library"}
     assert await host.run_action("hello", "watcher", "everyone", None)
     assert await _seen("everyone") == [None]
+    # and what it said is in Activity (finished jobs aren't logged; a pressed button is)
+
+    async def logged() -> list[str]:
+        page = (await c.get("/activity", params={"filter[category]": "plugin"})).json()
+        return [e["message"] for e in page["items"]]
+
+    await until(lambda: _has(logged, "Hello: Hello, everyone: said hello"), within=10)
     with pytest.raises(LookupError):
         await host.run_action("hello", "watcher", "nope", "x")
 
@@ -311,3 +318,7 @@ async def test_settings_that_dont_validate_say_which(server: Running, settings: 
     ):
         await h.load(KeyedPlugin)
     assert "keyed" not in h.loaded
+
+
+async def _has(get: Any, text: str) -> bool:
+    return text in await get()

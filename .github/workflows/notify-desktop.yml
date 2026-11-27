@@ -1,6 +1,6 @@
 name: Notify desktop build
 
-# When a version tag is pushed here, asks the private MichaelYagi/fetchbox-artifacts
+# When a version tag is pushed here, asks MichaelYagi/fetchbox-artifacts
 # repo to build the desktop apps (Windows, macOS Silicon and Intel, Linux) and their
 # installers for it. That repo tests them and adds them to this tag's release here.
 #
@@ -17,7 +17,7 @@ jobs:
   dispatch:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger the private desktop build
+      - name: Trigger the desktop build
         env:
           DISPATCH_TOKEN: ${{ secrets.DESKTOP_DISPATCH_TOKEN }}
           TAG: ${{ github.ref_name }}

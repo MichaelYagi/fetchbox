@@ -9,7 +9,7 @@ name: Release
 # both, then `fetchbox serve`) and the sdists
 # and a source zip, all with the web interface already built; and the Docker image
 # ghcr.io/michaelyagi/fetchbox (linux/amd64 + arm64; tags X.Y.Z, X.Y, latest). The desktop apps are
-# built and released in the private fetchbox-artifacts repo (see notify-desktop.yml).
+# built in the fetchbox-artifacts repo and added to this release (see notify-desktop.yml).
 on:
   push:
     tags:

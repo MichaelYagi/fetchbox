@@ -28,6 +28,7 @@ from fetchbox.modules.library.naming import (
     safe_component,
 )
 from fetchbox.modules.library.service import LibraryService
+from fetchbox.modules.library.sidecars import sidecar_rel
 from fetchbox.modules.media.series import SeriesMode
 from fetchbox.modules.system.jobs_router import JobOut, accepted
 
@@ -47,6 +48,14 @@ def _svc(request: Request) -> LibraryService:
 # ---- files --------------------------------------------------------------------------------
 
 
+class SidecarOut(BaseModel):
+    suffix: str = Field(description='After the file\'s name: "en.srt"')
+    relative_path: str = Field(description="Beside its file, in the same library folder")
+    plugin: str = Field(description="The plugin that added it")
+    meta: dict[str, Any]
+    created_at: datetime
+
+
 class FileOut(BaseModel):
     id: str
     destination_id: str | None
@@ -63,10 +72,24 @@ class FileOut(BaseModel):
     )
     wanted_item_ids: list[str]
     imported_at: datetime
+    sidecars: list[SidecarOut] = Field(
+        default_factory=list, description="Files plugins added beside it (subtitles, say)"
+    )
 
 
-def _file(f: MediaFile, items: list[str]) -> FileOut:
+def _file(f: MediaFile, items: list[str], sidecars: list[Any] | None = None) -> FileOut:
+    sides = [
+        SidecarOut(
+            suffix=x.suffix,
+            relative_path=sidecar_rel(f.relative_path, x.suffix),
+            plugin=x.plugin,
+            meta=x.meta or {},
+            created_at=x.created_at,
+        )
+        for x in sidecars or []
+    ]
     return FileOut(
+        sidecars=sides,
         id=f.id,
         destination_id=f.destination_id,
         relative_path=f.relative_path,
@@ -84,12 +107,19 @@ def _file(f: MediaFile, items: list[str]) -> FileOut:
 
 @router.get("/files", response_model=list[FileOut], dependencies=_read)
 async def list_files(request: Request, title_id: str | None = None) -> list[FileOut]:
-    return [_file(f, i) for f, i in await _svc(request).files(title_id)]
+    return await _files_out(request, title_id)
+
+
+async def _files_out(request: Request, title_id: str | None) -> list[FileOut]:
+    svc = _svc(request)
+    files = await svc.files(title_id)
+    sidecars = await svc.sidecars_of([f.id for f, _i in files])
+    return [_file(f, i, sidecars.get(f.id)) for f, i in files]
 
 
 @router.get("/titles/{title_id}/files", response_model=list[FileOut], dependencies=_read)
 async def title_files(title_id: str, request: Request) -> list[FileOut]:
-    return [_file(f, i) for f, i in await _svc(request).files(title_id)]
+    return await _files_out(request, title_id)
 
 
 class TitleFolderOut(BaseModel):
