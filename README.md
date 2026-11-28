@@ -2,10 +2,17 @@
 
 Self-hosted media manager for movies, TV and music: the Sonarr, Radarr and Lidarr workflow
 in one app. Find a title, pick a quality, and Fetchbox searches your indexers, downloads it,
-then names and files it in your library (and tells Plex, Jellyfin or Emby). It upgrades
-what it has when a better copy turns up, and plugins add more: subtitles, comics, or a kind
-of media of your own. Works out of the box with a built-in torrent engine, so there's
-nothing else to set up.
+names and files it in your library, and tells Plex, Jellyfin or Emby to pick it up. It
+upgrades what it has when a better copy turns up, and plugins add more: subtitles, comics,
+or a kind of media of your own.
+
+**One app, from search to Plex.** Fetchbox has its own torrent engine, so there's no
+download client to install, connect or keep running beside it. Add a title and it's
+found, downloaded and filed in your library folder; with Plex connected, it's showing there
+a minute later, as Plex is asked to rescan just that folder. The usual setup does the same
+with Sonarr, Radarr and Lidarr plus a separate qBittorrent or SABnzbd, all wired to one
+another; here it's Fetchbox and your indexers (Prowlarr, say). It works with those clients
+too, if you already run one.
 
 What it does:
 
@@ -13,13 +20,21 @@ What it does:
   MusicBrainz for artists and albums), choose its quality, and it's searched for, grabbed,
   downloaded, imported, renamed and filed. New episodes and albums are picked up as they're
   announced, and the Calendar shows what's coming.
+- **Straight into Plex:** downloads go into the library folder itself and are filed in
+  place, named the way Plex, Jellyfin and Emby match best, and the media server rescans just
+  the folder that changed: no waiting for its next scheduled scan.
+- **Torrents and Usenet:** the built-in engine, or your own qBittorrent, Transmission or
+  Deluge; and Usenet through SABnzbd or NZBGet. Indexers come from Prowlarr (torrent and
+  Usenet alike), a Torznab feed or a Newznab indexer.
 - **Upgrades and repairs:** a better copy replaces the one you have, up to the quality you
   set. *Redownload* swaps a bad copy for another release, *Delete* removes a file, and the
   daily library check reports files that went missing from disk.
 - **Your existing library:** *Import what's already here* adopts the media you have without
   moving it, and *Move from Radarr / Sonarr / Lidarr* brings over your titles and their files.
-- **Around it:** the Queue and Activity show what's happening, notifications go to email,
-  Discord or a webhook, and Plex, Jellyfin or Emby rescan just the folder that changed.
+- **Easy to start:** a first-run setup walks through folders, keys, an indexer, downloads
+  and Plex, every step optional.
+- **Around it:** the Queue and Activity show what's happening, and notifications go to
+  email, Discord or a webhook.
 - **Plugins** add subtitles, comics, or a kind of media or service of your own; see
   [Plugins](#plugins).
 
