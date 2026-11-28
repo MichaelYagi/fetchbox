@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import Badge from '#lib/Badge.svelte';
 	import { ApiError, get, type S, type Title } from '#lib/api.ts';
 
@@ -6,17 +8,22 @@
 	let error = $state('');
 	let filter = $state('');
 	let show = $state<'all' | 'missing' | 'acquired' | 'active'>('all');
-	// A tab per media kind, shown only once a plugin adds one (Comics beside Movies, TV, Music)
+	// A tab per media kind in the library, with how many: Movies, TV, Music, and a plugin's
+	// (Comics). The one chosen is in the address (?kind=), so going back keeps it.
 	let pluginKinds = $state<S['MediaKindOut'][]>([]);
-	let tab = $state('');
 	$effect(() => {
 		get<S['MediaKindOut'][]>('/plugins/kinds').then((k) => (pluginKinds = k)).catch(() => {});
 	});
-	const tabs = $derived(
-		pluginKinds.length
-			? [['', 'All'], ['movie', 'Movies'], ['series', 'TV'], ['music', 'Music'], ...pluginKinds.map((k) => [k.id, k.plural])]
-			: []
-	);
+	const tab = $derived(page.url.searchParams.get('kind') ?? '');
+	function choose(kind: string) {
+		goto(kind ? `?kind=${encodeURIComponent(kind)}` : '/', { replaceState: true });
+	}
+	const tabs = $derived.by(() => {
+		const all = [['movie', 'Movies'], ['series', 'TV'], ['music', 'Music'], ...pluginKinds.map((k) => [k.id, k.plural])];
+		const count = (k: string) => (titles ?? []).filter((t) => t.kind === k).length;
+		const present = all.filter(([k]) => count(k) > 0 || k === tab).map(([k, label]) => [k, label, count(k)] as const);
+		return present.length ? [['', 'All', titles?.length ?? 0] as const, ...present] : [];
+	});
 
 	async function load() {
 		try {
@@ -76,8 +83,8 @@
 
 	{#if tabs.length}
 		<div class="tabs" role="tablist">
-			{#each tabs as [k, label] (k)}
-				<button role="tab" aria-selected={tab === k} class:active={tab === k} onclick={() => (tab = k)}>{label}</button>
+			{#each tabs as [k, label, n] (k)}
+				<button role="tab" aria-selected={tab === k} class:active={tab === k} onclick={() => choose(k)}>{label} <span class="n">{n}</span></button>
 			{/each}
 		</div>
 	{/if}
@@ -206,5 +213,10 @@
 		.tools {
 			width: 100%;
 		}
+	}
+	.tabs .n {
+		opacity: 0.65;
+		font-size: 0.85em;
+		margin-left: 0.15rem;
 	}
 </style>
