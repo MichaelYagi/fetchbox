@@ -1,6 +1,68 @@
 {
  "components": {
   "schemas": {
+   "AccountOut": {
+    "properties": {
+     "enabled": {
+      "title": "Enabled",
+      "type": "boolean"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "last_error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Why the last read of its watchlist failed",
+      "title": "Last Error"
+     },
+     "last_sync_at": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Last Sync At"
+     },
+     "username": {
+      "title": "Username",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "username",
+     "enabled",
+     "last_sync_at",
+     "last_error"
+    ],
+    "title": "AccountOut",
+    "type": "object"
+   },
+   "AccountPatch": {
+    "properties": {
+     "enabled": {
+      "title": "Enabled",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "enabled"
+    ],
+    "title": "AccountPatch",
+    "type": "object"
+   },
    "ActionIn": {
     "properties": {
      "item": {
@@ -3361,6 +3423,20 @@
     "title": "FormatPatch",
     "type": "object"
    },
+   "FromServerIn": {
+    "properties": {
+     "server_id": {
+      "description": "A Plex server under Media servers",
+      "title": "Server Id",
+      "type": "string"
+     }
+    },
+    "required": [
+     "server_id"
+    ],
+    "title": "FromServerIn",
+    "type": "object"
+   },
    "GrabIn": {
     "properties": {
      "allow_rejected": {
@@ -4228,6 +4304,113 @@
      "failures"
     ],
     "title": "InteractiveOut",
+    "type": "object"
+   },
+   "ItemOut": {
+    "properties": {
+     "account": {
+      "description": "Whose watchlist it's on",
+      "title": "Account",
+      "type": "string"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "kind": {
+      "enum": [
+       "movie",
+       "series"
+      ],
+      "title": "Kind",
+      "type": "string"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "reason": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Reason"
+     },
+     "seen_at": {
+      "format": "date-time",
+      "title": "Seen At",
+      "type": "string"
+     },
+     "state": {
+      "description": "added (and searched for), waiting (for approval), in_library (it was already there), dismissed, or skipped (reason says why)",
+      "enum": [
+       "added",
+       "waiting",
+       "in_library",
+       "dismissed",
+       "skipped"
+      ],
+      "title": "State",
+      "type": "string"
+     },
+     "title_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Its title in the library, once there",
+      "title": "Title Id"
+     },
+     "tmdb_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tmdb Id"
+     },
+     "updated_at": {
+      "format": "date-time",
+      "title": "Updated At",
+      "type": "string"
+     },
+     "year": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Year"
+     }
+    },
+    "required": [
+     "id",
+     "account",
+     "kind",
+     "name",
+     "year",
+     "tmdb_id",
+     "state",
+     "reason",
+     "title_id",
+     "seen_at",
+     "updated_at"
+    ],
+    "title": "ItemOut",
     "type": "object"
    },
    "ItemStats": {
@@ -8389,6 +8572,61 @@
      "created_at"
     ],
     "title": "SidecarOut",
+    "type": "object"
+   },
+   "SignInOut": {
+    "properties": {
+     "expires_in": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Seconds the sign-in stays open",
+      "title": "Expires In"
+     },
+     "pin_id": {
+      "title": "Pin Id",
+      "type": "integer"
+     },
+     "url": {
+      "description": "Open this: Plex's page where the person approves Fetchbox",
+      "title": "Url",
+      "type": "string"
+     }
+    },
+    "required": [
+     "pin_id",
+     "url",
+     "expires_in"
+    ],
+    "title": "SignInOut",
+    "type": "object"
+   },
+   "SignInStatus": {
+    "properties": {
+     "account": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/AccountOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "done": {
+      "title": "Done",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "done"
+    ],
+    "title": "SignInStatus",
     "type": "object"
    },
    "SizeCondition": {
@@ -23958,6 +24196,615 @@
     "summary": "Unlock Wanted",
     "tags": [
      "releases"
+    ]
+   }
+  },
+  "/api/v1/watchlist/accounts": {
+   "get": {
+    "description": "The Plex accounts whose watchlists are followed.",
+    "operationId": "list_accounts_api_v1_watchlist_accounts_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/AccountOut"
+         },
+         "title": "Response List Accounts Api V1 Watchlist Accounts Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "List Accounts",
+    "tags": [
+     "watchlist"
+    ]
+   }
+  },
+  "/api/v1/watchlist/accounts/from-server": {
+   "post": {
+    "description": "Follow the watchlist of the Plex account a media server was added with, with the\ntoken Fetchbox already has for it: no sign-in.",
+    "operationId": "from_server_api_v1_watchlist_accounts_from_server_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/FromServerIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/AccountOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Conflict"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     },
+     "502": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Bad Gateway"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "From Server",
+    "tags": [
+     "watchlist"
+    ]
+   }
+  },
+  "/api/v1/watchlist/accounts/{account_id}": {
+   "delete": {
+    "description": "Stop following it. What its watchlist added stays in the library.",
+    "operationId": "remove_account_api_v1_watchlist_accounts__account_id__delete",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "account_id",
+      "required": true,
+      "schema": {
+       "title": "Account Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Remove Account",
+    "tags": [
+     "watchlist"
+    ]
+   },
+   "patch": {
+    "description": "Follow its watchlist, or pause that.",
+    "operationId": "update_account_api_v1_watchlist_accounts__account_id__patch",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "account_id",
+      "required": true,
+      "schema": {
+       "title": "Account Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/AccountPatch"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/AccountOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Update Account",
+    "tags": [
+     "watchlist"
+    ]
+   }
+  },
+  "/api/v1/watchlist/items": {
+   "get": {
+    "description": "Titles seen on the watchlists, newest first, and what became of each.",
+    "operationId": "list_items_api_v1_watchlist_items_get",
+    "parameters": [
+     {
+      "description": "Only these states",
+      "in": "query",
+      "name": "state",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "items": {
+          "enum": [
+           "added",
+           "waiting",
+           "in_library",
+           "dismissed",
+           "skipped"
+          ],
+          "type": "string"
+         },
+         "type": "array"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Only these states",
+       "title": "State"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/ItemOut"
+         },
+         "title": "Response List Items Api V1 Watchlist Items Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "List Items",
+    "tags": [
+     "watchlist"
+    ]
+   }
+  },
+  "/api/v1/watchlist/items/{item_id}/approve": {
+   "post": {
+    "description": "Add a waiting (or skipped) title to the library and search for it.",
+    "operationId": "approve_api_v1_watchlist_items__item_id__approve_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "item_id",
+      "required": true,
+      "schema": {
+       "title": "Item Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ItemOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Conflict"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Approve",
+    "tags": [
+     "watchlist"
+    ]
+   }
+  },
+  "/api/v1/watchlist/items/{item_id}/dismiss": {
+   "post": {
+    "description": "Not wanted: it isn't added, nor asked about again.",
+    "operationId": "dismiss_api_v1_watchlist_items__item_id__dismiss_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "item_id",
+      "required": true,
+      "schema": {
+       "title": "Item Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Dismiss",
+    "tags": [
+     "watchlist"
+    ]
+   }
+  },
+  "/api/v1/watchlist/sign-in": {
+   "post": {
+    "description": "Start signing in with Plex: open `url`, approve Fetchbox there, then poll\n`GET /watchlist/sign-in/{pin_id}` until it's done.",
+    "operationId": "start_sign_in_api_v1_watchlist_sign_in_post",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SignInOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "502": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Bad Gateway"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Start Sign In",
+    "tags": [
+     "watchlist"
+    ]
+   }
+  },
+  "/api/v1/watchlist/sign-in/{pin_id}": {
+   "get": {
+    "description": "Done once the person approved Fetchbox on plex.tv: the account is then followed.",
+    "operationId": "finish_sign_in_api_v1_watchlist_sign_in__pin_id__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "pin_id",
+      "required": true,
+      "schema": {
+       "title": "Pin Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SignInStatus"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     },
+     "502": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Bad Gateway"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Finish Sign In",
+    "tags": [
+     "watchlist"
+    ]
+   }
+  },
+  "/api/v1/watchlist/sync": {
+   "post": {
+    "description": "Read the watchlists now (they're read every 10 minutes anyway).",
+    "operationId": "sync_now_api_v1_watchlist_sync_post",
+    "responses": {
+     "202": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Sync Now Api V1 Watchlist Sync Post",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Sync Now",
+    "tags": [
+     "watchlist"
     ]
    }
   }

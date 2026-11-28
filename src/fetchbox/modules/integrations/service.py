@@ -271,6 +271,21 @@ class IntegrationsService:
     def kinds(self) -> list[str]:
         return [c.kind for c in self.providers.of("media_server")]
 
+    async def plex_token(self, server_id: str) -> tuple[str, str]:
+        """A Plex server's name and the token it was added with (the account's token:
+        it also reads that account's watchlist)."""
+        row = await self.get(server_id)
+        if row.kind != "plex":
+            raise ConflictError(f"{row.name} isn't a Plex server")
+        cls = self.providers.get("media_server", row.kind)
+        settings = open_settings(
+            self.box, cls.Settings, row.settings, context=f"media_server:{row.id}"
+        )
+        token = getattr(settings, "token", None)
+        if token is None:
+            raise ConflictError(f"{row.name} has no token")
+        return row.name, token.get_secret_value()
+
     def view(self, row: MediaServer) -> dict[str, Any]:
         cls = self.providers.get("media_server", row.kind)
         return mask_settings(cls.Settings, row.settings)
