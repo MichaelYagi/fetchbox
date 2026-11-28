@@ -10596,7 +10596,7 @@
  },
  "info": {
   "title": "Fetchbox",
-  "version": "0.10.8"
+  "version": "0.10.9"
  },
  "openapi": "3.1.0",
  "paths": {
