@@ -227,6 +227,11 @@ async def test_max_active_holds_the_second_download(
         r = await c.post("/grabs", json={"release_id": rel["release_id"], "wanted_item_ids": [wid],
                                          "allow_rejected": True})  # fmt: skip
         assert r.status_code == 201, r.text
+
+    async def both_added() -> bool:  # (the first can be "queued" for a moment on its own)
+        return len((await c.get("/downloads")).json()) == 2
+
+    await until(both_added, within=20)
     await until(lambda: _count(c, "queued", 1), within=20)
     await until(lambda: _count(c, "downloading", 1), within=20)
     for _ in range(5):
