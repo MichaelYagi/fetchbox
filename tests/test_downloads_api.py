@@ -96,13 +96,19 @@ async def test_grab_downloads_to_completion(
         if d is None or d["status"] not in ("completed", "removed") or not d["completed_at"]:
             return None
         stopped = bool(d["seeded_at"]) or d["status"] == "removed"
-        return d if d["live"] is not None or stopped else None
+        if d["live"] is not None or stopped:
+            found.append(d)
+            return d
+        return None
 
+    found: list[dict[str, Any]] = []
     try:
         await until(settled, within=20)
     except TimeoutError:
         raise AssertionError(f"neither seeding nor stopped; last seen: {seen[-1]}") from None
-    d = await settled()
+    # the reading that settled it: read again, it may have moved on (seeding to stopped)
+    # in between, and briefly be neither (seen on CI)
+    d = found[-1]
     assert d is not None and d["progress"] == 1.0 and d["completed_at"] and d["size"] == 2 * MB + 50
     if d["live"] is not None:
         assert d["live"]["state"] == "seeding"
