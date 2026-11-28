@@ -11,7 +11,9 @@
 		series_profile_id: string | null;
 		series_mode: 'all' | 'future' | 'missing' | 'first_season' | 'latest_season' | 'none';
 		ask_first: boolean;
+		trakt_client_id: string | null;
 	};
+	type TraktUser = S['TraktUserOut'];
 
 	let accounts = $state<Account[]>([]);
 	let items = $state<Item[]>([]);
@@ -21,6 +23,9 @@
 	let error = $state('');
 	let message = $state('');
 	let signingIn = $state(false);
+	let trakt = $state<TraktUser[]>([]);
+	let traktKey = $state('');
+	let traktUser = $state('');
 	// Plex servers under Media servers: the token each was added with reads its watchlist too
 	let servers = $state<{ id: string; name: string; kind: string }[]>([]);
 
@@ -41,13 +46,14 @@
 	async function load() {
 		try {
 			let all: { id: string; name: string; kind: string }[];
-			[accounts, items, all] = await Promise.all([
+			[accounts, items, all, trakt] = await Promise.all([
 				get<Account[]>('/watchlist/accounts'),
 				get<Item[]>('/watchlist/items'),
-				get<{ id: string; name: string; kind: string }[]>('/media-servers').catch(() => [])
+				get<{ id: string; name: string; kind: string }[]>('/media-servers').catch(() => []),
+				get<TraktUser[]>('/watchlist/trakt')
 			]);
 			servers = all.filter((x) => x.kind === 'plex');
-			if (accounts.length && !cfg) {
+			if (!cfg) {
 				const [c, p] = await Promise.all([
 					get<S['ConfigOut']>('/system/config'),
 					get<S['ProfileOut'][]>('/quality-profiles')
@@ -113,11 +119,14 @@
 			await patch('/system/config', { watchlist: change });
 		});
 
+	const following = $derived(accounts.length + trakt.length > 0);
+	const who = (i: Item) => `${i.account}'s ${i.source === 'trakt' ? 'Trakt' : 'Plex'} watchlist`;
 	const waiting = $derived(items.filter((i) => i.state === 'waiting'));
 	const recent = $derived(items.filter((i) => i.state !== 'waiting').slice(0, 8));
 </script>
 
 <div class="card stack">
+	<h3>Plex</h3>
 	<p class="muted small">
 		Anything bookmarked with <strong>+ Watchlist</strong> in a Plex app (TV, phone, plex.tv) is added here and downloaded, then
 		shows up in Plex. Sign in once for each person whose watchlist to follow: it's Plex's own page, so no password is
@@ -170,7 +179,53 @@
 		{/if}
 	</div>
 
-	{#if accounts.length && cfg}
+	<h3>Trakt</h3>
+	<p class="muted small">
+		Follow anyone's public Trakt watchlist the same way (Trakt works with Plex, Jellyfin and Emby alike). Trakt asks for a
+		free <a href="https://trakt.tv/oauth/applications/new" target="_blank" rel="noreferrer">API app</a>: any name, redirect
+		URI <code>urn:ietf:wg:oauth:2.0:oob</code>; paste its Client ID here.
+	</p>
+	{#each trakt as u (u.id)}
+		<div class="spread account">
+			<div>
+				<strong>{u.username}</strong> <span class="muted small">on Trakt</span>
+				{#if !u.enabled}<span class="badge">Paused</span>{/if}
+				<div class="muted small">
+					{#if u.last_error}<span class="warn-text">{u.last_error}</span>{:else if u.last_sync_at}Read {ago(u.last_sync_at)}{:else}Not read yet{/if}
+				</div>
+			</div>
+			<div class="row">
+				<button class="small" disabled={!!busy} onclick={() => act(u.id, () => patch(`/watchlist/trakt/${u.id}`, { enabled: !u.enabled }))}>{u.enabled ? 'Pause' : 'Resume'}</button>
+				<button
+					class="small danger"
+					disabled={!!busy}
+					onclick={async () =>
+						(await ask(`Stop following ${u.username}'s Trakt watchlist? What it added stays in the library.`, 'Stop following', true)) &&
+						act(u.id, () => del(`/watchlist/trakt/${u.id}`))}>Remove</button
+				>
+			</div>
+		</div>
+	{/each}
+	{#if cfg && !cfg.trakt_client_id}
+		<form
+			class="row"
+			onsubmit={(e) => (e.preventDefault(), act('trakt-key', async () => { await patch('/system/config', { watchlist: { trakt_client_id: traktKey.trim() } }); cfg = { ...cfg!, trakt_client_id: '********' }; traktKey = ''; }, 'Trakt Client ID saved.'))}
+		>
+			<input class="grow" type="password" placeholder="Trakt Client ID" bind:value={traktKey} autocomplete="off" required />
+			<button disabled={!!busy}>Save</button>
+		</form>
+	{:else if cfg}
+		<form
+			class="row"
+			onsubmit={(e) => (e.preventDefault(), act('trakt-user', async () => { await post('/watchlist/trakt', { username: traktUser.trim() }); traktUser = ''; }, 'Following that Trakt watchlist.'))}
+		>
+			<input class="grow" placeholder="Trakt username" bind:value={traktUser} autocomplete="off" required />
+			<button disabled={!!busy}>Follow</button>
+			<button type="button" class="link small" onclick={() => (cfg = { ...cfg!, trakt_client_id: null })}>Change Client ID</button>
+		</form>
+	{/if}
+
+	{#if following && cfg}
 		<div class="options">
 			<label class="field"
 				><span>Movies' quality</span>
@@ -204,7 +259,7 @@
 			<strong>Waiting for you ({waiting.length})</strong>
 			{#each waiting as i (i.id)}
 				<div class="spread line">
-					<span>{i.name} <span class="muted">{i.year ?? ''} · {i.kind === 'series' ? 'show' : 'movie'} · {i.account}'s watchlist</span></span>
+					<span>{i.name} <span class="muted">{i.year ?? ''} · {i.kind === 'series' ? 'show' : 'movie'} · {who(i)}</span></span>
 					<span class="row">
 						<button class="small primary" disabled={!!busy} onclick={() => act(i.id, () => post(`/watchlist/items/${i.id}/approve`), `${i.name}: added, and being searched for.`)}>Approve</button>
 						<button class="small" disabled={!!busy} onclick={() => act(i.id, () => post(`/watchlist/items/${i.id}/dismiss`))}>Dismiss</button>
@@ -221,7 +276,7 @@
 				<div class="line small">
 					<span class="badge {STATE[i.state]?.[0] ?? ''}">{STATE[i.state]?.[1] ?? i.state}</span>
 					{#if i.title_id}<a href="/title/{i.title_id}">{i.name}</a>{:else}{i.name}{/if}
-					<span class="muted">{i.year ?? ''} · {i.account} · {ago(i.updated_at)}</span>
+					<span class="muted">{i.year ?? ''} · {who(i)} · {ago(i.updated_at)}</span>
 					{#if i.state === 'skipped' && i.reason}<span class="muted">· {i.reason}</span>{/if}
 					{#if i.state === 'skipped' && i.tmdb_id}
 						<button class="link small" onclick={() => act(i.id, () => post(`/watchlist/items/${i.id}/approve`), `${i.name}: added.`)}>Try again</button>
@@ -233,6 +288,13 @@
 </div>
 
 <style>
+	h3 {
+		margin: 0.5rem 0 0;
+		font-size: 1rem;
+	}
+	p {
+		margin: 0;
+	}
 	.account {
 		border-bottom: 1px solid var(--border);
 		padding-bottom: 0.5rem;

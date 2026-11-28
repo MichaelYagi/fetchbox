@@ -3156,6 +3156,52 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/watchlist/trakt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Trakt
+         * @description The Trakt users whose watchlists are followed.
+         */
+        get: operations["list_trakt_api_v1_watchlist_trakt_get"];
+        put?: never;
+        /**
+         * Add Trakt
+         * @description Follow a Trakt user's watchlist (a public profile; needs the Trakt Client ID in the
+         *     config, `watchlist.trakt_client_id`). It's checked with Trakt first.
+         */
+        post: operations["add_trakt_api_v1_watchlist_trakt_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/watchlist/trakt/{user_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove Trakt
+         * @description Stop following it. What its watchlist added stays in the library.
+         */
+        delete: operations["remove_trakt_api_v1_watchlist_trakt__user_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Trakt */
+        patch: operations["update_trakt_api_v1_watchlist_trakt__user_id__patch"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -4764,6 +4810,12 @@ export interface components {
              * Format: date-time
              */
             seen_at: string;
+            /**
+             * Source
+             * @description Plex or Trakt
+             * @enum {string}
+             */
+            source: "plex" | "trakt";
             /**
              * State
              * @description added (and searched for), waiting (for approval), in_library (it was already there), dismissed, or skipped (reason says why)
@@ -7031,6 +7083,27 @@ export interface components {
             name: string;
             /** Number */
             number: number;
+        };
+        /** TraktUserIn */
+        TraktUserIn: {
+            /**
+             * Username
+             * @description A Trakt username
+             */
+            username: string;
+        };
+        /** TraktUserOut */
+        TraktUserOut: {
+            /** Enabled */
+            enabled: boolean;
+            /** Id */
+            id: string;
+            /** Last Error */
+            last_error: string | null;
+            /** Last Sync At */
+            last_sync_at: string | null;
+            /** Username */
+            username: string;
         };
         /** TrayRequestsOut */
         TrayRequestsOut: {
@@ -15766,6 +15839,163 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    list_trakt_api_v1_watchlist_trakt_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TraktUserOut"][];
+                };
+            };
+        };
+    };
+    add_trakt_api_v1_watchlist_trakt_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TraktUserIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TraktUserOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    remove_trakt_api_v1_watchlist_trakt__user_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_trakt_api_v1_watchlist_trakt__user_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AccountPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TraktUserOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

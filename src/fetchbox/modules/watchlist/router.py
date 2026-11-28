@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 
 from fetchbox.core.errors import problem_responses as pr
 from fetchbox.modules.auth.deps import CurrentPrincipal, require
-from fetchbox.modules.watchlist.models import PlexAccount
+from fetchbox.modules.watchlist.models import PlexAccount, TraktUser
 from fetchbox.modules.watchlist.service import SYNC_JOB, WatchlistService
 
 router = APIRouter(prefix="/watchlist", tags=["watchlist"])
@@ -39,6 +39,7 @@ def _account(a: PlexAccount) -> AccountOut:
 class ItemOut(BaseModel):
     id: str
     account: str = Field(description="Whose watchlist it's on")
+    source: Literal["plex", "trakt"] = Field(description="Plex or Trakt")
     kind: Literal["movie", "series"]
     name: str
     year: int | None
@@ -66,6 +67,23 @@ class SignInStatus(BaseModel):
 
 class AccountPatch(BaseModel):
     enabled: bool
+
+
+class TraktUserOut(BaseModel):
+    id: str
+    username: str
+    enabled: bool
+    last_sync_at: datetime | None
+    last_error: str | None
+
+
+class TraktUserIn(BaseModel):
+    username: str = Field(min_length=1, max_length=100, description="A Trakt username")
+
+
+def _trakt(u: TraktUser) -> TraktUserOut:
+    return TraktUserOut(id=u.id, username=u.username, enabled=u.enabled,
+                        last_sync_at=u.last_sync_at, last_error=u.last_error)  # fmt: skip
 
 
 class FromServerIn(BaseModel):
@@ -116,6 +134,36 @@ async def update_account(account_id: str, body: AccountPatch, request: Request) 
 async def remove_account(account_id: str, request: Request, p: CurrentPrincipal) -> Response:
     """Stop following it. What its watchlist added stays in the library."""
     await _svc(request).remove_account(account_id, actor=p.actor())
+    return Response(status_code=204)
+
+
+@router.get("/trakt", response_model=list[TraktUserOut], dependencies=_read)
+async def list_trakt(request: Request) -> list[TraktUserOut]:
+    """The Trakt users whose watchlists are followed."""
+    return [_trakt(u) for u in await _svc(request).trakt_users()]
+
+
+@router.post(
+    "/trakt", response_model=TraktUserOut, status_code=201, dependencies=_write,
+    responses=pr(409, 502),
+)  # fmt: skip
+async def add_trakt(body: TraktUserIn, request: Request, p: CurrentPrincipal) -> TraktUserOut:
+    """Follow a Trakt user's watchlist (a public profile; needs the Trakt Client ID in the
+    config, `watchlist.trakt_client_id`). It's checked with Trakt first."""
+    return _trakt(await _svc(request).add_trakt_user(body.username, actor=p.actor()))
+
+
+@router.patch(
+    "/trakt/{user_id}", response_model=TraktUserOut, dependencies=_write, responses=pr(404)
+)
+async def update_trakt(user_id: str, body: AccountPatch, request: Request) -> TraktUserOut:
+    return _trakt(await _svc(request).set_trakt_enabled(user_id, body.enabled))
+
+
+@router.delete("/trakt/{user_id}", status_code=204, dependencies=_write, responses=pr(404))
+async def remove_trakt(user_id: str, request: Request, p: CurrentPrincipal) -> Response:
+    """Stop following it. What its watchlist added stays in the library."""
+    await _svc(request).remove_trakt_user(user_id, actor=p.actor())
     return Response(status_code=204)
 
 

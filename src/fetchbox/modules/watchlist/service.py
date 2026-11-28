@@ -29,8 +29,9 @@ from fetchbox.modules.media.models import Title
 from fetchbox.modules.media.service import MediaService
 from fetchbox.modules.profiles.service import ProfilesService
 from fetchbox.modules.system.config import ConfigService
-from fetchbox.modules.watchlist.models import PlexAccount, WatchlistItem
+from fetchbox.modules.watchlist.models import PlexAccount, TraktUser, WatchlistItem
 from fetchbox.providers.media_servers.plex_tv import PlexTv, PlexTvError, WatchItem
+from fetchbox.providers.media_servers.trakt import Trakt, TraktError
 
 log = structlog.get_logger(__name__)
 
@@ -161,6 +162,107 @@ class WatchlistService:
         await self.bus.emit("watchlist.account_removed", subject=Subject(type="plex_account",
                             id=account_id), actor=actor, name=name)  # fmt: skip
 
+    # ---- Trakt -------------------------------------------------------------------------------
+
+    def _trakt(self) -> Trakt:
+        key = self.config.current.watchlist.trakt_client_id
+        if key is None:
+            raise ConflictError(
+                "add a Trakt Client ID first: make a free API app at trakt.tv/oauth/applications"
+            )
+        return Trakt(key.get_secret_value(), transport=self.transport)
+
+    async def trakt_users(self) -> list[TraktUser]:
+        async with self.db.sessionmaker() as s:
+            q = select(TraktUser).order_by(TraktUser.created_at)
+            return list((await s.execute(q)).scalars())
+
+    async def add_trakt_user(self, username: str, *, actor: Actor) -> TraktUser:
+        """Follow a Trakt user's watchlist (checked with Trakt first: it must be public)."""
+        name = username.strip().lstrip("@")
+        trakt = self._trakt()
+        try:
+            await trakt.watchlist(name)
+        except TraktError as exc:
+            if exc.kind == "unavailable":
+                raise ProblemError(502, "Trakt unavailable", detail=exc.message) from None
+            raise ConflictError(exc.message) from None
+        finally:
+            await trakt.aclose()
+        async with self.db.sessionmaker() as s:
+            if (await s.execute(select(TraktUser).where(TraktUser.username == name))).first():
+                raise ConflictError(f"{name}'s Trakt watchlist is already followed")
+            row = TraktUser(id=new_id(), username=name)
+            s.add(row)
+            await s.commit()
+            await s.refresh(row)
+        await self.bus.emit("watchlist.trakt_added", subject=Subject(type="trakt_user",
+                            id=row.id), actor=actor, name=name)  # fmt: skip
+        return row
+
+    async def set_trakt_enabled(self, user_id: str, enabled: bool) -> TraktUser:
+        async with self.db.sessionmaker() as s:
+            row = await s.get(TraktUser, user_id)
+            if row is None:
+                raise NotFoundError("trakt_user", user_id)
+            row.enabled = enabled
+            await s.commit()
+            await s.refresh(row)
+            return row
+
+    async def remove_trakt_user(self, user_id: str, *, actor: Actor) -> None:
+        async with self.db.sessionmaker() as s:
+            row = await s.get(TraktUser, user_id)
+            if row is None:
+                raise NotFoundError("trakt_user", user_id)
+            name = row.username
+            await s.delete(row)
+            await s.commit()
+        await self.bus.emit("watchlist.trakt_removed", subject=Subject(type="trakt_user",
+                            id=user_id), actor=actor, name=name)  # fmt: skip
+
+    async def _sync_trakt(self, counts: dict[str, int], actor: Actor) -> None:
+        users = [u for u in await self.trakt_users() if u.enabled]
+        if not users or self.config.current.watchlist.trakt_client_id is None:
+            return
+        trakt = self._trakt()
+        try:
+            for u in users:
+                try:
+                    found = await trakt.watchlist(u.username)
+                    async with self.db.sessionmaker() as s:
+                        known = set(
+                            (
+                                await s.execute(
+                                    select(WatchlistItem.plex_key).where(
+                                        WatchlistItem.trakt_user_id == u.id
+                                    )
+                                )
+                            ).scalars()
+                        )
+                    for w in found:
+                        if w.key in known:
+                            continue
+                        state = await self._new(
+                            w, await self._tmdb_id(w), actor, owner=u.username,
+                            source="Trakt", trakt_user_id=u.id,
+                        )  # fmt: skip
+                        counts[state] = counts.get(state, 0) + 1
+                    await self._trakt_ok(u.id, None)
+                except TraktError as exc:
+                    counts["failed_accounts"] += 1
+                    await self._trakt_ok(u.id, exc.message)
+                    log.warning("watchlist.trakt_failed", user=u.username, error=exc.message)
+        finally:
+            await trakt.aclose()
+
+    async def _trakt_ok(self, user_id: str, error: str | None) -> None:
+        async with self.db.sessionmaker() as s:
+            row = await s.get(TraktUser, user_id)
+            if row is not None:
+                row.last_sync_at, row.last_error = utcnow(), error
+                await s.commit()
+
     # ---- the watchlist ---------------------------------------------------------------------
 
     async def items(
@@ -168,8 +270,9 @@ class WatchlistService:
     ) -> list[dict[str, Any]]:
         async with self.db.sessionmaker() as s:
             q = (
-                select(WatchlistItem, PlexAccount.username)
-                .join(PlexAccount, PlexAccount.id == WatchlistItem.account_id)
+                select(WatchlistItem, PlexAccount.username, TraktUser.username)
+                .outerjoin(PlexAccount, PlexAccount.id == WatchlistItem.account_id)
+                .outerjoin(TraktUser, TraktUser.id == WatchlistItem.trakt_user_id)
                 .order_by(WatchlistItem.updated_at.desc())
                 .limit(limit)
             )
@@ -177,15 +280,17 @@ class WatchlistService:
                 q = q.where(WatchlistItem.state.in_(states))
             rows = (await s.execute(q)).all()
         return [
-            {"id": i.id, "account": who, "kind": i.kind, "name": i.name, "year": i.year,
-             "tmdb_id": i.tmdb_id, "state": i.state, "reason": i.reason,
-             "title_id": i.title_id, "seen_at": i.seen_at, "updated_at": i.updated_at}
-            for i, who in rows
+            {"id": i.id, "account": plex or trakt or "", "source": "trakt" if trakt else "plex",
+             "kind": i.kind, "name": i.name, "year": i.year, "tmdb_id": i.tmdb_id,
+             "state": i.state, "reason": i.reason, "title_id": i.title_id, "seen_at": i.seen_at,
+             "updated_at": i.updated_at}
+            for i, plex, trakt in rows
         ]  # fmt: skip
 
     async def sync(self, *, actor: Actor = SYSTEM) -> dict[str, int]:
         """Read every followed watchlist; add what's new on it."""
         counts = {"added": 0, "waiting": 0, "in_library": 0, "skipped": 0, "failed_accounts": 0}
+        await self._sync_trakt(counts, actor)
         accounts = [a for a in await self.accounts() if a.enabled]
         if not accounts:
             return counts
@@ -208,7 +313,11 @@ class WatchlistService:
                     for w in found:
                         if w.key in known:
                             continue
-                        state = await self._new(plex, token, account, w, actor)
+                        tmdb_id = await self._tmdb_id(w, plex=plex, token=token)
+                        state = await self._new(
+                            w, tmdb_id, actor, owner=account.username, source="Plex",
+                            account_id=account.id,
+                        )  # fmt: skip
                         counts[state] = counts.get(state, 0) + 1
                     await self._account_ok(account.id, None)
                 except PlexTvError as exc:
@@ -228,9 +337,11 @@ class WatchlistService:
                 row.last_sync_at, row.last_error = utcnow(), error
                 await s.commit()
 
-    async def _tmdb_id(self, plex: PlexTv, token: str, w: WatchItem) -> int | None:
+    async def _tmdb_id(
+        self, w: WatchItem, *, plex: PlexTv | None = None, token: str = ""
+    ) -> int | None:
         ids: dict[str, Any] = {"tmdb_id": w.tmdb_id, "imdb_id": w.imdb_id}
-        if ids["tmdb_id"] is None and ids["imdb_id"] is None:
+        if ids["tmdb_id"] is None and ids["imdb_id"] is None and plex is not None:
             ids.update(await plex.ids(token, w.key))  # (the listing didn't carry them)
         if ids.get("tmdb_id"):
             return int(ids["tmdb_id"])
@@ -244,17 +355,24 @@ class WatchlistService:
         return None
 
     async def _new(
-        self, plex: PlexTv, token: str, account: PlexAccount, w: WatchItem, actor: Actor
+        self,
+        w: WatchItem,
+        tmdb_id: int | None,
+        actor: Actor,
+        *,
+        owner: str,
+        source: str,
+        account_id: str | None = None,
+        trakt_user_id: str | None = None,
     ) -> str:
-        """A title seen on the watchlist for the first time: added, waiting, already there
+        """A title seen on a watchlist for the first time: added, waiting, already there
         or skipped (and why)."""
-        tmdb_id = await self._tmdb_id(plex, token, w)
         row = WatchlistItem(
-            id=new_id(), account_id=account.id, plex_key=w.key, kind=w.kind, name=w.title,
-            year=w.year, tmdb_id=tmdb_id, state="skipped",
+            id=new_id(), account_id=account_id, trakt_user_id=trakt_user_id, plex_key=w.key,
+            kind=w.kind, name=w.title, year=w.year, tmdb_id=tmdb_id, state="skipped",
         )  # fmt: skip
         if tmdb_id is None:
-            row.reason = "Plex doesn't say which TMDB title this is"
+            row.reason = f"{source} doesn't say which TMDB title this is"
         elif (existing := await self._in_library(w.kind, tmdb_id)) is not None:
             row.state, row.title_id = "in_library", existing
         elif self.config.current.watchlist.ask_first:
@@ -267,7 +385,7 @@ class WatchlistService:
         if row.state in ("added", "waiting"):
             await self.bus.emit(
                 f"watchlist.{row.state}", subject=Subject(type="watchlist_item", id=row.id),
-                actor=actor, name=w.title, year=w.year, account=account.username,
+                actor=actor, name=w.title, year=w.year, account=owner, source=source,
                 title_id=row.title_id,
             )  # fmt: skip
         return row.state
@@ -321,11 +439,14 @@ class WatchlistService:
             await s.commit()
             await s.refresh(item)
             state, name, year, title_id = item.state, item.name, item.year, item.title_id
+        out = next(i for i in await self.items() if i["id"] == item_id)
         if state == "added":
+            source = "Trakt" if out["source"] == "trakt" else "Plex"
             await self.bus.emit("watchlist.added", subject=Subject(type="watchlist_item",
                                 id=item_id), actor=actor, name=name, year=year,
-                                account="", title_id=title_id)  # fmt: skip
-        return next(i for i in await self.items() if i["id"] == item_id)
+                                account=out["account"], source=source,
+                                title_id=title_id)  # fmt: skip
+        return out
 
     async def dismiss(self, item_id: str) -> None:
         """Not wanted: it stays off the library, and isn't asked about again."""

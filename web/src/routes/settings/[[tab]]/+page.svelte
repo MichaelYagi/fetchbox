@@ -808,7 +808,7 @@
 	</section>
 
 	<section id="watchlist">
-		<h2>Plex watchlist</h2>
+		<h2>Watchlists</h2>
 		<PlexWatchlistCard />
 	</section>
 
