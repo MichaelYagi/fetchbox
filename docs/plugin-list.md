@@ -6,7 +6,7 @@ or one more service. Install one in **Settings > Plugins**: paste its address an
 it on. Plugins run with Fetchbox's full access, so install only ones you trust. To write
 your own, see [Writing Fetchbox plugins](plugins.md).
 
-The addresses below are from Fetchbox 0.10.7's release. Each Fetchbox release carries the
+The addresses below are from Fetchbox 0.10.8's release. Each Fetchbox release carries the
 newest version of these two: on the [releases page](https://github.com/MichaelYagi/fetchbox/releases),
 under *Assets*, copy the `fetchbox_subtitles-…whl` or `fetchbox_comics-…whl` link.
 
@@ -22,7 +22,7 @@ before the plugin included. Version 0.2.0 needs Fetchbox 0.10.4 or later.
 - **Needs:** a free OpenSubtitles account's API key (Profile > API consumers > New
   consumer). Your username and password are optional: they raise the daily download limit.
 - **Address:**
-  `https://github.com/MichaelYagi/fetchbox/releases/download/v0.10.7/fetchbox_subtitles-0.2.0-py3-none-any.whl`
+  `https://github.com/MichaelYagi/fetchbox/releases/download/v0.10.8/fetchbox_subtitles-0.2.0-py3-none-any.whl`
 - **Source:** [`plugins/fetchbox-subtitles`](../plugins/fetchbox-subtitles)
 
 ## Comics
@@ -35,7 +35,7 @@ volume counts for its issues.
 - **Needs:** a free [ComicVine](https://comicvine.gamespot.com/api/) API key (for series and
   issues), and indexers that carry comics (the Comics category, 7030).
 - **Address:**
-  `https://github.com/MichaelYagi/fetchbox/releases/download/v0.10.7/fetchbox_comics-0.1.0-py3-none-any.whl`
+  `https://github.com/MichaelYagi/fetchbox/releases/download/v0.10.8/fetchbox_comics-0.1.0-py3-none-any.whl`
 - **Source:** [`plugins/fetchbox-comics`](../plugins/fetchbox-comics)
 
 ## Copying the file instead
@@ -52,7 +52,7 @@ one that can't be installed moves to `drop/failed`, and Health says why.
 back after an image update (one already installed isn't fetched again):
 
 ```sh
--e FETCHBOX_PLUGINS=https://github.com/MichaelYagi/fetchbox/releases/download/v0.10.7/fetchbox_comics-0.1.0-py3-none-any.whl
+-e FETCHBOX_PLUGINS=https://github.com/MichaelYagi/fetchbox/releases/download/v0.10.8/fetchbox_comics-0.1.0-py3-none-any.whl
 ```
 
 Several are separated by commas. Being listed approves them: they run once installed, and
