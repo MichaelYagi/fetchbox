@@ -25,6 +25,8 @@ What it does:
 
 Status: early development — see [PLAN.md](PLAN.md) and the engineering specification.
 
+<img width="1203" height="911" alt="Screenshot 2026-11-27 175701" src="https://github.com/user-attachments/assets/8425ee3a-09bb-492c-9c0f-cecf578b4d85" />
+
 ## Getting started
 
 ```sh
