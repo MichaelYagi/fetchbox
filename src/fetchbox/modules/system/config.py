@@ -111,6 +111,16 @@ class WatchlistConfig(BaseModel):
     client_id: str = Field(
         default="", description="This Fetchbox's id with Plex (made on first sign-in)"
     )
+    trakt_client_id: SecretStr | None = Field(
+        default=None,
+        description="Trakt: the Client ID of an API app you made at trakt.tv/oauth/applications "
+        "(free); it reads public watchlists",
+    )
+
+    @field_validator("trakt_client_id", mode="before")
+    @classmethod
+    def _strip_trakt(cls, v: object) -> object:
+        return strip_key(v)
 
 
 class SetupConfig(BaseModel):
@@ -180,7 +190,9 @@ class SystemConfig(BaseModel):
     watchlist: WatchlistConfig = WatchlistConfig()
 
 
-SECRETS: tuple[tuple[str, str], ...] = (("tmdb", "api_key"), ("tvdb", "api_key"), ("tvdb", "pin"))
+SECRETS: tuple[tuple[str, str], ...] = (
+    ("tmdb", "api_key"), ("tvdb", "api_key"), ("tvdb", "pin"), ("watchlist", "trakt_client_id"),
+)  # fmt: skip
 
 
 Listener = Callable[[SystemConfig], Awaitable[None]]

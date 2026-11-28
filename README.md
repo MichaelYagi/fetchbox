@@ -26,6 +26,7 @@ What it does:
 - **Your Plex watchlist:** press *+ Watchlist* in any Plex app (TV, phone, plex.tv) and
   it's added and downloaded. Fetchbox uses the token your Plex server was added with, or
   Plex's own sign-in for anyone else in the household; optionally it asks you first.
+  Public **Trakt** watchlists work the same way, for Jellyfin and Emby households too.
 - **Torrents and Usenet:** the built-in engine, or your own qBittorrent, Transmission or
   Deluge; and Usenet through SABnzbd or NZBGet. Indexers come from Prowlarr (torrent and
   Usenet alike), a Torznab feed or a Newznab indexer.

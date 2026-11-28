@@ -228,3 +228,94 @@ async def test_following_with_the_plex_servers_token(
                                                               "token": TOKEN}})  # fmt: skip
     r = await c.post("/watchlist/accounts/from-server", json={"server_id": other.json()["id"]})
     assert r.status_code == 409 and "Sign in with Plex" in r.text
+
+
+# ---- Trakt ---------------------------------------------------------------------------------
+
+TRAKT_ID = "trakt-client-id-0123456789abcdef"
+
+
+class FakeTrakt:
+    """api.trakt.tv as Trakt documents it: /users/{user}/watchlist/{movies|shows}, each row
+    {"rank", "listed_at", "type", "movie"|"show": {"title", "year", "ids": {...}}}."""
+
+    def __init__(self) -> None:
+        self.users: dict[str, dict[str, list[dict[str, Any]]]] = {
+            "tom": {"movies": [], "shows": []}
+        }
+        self.private: set[str] = set()
+
+    def handle(self, req: httpx.Request) -> httpx.Response:
+        assert req.url.host == "api.trakt.tv" and req.headers["trakt-api-version"] == "2"
+        if req.headers.get("trakt-api-key") != TRAKT_ID:
+            return httpx.Response(403)
+        parts = req.url.path.strip("/").split("/")  # users/{user}/watchlist/{kind}
+        if len(parts) != 4 or parts[0] != "users" or parts[2] != "watchlist":
+            return httpx.Response(404)
+        user, kind = parts[1], parts[3]
+        if user in self.private:
+            return httpx.Response(401)
+        if user not in self.users:
+            return httpx.Response(404)
+        return httpx.Response(200, json=self.users[user][kind])
+
+
+def _trakt_movie(trakt: int, title: str, year: int, **ids: Any) -> dict[str, Any]:
+    return {"rank": 1, "listed_at": "2026-11-28T10:00:00.000Z", "type": "movie",
+            "movie": {"title": title, "year": year, "ids": {"trakt": trakt, **ids}}}  # fmt: skip
+
+
+@pytest.fixture
+def trakt(server: Running) -> FakeTrakt:
+    fake = FakeTrakt()
+    server.app.state.watchlist.transport = httpx.MockTransport(fake.handle)
+    return fake
+
+
+async def test_a_trakt_watchlist_is_followed_like_plexs(
+    c: httpx.AsyncClient, fakes: Fakes, trakt: FakeTrakt, server: Running
+) -> None:
+    await standard_hd(c)
+    r = await c.post("/watchlist/trakt", json={"username": "tom"})
+    assert r.status_code == 409 and "Trakt Client ID" in r.text  # not set up yet
+
+    await c.patch("/system/config", json={"watchlist": {"trakt_client_id": f" {TRAKT_ID}\n"}})
+    cfg = (await c.get("/system/config")).json()["config"]["watchlist"]
+    assert cfg["trakt_client_id"] == "********"  # kept as a secret
+    for who, why in (("nobody", "no Trakt user"), ("hidden", "private")):
+        if who == "hidden":
+            trakt.private.add(who)
+        r = await c.post("/watchlist/trakt", json={"username": who})
+        assert r.status_code == 409 and why in r.text, r.text
+
+    trakt.users["tom"]["movies"] = [
+        _trakt_movie(1, "Dune", 2021, tmdb=438631, imdb="tt1160419", slug="dune-2021"),
+        _trakt_movie(2, "No Ids Film", 1990),  # Trakt has no TMDB or IMDb id for it
+    ]
+    severance = {"title": "Severance", "year": 2022,
+                 "ids": {"trakt": 3, "tmdb": 95396, "tvdb": 371980}}  # fmt: skip
+    trakt.users["tom"]["shows"] = [{"rank": 2, "type": "show", "show": severance}]
+    r = await c.post("/watchlist/trakt", json={"username": "@tom"})
+    assert r.status_code == 201 and r.json()["username"] == "tom"
+    assert (await c.post("/watchlist/trakt", json={"username": "tom"})).status_code == 409
+
+    counts = await _sync(c, server)
+    assert (counts["added"], counts["skipped"]) == (2, 1)
+    names = {t["name"]: t["kind"] for t in (await c.get("/titles")).json()["items"]}
+    assert names == {"Dune": "movie", "Severance": "series"}
+    items = {i["name"]: i for i in (await c.get("/watchlist/items")).json()}
+    assert items["Dune"]["source"] == "trakt" and items["Dune"]["account"] == "tom"
+    assert "Trakt doesn't say" in (items["No Ids Film"]["reason"] or "")
+    assert "tom's Trakt watchlist" in str((await c.get("/activity")).json())
+    assert (await _sync(c, server))["added"] == 0  # nothing new
+
+    # a Client ID Trakt won't take: the user says so, and nothing else breaks
+    await c.patch("/system/config", json={"watchlist": {"trakt_client_id": "wrong"}})
+    assert (await _sync(c, server))["failed_accounts"] == 1
+    [tom] = (await c.get("/watchlist/trakt")).json()
+    assert "Client ID" in (tom["last_error"] or "")
+    r = await c.patch(f"/watchlist/trakt/{tom['id']}", json={"enabled": False})
+    assert r.json()["enabled"] is False
+    assert (await c.delete(f"/watchlist/trakt/{tom['id']}")).status_code == 204
+    assert (await c.get("/watchlist/trakt")).json() == []
+    assert len((await c.get("/titles")).json()["items"]) == 2  # what it added stays

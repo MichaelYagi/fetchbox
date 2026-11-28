@@ -4345,6 +4345,15 @@
       "title": "Seen At",
       "type": "string"
      },
+     "source": {
+      "description": "Plex or Trakt",
+      "enum": [
+       "plex",
+       "trakt"
+      ],
+      "title": "Source",
+      "type": "string"
+     },
      "state": {
       "description": "added (and searched for), waiting (for approval), in_library (it was already there), dismissed, or skipped (reason says why)",
       "enum": [
@@ -4400,6 +4409,7 @@
     "required": [
      "id",
      "account",
+     "source",
      "kind",
      "name",
      "year",
@@ -9830,6 +9840,70 @@
      "length_ms"
     ],
     "title": "TrackOut",
+    "type": "object"
+   },
+   "TraktUserIn": {
+    "properties": {
+     "username": {
+      "description": "A Trakt username",
+      "maxLength": 100,
+      "minLength": 1,
+      "title": "Username",
+      "type": "string"
+     }
+    },
+    "required": [
+     "username"
+    ],
+    "title": "TraktUserIn",
+    "type": "object"
+   },
+   "TraktUserOut": {
+    "properties": {
+     "enabled": {
+      "title": "Enabled",
+      "type": "boolean"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "last_error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Last Error"
+     },
+     "last_sync_at": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Last Sync At"
+     },
+     "username": {
+      "title": "Username",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "username",
+     "enabled",
+     "last_sync_at",
+     "last_error"
+    ],
+    "title": "TraktUserOut",
     "type": "object"
    },
    "TrayRequestsOut": {
@@ -24803,6 +24877,246 @@
      }
     ],
     "summary": "Sync Now",
+    "tags": [
+     "watchlist"
+    ]
+   }
+  },
+  "/api/v1/watchlist/trakt": {
+   "get": {
+    "description": "The Trakt users whose watchlists are followed.",
+    "operationId": "list_trakt_api_v1_watchlist_trakt_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/TraktUserOut"
+         },
+         "title": "Response List Trakt Api V1 Watchlist Trakt Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "List Trakt",
+    "tags": [
+     "watchlist"
+    ]
+   },
+   "post": {
+    "description": "Follow a Trakt user's watchlist (a public profile; needs the Trakt Client ID in the\nconfig, `watchlist.trakt_client_id`). It's checked with Trakt first.",
+    "operationId": "add_trakt_api_v1_watchlist_trakt_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/TraktUserIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TraktUserOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Conflict"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     },
+     "502": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Bad Gateway"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Add Trakt",
+    "tags": [
+     "watchlist"
+    ]
+   }
+  },
+  "/api/v1/watchlist/trakt/{user_id}": {
+   "delete": {
+    "description": "Stop following it. What its watchlist added stays in the library.",
+    "operationId": "remove_trakt_api_v1_watchlist_trakt__user_id__delete",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "user_id",
+      "required": true,
+      "schema": {
+       "title": "User Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Remove Trakt",
+    "tags": [
+     "watchlist"
+    ]
+   },
+   "patch": {
+    "operationId": "update_trakt_api_v1_watchlist_trakt__user_id__patch",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "user_id",
+      "required": true,
+      "schema": {
+       "title": "User Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/AccountPatch"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TraktUserOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       },
+       "application/problem+json": {}
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     },
+     {
+      "APIKeyHeader": []
+     },
+     {
+      "APIKeyCookie": []
+     }
+    ],
+    "summary": "Update Trakt",
     "tags": [
      "watchlist"
     ]
