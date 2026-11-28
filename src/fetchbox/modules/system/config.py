@@ -92,6 +92,27 @@ class UpdatesConfig(BaseModel):
     )
 
 
+class WatchlistConfig(BaseModel):
+    """Plex watchlists (Settings > Connections): how a watchlisted title is added."""
+
+    movie_profile_id: str | None = Field(
+        default=None, description="Quality profile for watchlisted movies; empty: the first one"
+    )
+    series_profile_id: str | None = Field(
+        default=None, description="Quality profile for watchlisted shows; empty: the first one"
+    )
+    series_mode: Literal["all", "future", "missing", "first_season", "latest_season", "none"] = (
+        Field(default="all", description="Which episodes of a watchlisted show to download")
+    )
+    ask_first: bool = Field(
+        default=False,
+        description="Watchlisted titles wait for your approval instead of downloading",
+    )
+    client_id: str = Field(
+        default="", description="This Fetchbox's id with Plex (made on first sign-in)"
+    )
+
+
 class SetupConfig(BaseModel):
     dismissed: bool = Field(
         default=False,
@@ -156,6 +177,7 @@ class SystemConfig(BaseModel):
     network: NetworkConfig = NetworkConfig()
     music: MusicConfig = MusicConfig()
     setup: SetupConfig = SetupConfig()
+    watchlist: WatchlistConfig = WatchlistConfig()
 
 
 SECRETS: tuple[tuple[str, str], ...] = (("tmdb", "api_key"), ("tvdb", "api_key"), ("tvdb", "pin"))

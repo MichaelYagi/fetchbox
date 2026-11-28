@@ -116,6 +116,10 @@ MESSAGES: dict[str, str] = {
     "notifications.target_added": "Notification {name} added ({kind})",
     "system.config_imported": "Settings imported",
     "system.restore_staged": "Backup restore ready: it happens at the next restart",
+    "watchlist.added": "Added {name} ({year}) from {account}'s Plex watchlist",
+    "watchlist.waiting": "{name} ({year}) is on {account}'s Plex watchlist: waiting for approval",
+    "watchlist.account_added": "Following {name}'s Plex watchlist",
+    "watchlist.account_removed": "No longer following {name}'s Plex watchlist",
 }
 
 

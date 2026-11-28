@@ -69,6 +69,7 @@ from fetchbox.modules.system.portable import Portable
 from fetchbox.modules.system.reset import DataReset
 from fetchbox.modules.system.service import register_core_checks
 from fetchbox.modules.system.updates import UpdateChecker
+from fetchbox.modules.watchlist import router as watchlist_router
 from fetchbox.plugin import router as plugins_router
 from fetchbox.providers import builtin as _builtin_providers  # noqa: F401 (registers them)
 from fetchbox.security_headers import SecurityHeaders
@@ -100,6 +101,7 @@ API_ROUTERS: tuple[APIRouter, ...] = (
     storage_router.router,
     library_router.router,
     integrations_router.router,
+    watchlist_router.router,
     notifications_router.router,
     plugins_router.router,
     backups_router.router,
@@ -357,6 +359,25 @@ def create_app(
                 job_type=REFRESH_ALL,
                 every=timedelta(days=1),
                 description="Read plugin media kinds' titles again: new items appear",
+            )
+        )
+        from fetchbox.modules.watchlist.service import SYNC_JOB, WatchlistService
+
+        watchlist = WatchlistService(
+            db, bus, box, config, media, discovery, profiles, app.state.integrations
+        )
+        app.state.watchlist = watchlist
+
+        @state.jobs.handler(SYNC_JOB, queue="net", max_attempts=1)
+        async def _sync_watchlists(ctx: Any) -> dict[str, Any]:
+            return await watchlist.sync()
+
+        state.scheduler.define(
+            ScheduleDef(
+                name=SYNC_JOB,
+                job_type=SYNC_JOB,
+                every=timedelta(minutes=10),
+                description="Read the Plex watchlists: what's new there is added",
             )
         )
         await state.scheduler.sync()

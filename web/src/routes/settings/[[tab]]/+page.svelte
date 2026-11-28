@@ -13,6 +13,7 @@
 	import MusicFolderCard from '#lib/MusicFolderCard.svelte';
 	import NetworkCard from '#lib/NetworkCard.svelte';
 	import NotificationsCard from '#lib/NotificationsCard.svelte';
+	import PlexWatchlistCard from '#lib/PlexWatchlistCard.svelte';
 	import Path from '#lib/Path.svelte';
 	import { session } from '#lib/session.svelte.ts';
 	import { goto } from '$app/navigation';
@@ -804,6 +805,11 @@
 	<section id="media-servers">
 		<h2>Media servers</h2>
 		<MediaServersCard {destinations} />
+	</section>
+
+	<section id="watchlist">
+		<h2>Plex watchlist</h2>
+		<PlexWatchlistCard />
 	</section>
 
 	<section id="notifications">
